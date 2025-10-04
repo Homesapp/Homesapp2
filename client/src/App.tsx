@@ -16,6 +16,7 @@ import AdminLogin from "@/pages/AdminLogin";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
+import PropertySearch from "@/pages/PropertySearch";
 import Dashboard from "@/pages/Dashboard";
 import Properties from "@/pages/Properties";
 import Appointments from "@/pages/Appointments";
@@ -68,6 +69,7 @@ function AuthenticatedApp() {
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/buscar-propiedades" component={PropertySearch} />
         <Route path="/" component={Landing} />
         <Route component={Landing} />
       </Switch>
@@ -120,6 +122,7 @@ function AuthenticatedApp() {
           <main className="flex-1 overflow-auto p-6">
             <Switch>
               <Route path="/" component={Dashboard} />
+              <Route path="/buscar-propiedades" component={PropertySearch} />
               <Route path="/properties" component={Properties} />
               <Route path="/appointments" component={Appointments} />
               <Route path="/calendario" component={Calendar} />
