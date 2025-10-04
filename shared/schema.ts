@@ -102,6 +102,17 @@ export const roleRequestStatusEnum = pgEnum("role_request_status", [
   "rejected",
 ]);
 
+export const leadStatusEnum = pgEnum("lead_status", [
+  "nuevo",
+  "contactado",
+  "calificado",
+  "interesado",
+  "visita_agendada",
+  "en_negociacion",
+  "ganado",
+  "perdido",
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -296,6 +307,32 @@ export const insertPropertyStaffSchema = createInsertSchema(propertyStaff).omit(
 
 export type InsertPropertyStaff = z.infer<typeof insertPropertyStaffSchema>;
 export type PropertyStaff = typeof propertyStaff.$inferSelect;
+
+// Leads/Clients CRM table (Kanban Board)
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  status: leadStatusEnum("status").notNull().default("nuevo"),
+  source: varchar("source"), // web, referido, llamada, evento, etc
+  assignedToId: varchar("assigned_to_id").references(() => users.id),
+  budget: decimal("budget", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+  propertyInterests: text("property_interests").array().default(sql`ARRAY[]::text[]`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
 
 // Appointments table
 export const appointments = pgTable("appointments", {

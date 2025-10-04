@@ -915,6 +915,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Leads/CRM routes
+  app.get("/api/leads", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req, res) => {
+    try {
+      const { status, assignedToId } = req.query;
+      const filters: any = {};
+      if (status) filters.status = status;
+      if (assignedToId) filters.assignedToId = assignedToId;
+
+      const leads = await storage.getLeads(filters);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  app.get("/api/leads/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const lead = await storage.getLead(id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      res.status(500).json({ message: "Failed to fetch lead" });
+    }
+  });
+
+  app.post("/api/leads", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
+    try {
+      const leadData = req.body;
+      const lead = await storage.createLead(leadData);
+      
+      await createAuditLog(req, "create", "lead", lead.id, `Lead creado: ${lead.firstName} ${lead.lastName}`);
+      
+      res.status(201).json(lead);
+    } catch (error: any) {
+      console.error("Error creating lead:", error);
+      res.status(400).json({ message: error.message || "Failed to create lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const existingLead = await storage.getLead(id);
+      if (!existingLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const updatedLead = await storage.updateLead(id, updates);
+      
+      await createAuditLog(req, "update", "lead", id, `Lead actualizado: ${updatedLead.firstName} ${updatedLead.lastName}`);
+      
+      res.json(updatedLead);
+    } catch (error: any) {
+      console.error("Error updating lead:", error);
+      res.status(400).json({ message: error.message || "Failed to update lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id/status", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const existingLead = await storage.getLead(id);
+      if (!existingLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const updatedLead = await storage.updateLeadStatus(id, status);
+      
+      await createAuditLog(req, "update", "lead", id, `Estado de lead actualizado a: ${status}`);
+      
+      res.json(updatedLead);
+    } catch (error: any) {
+      console.error("Error updating lead status:", error);
+      res.status(400).json({ message: error.message || "Failed to update lead status" });
+    }
+  });
+
+  app.delete("/api/leads/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const existingLead = await storage.getLead(id);
+      if (!existingLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      await createAuditLog(req, "delete", "lead", id, `Lead eliminado: ${existingLead.firstName} ${existingLead.lastName}`);
+      
+      await storage.deleteLead(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      res.status(500).json({ message: "Failed to delete lead" });
+    }
+  });
+
   // Appointment routes
   app.get("/api/appointments", isAuthenticated, async (req, res) => {
     try {

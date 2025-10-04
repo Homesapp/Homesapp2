@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ const AVAILABLE_AMENITIES = [
 ];
 
 export default function PropertySearch() {
+  const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -304,12 +306,20 @@ export default function PropertySearch() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {properties.map((property) => (
-                    <Card key={property.id} className="relative hover-elevate cursor-pointer" data-testid={`card-property-${property.id}`}>
+                    <Card 
+                      key={property.id} 
+                      className="relative hover-elevate cursor-pointer" 
+                      onClick={() => setLocation(`/propiedad/${property.id}`)}
+                      data-testid={`card-property-${property.id}`}
+                    >
                       {isAuthenticated && (
                         <Button
                           size="icon"
                           variant="ghost"
                           className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
                           data-testid={`button-favorite-${property.id}`}
                         >
                           <Heart className="h-4 w-4" />

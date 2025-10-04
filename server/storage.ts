@@ -16,6 +16,7 @@ import {
   emailVerificationTokens,
   roleRequests,
   favorites,
+  leads,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -51,6 +52,8 @@ import {
   type InsertRoleRequest,
   type Favorite,
   type InsertFavorite,
+  type Lead,
+  type InsertLead,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql } from "drizzle-orm";
@@ -185,6 +188,14 @@ export interface IStorage {
   removeFavorite(userId: string, propertyId: string): Promise<void>;
   getUserFavorites(userId: string): Promise<Property[]>;
   isFavorite(userId: string, propertyId: string): Promise<boolean>;
+  
+  // Lead operations
+  getLead(id: string): Promise<Lead | undefined>;
+  getLeads(filters?: { status?: string; assignedToId?: string }): Promise<Lead[]>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead>;
+  updateLeadStatus(id: string, status: string): Promise<Lead>;
+  deleteLead(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1021,6 +1032,57 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return !!favorite;
+  }
+  
+  // Lead operations
+  async getLead(id: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead;
+  }
+
+  async getLeads(filters?: { status?: string; assignedToId?: string }): Promise<Lead[]> {
+    let query = db.select().from(leads);
+    
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(leads.status, filters.status));
+    }
+    if (filters?.assignedToId) {
+      conditions.push(eq(leads.assignedToId, filters.assignedToId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(leads.createdAt));
+  }
+
+  async createLead(leadData: InsertLead): Promise<Lead> {
+    const [lead] = await db.insert(leads).values(leadData).returning();
+    return lead;
+  }
+
+  async updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead> {
+    const [updated] = await db
+      .update(leads)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateLeadStatus(id: string, status: string): Promise<Lead> {
+    const [updated] = await db
+      .update(leads)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteLead(id: string): Promise<void> {
+    await db.delete(leads).where(eq(leads.id, id));
   }
 }
 
