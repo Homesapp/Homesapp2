@@ -80,6 +80,7 @@ Preferred communication style: Simple, everyday language.
 - Service providers with associated services
 - Offers workflow (pending, accepted, rejected, under-review)
 - Property staff assignments for access control
+- Audit logs for tracking user actions (create, update, delete, view, approve, reject, assign)
 - Session storage for authentication
 
 **Data Relationships:**
@@ -124,3 +125,36 @@ Preferred communication style: Simple, everyday language.
 - **Zod**: Runtime type validation and schema definition
 - **drizzle-zod**: Integration between Drizzle ORM and Zod schemas
 - Shared schema definitions between frontend and backend
+
+## Recent Features
+
+### Calendar View for Appointments (October 2025)
+- Monthly calendar visualization with react-day-picker
+- Day highlighting for dates with scheduled appointments
+- Selected day view showing all appointments for that date
+- List of upcoming appointments (next 5)
+- Direct integration with AppointmentFormDialog for editing/rescheduling
+- Ability to cancel appointments from calendar view
+- Accessible via sidebar navigation
+
+### Audit Logging System (October 2025)
+- Comprehensive audit log infrastructure for compliance and security tracking
+- Database table (`audit_logs`) with fields: userId, action, entityType, entityId, details, ipAddress, userAgent
+- API endpoints for creating and querying audit logs:
+  - GET `/api/audit-logs` - Query logs with filters (admin/master only)
+  - GET `/api/audit-logs/user/:userId` - User-specific audit history
+  - POST `/api/audit-logs` - Create new audit log entry
+- Storage methods: `createAuditLog()`, `getAuditLogs()`, `getUserAuditHistory()`
+- Tracks actions: create, update, delete, view, approve, reject, assign
+- Infrastructure ready for automatic logging implementation (pending)
+
+### User Profile & Activity History (October 2025)
+- UserProfileDialog component showing detailed user information and activity history
+- Two-tab interface: "Actividad Reciente" and "Detalles"
+- Activity timeline with action icons, timestamps, and detailed descriptions
+- Personal information display (name, email, role, status, dates)
+- Users page enhanced with approved users tab
+- Clickable user cards to open profile dialog
+- Real-time cache invalidation for seamless user approval workflow
+- Admin/master access to view any user's profile and history
+- Users can view their own profile and activity log
