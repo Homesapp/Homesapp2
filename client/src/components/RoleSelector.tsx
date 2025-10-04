@@ -33,9 +33,9 @@ const ALL_ROLES = [
 ];
 
 export function RoleSelector() {
-  const { realUser, viewAsRole, setViewAsRole, clearViewAsRole, isViewingAsOtherRole } = useAuth();
+  const { realUser, viewAsRole, setViewAsRole, clearViewAsRole, isViewingAsOtherRole, canChangeRole } = useAuth();
 
-  if (!setViewAsRole || !clearViewAsRole) {
+  if (!canChangeRole) {
     return null;
   }
 

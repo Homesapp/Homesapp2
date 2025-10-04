@@ -59,6 +59,11 @@ Preferred communication style: Simple, everyday language.
 - Session management with connect-pg-simple
 - Role-based access control enforced at route level
 - User approval workflow (pending → approved/rejected states)
+- Admin role switching feature for testing different role perspectives
+  - Master and Admin users can temporarily view the platform as any other role
+  - Visual indicator (badge) shows when viewing as another role
+  - Automatic cleanup of temporary role on non-admin login for security
+  - Backend maintains real session role for all operations
 
 ### Data Storage
 

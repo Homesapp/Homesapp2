@@ -20,11 +20,11 @@ export function useAuth() {
   const canChangeRole = user?.role === "master" || user?.role === "admin";
 
   useEffect(() => {
-    if (!canChangeRole && viewAsRole) {
+    if (user && !canChangeRole && viewAsRole) {
       localStorage.removeItem(VIEW_AS_ROLE_KEY);
       setViewAsRoleState(null);
     }
-  }, [canChangeRole, viewAsRole]);
+  }, [user, canChangeRole, viewAsRole]);
 
   const setViewAsRole = useMemo(() => (role: string) => {
     localStorage.setItem(VIEW_AS_ROLE_KEY, role);
@@ -52,8 +52,9 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user,
     viewAsRole,
-    setViewAsRole: canChangeRole ? setViewAsRole : undefined,
-    clearViewAsRole: canChangeRole ? clearViewAsRole : undefined,
+    canChangeRole,
+    setViewAsRole,
+    clearViewAsRole,
     isViewingAsOtherRole: !!viewAsRole && canChangeRole,
   };
 }
