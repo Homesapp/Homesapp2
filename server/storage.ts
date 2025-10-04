@@ -86,6 +86,22 @@ export interface IStorage {
   updateProperty(id: string, updates: Partial<InsertProperty>): Promise<Property>;
   deleteProperty(id: string): Promise<void>;
   searchProperties(query: string): Promise<Property[]>;
+  searchPropertiesAdvanced(filters: {
+    query?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    minArea?: number;
+    maxArea?: number;
+    location?: string;
+    amenities?: string[];
+    status?: string;
+    minRating?: number;
+    featured?: boolean;
+    availableFrom?: Date;
+    availableTo?: Date;
+  }): Promise<Property[]>;
   
   // Property staff operations
   assignStaff(assignment: InsertPropertyStaff): Promise<PropertyStaff>;
@@ -385,6 +401,109 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(properties.createdAt));
+  }
+
+  async searchPropertiesAdvanced(filters: {
+    query?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    minArea?: number;
+    maxArea?: number;
+    location?: string;
+    amenities?: string[];
+    status?: string;
+    minRating?: number;
+    featured?: boolean;
+    availableFrom?: Date;
+    availableTo?: Date;
+  }): Promise<Property[]> {
+    let query = db.select().from(properties);
+    const conditions = [];
+
+    conditions.push(eq(properties.active, true));
+
+    if (filters.query) {
+      conditions.push(
+        or(
+          ilike(properties.title, `%${filters.query}%`),
+          ilike(properties.location, `%${filters.query}%`),
+          ilike(properties.description, `%${filters.query}%`)
+        )
+      );
+    }
+
+    if (filters.minPrice !== undefined) {
+      conditions.push(gte(properties.price, filters.minPrice.toString()));
+    }
+    if (filters.maxPrice !== undefined) {
+      conditions.push(lte(properties.price, filters.maxPrice.toString()));
+    }
+
+    if (filters.bedrooms !== undefined) {
+      conditions.push(eq(properties.bedrooms, filters.bedrooms));
+    }
+    if (filters.bathrooms !== undefined) {
+      conditions.push(eq(properties.bathrooms, filters.bathrooms.toString()));
+    }
+
+    if (filters.minArea !== undefined) {
+      conditions.push(gte(properties.area, filters.minArea.toString()));
+    }
+    if (filters.maxArea !== undefined) {
+      conditions.push(lte(properties.area, filters.maxArea.toString()));
+    }
+
+    if (filters.location) {
+      conditions.push(ilike(properties.location, `%${filters.location}%`));
+    }
+
+    if (filters.status) {
+      conditions.push(eq(properties.status, filters.status as any));
+    }
+
+    if (filters.minRating !== undefined) {
+      conditions.push(gte(properties.rating, filters.minRating.toString()));
+    }
+
+    if (filters.featured !== undefined) {
+      conditions.push(eq(properties.featured, filters.featured));
+    }
+
+    if (filters.availableFrom) {
+      conditions.push(
+        or(
+          sql`${properties.availableFrom} IS NULL`,
+          lte(properties.availableFrom, filters.availableFrom)
+        )
+      );
+    }
+
+    if (filters.availableTo) {
+      conditions.push(
+        or(
+          sql`${properties.availableTo} IS NULL`,
+          gte(properties.availableTo, filters.availableTo)
+        )
+      );
+    }
+
+    if (filters.amenities && filters.amenities.length > 0) {
+      conditions.push(
+        sql`${properties.amenities} && ARRAY[${sql.join(filters.amenities.map(a => sql`${a}`), sql`, `)}]::text[]`
+      );
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(
+      desc(properties.featured),
+      desc(properties.rating),
+      desc(properties.createdAt)
+    );
   }
 
   // Property staff operations

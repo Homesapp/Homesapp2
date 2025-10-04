@@ -645,11 +645,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/properties/search", async (req, res) => {
     try {
-      const { q } = req.query;
-      if (!q || typeof q !== "string") {
-        return res.status(400).json({ message: "Search query required" });
+      const {
+        q,
+        minPrice,
+        maxPrice,
+        bedrooms,
+        bathrooms,
+        minArea,
+        maxArea,
+        location,
+        amenities,
+        status,
+        minRating,
+        featured,
+        availableFrom,
+        availableTo
+      } = req.query;
+
+      const filters: any = {};
+
+      if (q && typeof q === "string") {
+        filters.query = q;
       }
-      const properties = await storage.searchProperties(q);
+      if (minPrice) filters.minPrice = parseFloat(minPrice as string);
+      if (maxPrice) filters.maxPrice = parseFloat(maxPrice as string);
+      if (bedrooms) filters.bedrooms = parseInt(bedrooms as string);
+      if (bathrooms) filters.bathrooms = parseFloat(bathrooms as string);
+      if (minArea) filters.minArea = parseFloat(minArea as string);
+      if (maxArea) filters.maxArea = parseFloat(maxArea as string);
+      if (location && typeof location === "string") {
+        filters.location = location;
+      }
+      if (amenities) {
+        filters.amenities = typeof amenities === "string" ? amenities.split(",") : amenities;
+      }
+      if (status && typeof status === "string") {
+        filters.status = status;
+      }
+      if (minRating) filters.minRating = parseFloat(minRating as string);
+      if (featured !== undefined) {
+        filters.featured = featured === "true";
+      }
+      if (availableFrom && typeof availableFrom === "string") {
+        filters.availableFrom = new Date(availableFrom);
+      }
+      if (availableTo && typeof availableTo === "string") {
+        filters.availableTo = new Date(availableTo);
+      }
+
+      const properties = await storage.searchPropertiesAdvanced(filters);
       res.json(properties);
     } catch (error) {
       console.error("Error searching properties:", error);
