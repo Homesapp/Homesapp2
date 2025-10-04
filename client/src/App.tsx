@@ -13,6 +13,8 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { apiRequest } from "@/lib/queryClient";
 import Landing from "@/pages/Landing";
 import AdminLogin from "@/pages/AdminLogin";
+import Register from "@/pages/Register";
+import VerifyEmail from "@/pages/VerifyEmail";
 import Dashboard from "@/pages/Dashboard";
 import Properties from "@/pages/Properties";
 import Appointments from "@/pages/Appointments";
@@ -56,11 +58,13 @@ function AuthenticatedApp() {
     );
   }
 
-  // If not authenticated with either system, show landing/admin login
+  // If not authenticated with either system, show landing/admin login/register
   if (!isAuthenticated && !isAdminAuthenticated) {
     return (
       <Switch>
         <Route path="/admin-login" component={AdminLogin} />
+        <Route path="/register" component={Register} />
+        <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/" component={Landing} />
         <Route component={Landing} />
       </Switch>

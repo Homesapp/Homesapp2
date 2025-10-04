@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Building2, Calendar, Users, Shield } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Landing() {
   return (
@@ -10,9 +11,14 @@ export default function Landing() {
             <Building2 className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold">HomesApp</h1>
           </div>
-          <Button asChild data-testid="button-login">
-            <a href="/api/login">Iniciar Sesión</a>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" asChild data-testid="button-login">
+              <a href="/api/login">Iniciar Sesión</a>
+            </Button>
+            <Button asChild data-testid="button-register">
+              <Link href="/register">Registrarse</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -62,9 +68,12 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="pt-8">
+          <div className="pt-8 flex gap-4 justify-center">
             <Button size="lg" asChild data-testid="button-get-started">
-              <a href="/api/login">Comenzar Ahora</a>
+              <Link href="/register">Crear Cuenta Gratis</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild data-testid="button-get-started-login">
+              <a href="/api/login">Iniciar Sesión</a>
             </Button>
           </div>
         </div>
