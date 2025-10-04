@@ -3,7 +3,8 @@ import { UserApprovalCard } from "@/components/UserApprovalCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, UserPlus, CheckCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, UserPlus, CheckCircle, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,67 +16,121 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { usePendingUsers, useApproveUser, useRejectUser, useApproveAllUsers } from "@/hooks/useUsers";
+import { format } from "date-fns";
+
+const roleLabels: Record<string, string> = {
+  master: "Master",
+  admin: "Administrador",
+  admin_jr: "Administrador Jr",
+  seller: "Vendedor",
+  owner: "Propietario",
+  management: "Management",
+  concierge: "Conserje",
+  provider: "Proveedor",
+};
 
 export default function Users() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
 
-  const pendingUsers = [
-    {
-      id: "1",
-      name: "Laura Martínez",
-      email: "laura.martinez@example.com",
-      role: "Propietario",
-      requestDate: "10 Oct 2025",
-    },
-    {
-      id: "2",
-      name: "Pedro Ramírez",
-      email: "pedro.ramirez@example.com",
-      role: "Management",
-      requestDate: "11 Oct 2025",
-    },
-    {
-      id: "3",
-      name: "Sofia García",
-      email: "sofia.garcia@example.com",
-      role: "Conserje",
-      requestDate: "12 Oct 2025",
-    },
-    {
-      id: "4",
-      name: "Miguel Torres",
-      email: "miguel.torres@example.com",
-      role: "Proveedor",
-      requestDate: "13 Oct 2025",
-    },
-  ];
+  const { user: currentUser } = useAuth();
+  const { data: pendingUsers = [], isLoading, error } = usePendingUsers();
+  const { toast } = useToast();
+  
+  const approveUser = useApproveUser();
+  const rejectUser = useRejectUser();
+  const approveAllUsers = useApproveAllUsers();
 
-  const approvedUsers = [
-    {
-      id: "5",
-      name: "Carlos Admin",
-      email: "carlos@example.com",
-      role: "Administrador",
-      requestDate: "1 Oct 2025",
-    },
-    {
-      id: "6",
-      name: "Ana Seller",
-      email: "ana@example.com",
-      role: "Vendedor",
-      requestDate: "5 Oct 2025",
-    },
-  ];
+  const handleApprove = async (userId: string, userName: string) => {
+    try {
+      await approveUser.mutateAsync(userId);
+      toast({
+        title: "Usuario aprobado",
+        description: `${userName} ha sido aprobado exitosamente.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo aprobar el usuario",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReject = async (userId: string, userName: string) => {
+    try {
+      await rejectUser.mutateAsync(userId);
+      toast({
+        title: "Usuario rechazado",
+        description: `${userName} ha sido rechazado.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo rechazar el usuario",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleApproveAll = async () => {
+    try {
+      const result = await approveAllUsers.mutateAsync();
+      toast({
+        title: "Usuarios aprobados",
+        description: `Se aprobaron ${result.count} usuarios exitosamente.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron aprobar todos los usuarios",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filterUsers = (users: typeof pendingUsers) => {
     if (!searchQuery) return users;
     return users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (user) => {
+        const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+        const email = (user.email || "").toLowerCase();
+        const query = searchQuery.toLowerCase();
+        return fullName.includes(query) || email.includes(query);
+      }
     );
   };
+
+  const formatUserForCard = (user: typeof pendingUsers[0]) => {
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Usuario";
+    const roleLabel = roleLabels[user.role] || user.role;
+    const requestDate = format(new Date(user.createdAt), "dd MMM yyyy");
+
+    return {
+      id: user.id,
+      name: fullName,
+      email: user.email || "",
+      role: roleLabel,
+      requestDate,
+      avatar: user.profileImageUrl || undefined,
+    };
+  };
+
+  const canApproveUsers = currentUser && ["master", "admin"].includes(currentUser.role);
+  const isMaster = currentUser?.role === "master";
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <p className="text-destructive">Error al cargar los usuarios: {error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -87,11 +142,19 @@ export default function Users() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {pendingUsers.length > 0 && (
+          {canApproveUsers && pendingUsers.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" data-testid="button-approve-all">
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  data-testid="button-approve-all"
+                  disabled={approveAllUsers.isPending}
+                >
+                  {approveAllUsers.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
                   Aprobar Todos ({pendingUsers.length})
                 </Button>
               </AlertDialogTrigger>
@@ -105,17 +168,19 @@ export default function Users() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => console.log("Aprobar todos")}>
+                  <AlertDialogAction onClick={handleApproveAll}>
                     Aprobar Todos
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button data-testid="button-create-admin-user">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Crear Usuario Admin
-          </Button>
+          {isMaster && (
+            <Button data-testid="button-create-admin-user">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Crear Usuario Admin
+            </Button>
+          )}
         </div>
       </div>
 
@@ -136,44 +201,57 @@ export default function Users() {
             Pendientes ({pendingUsers.length})
           </TabsTrigger>
           <TabsTrigger value="approved" data-testid="tab-approved-users">
-            Aprobados ({approvedUsers.length})
+            Aprobados (0)
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filterUsers(pendingUsers).map((user) => (
-              <UserApprovalCard
-                key={user.id}
-                {...user}
-                onApprove={() => console.log("Aprobar usuario", user.id)}
-                onReject={() => console.log("Rechazar usuario", user.id)}
-              />
-            ))}
-          </div>
-          {filterUsers(pendingUsers).length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No hay usuarios pendientes de aprobación
+          {isLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ))}
             </div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filterUsers(pendingUsers).map((user) => {
+                  const cardData = formatUserForCard(user);
+                  return (
+                    <UserApprovalCard
+                      key={user.id}
+                      {...cardData}
+                      onApprove={
+                        canApproveUsers
+                          ? () => handleApprove(user.id, cardData.name)
+                          : undefined
+                      }
+                      onReject={
+                        canApproveUsers
+                          ? () => handleReject(user.id, cardData.name)
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+              {filterUsers(pendingUsers).length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  {searchQuery
+                    ? "No se encontraron usuarios que coincidan con la búsqueda"
+                    : "No hay usuarios pendientes de aprobación"}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="approved" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filterUsers(approvedUsers).map((user) => (
-              <UserApprovalCard
-                key={user.id}
-                {...user}
-                onApprove={undefined}
-                onReject={() => console.log("Desactivar usuario", user.id)}
-              />
-            ))}
+          <div className="text-center py-12 text-muted-foreground">
+            Funcionalidad de usuarios aprobados en desarrollo
           </div>
-          {filterUsers(approvedUsers).length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No hay usuarios aprobados
-            </div>
-          )}
         </TabsContent>
       </Tabs>
     </div>

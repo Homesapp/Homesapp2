@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar } from "lucide-react";
+import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2 } from "lucide-react";
 
 export type PropertyCardProps = {
   id: string;
@@ -16,6 +16,7 @@ export type PropertyCardProps = {
   image?: string;
   onView?: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
   onSchedule?: () => void;
   showActions?: boolean;
 };
@@ -32,6 +33,7 @@ export function PropertyCard({
   image,
   onView,
   onEdit,
+  onDelete,
   onSchedule,
   showActions = true,
 }: PropertyCardProps) {
@@ -114,6 +116,17 @@ export function PropertyCard({
             >
               <Edit className="h-4 w-4 mr-1" />
               Editar
+            </Button>
+          )}
+          {onDelete && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onDelete}
+              data-testid="button-delete-property"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Eliminar
             </Button>
           )}
           {onSchedule && (

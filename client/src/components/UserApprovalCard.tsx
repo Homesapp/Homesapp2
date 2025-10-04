@@ -59,27 +59,33 @@ export function UserApprovalCard({
         </div>
       </CardContent>
 
-      <CardFooter className="flex gap-2">
-        <Button
-          size="sm"
-          className="flex-1"
-          onClick={onApprove}
-          data-testid="button-approve-user"
-        >
-          <CheckCircle className="h-4 w-4 mr-1" />
-          Aprobar
-        </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          className="flex-1"
-          onClick={onReject}
-          data-testid="button-reject-user"
-        >
-          <XCircle className="h-4 w-4 mr-1" />
-          Rechazar
-        </Button>
-      </CardFooter>
+      {(onApprove || onReject) && (
+        <CardFooter className="flex gap-2">
+          {onApprove && (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={onApprove}
+              data-testid="button-approve-user"
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Aprobar
+            </Button>
+          )}
+          {onReject && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="flex-1"
+              onClick={onReject}
+              data-testid="button-reject-user"
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              Rechazar
+            </Button>
+          )}
+        </CardFooter>
+      )}
     </Card>
   );
 }

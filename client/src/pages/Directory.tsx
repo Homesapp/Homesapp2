@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ServiceProviderCard } from "@/components/ServiceProviderCard";
+import { ServiceProviderFormDialog } from "@/components/ServiceProviderFormDialog";
+import { ServiceFormDialog } from "@/components/ServiceFormDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,113 +11,154 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Plus } from "lucide-react";
+import { useServiceProviders, useServicesByProvider } from "@/hooks/useServiceProviders";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
-export default function Directory() {
-  const [specialtyFilter, setSpecialtyFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+function ProviderCardWithServices({ provider }: { provider: any }) {
+  const { data: services, isLoading: servicesLoading } = useServicesByProvider(provider.id);
+  const { toast } = useToast();
 
-  const providers = [
-    {
-      id: "1",
-      name: "Juan Pérez",
-      specialty: "Electricista",
-      rating: 4.8,
-      reviewCount: 24,
-      available: true,
-      services: [
-        { name: "Instalación eléctrica", price: 1500, description: "Instalación completa de sistema eléctrico" },
-        { name: "Reparación de fallas", price: 800, description: "Diagnóstico y reparación" },
-      ],
-    },
-    {
-      id: "2",
-      name: "María Hernández",
-      specialty: "Plomero",
-      rating: 4.9,
-      reviewCount: 31,
-      available: false,
-      services: [
-        { name: "Reparación de fugas", price: 600, description: "Detección y reparación de fugas de agua" },
-        { name: "Instalación de tuberías", price: 2000, description: "Instalación completa de sistema de plomería" },
-        { name: "Mantenimiento preventivo", price: 500, description: "Revisión general del sistema" },
-      ],
-    },
-    {
-      id: "3",
-      name: "Carlos Sánchez",
-      specialty: "Limpieza",
-      rating: 4.7,
-      reviewCount: 18,
-      available: true,
-      services: [
-        { name: "Limpieza profunda", price: 1200, description: "Limpieza completa de la propiedad" },
-        { name: "Limpieza de mantenimiento", price: 700, description: "Limpieza regular semanal" },
-      ],
-    },
-    {
-      id: "4",
-      name: "Ana López",
-      specialty: "Jardinería",
-      rating: 4.6,
-      reviewCount: 15,
-      available: true,
-      services: [
-        { name: "Mantenimiento de jardín", price: 900, description: "Poda, riego y cuidado general" },
-        { name: "Diseño de jardines", price: 3500, description: "Diseño y creación de espacios verdes" },
-      ],
-    },
-    {
-      id: "5",
-      name: "Roberto Díaz",
-      specialty: "Mantenimiento General",
-      rating: 4.5,
-      reviewCount: 22,
-      available: true,
-      services: [
-        { name: "Reparaciones menores", price: 500, description: "Arreglos generales del hogar" },
-        { name: "Pintura", price: 1800, description: "Pintura de interiores y exteriores" },
-      ],
-    },
-    {
-      id: "6",
-      name: "Laura Martínez",
-      specialty: "Contador",
-      rating: 5.0,
-      reviewCount: 42,
-      available: false,
-      services: [
-        { name: "Asesoría fiscal", price: 2500, description: "Consultoría y planificación fiscal" },
-        { name: "Contabilidad mensual", price: 3000, description: "Gestión contable completa" },
-      ],
-    },
-  ];
-
-  const filterProviders = () => {
-    let filtered = providers;
-    if (specialtyFilter !== "all") {
-      filtered = filtered.filter((p) => p.specialty === specialtyFilter);
-    }
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.specialty.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    return filtered;
+  const handleMessage = () => {
+    toast({
+      title: "Mensaje enviado",
+      description: `Se ha enviado un mensaje a ${provider.user.firstName} ${provider.user.lastName}`,
+    });
   };
 
-  const specialties = Array.from(new Set(providers.map((p) => p.specialty)));
+  const handleCall = () => {
+    toast({
+      title: "Iniciando llamada",
+      description: `Llamando a ${provider.user.firstName} ${provider.user.lastName}...`,
+    });
+  };
+
+  const handleHire = () => {
+    toast({
+      title: "Contratación iniciada",
+      description: `Se ha iniciado el proceso de contratación de ${provider.user.firstName} ${provider.user.lastName}`,
+    });
+  };
+
+  const formattedServices = useMemo(() => {
+    if (!services) return [];
+    return services.map(service => ({
+      name: service.name,
+      price: Number(service.price),
+      description: service.description,
+    }));
+  }, [services]);
+
+  const fullName = `${provider.user.firstName || ""} ${provider.user.lastName || ""}`.trim();
+
+  return (
+    <ServiceProviderCard
+      id={provider.id}
+      name={fullName || "Sin nombre"}
+      avatar={provider.user.profileImageUrl || undefined}
+      specialty={provider.specialty}
+      rating={Number(provider.rating) || 0}
+      reviewCount={provider.reviewCount || 0}
+      services={formattedServices}
+      available={provider.available}
+      onMessage={handleMessage}
+      onCall={handleCall}
+      onHire={handleHire}
+    />
+  );
+}
+
+export default function Directory() {
+  const { user } = useAuth();
+  const [specialtyFilter, setSpecialtyFilter] = useState<string>("all");
+  const [availableFilter, setAvailableFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [providerFormOpen, setProviderFormOpen] = useState(false);
+  const [serviceFormOpen, setServiceFormOpen] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+
+  const filters = useMemo(() => {
+    const f: { specialty?: string; available?: boolean } = {};
+    if (specialtyFilter !== "all") f.specialty = specialtyFilter;
+    if (availableFilter === "available") f.available = true;
+    if (availableFilter === "unavailable") f.available = false;
+    return f;
+  }, [specialtyFilter, availableFilter]);
+
+  const { data: providers, isLoading, error } = useServiceProviders(filters);
+
+  const filteredProviders = useMemo(() => {
+    if (!providers) return [];
+    if (!searchQuery) return providers;
+    
+    const query = searchQuery.toLowerCase();
+    return providers.filter((p) => {
+      const fullName = `${p.user.firstName || ""} ${p.user.lastName || ""}`.toLowerCase();
+      return (
+        fullName.includes(query) ||
+        p.specialty.toLowerCase().includes(query)
+      );
+    });
+  }, [providers, searchQuery]);
+
+  const specialties = useMemo(() => {
+    if (!providers) return [];
+    return Array.from(new Set(providers.map((p) => p.specialty)));
+  }, [providers]);
+
+  const userIsProvider = useMemo(() => {
+    if (!user || !providers) return false;
+    return providers.some(p => p.userId === user.id);
+  }, [user, providers]);
+
+  const canRegisterAsProvider = user?.role === "provider" || user?.role === "admin" || user?.role === "master";
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Directorio de Servicios</h1>
+          <p className="text-muted-foreground">
+            Encuentra proveedores de servicios para tus propiedades
+          </p>
+        </div>
+        <div className="text-center py-12 text-destructive">
+          Error al cargar los proveedores. Por favor, intenta de nuevo.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Directorio de Servicios</h1>
-        <p className="text-muted-foreground">
-          Encuentra proveedores de servicios para tus propiedades
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Directorio de Servicios</h1>
+          <p className="text-muted-foreground">
+            Encuentra proveedores de servicios para tus propiedades
+          </p>
+        </div>
+        {canRegisterAsProvider && !userIsProvider && (
+          <Button onClick={() => setProviderFormOpen(true)} data-testid="button-register-provider">
+            <Plus className="h-4 w-4 mr-2" />
+            Registrarse como Proveedor
+          </Button>
+        )}
       </div>
+
+      <ServiceProviderFormDialog
+        open={providerFormOpen}
+        onOpenChange={setProviderFormOpen}
+        mode="create"
+      />
+
+      <ServiceFormDialog
+        open={serviceFormOpen}
+        onOpenChange={setServiceFormOpen}
+        providerId={selectedProviderId}
+      />
 
       <div className="flex flex-col gap-4 md:flex-row">
         <div className="relative flex-1">
@@ -141,24 +184,40 @@ export default function Directory() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={availableFilter} onValueChange={setAvailableFilter}>
+          <SelectTrigger className="w-full md:w-[200px]" data-testid="select-availability-filter">
+            <SelectValue placeholder="Disponibilidad" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="available">Disponibles</SelectItem>
+            <SelectItem value="unavailable">No disponibles</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filterProviders().map((provider) => (
-          <ServiceProviderCard
-            key={provider.id}
-            {...provider}
-            onMessage={() => console.log("Mensaje a", provider.name)}
-            onCall={() => console.log("Llamar a", provider.name)}
-            onHire={() => console.log("Contratar a", provider.name)}
-          />
-        ))}
-      </div>
-
-      {filterProviders().length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          No se encontraron proveedores
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="space-y-4">
+              <Skeleton className="h-48 w-full" />
+            </div>
+          ))}
         </div>
+      ) : (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProviders.map((provider) => (
+              <ProviderCardWithServices key={provider.id} provider={provider} />
+            ))}
+          </div>
+
+          {filteredProviders.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              No se encontraron proveedores
+            </div>
+          )}
+        </>
       )}
     </div>
   );

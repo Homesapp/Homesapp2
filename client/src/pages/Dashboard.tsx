@@ -4,9 +4,90 @@ import { PropertyCard } from "@/components/PropertyCard";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
+import { useProperties } from "@/hooks/useProperties";
+import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
+import { useMemo } from "react";
+import { format } from "date-fns";
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  const { data: properties, isLoading } = useProperties({ active: true });
+  const { data: appointments, isLoading: appointmentsLoading } = useAppointments();
+  const updateAppointment = useUpdateAppointment();
+
+  const featuredProperties = properties?.slice(0, 2) || [];
+
+  const upcomingAppointments = useMemo(() => {
+    if (!appointments || !properties) return [];
+
+    const now = new Date();
+    const upcoming = appointments
+      .filter(apt => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= now && (apt.status === "pending" || apt.status === "confirmed");
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 2);
+
+    return upcoming.map(appointment => {
+      const property = properties.find(p => p.id === appointment.propertyId);
+      
+      return {
+        id: appointment.id,
+        propertyTitle: property?.title || "Propiedad",
+        clientName: "Cliente",
+        date: format(new Date(appointment.date), "dd MMM yyyy"),
+        time: format(new Date(appointment.date), "h:mm a"),
+        type: appointment.type,
+        status: appointment.status,
+        meetLink: appointment.meetLink || undefined,
+      };
+    });
+  }, [appointments, properties]);
+
+  const handleConfirm = async (id: string) => {
+    try {
+      await updateAppointment.mutateAsync({
+        id,
+        data: { status: "confirmed" },
+      });
+      toast({
+        title: "Cita confirmada",
+        description: "La cita ha sido confirmada exitosamente",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo confirmar la cita",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    try {
+      await updateAppointment.mutateAsync({
+        id,
+        data: { status: "cancelled" },
+      });
+      toast({
+        title: "Cita cancelada",
+        description: "La cita ha sido cancelada",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo cancelar la cita",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const pendingAppointmentsCount = appointments?.filter(a => a.status === "pending").length || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -29,13 +110,13 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Propiedades Activas"
-          value={45}
+          value={properties?.length || 0}
           icon={Building2}
           trend={{ value: 12, label: "vs mes anterior" }}
         />
         <StatsCard
           title="Citas Pendientes"
-          value={8}
+          value={pendingAppointmentsCount}
           icon={Clock}
           description="Esta semana"
         />
@@ -73,31 +154,41 @@ export default function Dashboard() {
             </Button>
           </div>
           <div className="grid gap-4">
-            <PropertyCard
-              id="1"
-              title="Casa Moderna en Polanco"
-              price={25000}
-              bedrooms={3}
-              bathrooms={2}
-              area={180}
-              location="Polanco, CDMX"
-              status="rent"
-              onView={() => console.log("Ver propiedad")}
-              onEdit={() => console.log("Editar")}
-              onSchedule={() => console.log("Agendar")}
-            />
-            <PropertyCard
-              id="2"
-              title="Departamento en Santa Fe"
-              price={4500000}
-              bedrooms={2}
-              bathrooms={2}
-              area={120}
-              location="Santa Fe, CDMX"
-              status="sale"
-              onView={() => console.log("Ver propiedad")}
-              onSchedule={() => console.log("Agendar")}
-            />
+            {isLoading ? (
+              <>
+                <div className="space-y-3">
+                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </>
+            ) : featuredProperties.length > 0 ? (
+              featuredProperties.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  id={property.id}
+                  title={property.title}
+                  price={Number(property.price)}
+                  bedrooms={property.bedrooms}
+                  bathrooms={Number(property.bathrooms)}
+                  area={Number(property.area)}
+                  location={property.location}
+                  status={property.status}
+                  onView={() => console.log("Ver propiedad", property.id)}
+                  onEdit={() => console.log("Editar", property.id)}
+                  onSchedule={() => console.log("Agendar", property.id)}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8" data-testid="no-featured-properties">
+                <p className="text-muted-foreground">No hay propiedades destacadas</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -109,27 +200,25 @@ export default function Dashboard() {
             </Button>
           </div>
           <div className="grid gap-4">
-            <AppointmentCard
-              id="1"
-              propertyTitle="Casa Moderna en Polanco"
-              clientName="María González"
-              date="15 Oct 2025"
-              time="10:00 AM"
-              type="video"
-              status="pending"
-              meetLink="https://meet.google.com/abc-defg-hij"
-              onConfirm={() => console.log("Confirmar")}
-              onCancel={() => console.log("Cancelar")}
-            />
-            <AppointmentCard
-              id="2"
-              propertyTitle="Departamento en Santa Fe"
-              clientName="Carlos Rodríguez"
-              date="16 Oct 2025"
-              time="3:00 PM"
-              type="in-person"
-              status="confirmed"
-            />
+            {appointmentsLoading ? (
+              <>
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+              </>
+            ) : upcomingAppointments.length > 0 ? (
+              upcomingAppointments.map((appointment) => (
+                <AppointmentCard
+                  key={appointment.id}
+                  {...appointment}
+                  onConfirm={() => handleConfirm(appointment.id)}
+                  onCancel={() => handleCancel(appointment.id)}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8" data-testid="no-upcoming-appointments">
+                <p className="text-muted-foreground">No hay citas próximas</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
