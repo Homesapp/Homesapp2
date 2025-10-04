@@ -127,12 +127,44 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   // Check if admin is authenticated via local session
   if (req.session && req.session.adminUser) {
+    // Normalize admin identity into req.user for consistent downstream access
+    req.user = {
+      claims: {
+        sub: req.session.adminUser.id,
+        email: req.session.adminUser.email,
+        first_name: req.session.adminUser.firstName,
+        last_name: req.session.adminUser.lastName,
+      },
+      adminAuth: true, // Flag to indicate admin authentication
+    };
     return next();
+  }
+
+  // Check if user is authenticated via local login (email/password)
+  if (req.session && req.session.userId) {
+    try {
+      const localUser = await storage.getUser(req.session.userId);
+      if (localUser) {
+        // Attach user to request for downstream middleware
+        req.user = {
+          claims: {
+            sub: localUser.id,
+            email: localUser.email,
+            first_name: localUser.firstName,
+            last_name: localUser.lastName,
+          },
+          localAuth: true, // Flag to indicate local authentication
+        };
+        return next();
+      }
+    } catch (error) {
+      console.error("Error loading local user session:", error);
+    }
   }
 
   // Check if user is authenticated via Replit Auth
   const user = req.user as any;
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -169,16 +201,23 @@ export const requireRole = (allowedRoles: string[]): RequestHandler => {
       return next();
     }
 
-    // Check Replit Auth user
+    // Check user authenticated via local login or Replit Auth
     const user = req.user as any;
-    if (!req.isAuthenticated()) {
+    if (!user || !user.claims) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userId = user.claims.sub;
     const dbUser = await storage.getUser(userId);
 
-    if (!dbUser || !allowedRoles.includes(dbUser.role)) {
+    if (!dbUser) {
+      return res.status(401).json({ message: "Unauthorized: user not found" });
+    }
+
+    // For local auth users, check their role directly
+    // For Replit Auth users, also check their role
+    const userRole = dbUser.additionalRole || dbUser.role;
+    if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({ message: "Forbidden: insufficient permissions" });
     }
 

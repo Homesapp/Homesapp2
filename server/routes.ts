@@ -220,6 +220,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Local user logout route
+  app.post("/api/auth/local/logout", async (req: any, res) => {
+    try {
+      if (req.session.userId) {
+        req.session.destroy((err) => {
+          if (err) {
+            console.error("Error destroying session:", err);
+            return res.status(500).json({ message: "Error al cerrar sesión" });
+          }
+          res.json({ message: "Sesión cerrada exitosamente" });
+        });
+      } else {
+        res.status(400).json({ message: "No hay sesión activa" });
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+      res.status(500).json({ message: "Error al cerrar sesión" });
+    }
+  });
+
   // User management routes
   app.get("/api/users", isAuthenticated, requireRole(["master", "admin"]), async (req, res) => {
     try {
