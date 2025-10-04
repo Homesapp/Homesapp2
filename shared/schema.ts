@@ -31,6 +31,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "master",
   "admin",
   "admin_jr",
+  "cliente",
   "seller",
   "owner",
   "management",
@@ -95,16 +96,25 @@ export const auditActionEnum = pgEnum("audit_action", [
   "view",
 ]);
 
+export const roleRequestStatusEnum = pgEnum("role_request_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
+  passwordHash: varchar("password_hash"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: userRoleEnum("role").notNull().default("owner"),
-  status: userStatusEnum("status").notNull().default("pending"),
+  role: userRoleEnum("role").notNull().default("cliente"),
+  additionalRole: userRoleEnum("additional_role"),
+  status: userStatusEnum("status").notNull().default("approved"),
   phone: varchar("phone"),
+  emailVerified: boolean("email_verified").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -155,6 +165,61 @@ export const adminLoginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
+
+// Email verification tokens table
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEmailVerificationTokenSchema = createInsertSchema(emailVerificationTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
+export type InsertEmailVerificationToken = z.infer<typeof insertEmailVerificationTokenSchema>;
+
+// Role requests table
+export const roleRequests = pgTable("role_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestedRole: userRoleEnum("requested_role").notNull(),
+  status: roleRequestStatusEnum("status").notNull().default("pending"),
+  reason: text("reason"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertRoleRequestSchema = createInsertSchema(roleRequests).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  reviewNotes: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type RoleRequest = typeof roleRequests.$inferSelect;
+export type InsertRoleRequest = z.infer<typeof insertRoleRequestSchema>;
+
+// User registration schema
+export const userRegistrationSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  firstName: z.string().min(1, "Nombre es requerido"),
+  lastName: z.string().min(1, "Apellido es requerido"),
+  phone: z.string().optional(),
+});
+
+export type UserRegistration = z.infer<typeof userRegistrationSchema>;
 
 // Properties table
 export const properties = pgTable("properties", {
