@@ -8,6 +8,9 @@ import {
   offers,
   permissions,
   propertyStaff,
+  budgets,
+  tasks,
+  workReports,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -27,6 +30,12 @@ import {
   type InsertPermission,
   type PropertyStaff,
   type InsertPropertyStaff,
+  type Budget,
+  type InsertBudget,
+  type Task,
+  type InsertTask,
+  type WorkReport,
+  type InsertWorkReport,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql } from "drizzle-orm";
@@ -93,6 +102,25 @@ export interface IStorage {
   addPermission(permission: InsertPermission): Promise<Permission>;
   removePermission(userId: string, permissionName: string): Promise<void>;
   hasPermission(userId: string, permissionName: string): Promise<boolean>;
+  
+  // Budget operations
+  getBudget(id: string): Promise<Budget | undefined>;
+  getBudgets(filters?: { propertyId?: string; staffId?: string; status?: string }): Promise<Budget[]>;
+  createBudget(budget: InsertBudget): Promise<Budget>;
+  updateBudget(id: string, updates: Partial<InsertBudget>): Promise<Budget>;
+  deleteBudget(id: string): Promise<void>;
+  
+  // Task operations
+  getTask(id: string): Promise<Task | undefined>;
+  getTasks(filters?: { propertyId?: string; assignedToId?: string; status?: string }): Promise<Task[]>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, updates: Partial<InsertTask>): Promise<Task>;
+  deleteTask(id: string): Promise<void>;
+  
+  // Work report operations
+  getWorkReport(id: string): Promise<WorkReport | undefined>;
+  getWorkReports(filters?: { taskId?: string; staffId?: string }): Promise<WorkReport[]>;
+  createWorkReport(report: InsertWorkReport): Promise<WorkReport>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -479,6 +507,125 @@ export class DatabaseStorage implements IStorage {
       .from(permissions)
       .where(and(eq(permissions.userId, userId), eq(permissions.permission, permissionName)));
     return !!permission;
+  }
+
+  // Budget operations
+  async getBudget(id: string): Promise<Budget | undefined> {
+    const [budget] = await db.select().from(budgets).where(eq(budgets.id, id));
+    return budget;
+  }
+
+  async getBudgets(filters?: { propertyId?: string; staffId?: string; status?: string }): Promise<Budget[]> {
+    let query = db.select().from(budgets);
+    const conditions = [];
+
+    if (filters?.propertyId) {
+      conditions.push(eq(budgets.propertyId, filters.propertyId));
+    }
+    if (filters?.staffId) {
+      conditions.push(eq(budgets.staffId, filters.staffId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(budgets.status, filters.status as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(budgets.createdAt));
+  }
+
+  async createBudget(budgetData: InsertBudget): Promise<Budget> {
+    const [budget] = await db.insert(budgets).values(budgetData).returning();
+    return budget;
+  }
+
+  async updateBudget(id: string, updates: Partial<InsertBudget>): Promise<Budget> {
+    const [budget] = await db
+      .update(budgets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(budgets.id, id))
+      .returning();
+    return budget;
+  }
+
+  async deleteBudget(id: string): Promise<void> {
+    await db.delete(budgets).where(eq(budgets.id, id));
+  }
+
+  // Task operations
+  async getTask(id: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task;
+  }
+
+  async getTasks(filters?: { propertyId?: string; assignedToId?: string; status?: string }): Promise<Task[]> {
+    let query = db.select().from(tasks);
+    const conditions = [];
+
+    if (filters?.propertyId) {
+      conditions.push(eq(tasks.propertyId, filters.propertyId));
+    }
+    if (filters?.assignedToId) {
+      conditions.push(eq(tasks.assignedToId, filters.assignedToId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(tasks.status, filters.status as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(tasks.createdAt));
+  }
+
+  async createTask(taskData: InsertTask): Promise<Task> {
+    const [task] = await db.insert(tasks).values(taskData).returning();
+    return task;
+  }
+
+  async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {
+    const [task] = await db
+      .update(tasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return task;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  // Work report operations
+  async getWorkReport(id: string): Promise<WorkReport | undefined> {
+    const [report] = await db.select().from(workReports).where(eq(workReports.id, id));
+    return report;
+  }
+
+  async getWorkReports(filters?: { taskId?: string; staffId?: string }): Promise<WorkReport[]> {
+    let query = db.select().from(workReports);
+    const conditions = [];
+
+    if (filters?.taskId) {
+      conditions.push(eq(workReports.taskId, filters.taskId));
+    }
+    if (filters?.staffId) {
+      conditions.push(eq(workReports.staffId, filters.staffId));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(workReports.createdAt));
+  }
+
+  async createWorkReport(reportData: InsertWorkReport): Promise<WorkReport> {
+    const [report] = await db.insert(workReports).values(reportData).returning();
+    return report;
   }
 }
 

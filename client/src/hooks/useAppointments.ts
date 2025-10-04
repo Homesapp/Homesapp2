@@ -72,3 +72,26 @@ export function useDeleteAppointment() {
     },
   });
 }
+
+export function useUpdateAppointmentReport() {
+  return useMutation({
+    mutationFn: async ({ 
+      id, 
+      conciergeReport, 
+      accessIssues 
+    }: { 
+      id: string; 
+      conciergeReport: string; 
+      accessIssues?: string; 
+    }) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${id}`, {
+        conciergeReport,
+        accessIssues: accessIssues || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+    },
+  });
+}

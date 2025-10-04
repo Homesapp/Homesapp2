@@ -70,6 +70,20 @@ export const offerStatusEnum = pgEnum("offer_status", [
   "under-review",
 ]);
 
+export const budgetStatusEnum = pgEnum("budget_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "completed",
+]);
+
+export const taskStatusEnum = pgEnum("task_status", [
+  "pending",
+  "in-progress",
+  "completed",
+  "cancelled",
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -117,6 +131,7 @@ export const properties = pgTable("properties", {
   images: text("images").array().default(sql`ARRAY[]::text[]`),
   amenities: text("amenities").array().default(sql`ARRAY[]::text[]`),
   specifications: jsonb("specifications"),
+  accessInfo: jsonb("access_info"), // lockboxCode, contactPerson, contactPhone
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   managementId: varchar("management_id").references(() => users.id),
   active: boolean("active").notNull().default(true),
@@ -124,10 +139,18 @@ export const properties = pgTable("properties", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+const accessInfoSchema = z.object({
+  lockboxCode: z.string().optional(),
+  contactPerson: z.string().optional(),
+  contactPhone: z.string().optional(),
+}).optional();
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  accessInfo: accessInfoSchema,
 });
 
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
@@ -168,6 +191,8 @@ export const appointments = pgTable("appointments", {
   meetLink: text("meet_link"),
   googleEventId: text("google_event_id"),
   notes: text("notes"),
+  conciergeReport: text("concierge_report"), // Report after appointment
+  accessIssues: text("access_issues"), // Access problems reported
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -272,6 +297,76 @@ export const insertOfferSchema = createInsertSchema(offers).omit({
 export type InsertOffer = z.infer<typeof insertOfferSchema>;
 export type Offer = typeof offers.$inferSelect;
 
+// Budgets/Quotes table (presupuestos y cotizaciones)
+export const budgets = pgTable("budgets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  staffId: varchar("staff_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  estimatedCost: decimal("estimated_cost", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("MXN"),
+  status: budgetStatusEnum("status").notNull().default("pending"),
+  attachments: text("attachments").array().default(sql`ARRAY[]::text[]`),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBudgetSchema = createInsertSchema(budgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBudget = z.infer<typeof insertBudgetSchema>;
+export type Budget = typeof budgets.$inferSelect;
+
+// Tasks table (tareas para el personal)
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date"),
+  status: taskStatusEnum("status").notNull().default("pending"),
+  priority: varchar("priority").notNull().default("medium"), // low, medium, high
+  budgetId: varchar("budget_id").references(() => budgets.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;
+
+// Work Reports table (reportes antes y después de trabajos)
+export const workReports = pgTable("work_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  staffId: varchar("staff_id").notNull().references(() => users.id),
+  reportType: varchar("report_type").notNull(), // before, after
+  description: text("description").notNull(),
+  images: text("images").array().default(sql`ARRAY[]::text[]`),
+  observations: text("observations"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWorkReportSchema = createInsertSchema(workReports).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWorkReport = z.infer<typeof insertWorkReportSchema>;
+export type WorkReport = typeof workReports.$inferSelect;
+
 // Permissions table (for admin_jr granular permissions)
 export const permissions = pgTable("permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -301,6 +396,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   permissions: many(permissions),
   serviceProvider: many(serviceProviders),
   staffAssignments: many(propertyStaff),
+  budgets: many(budgets),
+  assignedTasks: many(tasks),
+  workReports: many(workReports),
 }));
 
 export const propertiesRelations = relations(properties, ({ one, many }) => ({
@@ -317,6 +415,8 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   appointments: many(appointments),
   offers: many(offers),
   staff: many(propertyStaff),
+  budgets: many(budgets),
+  tasks: many(tasks),
 }));
 
 export const propertyStaffRelations = relations(propertyStaff, ({ one }) => ({
@@ -387,6 +487,45 @@ export const offersRelations = relations(offers, ({ one }) => ({
 export const permissionsRelations = relations(permissions, ({ one }) => ({
   user: one(users, {
     fields: [permissions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const budgetsRelations = relations(budgets, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [budgets.propertyId],
+    references: [properties.id],
+  }),
+  staff: one(users, {
+    fields: [budgets.staffId],
+    references: [users.id],
+  }),
+  tasks: many(tasks),
+}));
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [tasks.propertyId],
+    references: [properties.id],
+  }),
+  assignedTo: one(users, {
+    fields: [tasks.assignedToId],
+    references: [users.id],
+  }),
+  budget: one(budgets, {
+    fields: [tasks.budgetId],
+    references: [budgets.id],
+  }),
+  workReports: many(workReports),
+}));
+
+export const workReportsRelations = relations(workReports, ({ one }) => ({
+  task: one(tasks, {
+    fields: [workReports.taskId],
+    references: [tasks.id],
+  }),
+  staff: one(users, {
+    fields: [workReports.staffId],
     references: [users.id],
   }),
 }));

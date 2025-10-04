@@ -1,24 +1,30 @@
 import { useState, useMemo } from "react";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { AppointmentFormDialog } from "@/components/AppointmentFormDialog";
+import { ConciergeReportDialog } from "@/components/ConciergeReportDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
+import { useAppointments, useUpdateAppointment, useUpdateAppointmentReport } from "@/hooks/useAppointments";
 import { useProperties } from "@/hooks/useProperties";
+import { useAuth } from "@/hooks/useAuth";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Appointments() {
   const [activeTab, setActiveTab] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  const filters = activeTab === "all" ? {} : { status: activeTab };
+  const filters = activeTab === "all" || activeTab === "needs-report" ? {} : { status: activeTab };
   const { data: appointments, isLoading, error } = useAppointments(filters);
   const { data: properties } = useProperties();
   const updateAppointment = useUpdateAppointment();
+  const updateAppointmentReport = useUpdateAppointmentReport();
 
   const appointmentsWithDetails = useMemo(() => {
     if (!appointments || !properties) return [];
@@ -35,9 +41,14 @@ export default function Appointments() {
         type: appointment.type,
         status: appointment.status,
         meetLink: appointment.meetLink || undefined,
+        conciergeReport: appointment.conciergeReport,
+        accessIssues: appointment.accessIssues,
+        conciergeId: appointment.conciergeId,
+        userRole: user?.role,
+        userId: user?.id,
       };
     });
-  }, [appointments, properties]);
+  }, [appointments, properties, user]);
 
   const handleConfirm = async (id: string) => {
     try {
@@ -77,10 +88,26 @@ export default function Appointments() {
     }
   };
 
+  const handleReportResult = (appointmentId: string) => {
+    setSelectedAppointmentId(appointmentId);
+    setReportDialogOpen(true);
+  };
+
+  const handleSubmitReport = async (data: { conciergeReport: string; accessIssues?: string }) => {
+    await updateAppointmentReport.mutateAsync({
+      id: selectedAppointmentId,
+      conciergeReport: data.conciergeReport,
+      accessIssues: data.accessIssues,
+    });
+  };
+
   const allAppointments = appointments || [];
   const pendingCount = allAppointments.filter(a => a.status === "pending").length;
   const confirmedCount = allAppointments.filter(a => a.status === "confirmed").length;
   const completedCount = allAppointments.filter(a => a.status === "completed").length;
+  const needsReportCount = allAppointments.filter(
+    a => a.status === "completed" && !a.conciergeReport && a.conciergeId === user?.id
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -115,6 +142,11 @@ export default function Appointments() {
           <TabsTrigger value="completed" data-testid="tab-completed">
             Completadas ({completedCount})
           </TabsTrigger>
+          {user?.role === "concierge" && needsReportCount > 0 && (
+            <TabsTrigger value="needs-report" data-testid="tab-needs-report">
+              Necesitan Reporte ({needsReportCount})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
@@ -126,22 +158,31 @@ export default function Appointments() {
                 </div>
               ))}
             </div>
-          ) : appointmentsWithDetails.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {appointmentsWithDetails.map((appointment) => (
-                <AppointmentCard
-                  key={appointment.id}
-                  {...appointment}
-                  onConfirm={() => handleConfirm(appointment.id)}
-                  onCancel={() => handleCancel(appointment.id)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground" data-testid="no-appointments">
-              No hay citas {activeTab !== "all" ? activeTab : ""} en este momento
-            </div>
-          )}
+          ) : (() => {
+            const filteredAppointments = activeTab === "needs-report" 
+              ? appointmentsWithDetails.filter(a => 
+                  a.status === "completed" && !a.conciergeReport && a.conciergeId === user?.id
+                )
+              : appointmentsWithDetails;
+
+            return filteredAppointments.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredAppointments.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    {...appointment}
+                    onConfirm={() => handleConfirm(appointment.id)}
+                    onCancel={() => handleCancel(appointment.id)}
+                    onReportResult={() => handleReportResult(appointment.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground" data-testid="no-appointments">
+                No hay citas {activeTab !== "all" ? activeTab : ""} en este momento
+              </div>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
@@ -149,6 +190,13 @@ export default function Appointments() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode="create"
+      />
+
+      <ConciergeReportDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        appointmentId={selectedAppointmentId}
+        onSubmit={handleSubmitReport}
       />
     </div>
   );

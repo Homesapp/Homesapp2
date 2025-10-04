@@ -20,6 +20,8 @@ import {
   UserCog,
   Store,
   CreditCard,
+  FileText,
+  ListTodo,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +62,8 @@ export function AppSidebar({ userRole, userName, userAvatar }: AppSidebarProps) 
     { title: "Inicio", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "owner", "management"] },
     { title: "Propiedades", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "owner", "management"] },
     { title: "Citas", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge"] },
+    { title: "Presupuestos", url: "/presupuestos", icon: FileText, roles: ["master", "admin", "admin_jr", "owner", "management", "provider"] },
+    { title: "Tareas", url: "/tareas", icon: ListTodo, roles: ["master", "admin", "admin_jr", "management", "concierge"] },
     { title: "Clientes", url: "/clients", icon: Users, roles: ["master", "admin", "admin_jr", "seller"] },
     { title: "Tarjetas", url: "/presentation-cards", icon: ClipboardList, roles: ["master", "admin", "admin_jr", "seller"] },
   ];
@@ -82,6 +86,12 @@ export function AppSidebar({ userRole, userName, userAvatar }: AppSidebarProps) 
   return (
     <Sidebar>
       <SidebarContent>
+        <SidebarGroup>
+          <div className="flex items-center gap-2 px-4 py-3">
+            <Building2 className="h-6 w-6 text-primary" />
+            <span className="text-lg font-bold">HomesApp</span>
+          </div>
+        </SidebarGroup>
         {filteredMain.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Principal</SidebarGroupLabel>

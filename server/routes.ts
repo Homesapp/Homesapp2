@@ -12,6 +12,9 @@ import {
   insertOfferSchema,
   insertPermissionSchema,
   insertPropertyStaffSchema,
+  insertBudgetSchema,
+  insertTaskSchema,
+  insertWorkReportSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -565,6 +568,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing permission:", error);
       res.status(500).json({ message: "Failed to remove permission" });
+    }
+  });
+
+  // Budget routes
+  app.get("/api/budgets", isAuthenticated, async (req, res) => {
+    try {
+      const { propertyId, staffId, status } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = propertyId;
+      if (staffId) filters.staffId = staffId;
+      if (status) filters.status = status;
+
+      const budgets = await storage.getBudgets(filters);
+      res.json(budgets);
+    } catch (error) {
+      console.error("Error fetching budgets:", error);
+      res.status(500).json({ message: "Failed to fetch budgets" });
+    }
+  });
+
+  app.get("/api/budgets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const budget = await storage.getBudget(id);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      res.json(budget);
+    } catch (error) {
+      console.error("Error fetching budget:", error);
+      res.status(500).json({ message: "Failed to fetch budget" });
+    }
+  });
+
+  app.post("/api/budgets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !["master", "admin", "admin_jr", "management", "provider"].includes(user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const budgetData = insertBudgetSchema.parse({
+        ...req.body,
+        staffId: req.body.staffId || userId,
+      });
+      
+      const budget = await storage.createBudget(budgetData);
+      res.status(201).json(budget);
+    } catch (error: any) {
+      console.error("Error creating budget:", error);
+      res.status(400).json({ message: error.message || "Failed to create budget" });
+    }
+  });
+
+  app.patch("/api/budgets/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const budget = await storage.getBudget(id);
+
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      if (!user || (budget.staffId !== userId && !["master", "admin", "admin_jr"].includes(user.role))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const updatedBudget = await storage.updateBudget(id, req.body);
+      res.json(updatedBudget);
+    } catch (error) {
+      console.error("Error updating budget:", error);
+      res.status(500).json({ message: "Failed to update budget" });
+    }
+  });
+
+  app.delete("/api/budgets/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const budget = await storage.getBudget(id);
+
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      if (!user || (budget.staffId !== userId && !["master", "admin"].includes(user.role))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.deleteBudget(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting budget:", error);
+      res.status(500).json({ message: "Failed to delete budget" });
+    }
+  });
+
+  // Task routes
+  app.get("/api/tasks", isAuthenticated, async (req, res) => {
+    try {
+      const { propertyId, assignedToId, status } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = propertyId;
+      if (assignedToId) filters.assignedToId = assignedToId;
+      if (status) filters.status = status;
+
+      const tasks = await storage.getTasks(filters);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  app.get("/api/tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const task = await storage.getTask(id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Error fetching task:", error);
+      res.status(500).json({ message: "Failed to fetch task" });
+    }
+  });
+
+  app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !["master", "admin", "admin_jr", "management"].includes(user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const taskData = insertTaskSchema.parse(req.body);
+      const task = await storage.createTask(taskData);
+      res.status(201).json(task);
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      res.status(400).json({ message: error.message || "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const task = await storage.getTask(id);
+
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      if (!user || (task.assignedToId !== userId && !["master", "admin", "admin_jr", "management"].includes(user.role))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const updatedTask = await storage.updateTask(id, req.body);
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const task = await storage.getTask(id);
+
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      if (!user || !["master", "admin", "management"].includes(user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.deleteTask(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  // Work report routes
+  app.get("/api/work-reports", isAuthenticated, async (req, res) => {
+    try {
+      const { taskId, staffId } = req.query;
+      const filters: any = {};
+      if (taskId) filters.taskId = taskId;
+      if (staffId) filters.staffId = staffId;
+
+      const reports = await storage.getWorkReports(filters);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching work reports:", error);
+      res.status(500).json({ message: "Failed to fetch work reports" });
+    }
+  });
+
+  app.get("/api/work-reports/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.getWorkReport(id);
+      if (!report) {
+        return res.status(404).json({ message: "Work report not found" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching work report:", error);
+      res.status(500).json({ message: "Failed to fetch work report" });
+    }
+  });
+
+  app.post("/api/work-reports", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportData = insertWorkReportSchema.parse({
+        ...req.body,
+        staffId: req.body.staffId || userId,
+      });
+
+      const report = await storage.createWorkReport(reportData);
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error("Error creating work report:", error);
+      res.status(400).json({ message: error.message || "Failed to create work report" });
     }
   });
 

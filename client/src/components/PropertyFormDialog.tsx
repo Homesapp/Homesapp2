@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useCreateProperty, useUpdateProperty } from "@/hooks/useProperties";
 import { Loader2 } from "lucide-react";
@@ -63,11 +64,13 @@ export function PropertyFormDialog({
       ownerId: "",
       managementId: undefined,
       active: true,
+      accessInfo: undefined,
     },
   });
 
   useEffect(() => {
     if (property && mode === "edit") {
+      const accessInfo = property.accessInfo as { lockboxCode?: string; contactPerson?: string; contactPhone?: string } | null;
       form.reset({
         title: property.title,
         description: property.description || "",
@@ -83,6 +86,7 @@ export function PropertyFormDialog({
         ownerId: property.ownerId,
         managementId: property.managementId || undefined,
         active: property.active,
+        accessInfo: accessInfo || undefined,
       });
     } else if (mode === "create") {
       form.reset({
@@ -100,6 +104,7 @@ export function PropertyFormDialog({
         ownerId: "",
         managementId: undefined,
         active: true,
+        accessInfo: undefined,
       });
     }
   }, [property, mode, form]);
@@ -383,6 +388,69 @@ export function PropertyFormDialog({
                 </FormItem>
               )}
             />
+
+            <Separator className="my-6" />
+            
+            <div className="space-y-4">
+              <FormLabel className="text-base">Información de Acceso</FormLabel>
+              
+              <FormField
+                control={form.control}
+                name="accessInfo.lockboxCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código de Caja Fuerte</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="1234"
+                        data-testid="input-lockbox-code"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="accessInfo.contactPerson"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Persona de Contacto</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Nombre de la persona que dará acceso"
+                        data-testid="input-contact-person"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="accessInfo.contactPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teléfono de Contacto</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="+52 55 1234 5678"
+                        data-testid="input-contact-phone"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button

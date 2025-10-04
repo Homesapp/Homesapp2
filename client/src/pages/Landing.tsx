@@ -8,7 +8,7 @@ export default function Landing() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold">Gestión Inmobiliaria</h1>
+            <h1 className="text-2xl font-bold">HomesApp</h1>
           </div>
           <Button asChild data-testid="button-login">
             <a href="/api/login">Iniciar Sesión</a>
@@ -20,7 +20,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="space-y-4">
             <h2 className="text-4xl md:text-5xl font-bold">
-              Plataforma Completa de Gestión Inmobiliaria
+              HomesApp - Plataforma Completa de Gestión Inmobiliaria
             </h2>
             <p className="text-xl text-muted-foreground">
               Administra propiedades, coordina citas, gestiona clientes y servicios

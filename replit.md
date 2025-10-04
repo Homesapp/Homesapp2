@@ -1,8 +1,8 @@
-# Real Estate Property Management Platform
+# HomesApp - Real Estate Property Management Platform
 
 ## Overview
 
-This is a comprehensive real estate property management SaaS platform built with a modern TypeScript stack. The application serves multiple user roles (master, admin, sellers, owners, management, concierge, and service providers) for managing properties, scheduling appointments, creating client presentation cards, coordinating services, and processing offers.
+HomesApp is a comprehensive real estate property management SaaS platform built with a modern TypeScript stack. The application serves multiple user roles (master, admin, sellers, owners, management, concierge, and service providers) for managing properties, scheduling appointments, creating client presentation cards, coordinating services, and processing offers.
 
 The platform features role-based access control, Google Calendar integration for appointment scheduling, a service provider marketplace, and a complete backoffice for offer management. The UI follows a professional, data-dense dashboard pattern inspired by modern SaaS applications, with support for both light and dark modes.
 

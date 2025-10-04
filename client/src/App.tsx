@@ -16,6 +16,8 @@ import Directory from "@/pages/Directory";
 import PresentationCards from "@/pages/PresentationCards";
 import Backoffice from "@/pages/Backoffice";
 import Users from "@/pages/Users";
+import Budgets from "@/pages/Budgets";
+import Tasks from "@/pages/Tasks";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -79,6 +81,8 @@ function AuthenticatedApp() {
               <Route path="/appointments" component={Appointments} />
               <Route path="/directory" component={Directory} />
               <Route path="/presentation-cards" component={PresentationCards} />
+              <Route path="/presupuestos" component={Budgets} />
+              <Route path="/tareas" component={Tasks} />
               <Route path="/backoffice" component={Backoffice} />
               <Route path="/users" component={Users} />
               <Route component={NotFound} />
