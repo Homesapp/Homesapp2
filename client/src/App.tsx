@@ -13,6 +13,7 @@ import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Properties from "@/pages/Properties";
 import Appointments from "@/pages/Appointments";
+import Calendar from "@/pages/Calendar";
 import Directory from "@/pages/Directory";
 import PresentationCards from "@/pages/PresentationCards";
 import Backoffice from "@/pages/Backoffice";
@@ -81,6 +82,7 @@ function AuthenticatedApp() {
               <Route path="/" component={Dashboard} />
               <Route path="/properties" component={Properties} />
               <Route path="/appointments" component={Appointments} />
+              <Route path="/calendario" component={Calendar} />
               <Route path="/directory" component={Directory} />
               <Route path="/presentation-cards" component={PresentationCards} />
               <Route path="/presupuestos" component={Budgets} />

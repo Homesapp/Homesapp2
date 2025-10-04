@@ -62,6 +62,7 @@ export function AppSidebar({ userRole, userName, userAvatar }: AppSidebarProps) 
     { title: "Inicio", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "owner", "management"] },
     { title: "Propiedades", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "owner", "management"] },
     { title: "Citas", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge"] },
+    { title: "Calendario", url: "/calendario", icon: Calendar, roles: ["master", "admin", "admin_jr"] },
     { title: "Presupuestos", url: "/presupuestos", icon: FileText, roles: ["master", "admin", "admin_jr", "owner", "management", "provider"] },
     { title: "Tareas", url: "/tareas", icon: ListTodo, roles: ["master", "admin", "admin_jr", "management", "concierge"] },
     { title: "Clientes", url: "/clients", icon: Users, roles: ["master", "admin", "admin_jr", "seller"] },
