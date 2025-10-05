@@ -230,9 +230,9 @@ export default function PublicDashboard() {
         </div>
 
         {/* Owner Banner - List Your Property */}
-        <div className="mb-16 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="mb-12 overflow-hidden rounded-lg border bg-card shadow-sm">
           <div className="grid md:grid-cols-2 gap-0">
-            <div className="relative h-64 md:h-full">
+            <div className="relative h-48 md:h-64">
               <img
                 src={tulumProperty1}
                 alt="Lista tu propiedad en Tulum"
@@ -240,13 +240,13 @@ export default function PublicDashboard() {
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
             </div>
-            <div className="p-8 md:p-12 flex flex-col justify-center">
-              <h2 className="text-3xl font-bold mb-4">¿Tienes una propiedad en Tulum?</h2>
-              <p className="text-lg text-muted-foreground mb-6">
+            <div className="p-4 md:p-6 flex flex-col justify-center">
+              <h2 className="text-2xl font-bold mb-3">¿Tienes una propiedad en Tulum?</h2>
+              <p className="text-base text-muted-foreground mb-4">
                 Únete a nuestra plataforma y alcanza miles de clientes potenciales. 
                 Gestiona reservas, citas y mucho más desde un solo lugar.
               </p>
-              <div className="space-y-3 mb-6">
+              <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
                   <span>Exposición a miles de clientes verificados</span>
@@ -261,7 +261,6 @@ export default function PublicDashboard() {
                 </div>
               </div>
               <Button
-                size="lg"
                 onClick={() => setLocation("/register")}
                 className="w-fit"
                 data-testid="button-list-property"
@@ -492,15 +491,15 @@ export default function PublicDashboard() {
         </div>
 
         {/* Service Provider Banner */}
-        <div className="mt-16 mb-16 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="mt-12 mb-12 overflow-hidden rounded-lg border bg-card shadow-sm">
           <div className="grid md:grid-cols-2 gap-0">
-            <div className="p-8 md:p-12 flex flex-col justify-center">
-              <h2 className="text-3xl font-bold mb-4">¿Ofreces Servicios para Propiedades?</h2>
-              <p className="text-lg text-muted-foreground mb-6">
+            <div className="p-4 md:p-6 flex flex-col justify-center">
+              <h2 className="text-2xl font-bold mb-3">¿Ofreces Servicios para Propiedades?</h2>
+              <p className="text-base text-muted-foreground mb-4">
                 Únete a nuestra red de proveedores de servicios confiables. 
                 Conecta con propietarios que necesitan tus servicios profesionales.
               </p>
-              <div className="space-y-3 mb-6">
+              <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
                   <span>Limpieza, mantenimiento, jardinería y más</span>
@@ -515,7 +514,6 @@ export default function PublicDashboard() {
                 </div>
               </div>
               <Button
-                size="lg"
                 onClick={() => setLocation("/solicitud-proveedor")}
                 className="w-fit"
                 data-testid="button-provider-apply"
@@ -523,7 +521,7 @@ export default function PublicDashboard() {
                 Aplicar como Proveedor
               </Button>
             </div>
-            <div className="relative h-64 md:h-full">
+            <div className="relative h-48 md:h-64">
               <img
                 src={serviceProvider}
                 alt="Proveedores de servicios"
@@ -535,17 +533,17 @@ export default function PublicDashboard() {
         </div>
 
         {/* Seller/Affiliate Banner */}
-        <div className="mt-16 mb-16 relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/10 to-primary/5">
+        <div className="mt-12 mb-12 relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/10 to-primary/5">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-          <div className="relative p-8 md:p-12">
-            <div className="max-w-3xl">
-              <h2 className="text-3xl font-bold mb-4">Programa de Afiliados</h2>
-              <p className="text-lg text-muted-foreground mb-6">
+          <div className="relative p-4 md:p-6">
+            <div className="max-w-2xl">
+              <h2 className="text-2xl font-bold mb-3">Programa de Afiliados</h2>
+              <p className="text-base text-muted-foreground mb-4">
                 ¿Conoces personas buscando propiedades en Tulum? Conviértete en nuestro aliado 
                 y gana comisiones atractivas por cada cliente que refiera.
               </p>
-              <div className="grid sm:grid-cols-2 gap-6 mb-8">
+              <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-primary" />
@@ -568,7 +566,6 @@ export default function PublicDashboard() {
                 </div>
               </div>
               <Button
-                size="lg"
                 onClick={() => setLocation("/register")}
                 data-testid="button-affiliate-join"
               >
