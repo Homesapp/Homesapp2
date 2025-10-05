@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend
 
-The frontend is built with React 18, TypeScript, and Vite. It uses Wouter for routing and TanStack Query for server state management. The UI is constructed with Radix UI primitives, Shadcn/ui components, and styled using Tailwind CSS with custom design tokens. It supports light/dark themes and utilizes a professional design system with the Inter and JetBrains Mono fonts.
+The frontend is built with React 18, TypeScript, and Vite. It uses Wouter for routing and TanStack Query for server state management. The UI is constructed with Radix UI primitives, Shadcn/ui components, and styled using Tailwind CSS with custom design tokens. It supports light/dark themes, internationalization (Spanish/English), and utilizes a professional design system with the Inter and JetBrains Mono fonts. The platform includes role-switching capabilities allowing users to toggle between owner and client modes seamlessly.
 
 ### Backend
 
@@ -43,7 +43,17 @@ The application uses PostgreSQL (via Neon serverless platform) and Drizzle ORM f
 - **Owner Property Management Pages**:
   - `/mis-propiedades`: List view with approval status badges
   - `/owner/property/:id`: Detailed view with tabs for details, change requests, staff, and appointments
+  - `/owner/appointments`: Appointment management with approve/reject functionality
+  - `/owner/dashboard`: Owner dashboard with metrics and pending actions
+- **Admin Management Pages**:
+  - `/admin/change-requests`: Review and approve/reject property change requests
+  - `/admin/inspection-reports`: Manage property inspection reports
+  - `/admin/dashboard`: Admin dashboard with global statistics
 - **Security**: All endpoints use Zod validation with whitelisted fields to prevent arbitrary field injection
+
+**User Experience Enhancements (Latest)**:
+- **Role Switching (Airbnb-style)**: Users can seamlessly switch between owner and client roles via a toggle in the header, enabling them to manage properties as owners or search/rent as clients
+- **Internationalization**: Full i18n support with English/Spanish language toggle, implemented via React Context with localStorage persistence
 
 ### System Design Choices
 
