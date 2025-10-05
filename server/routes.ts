@@ -245,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/local/logout", async (req: any, res) => {
     try {
       if (req.session.userId) {
-        req.session.destroy((err) => {
+        req.session.destroy((err: any) => {
           if (err) {
             console.error("Error destroying session:", err);
             return res.status(500).json({ message: "Error al cerrar sesión" });
@@ -363,6 +363,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user role:", error);
       res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  // Allow users to switch between owner and cliente roles (Airbnb-style)
+  app.patch("/api/users/switch-role", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { role } = req.body;
+
+      // Validate role is either owner or cliente
+      if (role !== "owner" && role !== "cliente") {
+        return res.status(400).json({ 
+          message: "Solo puedes cambiar entre roles de propietario y cliente" 
+        });
+      }
+
+      const user = await storage.updateUserRole(userId, role);
+      
+      // Log the role switch action
+      await createAuditLog(
+        req,
+        "update",
+        "user",
+        userId,
+        `Usuario cambió su rol a: ${role}`
+      );
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error switching user role:", error);
+      res.status(500).json({ message: "Failed to switch user role" });
     }
   });
 
@@ -1335,7 +1366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { propertyId, inspectionDate, notes, observations } = validationResult.data;
+      const { propertyId, inspectionDate, observations } = validationResult.data;
 
       // Verify property exists
       const property = await storage.getProperty(propertyId);
@@ -1349,7 +1380,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inspectorId,
         inspectionDate,
         status: "scheduled",
-        notes,
         observations,
       });
 
