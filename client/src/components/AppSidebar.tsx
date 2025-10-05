@@ -24,6 +24,8 @@ import {
   ListTodo,
   Search,
   Heart,
+  FileEdit,
+  ClipboardCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +81,8 @@ export function AppSidebar({ userRole, userName, userAvatar }: AppSidebarProps) 
 
   const adminItems = [
     { title: "Backoffice", url: "/backoffice", icon: FolderKanban, roles: ["master", "admin", "admin_jr"] },
+    { title: "Solicitudes de Cambio", url: "/admin/change-requests", icon: FileEdit, roles: ["master", "admin", "admin_jr"] },
+    { title: "Reportes de Inspección", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { title: "Gestión Usuarios", url: "/users", icon: UserCog, roles: ["master", "admin"] },
     { title: "Permisos", url: "/permissions", icon: Settings, roles: ["master", "admin"] },
   ];

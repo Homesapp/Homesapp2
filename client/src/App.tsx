@@ -39,6 +39,8 @@ import MyOpportunities from "@/pages/MyOpportunities";
 import MyProperties from "@/pages/MyProperties";
 import OwnerPropertyDetails from "@/pages/OwnerPropertyDetails";
 import EditOwnerProperty from "@/pages/EditOwnerProperty";
+import AdminChangeRequests from "@/pages/AdminChangeRequests";
+import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -136,6 +138,8 @@ function AuthenticatedApp() {
               <Route path="/mis-propiedades" component={MyProperties} />
               <Route path="/owner/property/:id/edit" component={EditOwnerProperty} />
               <Route path="/owner/property/:id" component={OwnerPropertyDetails} />
+              <Route path="/admin/change-requests" component={AdminChangeRequests} />
+              <Route path="/admin/inspection-reports" component={AdminInspectionReports} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />
               <Route path="/properties" component={Properties} />
