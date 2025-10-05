@@ -265,7 +265,7 @@ export const updateUserProfileSchema = z.object({
   lastName: z.string().min(1, "El apellido es requerido").max(100),
   phone: z.string().max(20).optional().or(z.literal("")),
   bio: z.string().max(500).optional().or(z.literal("")),
-  profileImageUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal("")),
+  profileImageUrl: z.string().optional().or(z.literal("")),
   preferredLanguage: z.enum(["es", "en"]).optional(),
 });
 

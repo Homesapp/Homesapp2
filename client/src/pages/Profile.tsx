@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, Upload, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,13 +24,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateUserProfileSchema, type UpdateUserProfile } from "@shared/schema";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
 
   const form = useForm<UpdateUserProfile>({
     resolver: zodResolver(updateUserProfileSchema),
@@ -52,6 +54,7 @@ export default function Profile() {
         bio: user.bio || "",
         profileImageUrl: user.profileImageUrl || "",
       });
+      setImagePreview(user.profileImageUrl || "");
     }
   }, [user, form]);
 
@@ -98,6 +101,48 @@ export default function Profile() {
     },
   });
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar que sea una imagen
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo de imagen válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tamaño (máximo 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "La imagen debe ser menor a 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Convertir a base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setImagePreview(base64String);
+      form.setValue("profileImageUrl", base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview("");
+    form.setValue("profileImageUrl", "");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const onSubmit = (data: UpdateUserProfile) => {
     updateProfileMutation.mutate(data);
   };
@@ -125,28 +170,49 @@ export default function Profile() {
               <CardTitle>Información Personal</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={form.watch("profileImageUrl")} alt={`${form.watch("firstName")} ${form.watch("lastName")}`} />
-                  <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
+              {/* Profile Image Upload Section */}
+              <div className="flex flex-col items-center gap-4">
+                <Avatar className="h-32 w-32">
+                  <AvatarImage src={imagePreview} alt={`${form.watch("firstName")} ${form.watch("lastName")}`} />
+                  <AvatarFallback className="text-3xl">{getInitials()}</AvatarFallback>
                 </Avatar>
-                <FormField
-                  control={form.control}
-                  name="profileImageUrl"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>URL de Foto de Perfil</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="https://ejemplo.com/foto.jpg"
-                          data-testid="input-profile-image-url"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="button-upload-image"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Subir Foto
+                  </Button>
+                  
+                  {imagePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRemoveImage}
+                      data-testid="button-remove-image"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Quitar Foto
+                    </Button>
                   )}
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  data-testid="input-image-file"
                 />
+
+                <p className="text-sm text-muted-foreground text-center">
+                  Formatos permitidos: JPG, PNG, GIF. Tamaño máximo: 2MB
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
