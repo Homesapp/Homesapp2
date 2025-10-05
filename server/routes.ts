@@ -3786,7 +3786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Referral Configuration routes
-  app.get("/api/referrals/config", isAuthenticated, requireFullAdmin, async (req, res) => {
+  app.get("/api/referrals/config", isAuthenticated, async (req, res) => {
     try {
       const config = await storage.getReferralConfig();
       res.json(config || { clientReferralCommissionPercent: "5.00", ownerReferralCommissionPercent: "10.00" });
