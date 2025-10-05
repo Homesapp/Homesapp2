@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { sendVerificationEmail } from "./resend";
+import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { z } from "zod";
@@ -4493,6 +4494,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking conversation as read:", error);
       res.status(500).json({ message: "Failed to mark conversation as read" });
+    }
+  });
+
+  // Chatbot routes
+  app.post("/api/chat/chatbot/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Create chatbot conversation
+      const conversation = await storage.createChatConversation({
+        type: "appointment",
+        title: `Chat con Asistente Virtual - ${user.firstName || user.email}`,
+        createdById: userId,
+      });
+
+      // Add user as participant
+      await storage.addChatParticipant({
+        conversationId: conversation.id,
+        userId: userId,
+      });
+
+      res.status(201).json(conversation);
+    } catch (error: any) {
+      console.error("Error starting chatbot conversation:", error);
+      res.status(500).json({ message: error.message || "Failed to start chatbot conversation" });
+    }
+  });
+
+  app.post("/api/chat/chatbot/message", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { conversationId, message } = req.body;
+
+      if (!conversationId || !message) {
+        return res.status(400).json({ message: "Missing conversationId or message" });
+      }
+
+      // Get user info
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's presentation cards
+      const presentationCardsData = await storage.getPresentationCards(userId);
+
+      // Get available properties
+      const allProperties = await storage.getProperties({ active: true });
+
+      // Get conversation history
+      const messages = await storage.getChatMessages(conversationId);
+      const conversationHistory = messages.map(msg => ({
+        role: msg.isBot ? 'assistant' as const : 'user' as const,
+        content: msg.message
+      }));
+
+      // Process message with chatbot
+      const chatbotResponse = await processChatbotMessage(
+        message,
+        {
+          user,
+          presentationCards: presentationCardsData,
+          availableProperties: allProperties
+        },
+        conversationHistory
+      );
+
+      // Save user message
+      const userMessage = await storage.createChatMessage({
+        conversationId,
+        senderId: userId,
+        message,
+        isBot: false,
+      });
+
+      // Save chatbot response
+      const botMessage = await storage.createChatMessage({
+        conversationId,
+        senderId: userId,
+        message: chatbotResponse.message,
+        isBot: true,
+      });
+
+      // If chatbot suggested properties, create auto-suggestions
+      if (chatbotResponse.suggestedProperties && chatbotResponse.suggestedProperties.length > 0 && presentationCardsData.length > 0) {
+        const activeCard = presentationCardsData.find(card => card.isActive);
+        if (activeCard) {
+          for (const property of chatbotResponse.suggestedProperties) {
+            // Check if suggestion already exists
+            const existingSuggestions = await db
+              .select()
+              .from(autoSuggestions)
+              .where(
+                and(
+                  eq(autoSuggestions.propertyId, property.id),
+                  eq(autoSuggestions.presentationCardId, activeCard.id)
+                )
+              );
+
+            if (existingSuggestions.length === 0) {
+              await db.insert(autoSuggestions).values({
+                propertyId: property.id,
+                clientId: userId,
+                presentationCardId: activeCard.id,
+                matchScore: 80, // Default score from chatbot
+                matchReasons: ["Sugerido por asistente virtual"],
+              });
+            }
+          }
+        }
+      }
+
+      // Broadcast messages to WebSocket clients
+      if (wsClients.has(conversationId)) {
+        const clients = wsClients.get(conversationId)!;
+        clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'new_message',
+              conversationId,
+              message: botMessage
+            }));
+          }
+        });
+      }
+
+      res.json({
+        userMessage,
+        botMessage: {
+          ...botMessage,
+          suggestedProperties: chatbotResponse.suggestedProperties
+        }
+      });
+    } catch (error: any) {
+      console.error("Error processing chatbot message:", error);
+      res.status(500).json({ message: error.message || "Failed to process chatbot message" });
+    }
+  });
+
+  // Generate property recommendations using chatbot AI
+  app.post("/api/chatbot/generate-recommendations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { presentationCardId } = req.body;
+
+      if (!presentationCardId) {
+        return res.status(400).json({ message: "Missing presentationCardId" });
+      }
+
+      // Get presentation card
+      const [card] = await db
+        .select()
+        .from(presentationCards)
+        .where(eq(presentationCards.id, presentationCardId));
+
+      if (!card) {
+        return res.status(404).json({ message: "Presentation card not found" });
+      }
+
+      if (card.clientId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Get available properties
+      const allProperties = await storage.getProperties({ active: true });
+
+      // Generate recommendations using AI
+      const recommendations = await generatePropertyRecommendations(card, allProperties);
+
+      // Save recommendations to database
+      for (const rec of recommendations) {
+        // Check if suggestion already exists
+        const existingSuggestions = await db
+          .select()
+          .from(autoSuggestions)
+          .where(
+            and(
+              eq(autoSuggestions.propertyId, rec.propertyId),
+              eq(autoSuggestions.presentationCardId, presentationCardId)
+            )
+          );
+
+        if (existingSuggestions.length === 0) {
+          await db.insert(autoSuggestions).values({
+            propertyId: rec.propertyId,
+            clientId: userId,
+            presentationCardId,
+            matchScore: rec.matchScore,
+            matchReasons: rec.matchReasons,
+          });
+        }
+      }
+
+      res.json({ recommendations });
+    } catch (error: any) {
+      console.error("Error generating recommendations:", error);
+      res.status(500).json({ message: error.message || "Failed to generate recommendations" });
     }
   });
 

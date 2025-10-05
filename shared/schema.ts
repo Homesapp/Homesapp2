@@ -1090,6 +1090,7 @@ export const chatMessages = pgTable("chat_messages", {
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
   attachments: text("attachments").array().default(sql`ARRAY[]::text[]`),
+  isBot: boolean("is_bot").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
