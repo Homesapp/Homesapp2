@@ -224,6 +224,25 @@ export const agreementSignatureStatusEnum = pgEnum("agreement_signature_status",
   "declined",   // Rechazado
 ]);
 
+export const clientReferralStatusEnum = pgEnum("client_referral_status", [
+  "pendiente_confirmacion",  // Pending confirmation
+  "confirmado",              // Confirmed
+  "en_revision",             // Under review
+  "seleccion_propiedad",     // Property selection process
+  "proceso_renta",           // Rental process
+  "lead_cancelado",          // Lead cancelled
+  "completado",              // Completed (rental signed)
+]);
+
+export const ownerReferralStatusEnum = pgEnum("owner_referral_status", [
+  "pendiente_confirmacion",  // Pending confirmation
+  "confirmado",              // Confirmed
+  "en_revision",             // Under review
+  "aprobado",                // Approved as owner
+  "rechazado",               // Rejected
+  "activo",                  // Active (property published)
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1281,6 +1300,89 @@ export const insertProviderApplicationSchema = createInsertSchema(providerApplic
 
 export type InsertProviderApplication = z.infer<typeof insertProviderApplicationSchema>;
 export type ProviderApplication = typeof providerApplications.$inferSelect;
+
+// Referral Configuration table
+export const referralConfig = pgTable("referral_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientReferralCommissionPercent: decimal("client_referral_commission_percent", { precision: 5, scale: 2 }).notNull().default("5.00"),
+  ownerReferralCommissionPercent: decimal("owner_referral_commission_percent", { precision: 5, scale: 2 }).notNull().default("10.00"),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertReferralConfigSchema = createInsertSchema(referralConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReferralConfig = z.infer<typeof insertReferralConfigSchema>;
+export type ReferralConfig = typeof referralConfig.$inferSelect;
+
+// Client Referrals table
+export const clientReferrals = pgTable("client_referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  phone: varchar("phone").notNull(),
+  email: varchar("email").notNull(),
+  status: clientReferralStatusEnum("status").notNull().default("pendiente_confirmacion"),
+  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }).notNull(),
+  commissionAmount: decimal("commission_amount", { precision: 12, scale: 2 }),
+  commissionPaid: boolean("commission_paid").notNull().default(false),
+  commissionPaidAt: timestamp("commission_paid_at"),
+  notes: text("notes"),
+  adminNotes: text("admin_notes"),
+  linkedLeadId: varchar("linked_lead_id").references(() => leads.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertClientReferralSchema = createInsertSchema(clientReferrals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertClientReferral = z.infer<typeof insertClientReferralSchema>;
+export type ClientReferral = typeof clientReferrals.$inferSelect;
+
+// Owner Referrals table
+export const ownerReferrals = pgTable("owner_referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  nationality: varchar("nationality"),
+  phone: varchar("phone").notNull(),
+  whatsappNumber: varchar("whatsapp_number"),
+  email: varchar("email").notNull(),
+  propertyType: varchar("property_type").notNull(), // "private" or "condominium"
+  condominiumName: varchar("condominium_name"),
+  unitNumber: varchar("unit_number"),
+  status: ownerReferralStatusEnum("status").notNull().default("pendiente_confirmacion"),
+  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }).notNull(),
+  commissionAmount: decimal("commission_amount", { precision: 12, scale: 2 }),
+  commissionPaid: boolean("commission_paid").notNull().default(false),
+  commissionPaidAt: timestamp("commission_paid_at"),
+  notes: text("notes"),
+  adminNotes: text("admin_notes"),
+  linkedOwnerId: varchar("linked_owner_id").references(() => users.id, { onDelete: "set null" }),
+  linkedPropertyId: varchar("linked_property_id").references(() => properties.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOwnerReferralSchema = createInsertSchema(ownerReferrals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOwnerReferral = z.infer<typeof insertOwnerReferralSchema>;
+export type OwnerReferral = typeof ownerReferrals.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
