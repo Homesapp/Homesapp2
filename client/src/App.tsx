@@ -47,6 +47,7 @@ import AdminChangeRequests from "@/pages/AdminChangeRequests";
 import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import AdminAgreementTemplates from "@/pages/AdminAgreementTemplates";
 import AdminCondominiums from "@/pages/AdminCondominiums";
+import AdminChatbotConfig from "@/pages/AdminChatbotConfig";
 import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
 import OwnerAppointments from "@/pages/OwnerAppointments";
 import OwnerDashboard from "@/pages/OwnerDashboard";
@@ -155,6 +156,7 @@ function AuthenticatedApp() {
               <Route path="/admin/inspection-reports" component={AdminInspectionReports} />
               <Route path="/admin/agreement-templates" component={AdminAgreementTemplates} />
               <Route path="/admin/condominiums" component={AdminCondominiums} />
+              <Route path="/admin/chatbot-config" component={AdminChatbotConfig} />
               <Route path="/admin/create-user" component={CreateUser} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />

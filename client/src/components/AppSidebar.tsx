@@ -34,6 +34,7 @@ import {
   Plus,
   UserPlus,
   Zap,
+  Bot,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import { Link, useLocation } from "wouter";
@@ -104,6 +105,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Reportes de Inspección", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { title: "Plantillas de Acuerdos", url: "/admin/agreement-templates", icon: FileText, roles: ["master", "admin"] },
     { title: "Condominios", url: "/admin/condominiums", icon: Building2, roles: ["master", "admin", "admin_jr"] },
+    { title: "Configuración Chatbot", url: "/admin/chatbot-config", icon: Bot, roles: ["master", "admin"] },
     { title: "Crear Usuario", url: "/admin/create-user", icon: UserPlus, roles: ["master", "admin"] },
     { title: "Gestión Usuarios", url: "/users", icon: UserCog, roles: ["master", "admin"] },
     { title: "Permisos", url: "/permissions", icon: Settings, roles: ["master", "admin"] },
