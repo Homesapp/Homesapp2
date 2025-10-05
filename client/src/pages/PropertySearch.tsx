@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, Star, X, Heart, PawPrint } from "lucide-react";
 import { type Property } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -32,8 +32,9 @@ interface SearchFilters {
   status?: string;
   minRating?: number;
   featured?: boolean;
-  availableFrom?: string;
-  availableTo?: string;
+  propertyType?: string;
+  colonyName?: string;
+  petFriendly?: boolean;
 }
 
 const AVAILABLE_AMENITIES = [
@@ -45,8 +46,26 @@ const AVAILABLE_AMENITIES = [
   "Elevador",
   "Terraza",
   "Balcón",
-  "Mascotas permitidas",
   "Amueblado",
+];
+
+const PROPERTY_TYPES = [
+  { value: "house", label: "Casa" },
+  { value: "apartment", label: "Departamento" },
+  { value: "condo", label: "Condominio" },
+  { value: "land", label: "Terreno" },
+  { value: "commercial", label: "Comercial" },
+  { value: "office", label: "Oficina" },
+];
+
+const COLONIES = [
+  "Aldea Zama",
+  "La Veleta",
+  "Centro",
+  "Región 15",
+  "Tulum Beach",
+  "Holistika",
+  "Selvamar",
 ];
 
 export default function PropertySearch() {
@@ -79,9 +98,18 @@ export default function PropertySearch() {
     if (filters.status) params.append("status", filters.status);
     if (filters.minRating !== undefined) params.append("minRating", filters.minRating.toString());
     if (filters.featured !== undefined) params.append("featured", filters.featured.toString());
-    if (filters.availableFrom) params.append("availableFrom", filters.availableFrom);
-    if (filters.availableTo) params.append("availableTo", filters.availableTo);
-    if (selectedAmenities.length > 0) params.append("amenities", selectedAmenities.join(","));
+    if (filters.propertyType) params.append("propertyType", filters.propertyType);
+    if (filters.colonyName) params.append("colonyName", filters.colonyName);
+    if (filters.petFriendly) {
+      params.append("amenities", "Mascotas permitidas");
+    }
+    if (selectedAmenities.length > 0) {
+      const amenitiesStr = params.get("amenities");
+      const allAmenities = amenitiesStr 
+        ? [amenitiesStr, ...selectedAmenities].join(",")
+        : selectedAmenities.join(",");
+      params.set("amenities", allAmenities);
+    }
     
     return params.toString();
   };
@@ -225,6 +253,46 @@ export default function PropertySearch() {
                   <Separator />
 
                   <div className="space-y-2">
+                    <Label htmlFor="property-type">Tipo de Propiedad</Label>
+                    <Select
+                      value={filters.propertyType || "all"}
+                      onValueChange={(value) => setFilters({ ...filters, propertyType: value === "all" ? undefined : value })}
+                    >
+                      <SelectTrigger id="property-type" data-testid="select-property-type">
+                        <SelectValue placeholder="Todos los tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los tipos</SelectItem>
+                        {PROPERTY_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="colony">Colonia</Label>
+                    <Select
+                      value={filters.colonyName || "all"}
+                      onValueChange={(value) => setFilters({ ...filters, colonyName: value === "all" ? undefined : value })}
+                    >
+                      <SelectTrigger id="colony" data-testid="select-colony">
+                        <SelectValue placeholder="Todas las colonias" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las colonias</SelectItem>
+                        {COLONIES.map((colony) => (
+                          <SelectItem key={colony} value={colony}>
+                            {colony}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>Rango de Precio (MXN)</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <Input
@@ -321,24 +389,19 @@ export default function PropertySearch() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Disponible Desde</Label>
-                    <Input
-                      type="date"
-                      value={filters.availableFrom || ""}
-                      onChange={(e) => setFilters({ ...filters, availableFrom: e.target.value || undefined })}
-                      data-testid="input-available-from"
-                    />
-                  </div>
+                  <Separator />
 
-                  <div className="space-y-2">
-                    <Label>Disponible Hasta</Label>
-                    <Input
-                      type="date"
-                      value={filters.availableTo || ""}
-                      onChange={(e) => setFilters({ ...filters, availableTo: e.target.value || undefined })}
-                      data-testid="input-available-to"
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="pet-friendly"
+                      checked={filters.petFriendly || false}
+                      onCheckedChange={(checked) => setFilters({ ...filters, petFriendly: checked as boolean })}
+                      data-testid="checkbox-pet-friendly"
                     />
+                    <Label htmlFor="pet-friendly" className="flex items-center gap-2 cursor-pointer">
+                      <PawPrint className="h-4 w-4" />
+                      <span>Pet-friendly</span>
+                    </Label>
                   </div>
 
                   <Separator />
