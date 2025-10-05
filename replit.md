@@ -15,6 +15,18 @@ Preferred communication style: Simple, everyday language.
 - Header height adjusted to h-20 to match smaller logo
 - Primary brand color changed to #21ad44 (HSL: 141 68% 40%) throughout application
 - Carousel navigation arrows repositioned below carousel content, centered with gap-4 spacing for better UX
+- **Location Standardization**: All property locations updated to "Tulum" for consistency and improved search functionality
+- **Condominium System**: Created approval workflow for condominiums with 396 pre-approved units
+  - Owners/users can request new condominiums (status: pending)
+  - Admins approve/reject condominium requests via API endpoints
+  - Properties can now be linked to approved condominiums with unit details
+  - Full Zod validation and error handling on all condominium routes
+- **Client Dashboard**: New dedicated dashboard for clients with appointment management
+  - "Mis Citas" section with upcoming, calendar, and history views
+  - Integrated calendar showing appointment dates with date selection
+  - Video call integration with Google Meet links
+  - Appointment status tracking (pending, confirmed, completed, cancelled)
+  - Direct booking capability from dashboard
 
 ## System Architecture
 
@@ -30,10 +42,14 @@ The backend uses Node.js with Express.js and TypeScript (ESM modules), providing
 
 The application uses PostgreSQL (Neon serverless) and Drizzle ORM for type-safe interactions. The schema supports user management, property statuses, appointment scheduling, client presentation cards, service providers, offer workflows, and staff assignments, with audit logs for critical actions. A lead capture system tracks user actions and manages rental opportunity requests.
 
+**Condominium Management**: A dedicated `condominiums` table manages approved condominium listings with a three-state approval workflow (pending/approved/rejected). Properties can reference condominiums and include unit-specific details (unitType, unitNumber, condoName). The system includes 396 pre-approved condominiums from the Tulum market. API endpoints enforce role-based access (admin-only approval/rejection) with full Zod validation.
+
 ### Key Features and Workflows
 
-*   **Property Management**: Includes a property approval workflow (draft → pending → approved/rejected), owner-submitted change requests with admin approval, and owner settings for appointment auto-approval.
-*   **Property Submission**: A multi-step wizard with automatic draft saving, digital agreement signing using admin-managed templates, and audit logging for all agreement actions.
+*   **Property Management**: Includes a property approval workflow (draft → pending → approved/rejected), owner-submitted change requests with admin approval, and owner settings for appointment auto-approval. All properties are standardized to Tulum location for consistency.
+*   **Property Submission**: A multi-step wizard with automatic draft saving, digital agreement signing using admin-managed templates, and audit logging for all agreement actions. Integration with approved condominium listings for properties within condominiums.
+*   **Condominium Workflow**: User-requested condominiums require admin approval before appearing in selection lists. Admins can approve/reject requests with full audit trail. 396 pre-approved Tulum condominiums available in the system.
+*   **Client Dashboard**: Dedicated dashboard for clients featuring appointment management with calendar integration, upcoming appointments display, appointment history, and direct booking capabilities. Supports video call integration with Google Meet.
 *   **User Experience**: Features an Airbnb-style role switching, full i18n support, a WebSocket-based real-time chat system with secure authentication, enhanced presentation cards with detailed property and client information, and granular email notification preferences.
 *   **Public Dashboard**: An Airbnb-inspired design adapting for authenticated vs. non-authenticated users, with dual pricing support (rental/sale) and improved property listing displays.
 
