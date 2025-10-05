@@ -312,6 +312,7 @@ export const properties = pgTable("properties", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   description: text("description"),
+  propertyType: text("property_type").notNull().default("house"),
   price: decimal("price", { precision: 12, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("MXN"),
   bedrooms: integer("bedrooms").notNull(),

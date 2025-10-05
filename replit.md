@@ -32,6 +32,19 @@ The application uses PostgreSQL (via Neon serverless platform) and Drizzle ORM f
   - One active SOR per property per user
   - Automatic logging in lead_journeys table
 
+**Owner Property Management System (Current Implementation)**:
+- **Property Approval Workflow**: Properties follow draft → pending → approved/rejected states
+- **Owner-Submitted Change Requests**: Owners edit properties via change requests with:
+  - Zod-validated whitelisted fields (title, description, price, location, etc.)
+  - Transactional integrity for multi-step operations
+  - Admin approval/rejection with review notes
+  - Cascade logic that updates property.approvalStatus when change requests reach terminal states
+- **Owner Settings**: Auto-approve visit appointments, notification preferences
+- **Owner Property Management Pages**:
+  - `/mis-propiedades`: List view with approval status badges
+  - `/owner/property/:id`: Detailed view with tabs for details, change requests, staff, and appointments
+- **Security**: All endpoints use Zod validation with whitelisted fields to prevent arbitrary field injection
+
 ### System Design Choices
 
 The platform employs a unified middleware approach to normalize all authentication types (Replit Auth, local user auth, admin local auth) into a consistent `req.user` structure, simplifying authorization logic and ensuring seamless operation across different user types. Critical operations are automatically logged for auditing purposes. A public dashboard with an Airbnb-inspired design provides a user-friendly entry point, adapting its experience for authenticated vs. non-authenticated users. A calendar view for appointments enhances scheduling visualization, and detailed user profiles with activity history are available.
