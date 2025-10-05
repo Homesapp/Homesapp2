@@ -28,6 +28,9 @@ import {
   leadJourneys,
   appointments,
   offers,
+  properties,
+  users,
+  presentationCards,
   createPropertyChangeRequestSchema,
   updateOwnerSettingsSchema,
   insertRentalApplicationSchema,
@@ -35,7 +38,7 @@ import {
   updateInspectionReportSchema,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 
 // Helper function to create audit logs
 async function createAuditLog(
@@ -1827,7 +1830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: rentalOpportunityRequests.notes,
           propertyId: rentalOpportunityRequests.propertyId,
           propertyTitle: properties.title,
-          propertyAddress: properties.address,
+          propertyLocation: properties.location,
           propertyPrice: properties.price,
           // Limited client info - NO CONTACT DETAILS
           clientId: users.id,

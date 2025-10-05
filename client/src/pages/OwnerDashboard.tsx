@@ -3,8 +3,28 @@ import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Calendar, FileEdit, CheckCircle2, AlertCircle, Clock, ArrowRight } from "lucide-react";
+import { Building2, Calendar, FileEdit, CheckCircle2, AlertCircle, Clock, ArrowRight, Users } from "lucide-react";
 import type { Property, PropertyChangeRequest, Appointment } from "@shared/schema";
+
+type InterestedClient = {
+  id: string;
+  status: string;
+  desiredMoveInDate: string | null;
+  createdAt: string;
+  notes: string | null;
+  propertyId: string;
+  propertyTitle: string;
+  propertyLocation: string;
+  propertyPrice: string;
+  clientId: string;
+  clientFirstName: string | null;
+  clientLastName: string | null;
+  presentationCardId: string | null;
+  cardPropertyType: string | null;
+  cardModality: string | null;
+  cardMinPrice: string | null;
+  cardMaxPrice: string | null;
+};
 
 export default function OwnerDashboard() {
   const { data: properties = [], isLoading: loadingProperties } = useQuery<Property[]>({
@@ -17,6 +37,10 @@ export default function OwnerDashboard() {
 
   const { data: appointments = [], isLoading: loadingAppointments } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
+  });
+
+  const { data: interestedClients = [], isLoading: loadingInterestedClients } = useQuery<InterestedClient[]>({
+    queryKey: ["/api/owner/interested-clients"],
   });
 
   // Filter owner appointments
@@ -32,7 +56,7 @@ export default function OwnerDashboard() {
   const publishedProperties = properties.filter(p => p.approvalStatus === "published").length;
   const pendingProperties = properties.filter(p => p.approvalStatus === "pending_review").length;
 
-  const isLoading = loadingProperties || loadingChangeRequests || loadingAppointments;
+  const isLoading = loadingProperties || loadingChangeRequests || loadingAppointments || loadingInterestedClients;
 
   if (isLoading) {
     return (
@@ -54,7 +78,7 @@ export default function OwnerDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <Card data-testid="card-total-properties">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Propiedades</CardTitle>
@@ -103,6 +127,19 @@ export default function OwnerDashboard() {
             <div className="text-2xl font-bold">{pendingProperties}</div>
             <p className="text-xs text-muted-foreground">
               Propiedades pendientes
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-interested-clients">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clientes Interesados</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{interestedClients.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Solicitudes de oportunidad
             </p>
           </CardContent>
         </Card>
@@ -216,6 +253,91 @@ export default function OwnerDashboard() {
                   </Badge>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Interested Clients */}
+      {interestedClients.length > 0 && (
+        <Card data-testid="card-interested-clients-list">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Clientes Interesados</CardTitle>
+                <CardDescription>
+                  Clientes que han mostrado interés en tus propiedades (información básica)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {interestedClients.slice(0, 5).map((client) => (
+                <div
+                  key={client.id}
+                  className="flex flex-col gap-2 p-4 bg-muted rounded-md"
+                  data-testid={`interested-client-${client.id}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium">
+                          {client.clientFirstName} {client.clientLastName}
+                        </p>
+                        <Badge variant={
+                          client.status === "pending" ? "secondary" :
+                          client.status === "scheduled_visit" ? "default" :
+                          client.status === "visit_completed" ? "default" :
+                          "secondary"
+                        }>
+                          {client.status === "pending" && "Pendiente"}
+                          {client.status === "scheduled_visit" && "Visita Agendada"}
+                          {client.status === "visit_completed" && "Visita Completada"}
+                          {client.status === "offer_submitted" && "Oferta Enviada"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Propiedad: {client.propertyTitle}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Solicitud: {new Date(client.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {client.presentationCardId && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">
+                        Perfil del Cliente:
+                      </p>
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>Tipo: {client.cardPropertyType}</span>
+                        <span>Modalidad: {client.cardModality}</span>
+                        {client.cardMinPrice && client.cardMaxPrice && (
+                          <span>
+                            Presupuesto: ${parseFloat(client.cardMinPrice).toLocaleString()} - ${parseFloat(client.cardMaxPrice).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {client.desiredMoveInDate && (
+                    <p className="text-xs text-muted-foreground">
+                      Fecha deseada de mudanza: {new Date(client.desiredMoveInDate).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              ))}
+              
+              {interestedClients.length > 5 && (
+                <div className="text-center">
+                  <Badge variant="secondary">
+                    +{interestedClients.length - 5} más
+                  </Badge>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
