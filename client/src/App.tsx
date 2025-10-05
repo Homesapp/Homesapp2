@@ -45,6 +45,7 @@ import EditOwnerProperty from "@/pages/EditOwnerProperty";
 import AdminChangeRequests from "@/pages/AdminChangeRequests";
 import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import AdminAgreementTemplates from "@/pages/AdminAgreementTemplates";
+import AdminCondominiums from "@/pages/AdminCondominiums";
 import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
 import OwnerAppointments from "@/pages/OwnerAppointments";
 import OwnerDashboard from "@/pages/OwnerDashboard";
@@ -156,6 +157,7 @@ function AuthenticatedApp() {
               <Route path="/admin/change-requests" component={AdminChangeRequests} />
               <Route path="/admin/inspection-reports" component={AdminInspectionReports} />
               <Route path="/admin/agreement-templates" component={AdminAgreementTemplates} />
+              <Route path="/admin/condominiums" component={AdminCondominiums} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />
               <Route path="/properties" component={Properties} />
