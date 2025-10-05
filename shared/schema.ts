@@ -262,8 +262,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 export const updateUserProfileSchema = z.object({
-  firstName: z.string().min(1, "El nombre es requerido").max(100),
-  lastName: z.string().min(1, "El apellido es requerido").max(100),
+  firstName: z.string().min(1, "El nombre es requerido").max(100).optional(),
+  lastName: z.string().min(1, "El apellido es requerido").max(100).optional(),
   phone: z.string().max(20).optional().or(z.literal("")),
   bio: z.string().max(500).optional().or(z.literal("")),
   profileImageUrl: z.string().optional().or(z.literal("")),
