@@ -8,6 +8,28 @@ HomesApp is a comprehensive SaaS platform designed for real estate property mana
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**October 2025 - Public Dashboard Enhancements & Dual Pricing Support**:
+- **Dual Pricing System**: Properties now support both rental and sale prices
+  - Added `salePrice` decimal column to properties table
+  - PropertyCard component enhanced to display both prices when `status='both'`
+  - Rental price shown prominently (text-2xl) with sale price smaller below (text-lg)
+  - Agency's primary focus (rentals) is visually prioritized
+- **Public Dashboard UI Improvements**:
+  - Logo enlarged from h-12 to h-16 for better visibility
+  - Removed redundant "HomesApp" text next to logo
+  - Quick filter badges replaced with large buttons (size='lg') for better UX
+  - Converted to use Button component instead of Badge for consistency
+- **Featured Properties Carousel**:
+  - Implemented auto-scrolling carousel using embla-carousel-autoplay
+  - Auto-advances every 3 seconds with loop enabled
+  - Maintains responsive grid layout (1/2/3 columns based on screen size)
+  - Manual navigation preserved with previous/next buttons
+- **Internationalization**: Full Spanish/English translations implemented for PublicDashboard
+  - All user-facing text uses translation keys via LanguageContext
+  - Supports language toggle between Spanish and English
+
 ## System Architecture
 
 ### Frontend
