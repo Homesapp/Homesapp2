@@ -58,6 +58,7 @@ import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import ProviderApplication from "@/pages/ProviderApplication";
 import CreateUser from "@/pages/CreateUser";
+import Referrals from "@/pages/Referrals";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -173,6 +174,7 @@ function AuthenticatedApp() {
               <Route path="/notificaciones" component={Notifications} />
               <Route path="/chat" component={Chat} />
               <Route path="/perfil" component={Profile} />
+              <Route path="/referidos" component={Referrals} />
               <Route component={NotFound} />
             </Switch>
           </main>

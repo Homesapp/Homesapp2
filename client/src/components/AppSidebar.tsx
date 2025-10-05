@@ -35,6 +35,7 @@ import {
   UserPlus,
   Zap,
   Bot,
+  Share2,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import { Link, useLocation } from "wouter";
@@ -82,6 +83,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Mis Citas", url: "/mis-citas", icon: CalendarCheck, roles: ["cliente"] },
     { title: "Mis Favoritos", url: "/favoritos", icon: Heart, roles: ["cliente"] },
     { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
+    { title: "Red de Referidos", url: "/referidos", icon: Share2, roles: ["cliente", "owner", "master", "admin", "admin_jr", "seller"] },
     { title: "Mis Propiedades", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
     { title: "Cargar Propiedad", url: "/owner/property/new", icon: Plus, roles: ["owner"] },
     { title: "Gestión de Visitas", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },
