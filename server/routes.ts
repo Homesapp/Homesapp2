@@ -6,6 +6,7 @@ import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { sendVerificationEmail } from "./resend";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { z } from "zod";
 import {
   insertPropertySchema,
   insertAppointmentSchema,
@@ -26,6 +27,7 @@ import {
   rentalOpportunityRequests,
   leadJourneys,
   appointments,
+  offers,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
@@ -982,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(rentalOpportunityRequests.userId, userId))
         .orderBy(rentalOpportunityRequests.createdAt);
 
-      // Enrich with property and appointment data
+      // Enrich with property, appointment, and offer data
       const enrichedSORs = await Promise.all(
         sorsWithDetails.map(async (sor) => {
           const property = await storage.getProperty(sor.propertyId);
@@ -996,10 +998,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
           }
 
+          // Get offer if status indicates offer was submitted
+          let offer = null;
+          if (["offer_submitted", "offer_negotiation", "offer_accepted"].includes(sor.status)) {
+            const [foundOffer] = await db
+              .select()
+              .from(offers)
+              .where(eq(offers.opportunityRequestId, sor.id))
+              .limit(1);
+            offer = foundOffer || null;
+          }
+
           return {
             ...sor,
             property,
             appointment,
+            offer,
           };
         })
       );
@@ -1100,6 +1114,327 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appointment);
     } catch (error: any) {
       console.error("Error scheduling visit from SOR:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Submit offer from SOR (after visit completed)
+  app.post("/api/rental-opportunity-requests/:sorId/submit-offer", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sorId } = req.params;
+      
+      // Validar con Zod
+      const offerSchema = z.object({
+        offerAmount: z.string().min(1).refine((val) => parseFloat(val) > 0, {
+          message: "El monto de la oferta debe ser mayor a 0",
+        }),
+        notes: z.string().optional(),
+      });
+
+      const validationResult = offerSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Datos inválidos",
+          details: validationResult.error.errors 
+        });
+      }
+
+      const { offerAmount, notes } = validationResult.data;
+
+      // Verificar que la SOR existe y pertenece al usuario
+      const [sor] = await db
+        .select()
+        .from(rentalOpportunityRequests)
+        .where(
+          and(
+            eq(rentalOpportunityRequests.id, sorId),
+            eq(rentalOpportunityRequests.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (!sor) {
+        return res.status(404).json({ error: "Solicitud de oportunidad no encontrada" });
+      }
+
+      // Verificar que la visita ya se completó
+      if (sor.status !== "visit_completed" && sor.status !== "scheduled_visit") {
+        return res.status(400).json({ 
+          error: "Debes completar la visita antes de hacer una oferta" 
+        });
+      }
+
+      // Verificar que no exista ya una oferta para esta SOR
+      const [existingOffer] = await db
+        .select()
+        .from(offers)
+        .where(eq(offers.opportunityRequestId, sorId))
+        .limit(1);
+
+      if (existingOffer) {
+        return res.status(400).json({ 
+          error: "Ya existe una oferta para esta solicitud" 
+        });
+      }
+
+      // Buscar el appointment asociado
+      const [appointment] = await db
+        .select()
+        .from(appointments)
+        .where(eq(appointments.opportunityRequestId, sorId))
+        .limit(1);
+
+      // Crear la oferta
+      const [offer] = await db
+        .insert(offers)
+        .values({
+          opportunityRequestId: sorId,
+          propertyId: sor.propertyId,
+          clientId: userId,
+          appointmentId: appointment?.id || null,
+          offerAmount: offerAmount.toString(),
+          status: "pending",
+          notes: notes || null,
+        })
+        .returning();
+
+      // Actualizar estado de SOR a offer_submitted
+      await db
+        .update(rentalOpportunityRequests)
+        .set({ 
+          status: "offer_submitted",
+          updatedAt: new Date()
+        })
+        .where(eq(rentalOpportunityRequests.id, sorId));
+
+      // Registrar en lead_journeys
+      await db.insert(leadJourneys).values({
+        propertyId: sor.propertyId,
+        userId,
+        action: "submit_offer",
+        metadata: { offerId: offer.id, sorId, offerAmount },
+      });
+
+      // Log offer creation
+      await createAuditLog(
+        req,
+        "create",
+        "offer",
+        offer.id,
+        `Oferta creada de $${offer.offerAmount} para propiedad ${sor.propertyId}`
+      );
+
+      res.status(201).json(offer);
+    } catch (error: any) {
+      console.error("Error submitting offer from SOR:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Counter offer endpoint (for property owner/admin)
+  app.post("/api/offers/:offerId/counter", isAuthenticated, requireRole(["admin", "propietario", "vendedor"]), async (req: any, res) => {
+    try {
+      const { offerId } = req.params;
+      const { counterOfferAmount, counterOfferNotes } = req.body;
+
+      // Validar el monto de la contraoferta
+      if (!counterOfferAmount || parseFloat(counterOfferAmount) <= 0) {
+        return res.status(400).json({ error: "El monto de la contraoferta debe ser mayor a 0" });
+      }
+
+      // Buscar la oferta
+      const [existingOffer] = await db
+        .select()
+        .from(offers)
+        .where(eq(offers.id, offerId))
+        .limit(1);
+
+      if (!existingOffer) {
+        return res.status(404).json({ error: "Oferta no encontrada" });
+      }
+
+      if (existingOffer.status !== "pending") {
+        return res.status(400).json({ 
+          error: "Solo se pueden hacer contraofertas a ofertas pendientes" 
+        });
+      }
+
+      // Actualizar la oferta con contraoferta
+      const [updatedOffer] = await db
+        .update(offers)
+        .set({
+          counterOfferAmount: counterOfferAmount.toString(),
+          counterOfferNotes: counterOfferNotes || null,
+          status: "countered",
+          updatedAt: new Date()
+        })
+        .where(eq(offers.id, offerId))
+        .returning();
+
+      // Actualizar estado de SOR a offer_negotiation
+      if (existingOffer.opportunityRequestId) {
+        await db
+          .update(rentalOpportunityRequests)
+          .set({ 
+            status: "offer_negotiation",
+            updatedAt: new Date()
+          })
+          .where(eq(rentalOpportunityRequests.id, existingOffer.opportunityRequestId));
+      }
+
+      // Registrar en lead_journeys
+      await db.insert(leadJourneys).values({
+        propertyId: existingOffer.propertyId,
+        userId: existingOffer.clientId,
+        action: "counter_offer",
+        metadata: { offerId, counterOfferAmount },
+      });
+
+      // Log counter offer
+      await createAuditLog(
+        req,
+        "update",
+        "offer",
+        offerId,
+        `Contraoferta realizada de $${counterOfferAmount} (oferta original: $${existingOffer.offerAmount})`
+      );
+
+      res.json(updatedOffer);
+    } catch (error: any) {
+      console.error("Error creating counter offer:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Accept offer endpoint (for property owner/admin)
+  app.post("/api/offers/:offerId/accept", isAuthenticated, requireRole(["admin", "propietario", "vendedor"]), async (req: any, res) => {
+    try {
+      const { offerId } = req.params;
+
+      // Buscar la oferta
+      const [existingOffer] = await db
+        .select()
+        .from(offers)
+        .where(eq(offers.id, offerId))
+        .limit(1);
+
+      if (!existingOffer) {
+        return res.status(404).json({ error: "Oferta no encontrada" });
+      }
+
+      if (existingOffer.status === "accepted") {
+        return res.status(400).json({ error: "Esta oferta ya fue aceptada" });
+      }
+
+      // Actualizar la oferta a aceptada
+      const [updatedOffer] = await db
+        .update(offers)
+        .set({
+          status: "accepted",
+          updatedAt: new Date()
+        })
+        .where(eq(offers.id, offerId))
+        .returning();
+
+      // Actualizar estado de SOR a offer_accepted
+      if (existingOffer.opportunityRequestId) {
+        await db
+          .update(rentalOpportunityRequests)
+          .set({ 
+            status: "offer_accepted",
+            updatedAt: new Date()
+          })
+          .where(eq(rentalOpportunityRequests.id, existingOffer.opportunityRequestId));
+      }
+
+      // Registrar en lead_journeys
+      await db.insert(leadJourneys).values({
+        propertyId: existingOffer.propertyId,
+        userId: existingOffer.clientId,
+        action: "accept_offer",
+        metadata: { offerId },
+      });
+
+      // Log offer acceptance
+      await createAuditLog(
+        req,
+        "update",
+        "offer",
+        offerId,
+        `Oferta aceptada de $${existingOffer.offerAmount}`
+      );
+
+      res.json(updatedOffer);
+    } catch (error: any) {
+      console.error("Error accepting offer:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Reject offer endpoint (for property owner/admin)
+  app.post("/api/offers/:offerId/reject", isAuthenticated, requireRole(["admin", "propietario", "vendedor"]), async (req: any, res) => {
+    try {
+      const { offerId } = req.params;
+      const { notes } = req.body;
+
+      // Buscar la oferta
+      const [existingOffer] = await db
+        .select()
+        .from(offers)
+        .where(eq(offers.id, offerId))
+        .limit(1);
+
+      if (!existingOffer) {
+        return res.status(404).json({ error: "Oferta no encontrada" });
+      }
+
+      if (existingOffer.status === "accepted") {
+        return res.status(400).json({ error: "No se puede rechazar una oferta ya aceptada" });
+      }
+
+      // Actualizar la oferta a rechazada
+      const [updatedOffer] = await db
+        .update(offers)
+        .set({
+          status: "rejected",
+          counterOfferNotes: notes || null,
+          updatedAt: new Date()
+        })
+        .where(eq(offers.id, offerId))
+        .returning();
+
+      // Actualizar estado de SOR a rejected
+      if (existingOffer.opportunityRequestId) {
+        await db
+          .update(rentalOpportunityRequests)
+          .set({ 
+            status: "rejected",
+            updatedAt: new Date()
+          })
+          .where(eq(rentalOpportunityRequests.id, existingOffer.opportunityRequestId));
+      }
+
+      // Registrar en lead_journeys
+      await db.insert(leadJourneys).values({
+        propertyId: existingOffer.propertyId,
+        userId: existingOffer.clientId,
+        action: "reject_offer",
+        metadata: { offerId },
+      });
+
+      // Log offer rejection
+      await createAuditLog(
+        req,
+        "update",
+        "offer",
+        offerId,
+        `Oferta rechazada de $${existingOffer.offerAmount}`
+      );
+
+      res.json(updatedOffer);
+    } catch (error: any) {
+      console.error("Error rejecting offer:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -1591,7 +1926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "create",
         "offer",
         offer.id,
-        `Oferta creada de $${offer.amount} - Estado: ${offer.status}`
+        `Oferta creada de $${offer.offerAmount} - Estado: ${offer.status}`
       );
       
       res.status(201).json(offer);
