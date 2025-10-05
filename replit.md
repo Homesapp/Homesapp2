@@ -22,6 +22,16 @@ The backend uses Node.js with Express.js and TypeScript, enforcing ESM modules. 
 
 The application uses PostgreSQL (via Neon serverless platform) and Drizzle ORM for type-safe database interactions. The schema supports user management with role-based permissions, flexible property statuses, appointment scheduling, client presentation cards, service providers, offer workflows, and staff assignments. Audit logs are implemented for tracking critical user actions.
 
+**Lead Capture System (Phase A - Stage 4)**: The platform now includes a complete lead capture workflow with:
+- **Lead Journeys**: Tracks user actions throughout the rental process (search, view details, save favorites, request opportunities)
+- **Rental Opportunity Requests (SOR)**: Allows users to formally request rental opportunities with:
+  - Desired move-in date (optional)
+  - Preferred contact method (email, phone, WhatsApp)
+  - Additional notes
+  - System enforces limit of 3 active SORs per user
+  - One active SOR per property per user
+  - Automatic logging in lead_journeys table
+
 ### System Design Choices
 
 The platform employs a unified middleware approach to normalize all authentication types (Replit Auth, local user auth, admin local auth) into a consistent `req.user` structure, simplifying authorization logic and ensuring seamless operation across different user types. Critical operations are automatically logged for auditing purposes. A public dashboard with an Airbnb-inspired design provides a user-friendly entry point, adapting its experience for authenticated vs. non-authenticated users. A calendar view for appointments enhances scheduling visualization, and detailed user profiles with activity history are available.
