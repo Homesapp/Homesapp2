@@ -76,6 +76,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Inicio", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider", "cliente"] },
     { title: "Dashboard", url: "/owner/dashboard", icon: Home, roles: ["owner"] },
     { title: "Buscar Propiedades", url: "/buscar-propiedades", icon: Search, roles: ["cliente"] },
+    { title: "Mis Citas", url: "/mis-citas", icon: CalendarCheck, roles: ["cliente"] },
     { title: "Mis Favoritos", url: "/favoritos", icon: Heart, roles: ["cliente"] },
     { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Calendar, roles: ["cliente"] },
     { title: "Mis Propiedades", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },

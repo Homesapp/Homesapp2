@@ -49,6 +49,7 @@ import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
 import OwnerAppointments from "@/pages/OwnerAppointments";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
+import ClientDashboard from "@/pages/ClientDashboard";
 import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
@@ -138,7 +139,8 @@ function AuthenticatedApp() {
           </header>
           <main className="flex-1 overflow-auto p-6">
             <Switch>
-              <Route path="/" component={Dashboard} />
+              <Route path="/" component={userRole === "cliente" ? ClientDashboard : Dashboard} />
+              <Route path="/mis-citas" component={ClientDashboard} />
               <Route path="/buscar-propiedades" component={PropertySearch} />
               <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
               <Route path="/propiedad/:id" component={PropertyDetails} />

@@ -107,6 +107,12 @@ export const roleRequestStatusEnum = pgEnum("role_request_status", [
   "rejected",
 ]);
 
+export const condominiumApprovalStatusEnum = pgEnum("condominium_approval_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
 export const leadStatusEnum = pgEnum("lead_status", [
   "nuevo",
   "contactado",
@@ -369,6 +375,10 @@ export const properties = pgTable("properties", {
   area: decimal("area", { precision: 8, scale: 2 }).notNull(),
   location: text("location").notNull(),
   status: propertyStatusEnum("status").notNull(),
+  unitType: text("unit_type").notNull().default("private"),
+  condominiumId: varchar("condominium_id").references(() => condominiums.id),
+  condoName: text("condo_name"),
+  unitNumber: text("unit_number"),
   images: text("images").array().default(sql`ARRAY[]::text[]`),
   primaryImages: text("primary_images").array().default(sql`ARRAY[]::text[]`), // 5 fotos principales max
   coverImageIndex: integer("cover_image_index").default(0), // Índice de la foto de portada en primaryImages
@@ -411,6 +421,25 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
 
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
+
+// Condominiums table
+export const condominiums = pgTable("condominiums", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  approvalStatus: condominiumApprovalStatusEnum("approval_status").notNull().default("approved"),
+  requestedBy: varchar("requested_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCondominiumSchema = createInsertSchema(condominiums).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCondominium = z.infer<typeof insertCondominiumSchema>;
+export type Condominium = typeof condominiums.$inferSelect;
 
 // Property staff assignment table
 export const propertyStaff = pgTable(

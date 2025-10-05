@@ -1,6 +1,7 @@
 import {
   users,
   properties,
+  condominiums,
   appointments,
   presentationCards,
   serviceProviders,
@@ -29,6 +30,8 @@ import {
   propertySubmissionDrafts,
   propertyAgreements,
   type User,
+  type Condominium,
+  type InsertCondominium,
   type UpsertUser,
   type InsertUser,
   type Property,
@@ -119,6 +122,13 @@ export interface IStorage {
   getRoleRequests(filters?: { userId?: string; status?: string }): Promise<RoleRequest[]>;
   updateRoleRequestStatus(id: string, status: string, reviewedBy: string, reviewNotes?: string): Promise<RoleRequest>;
   getUserActiveRoleRequest(userId: string): Promise<RoleRequest | undefined>;
+  
+  // Condominium operations
+  getCondominium(id: string): Promise<Condominium | undefined>;
+  getCondominiums(filters?: { approvalStatus?: string }): Promise<Condominium[]>;
+  getApprovedCondominiums(): Promise<Condominium[]>;
+  createCondominium(condominium: InsertCondominium): Promise<Condominium>;
+  updateCondominiumStatus(id: string, approvalStatus: string): Promise<Condominium>;
   
   // Property operations
   getProperty(id: string): Promise<Property | undefined>;
@@ -472,6 +482,44 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(roleRequests.createdAt))
       .limit(1);
     return request;
+  }
+
+  // Condominium operations
+  async getCondominium(id: string): Promise<Condominium | undefined> {
+    const [condominium] = await db.select().from(condominiums).where(eq(condominiums.id, id));
+    return condominium;
+  }
+
+  async getCondominiums(filters?: { approvalStatus?: string }): Promise<Condominium[]> {
+    let query = db.select().from(condominiums);
+    
+    if (filters?.approvalStatus) {
+      query = query.where(eq(condominiums.approvalStatus, filters.approvalStatus as any)) as any;
+    }
+
+    return await query.orderBy(condominiums.name);
+  }
+
+  async getApprovedCondominiums(): Promise<Condominium[]> {
+    return await db
+      .select()
+      .from(condominiums)
+      .where(eq(condominiums.approvalStatus, "approved"))
+      .orderBy(condominiums.name);
+  }
+
+  async createCondominium(condominiumData: InsertCondominium): Promise<Condominium> {
+    const [condominium] = await db.insert(condominiums).values(condominiumData).returning();
+    return condominium;
+  }
+
+  async updateCondominiumStatus(id: string, approvalStatus: string): Promise<Condominium> {
+    const [condominium] = await db
+      .update(condominiums)
+      .set({ approvalStatus: approvalStatus as any, updatedAt: new Date() })
+      .where(eq(condominiums.id, id))
+      .returning();
+    return condominium;
   }
 
   // Property operations

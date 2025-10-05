@@ -744,6 +744,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Condominium routes
+  app.get("/api/condominiums", async (req, res) => {
+    try {
+      const { approvalStatus } = req.query;
+      const filters: any = {};
+      if (approvalStatus) filters.approvalStatus = approvalStatus;
+      
+      const condominiums = await storage.getCondominiums(filters);
+      res.json(condominiums);
+    } catch (error) {
+      console.error("Error fetching condominiums:", error);
+      res.status(500).json({ message: "Failed to fetch condominiums" });
+    }
+  });
+
+  app.get("/api/condominiums/approved", async (req, res) => {
+    try {
+      const condominiums = await storage.getApprovedCondominiums();
+      res.json(condominiums);
+    } catch (error) {
+      console.error("Error fetching approved condominiums:", error);
+      res.status(500).json({ message: "Failed to fetch approved condominiums" });
+    }
+  });
+
+  app.post("/api/condominiums", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request body with Zod
+      const condominiumSchema = z.object({
+        name: z.string().min(1, "El nombre del condominio es requerido"),
+      });
+      
+      const validationResult = condominiumSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { name } = validationResult.data;
+
+      // Create condominium with pending status, requires admin approval
+      const condominium = await storage.createCondominium({
+        name,
+        approvalStatus: "pending",
+        requestedBy: userId,
+      });
+
+      await createAuditLog(
+        req,
+        "create",
+        "condominium",
+        condominium.id,
+        `Condominio solicitado: ${name}`
+      );
+
+      res.json(condominium);
+    } catch (error) {
+      console.error("Error creating condominium:", error);
+      res.status(500).json({ message: "Failed to create condominium" });
+    }
+  });
+
+  app.patch("/api/admin/condominiums/:id/approve", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { id } = req.params;
+
+      if (!user || !["master", "admin", "admin_jr"].includes(user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Validate condominium exists
+      const existingCondominium = await storage.getCondominium(id);
+      if (!existingCondominium) {
+        return res.status(404).json({ message: "Condominio no encontrado" });
+      }
+
+      const condominium = await storage.updateCondominiumStatus(id, "approved");
+      
+      await createAuditLog(
+        req,
+        "approve",
+        "condominium",
+        id,
+        `Condominio aprobado: ${condominium.name}`
+      );
+
+      res.json(condominium);
+    } catch (error) {
+      console.error("Error approving condominium:", error);
+      res.status(500).json({ message: "Failed to approve condominium" });
+    }
+  });
+
+  app.patch("/api/admin/condominiums/:id/reject", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { id } = req.params;
+
+      if (!user || !["master", "admin", "admin_jr"].includes(user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Validate condominium exists
+      const existingCondominium = await storage.getCondominium(id);
+      if (!existingCondominium) {
+        return res.status(404).json({ message: "Condominio no encontrado" });
+      }
+
+      const condominium = await storage.updateCondominiumStatus(id, "rejected");
+      
+      await createAuditLog(
+        req,
+        "reject",
+        "condominium",
+        id,
+        `Condominio rechazado: ${condominium.name}`
+      );
+
+      res.json(condominium);
+    } catch (error) {
+      console.error("Error rejecting condominium:", error);
+      res.status(500).json({ message: "Failed to reject condominium" });
+    }
+  });
+
   // Property routes
   app.get("/api/properties", async (req, res) => {
     try {
