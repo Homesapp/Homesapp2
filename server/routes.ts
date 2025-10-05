@@ -43,6 +43,9 @@ import {
   insertChatMessageSchema,
   insertChatParticipantSchema,
   updateUserProfileSchema,
+  insertAgreementTemplateSchema,
+  insertPropertySubmissionDraftSchema,
+  insertPropertyAgreementSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -1496,6 +1499,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating inspection report:", error);
       res.status(500).json({ message: error.message || "Error al actualizar reporte" });
+    }
+  });
+
+  // Agreement Templates routes (admin only)
+  app.get("/api/admin/agreement-templates", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { active } = req.query;
+      const filters = active !== undefined ? { active: active === "true" } : {};
+      
+      const templates = await storage.getAgreementTemplates(filters);
+      
+      await createAuditLog(
+        req,
+        "view",
+        "agreement_template",
+        null,
+        `Consultó ${templates.length} plantilla(s) de acuerdo`
+      );
+      
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching agreement templates:", error);
+      res.status(500).json({ message: error.message || "Error al obtener plantillas" });
+    }
+  });
+
+  app.get("/api/admin/agreement-templates/:id", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getAgreementTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Plantilla no encontrada" });
+      }
+      
+      await createAuditLog(
+        req,
+        "view",
+        "agreement_template",
+        id,
+        `Consultó plantilla de acuerdo "${template.name}"`
+      );
+      
+      res.json(template);
+    } catch (error: any) {
+      console.error("Error fetching agreement template:", error);
+      res.status(500).json({ message: error.message || "Error al obtener plantilla" });
+    }
+  });
+
+  app.post("/api/admin/agreement-templates", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const validationResult = insertAgreementTemplateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const template = await storage.createAgreementTemplate(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "agreement_template",
+        template.id,
+        `Plantilla de acuerdo "${template.name}" creada`
+      );
+
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error("Error creating agreement template:", error);
+      res.status(500).json({ message: error.message || "Error al crear plantilla" });
+    }
+  });
+
+  app.patch("/api/admin/agreement-templates/:id", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const validationResult = insertAgreementTemplateSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const existing = await storage.getAgreementTemplate(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Plantilla no encontrada" });
+      }
+
+      const updated = await storage.updateAgreementTemplate(id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "agreement_template",
+        id,
+        `Plantilla de acuerdo "${updated.name}" actualizada`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating agreement template:", error);
+      res.status(500).json({ message: error.message || "Error al actualizar plantilla" });
+    }
+  });
+
+  app.delete("/api/admin/agreement-templates/:id", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const existing = await storage.getAgreementTemplate(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Plantilla no encontrada" });
+      }
+
+      await storage.deleteAgreementTemplate(id);
+
+      await createAuditLog(
+        req,
+        "delete",
+        "agreement_template",
+        id,
+        `Plantilla de acuerdo "${existing.name}" eliminada`
+      );
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting agreement template:", error);
+      res.status(500).json({ message: error.message || "Error al eliminar plantilla" });
     }
   });
 
