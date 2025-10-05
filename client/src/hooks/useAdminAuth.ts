@@ -23,6 +23,7 @@ export function useAdminAuth() {
     },
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   return {
