@@ -1,20 +1,35 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Check, CheckCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Bell, Check, CheckCheck, Settings, Mail } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import type { Notification } from "@shared/schema";
 
 export default function Notifications() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+  });
+
+  const { data: settings } = useQuery<{
+    notificationPreferences?: Record<string, boolean>;
+    autoApproveAppointments?: boolean;
+    autoAcceptOffers?: boolean;
+  }>({
+    queryKey: ["/api/owner/settings"],
+    enabled: !!user && ["owner", "seller", "admin", "admin_jr", "master", "cliente"].includes(user.role || ""),
   });
 
   const markAsReadMutation = useMutation({
@@ -34,6 +49,36 @@ export default function Notifications() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     },
   });
+
+  const updatePreferencesMutation = useMutation({
+    mutationFn: async (preferences: Record<string, boolean>) => {
+      return await apiRequest("POST", "/api/owner/settings", {
+        notificationPreferences: preferences,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/settings"] });
+      toast({
+        title: "Preferencias actualizadas",
+        description: "Tus preferencias de notificaciones han sido guardadas",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar las preferencias",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePreferenceChange = (key: string, value: boolean) => {
+    const currentPreferences = (settings?.notificationPreferences || {}) as Record<string, boolean>;
+    const newPreferences = { ...currentPreferences, [key]: value };
+    updatePreferencesMutation.mutate(newPreferences);
+  };
+
+  const emailPreferences = (settings?.notificationPreferences || {}) as Record<string, boolean>;
 
   const handleNotificationClick = (notification: Notification) => {
     markAsReadMutation.mutate(notification.id);
@@ -129,6 +174,10 @@ export default function Notifications() {
                 {readNotifications.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="preferences" data-testid="tab-preferences">
+            <Settings className="h-4 w-4 mr-2" />
+            Preferencias
           </TabsTrigger>
         </TabsList>
 
@@ -257,6 +306,127 @@ export default function Notifications() {
               </Card>
             ))
           )}
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Mail className="h-6 w-6 text-primary" />
+                <div>
+                  <CardTitle>Preferencias de Email</CardTitle>
+                  <CardDescription>
+                    Configura qué notificaciones deseas recibir por correo electrónico
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="appointments-email" className="text-base">
+                      Citas
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibe notificaciones sobre nuevas citas y cambios
+                    </p>
+                  </div>
+                  <Switch
+                    id="appointments-email"
+                    checked={emailPreferences.appointments !== false}
+                    onCheckedChange={(checked) => handlePreferenceChange("appointments", checked)}
+                    data-testid="switch-appointments-email"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="offers-email" className="text-base">
+                      Ofertas
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibe notificaciones sobre nuevas ofertas
+                    </p>
+                  </div>
+                  <Switch
+                    id="offers-email"
+                    checked={emailPreferences.offers !== false}
+                    onCheckedChange={(checked) => handlePreferenceChange("offers", checked)}
+                    data-testid="switch-offers-email"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="messages-email" className="text-base">
+                      Mensajes
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibe notificaciones sobre nuevos mensajes
+                    </p>
+                  </div>
+                  <Switch
+                    id="messages-email"
+                    checked={emailPreferences.messages !== false}
+                    onCheckedChange={(checked) => handlePreferenceChange("messages", checked)}
+                    data-testid="switch-messages-email"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="property-updates-email" className="text-base">
+                      Actualizaciones de Propiedades
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibe notificaciones sobre cambios en propiedades
+                    </p>
+                  </div>
+                  <Switch
+                    id="property-updates-email"
+                    checked={emailPreferences.propertyUpdates !== false}
+                    onCheckedChange={(checked) => handlePreferenceChange("propertyUpdates", checked)}
+                    data-testid="switch-property-updates-email"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="rental-updates-email" className="text-base">
+                      Actualizaciones de Rentas
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibe notificaciones sobre el estado de tus rentas
+                    </p>
+                  </div>
+                  <Switch
+                    id="rental-updates-email"
+                    checked={emailPreferences.rentalUpdates !== false}
+                    onCheckedChange={(checked) => handlePreferenceChange("rentalUpdates", checked)}
+                    data-testid="switch-rental-updates-email"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="marketing-email" className="text-base">
+                      Marketing y Promociones
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibe ofertas especiales y novedades
+                    </p>
+                  </div>
+                  <Switch
+                    id="marketing-email"
+                    checked={emailPreferences.marketing === true}
+                    onCheckedChange={(checked) => handlePreferenceChange("marketing", checked)}
+                    data-testid="switch-marketing-email"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

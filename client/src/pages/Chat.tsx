@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useChatWebSocket } from "@/hooks/useChatWebSocket";
 import type { ChatConversation, ChatMessage } from "@shared/schema";
 
 export default function Chat() {
@@ -23,6 +24,10 @@ export default function Chat() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("rental");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Connect to WebSocket for real-time updates
+  useChatWebSocket(selectedConversation);
 
   const { data: conversations = [], isLoading } = useQuery<ChatConversation[]>({
     queryKey: ["/api/chat/conversations", activeTab],
@@ -49,11 +54,14 @@ export default function Chat() {
       return await apiRequest("POST", `/api/chat/messages`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", selectedConversation, "messages"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", activeTab] });
       setMessage("");
     },
   });
+  
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (!message.trim() || !selectedConversation || !currentUser?.id) return;
@@ -199,39 +207,42 @@ export default function Chat() {
                             <p className="text-sm">Inicia la conversación</p>
                           </div>
                         ) : (
-                          messages.map((msg) => {
-                            const isOwn = msg.senderId === currentUser?.id;
-                            return (
-                              <div
-                                key={msg.id}
-                                className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
-                                data-testid={`message-${msg.id}`}
-                              >
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback>
-                                    {getUserInitials(currentUser?.firstName || undefined)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className={`flex-1 ${isOwn ? "text-right" : ""}`}>
-                                  <div
-                                    className={`inline-block p-3 rounded-lg ${
-                                      isOwn
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted"
-                                    }`}
-                                  >
-                                    <p>{msg.message}</p>
+                          <>
+                            {messages.map((msg) => {
+                              const isOwn = msg.senderId === currentUser?.id;
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
+                                  data-testid={`message-${msg.id}`}
+                                >
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback>
+                                      {getUserInitials(currentUser?.firstName || undefined)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className={`flex-1 ${isOwn ? "text-right" : ""}`}>
+                                    <div
+                                      className={`inline-block p-3 rounded-lg ${
+                                        isOwn
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-muted"
+                                      }`}
+                                    >
+                                      <p>{msg.message}</p>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {formatDistanceToNow(new Date(msg.createdAt), {
+                                        addSuffix: true,
+                                        locale: es,
+                                      })}
+                                    </p>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {formatDistanceToNow(new Date(msg.createdAt), {
-                                      addSuffix: true,
-                                      locale: es,
-                                    })}
-                                  </p>
                                 </div>
-                              </div>
-                            );
-                          })
+                              );
+                            })}
+                            <div ref={messagesEndRef} />
+                          </>
                         )}
                       </div>
                     </ScrollArea>

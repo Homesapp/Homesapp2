@@ -491,6 +491,10 @@ export const presentationCards = pgTable("presentation_cards", {
   bathrooms: integer("bathrooms"),
   amenities: text("amenities").array().default(sql`ARRAY[]::text[]`),
   additionalRequirements: text("additional_requirements"),
+  moveInDate: timestamp("move_in_date"),
+  contractDuration: text("contract_duration"),
+  hasPets: boolean("has_pets").default(false),
+  petPhotoUrl: text("pet_photo_url"),
   timesUsed: integer("times_used").notNull().default(0), // Tracking de uso
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

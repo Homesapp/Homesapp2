@@ -1,7 +1,9 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { parse as parseCookie } from "cookie";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, requireRole } from "./replitAuth";
+import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { sendVerificationEmail } from "./resend";
 import bcrypt from "bcryptjs";
@@ -72,6 +74,9 @@ async function createAuditLog(
     console.error("Error creating audit log:", error);
   }
 }
+
+// WebSocket clients organized by conversation ID
+const wsClients = new Map<string, Set<WebSocket>>();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint - must be first for deployment health checks
@@ -3180,6 +3185,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const messageData = insertChatMessageSchema.parse(req.body);
       const message = await storage.createChatMessage(messageData);
+      
+      // Broadcast message to all connected clients in this conversation
+      const conversationId = messageData.conversationId;
+      if (wsClients.has(conversationId)) {
+        const clients = wsClients.get(conversationId)!;
+        const messagePayload = JSON.stringify({
+          type: 'new_message',
+          conversationId,
+          message
+        });
+        
+        clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(messagePayload);
+          }
+        });
+      }
+      
       res.status(201).json(message);
     } catch (error: any) {
       console.error("Error creating chat message:", error);
@@ -3210,5 +3233,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  const sessionMiddleware = getSession();
+  
+  // WebSocket setup for real-time chat
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws/chat' });
+  
+  wss.on('connection', async (ws, req) => {
+    console.log('WebSocket connection attempt');
+    
+    // Parse session from cookies
+    let userId: string | null = null;
+    
+    try {
+      const cookies = req.headers.cookie;
+      if (!cookies) {
+        console.error('WebSocket: No cookies found');
+        ws.close(1008, 'Unauthorized: No session');
+        return;
+      }
+      
+      const parsedCookies = parseCookie(cookies);
+      const sessionId = parsedCookies['connect.sid']?.split('.')[0]?.substring(2);
+      
+      if (!sessionId) {
+        console.error('WebSocket: No session ID found');
+        ws.close(1008, 'Unauthorized: No session');
+        return;
+      }
+      
+      // Get session from store
+      const sessionStore = (sessionMiddleware as any).store;
+      const session: any = await new Promise((resolve, reject) => {
+        sessionStore.get(sessionId, (err: any, session: any) => {
+          if (err) reject(err);
+          else resolve(session);
+        });
+      });
+      
+      if (!session) {
+        console.error('WebSocket: Session not found');
+        ws.close(1008, 'Unauthorized: Invalid session');
+        return;
+      }
+      
+      // Extract user ID from session
+      if (session.adminUser) {
+        userId = session.adminUser.id;
+      } else if (session.userId) {
+        userId = session.userId;
+      } else if (session.passport?.user?.claims?.sub) {
+        userId = session.passport.user.claims.sub;
+      }
+      
+      if (!userId) {
+        console.error('WebSocket: No user ID in session');
+        ws.close(1008, 'Unauthorized: No user');
+        return;
+      }
+      
+      console.log(`WebSocket: User ${userId} authenticated`);
+    } catch (error) {
+      console.error('WebSocket authentication error:', error);
+      ws.close(1008, 'Unauthorized: Authentication failed');
+      return;
+    }
+    
+    let currentConversationId: string | null = null;
+    
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        if (message.type === 'join_conversation') {
+          const conversationId = message.conversationId;
+          
+          if (!conversationId) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Missing conversation ID' }));
+            return;
+          }
+          
+          // Verify user is a participant in this conversation
+          try {
+            const participants = await storage.getChatParticipants(conversationId);
+            const isParticipant = participants.some(p => p.userId === userId);
+            
+            if (!isParticipant) {
+              console.error(`WebSocket: User ${userId} not authorized for conversation ${conversationId}`);
+              ws.send(JSON.stringify({ type: 'error', message: 'Not authorized for this conversation' }));
+              return;
+            }
+            
+            currentConversationId = conversationId;
+            
+            if (!wsClients.has(currentConversationId)) {
+              wsClients.set(currentConversationId, new Set());
+            }
+            wsClients.get(currentConversationId)!.add(ws);
+            
+            console.log(`WebSocket: User ${userId} joined conversation ${currentConversationId}`);
+            ws.send(JSON.stringify({ type: 'joined', conversationId: currentConversationId }));
+          } catch (error) {
+            console.error('WebSocket: Error verifying participant:', error);
+            ws.send(JSON.stringify({ type: 'error', message: 'Failed to verify authorization' }));
+          }
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+      }
+    });
+    
+    ws.on('close', () => {
+      if (currentConversationId) {
+        if (wsClients.has(currentConversationId)) {
+          wsClients.get(currentConversationId)!.delete(ws);
+          
+          if (wsClients.get(currentConversationId)!.size === 0) {
+            wsClients.delete(currentConversationId);
+          }
+        }
+      }
+      console.log(`WebSocket: User ${userId} disconnected`);
+    });
+    
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+  });
+  
   return httpServer;
 }

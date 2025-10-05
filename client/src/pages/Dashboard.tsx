@@ -217,10 +217,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-8">
         {/* Upcoming Appointments Section - Only for authenticated users */}
         {isUserAuthenticated && upcomingAppointments.length > 0 && (
-          <div className="mb-16">
+          <div className="mb-8">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -258,8 +258,8 @@ export default function Dashboard() {
 
         {/* Featured Properties Section */}
         {featuredProperties.length > 0 && (
-          <div className="mb-20">
-            <div className="flex items-center justify-between mb-8">
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-3xl font-bold mb-2" data-testid="text-featured-title">Propiedades Destacadas</h2>
                 <p className="text-muted-foreground">Las mejores opciones seleccionadas para ti</p>
@@ -310,30 +310,28 @@ export default function Dashboard() {
                       </Button>
                     )}
                   </div>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-xl font-semibold line-clamp-1" data-testid={`text-title-featured-${property.id}`}>
-                        {property.title}
-                      </h3>
-                    </div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-semibold mb-2 line-clamp-2 min-h-[3.5rem]" data-testid={`text-title-featured-${property.id}`}>
+                      {property.title}
+                    </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                      <MapPin className="h-4 w-4" />
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
                       <span className="line-clamp-1" data-testid={`text-location-featured-${property.id}`}>
                         {property.location}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mb-4">
                       <span data-testid={`text-bedrooms-featured-${property.id}`}>{property.bedrooms} recámaras</span>
                       <span>•</span>
                       <span data-testid={`text-bathrooms-featured-${property.id}`}>{property.bathrooms} baños</span>
                       <span>•</span>
                       <span data-testid={`text-area-featured-${property.id}`}>{property.area} m²</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-primary" data-testid={`text-price-featured-${property.id}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xl font-bold text-primary" data-testid={`text-price-featured-${property.id}`}>
                         {formatPrice(property.price)}
                       </span>
-                      <Badge variant="outline" className="capitalize" data-testid={`badge-status-featured-${property.id}`}>
+                      <Badge variant="outline" className="capitalize flex-shrink-0" data-testid={`badge-status-featured-${property.id}`}>
                         {property.status === "rent" ? "Renta" : "Venta"}
                       </Badge>
                     </div>
@@ -346,7 +344,7 @@ export default function Dashboard() {
 
         {/* All Properties Section */}
         <div>
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold mb-2" data-testid="text-all-properties-title">Explora Propiedades</h2>
               <p className="text-muted-foreground">Descubre todas nuestras opciones disponibles</p>
@@ -406,23 +404,23 @@ export default function Dashboard() {
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-semibold line-clamp-1 mb-1" data-testid={`text-title-all-${property.id}`}>
+                    <h3 className="font-semibold line-clamp-2 mb-2 min-h-[2.5rem]" data-testid={`text-title-all-${property.id}`}>
                       {property.title}
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                      <MapPin className="h-3 w-3" />
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
                       <span className="line-clamp-1" data-testid={`text-location-all-${property.id}`}>
                         {property.location}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mb-3">
                       <span data-testid={`text-bedrooms-all-${property.id}`}>{property.bedrooms} rec</span>
                       <span>•</span>
                       <span data-testid={`text-bathrooms-all-${property.id}`}>{property.bathrooms} ba</span>
                       <span>•</span>
                       <span data-testid={`text-area-all-${property.id}`}>{property.area} m²</span>
                     </div>
-                    <div className="font-bold text-primary" data-testid={`text-price-all-${property.id}`}>
+                    <div className="font-bold text-primary text-base" data-testid={`text-price-all-${property.id}`}>
                       {formatPrice(property.price)}
                     </div>
                   </div>
@@ -433,7 +431,7 @@ export default function Dashboard() {
         </div>
 
         {/* CTA Section */}
-        <div className="mt-20">
+        <div className="mt-12">
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
             <div className="p-12 text-center">
               <h2 className="text-3xl font-bold mb-4">¿No encuentras lo que buscas?</h2>
