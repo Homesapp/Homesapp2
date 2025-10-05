@@ -69,6 +69,44 @@ A comprehensive bidirectional review system enables feedback between users:
 
 Review tables: `property_reviews`, `appointment_reviews`, `concierge_reviews`, `client_reviews`
 
+#### Income Management System (October 2025)
+A comprehensive financial tracking and payout management system for commissions, referrals, and rental income:
+
+**Database Schema**:
+- `rentalCommissionConfigs`: Defines commission percentages for properties/users (admin-managed)
+- `accountantAssignments`: Scopes which properties/users each accountant manages (property-specific or user-specific)
+- `payoutBatches`: Groups multiple transactions for batch processing with workflow states (draft→approved→paid)
+- `incomeTransactions`: Individual payment records with categories (referral_client, referral_owner, rental_commission, other_income)
+
+**Enums**: `incomeCategory`, `payoutBatchStatus` (draft/approved/rejected/paid/cancelled), `assignmentType` (property/user)
+
+**Access Control**:
+- **Accountants**: Limited scope based on assignments; can create transactions/batches only for assigned properties/users
+- **Admins**: Full access to all transactions, batch approval workflow, and commission configuration
+
+**Workflow**:
+1. Admin assigns accountants to specific properties or users
+2. Accountant creates income transactions within their scope
+3. Accountant groups transactions into payout batches (status: draft)
+4. Admin reviews and approves/rejects batches (dual approval requirement)
+5. Admin marks batches as paid when payment is completed
+6. All status changes are audit-logged
+
+**API Endpoints**:
+- `/api/income/commission-configs` (Admin only): CRUD for commission configuration
+- `/api/income/assignments` (Admin only): CRUD for accountant assignments
+- `/api/income/my-assignments` (Accountant): View own active assignments
+- `/api/income/batches` (Accountant/Admin): CRUD for payout batches with status workflow
+- `/api/income/transactions` (Accountant/Admin): CRUD for income transactions with scope filtering
+- `/api/income/reports` (Admin only): Aggregate reports by user/property/category/timeframe
+
+**Features**:
+- Sequential batch number generation per year (format: YYYY-NNNN)
+- Accountant scope filtering ensures data isolation
+- Comprehensive reporting with grouping by day/week/month/user/property/category
+- Audit logging for all batch status changes and critical operations
+- Zod schema validation on all mutations
+
 ### Key Features and Workflows
 
 *   **Property Management**: Includes a property approval workflow, owner-submitted change requests, and owner settings for appointment auto-approval. All properties are standardized to Tulum location. Sublease functionality is supported with search filters.
