@@ -28,6 +28,8 @@ interface SearchFilters {
   status?: string;
   minRating?: number;
   featured?: boolean;
+  availableFrom?: string;
+  availableTo?: string;
 }
 
 const AVAILABLE_AMENITIES = [
@@ -50,7 +52,14 @@ export default function PropertySearch() {
   const [filters, setFilters] = useState<SearchFilters>({});
   const [showFilters, setShowFilters] = useState(true);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  // Cargar favoritos del usuario
+  const { data: favorites = [] } = useQuery({
+    queryKey: ["/api/favorites"],
+    enabled: isAuthenticated,
+  });
+
+  const favoriteIds = new Set((favorites as any[]).map((fav: any) => fav.propertyId));
 
   const buildQueryString = (filters: SearchFilters) => {
     const params = new URLSearchParams();
@@ -66,6 +75,8 @@ export default function PropertySearch() {
     if (filters.status) params.append("status", filters.status);
     if (filters.minRating !== undefined) params.append("minRating", filters.minRating.toString());
     if (filters.featured !== undefined) params.append("featured", filters.featured.toString());
+    if (filters.availableFrom) params.append("availableFrom", filters.availableFrom);
+    if (filters.availableTo) params.append("availableTo", filters.availableTo);
     if (selectedAmenities.length > 0) params.append("amenities", selectedAmenities.join(","));
     
     return params.toString();
@@ -89,6 +100,38 @@ export default function PropertySearch() {
         ? prev.filter(a => a !== amenity)
         : [...prev, amenity]
     );
+  };
+
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
+      const isFavorite = favoriteIds.has(propertyId);
+      if (isFavorite) {
+        await apiRequest("DELETE", `/api/favorites/${propertyId}`, null);
+      } else {
+        await apiRequest("POST", "/api/favorites", { propertyId });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error al actualizar favoritos",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggleFavorite = (e: React.MouseEvent, propertyId: string) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      toast({
+        title: "Inicia sesión para guardar favoritos",
+        variant: "destructive",
+      });
+      return;
+    }
+    toggleFavoriteMutation.mutate(propertyId);
   };
 
   const clearFilters = () => {
@@ -245,6 +288,26 @@ export default function PropertySearch() {
                     </Select>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label>Disponible Desde</Label>
+                    <Input
+                      type="date"
+                      value={filters.availableFrom || ""}
+                      onChange={(e) => setFilters({ ...filters, availableFrom: e.target.value || undefined })}
+                      data-testid="input-available-from"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Disponible Hasta</Label>
+                    <Input
+                      type="date"
+                      value={filters.availableTo || ""}
+                      onChange={(e) => setFilters({ ...filters, availableTo: e.target.value || undefined })}
+                      data-testid="input-available-to"
+                    />
+                  </div>
+
                   <Separator />
 
                   <div className="space-y-2">
@@ -317,12 +380,13 @@ export default function PropertySearch() {
                           size="icon"
                           variant="ghost"
                           className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
+                          onClick={(e) => handleToggleFavorite(e, property.id)}
+                          disabled={toggleFavoriteMutation.isPending}
                           data-testid={`button-favorite-${property.id}`}
                         >
-                          <Heart className="h-4 w-4" />
+                          <Heart 
+                            className={`h-4 w-4 ${favoriteIds.has(property.id) ? "fill-red-500 text-red-500" : ""}`} 
+                          />
                         </Button>
                       )}
                       {property.images && property.images.length > 0 ? (
