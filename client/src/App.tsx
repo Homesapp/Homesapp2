@@ -38,6 +38,7 @@ import Tasks from "@/pages/Tasks";
 import MyOpportunities from "@/pages/MyOpportunities";
 import MyProperties from "@/pages/MyProperties";
 import OwnerPropertyDetails from "@/pages/OwnerPropertyDetails";
+import EditOwnerProperty from "@/pages/EditOwnerProperty";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -133,6 +134,7 @@ function AuthenticatedApp() {
               <Route path="/favoritos" component={Favorites} />
               <Route path="/mis-oportunidades" component={MyOpportunities} />
               <Route path="/mis-propiedades" component={MyProperties} />
+              <Route path="/owner/property/:id/edit" component={EditOwnerProperty} />
               <Route path="/owner/property/:id" component={OwnerPropertyDetails} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />

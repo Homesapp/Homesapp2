@@ -892,6 +892,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single property by ID (owner must be the owner of the property)
+  app.get("/api/owner/properties/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { id } = req.params;
+      
+      if (!user || !["owner", "seller", "admin", "admin_jr", "master"].includes(user.role)) {
+        return res.status(403).json({ message: "Acceso denegado" });
+      }
+      
+      const property = await storage.getProperty(id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+      
+      // Verify owner
+      if (property.ownerId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para ver esta propiedad" });
+      }
+      
+      res.json(property);
+    } catch (error) {
+      console.error("Error fetching owner property:", error);
+      res.status(500).json({ message: "Error al obtener propiedad" });
+    }
+  });
+
   app.get("/api/owner/change-requests", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

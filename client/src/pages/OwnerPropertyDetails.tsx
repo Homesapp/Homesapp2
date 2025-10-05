@@ -66,7 +66,16 @@ export default function OwnerPropertyDetails() {
   const { toast } = useToast();
 
   const { data: property, isLoading } = useQuery<Property>({
-    queryKey: ["/api/owner/properties", id],
+    queryKey: ["/api/owner/properties", id, "detail"],
+    queryFn: async () => {
+      const response = await fetch(`/api/owner/properties/${id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch property");
+      }
+      return response.json();
+    },
     enabled: !!id && id !== "new",
   });
 
