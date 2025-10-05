@@ -53,6 +53,10 @@ import {
   insertProviderApplicationSchema,
   insertFeedbackSchema,
   updateFeedbackSchema,
+  insertRentalCommissionConfigSchema,
+  insertAccountantAssignmentSchema,
+  insertPayoutBatchSchema,
+  insertIncomeTransactionSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -113,6 +117,28 @@ function requireFullAdmin(req: any, res: any, next: any) {
     next();
   }).catch(error => {
     console.error("Error checking admin privileges:", error);
+    res.status(500).json({ message: "Internal server error" });
+  });
+}
+
+// Middleware to require accountant or admin role
+function requireAccountantOrAdmin(req: any, res: any, next: any) {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  const userId = user.claims.sub;
+  storage.getUser(userId).then(dbUser => {
+    if (!dbUser || !["accountant", "master", "admin", "admin_jr"].includes(dbUser.role)) {
+      return res.status(403).json({ 
+        message: "Forbidden: This action requires accountant or administrator privileges" 
+      });
+    }
+    req.dbUser = dbUser; // Attach user to request for later use
+    next();
+  }).catch(error => {
+    console.error("Error checking accountant privileges:", error);
     res.status(500).json({ message: "Internal server error" });
   });
 }
@@ -5359,6 +5385,496 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating feedback:", error);
       res.status(500).json({ message: "Failed to update feedback" });
+    }
+  });
+
+  // ============================================================================
+  // INCOME MANAGEMENT SYSTEM ROUTES
+  // ============================================================================
+
+  // Rental Commission Config endpoints (Admin only)
+  app.get("/api/income/commission-configs", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { propertyId, userId } = req.query;
+      const configs = await storage.getRentalCommissionConfigs({
+        propertyId: propertyId as string,
+        userId: userId as string,
+      });
+      res.json(configs);
+    } catch (error: any) {
+      console.error("Error fetching commission configs:", error);
+      res.status(500).json({ message: "Failed to fetch commission configs" });
+    }
+  });
+
+  app.get("/api/income/commission-configs/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const config = await storage.getRentalCommissionConfig(req.params.id);
+      if (!config) {
+        return res.status(404).json({ message: "Commission config not found" });
+      }
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching commission config:", error);
+      res.status(500).json({ message: "Failed to fetch commission config" });
+    }
+  });
+
+  app.post("/api/income/commission-configs", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const validationResult = insertRentalCommissionConfigSchema.safeParse({
+        ...req.body,
+        createdBy: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const config = await storage.createRentalCommissionConfig(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "rental_commission_config",
+        config.id,
+        `Created commission config`
+      );
+
+      res.status(201).json(config);
+    } catch (error: any) {
+      console.error("Error creating commission config:", error);
+      res.status(500).json({ message: "Failed to create commission config" });
+    }
+  });
+
+  app.put("/api/income/commission-configs/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const validationResult = insertRentalCommissionConfigSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const updated = await storage.updateRentalCommissionConfig(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "rental_commission_config",
+        req.params.id,
+        `Updated commission config`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating commission config:", error);
+      res.status(500).json({ message: "Failed to update commission config" });
+    }
+  });
+
+  app.delete("/api/income/commission-configs/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      await storage.deleteRentalCommissionConfig(req.params.id);
+
+      await createAuditLog(
+        req,
+        "delete",
+        "rental_commission_config",
+        req.params.id,
+        `Deleted commission config`
+      );
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting commission config:", error);
+      res.status(500).json({ message: "Failed to delete commission config" });
+    }
+  });
+
+  // Accountant Assignment endpoints (Admin only)
+  app.get("/api/income/assignments", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { accountantId, assignmentType, propertyId, userId } = req.query;
+      const assignments = await storage.getAccountantAssignments({
+        accountantId: accountantId as string,
+        assignmentType: assignmentType as string,
+        propertyId: propertyId as string,
+        userId: userId as string,
+      });
+      res.json(assignments);
+    } catch (error: any) {
+      console.error("Error fetching accountant assignments:", error);
+      res.status(500).json({ message: "Failed to fetch accountant assignments" });
+    }
+  });
+
+  app.get("/api/income/my-assignments", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const assignments = await storage.getAccountantActiveAssignments(userId);
+      res.json(assignments);
+    } catch (error: any) {
+      console.error("Error fetching my assignments:", error);
+      res.status(500).json({ message: "Failed to fetch assignments" });
+    }
+  });
+
+  app.post("/api/income/assignments", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const validationResult = insertAccountantAssignmentSchema.safeParse({
+        ...req.body,
+        createdBy: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const assignment = await storage.createAccountantAssignment(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "accountant_assignment",
+        assignment.id,
+        `Created accountant assignment for ${assignment.accountantId}`
+      );
+
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error("Error creating accountant assignment:", error);
+      res.status(500).json({ message: "Failed to create accountant assignment" });
+    }
+  });
+
+  app.put("/api/income/assignments/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const validationResult = insertAccountantAssignmentSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const updated = await storage.updateAccountantAssignment(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "accountant_assignment",
+        req.params.id,
+        `Updated accountant assignment`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating accountant assignment:", error);
+      res.status(500).json({ message: "Failed to update accountant assignment" });
+    }
+  });
+
+  app.delete("/api/income/assignments/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      await storage.deleteAccountantAssignment(req.params.id);
+
+      await createAuditLog(
+        req,
+        "delete",
+        "accountant_assignment",
+        req.params.id,
+        `Deleted accountant assignment`
+      );
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting accountant assignment:", error);
+      res.status(500).json({ message: "Failed to delete accountant assignment" });
+    }
+  });
+
+  // Payout Batch endpoints
+  app.get("/api/income/batches", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const { status, createdBy } = req.query;
+      const batches = await storage.getPayoutBatches({
+        status: status as string,
+        createdBy: createdBy as string,
+      });
+      res.json(batches);
+    } catch (error: any) {
+      console.error("Error fetching payout batches:", error);
+      res.status(500).json({ message: "Failed to fetch payout batches" });
+    }
+  });
+
+  app.get("/api/income/batches/:id", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const batch = await storage.getPayoutBatch(req.params.id);
+      if (!batch) {
+        return res.status(404).json({ message: "Payout batch not found" });
+      }
+      res.json(batch);
+    } catch (error: any) {
+      console.error("Error fetching payout batch:", error);
+      res.status(500).json({ message: "Failed to fetch payout batch" });
+    }
+  });
+
+  app.post("/api/income/batches", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const batchNumber = await storage.generatePayoutBatchNumber();
+
+      const validationResult = insertPayoutBatchSchema.safeParse({
+        ...req.body,
+        batchNumber,
+        createdBy: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const batch = await storage.createPayoutBatch(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "payout_batch",
+        batch.id,
+        `Created payout batch ${batch.batchNumber}`
+      );
+
+      res.status(201).json(batch);
+    } catch (error: any) {
+      console.error("Error creating payout batch:", error);
+      res.status(500).json({ message: "Failed to create payout batch" });
+    }
+  });
+
+  app.put("/api/income/batches/:id", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const validationResult = insertPayoutBatchSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const updated = await storage.updatePayoutBatch(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "payout_batch",
+        req.params.id,
+        `Updated payout batch ${updated.batchNumber}`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating payout batch:", error);
+      res.status(500).json({ message: "Failed to update payout batch" });
+    }
+  });
+
+  app.post("/api/income/batches/:id/status", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { status, notes } = req.body;
+      const userId = (req.user as any).claims.sub;
+
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const updated = await storage.updatePayoutBatchStatus(req.params.id, status, userId, notes);
+
+      await createAuditLog(
+        req,
+        "update",
+        "payout_batch",
+        req.params.id,
+        `Changed payout batch status to ${status}`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating payout batch status:", error);
+      res.status(500).json({ message: "Failed to update payout batch status" });
+    }
+  });
+
+  // Income Transaction endpoints
+  app.get("/api/income/transactions", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const dbUser = (req as any).dbUser;
+      
+      const { beneficiaryId, category, status, propertyId, payoutBatchId, fromDate, toDate } = req.query;
+
+      // Apply accountant scope filtering if user is accountant
+      const filters: any = {
+        beneficiaryId: beneficiaryId as string,
+        category: category as string,
+        status: status as string,
+        propertyId: propertyId as string,
+        payoutBatchId: payoutBatchId as string,
+        fromDate: fromDate ? new Date(fromDate as string) : undefined,
+        toDate: toDate ? new Date(toDate as string) : undefined,
+      };
+
+      // If user is accountant (not admin), apply scope filtering
+      if (dbUser.role === "accountant") {
+        filters.accountantId = userId;
+      }
+
+      const transactions = await storage.getIncomeTransactions(filters);
+      res.json(transactions);
+    } catch (error: any) {
+      console.error("Error fetching income transactions:", error);
+      res.status(500).json({ message: "Failed to fetch income transactions" });
+    }
+  });
+
+  app.get("/api/income/transactions/:id", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const transaction = await storage.getIncomeTransaction(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ message: "Income transaction not found" });
+      }
+      res.json(transaction);
+    } catch (error: any) {
+      console.error("Error fetching income transaction:", error);
+      res.status(500).json({ message: "Failed to fetch income transaction" });
+    }
+  });
+
+  app.post("/api/income/transactions", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const validationResult = insertIncomeTransactionSchema.safeParse({
+        ...req.body,
+        createdBy: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const transaction = await storage.createIncomeTransaction(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "income_transaction",
+        transaction.id,
+        `Created income transaction for ${transaction.beneficiaryId}`
+      );
+
+      res.status(201).json(transaction);
+    } catch (error: any) {
+      console.error("Error creating income transaction:", error);
+      res.status(500).json({ message: "Failed to create income transaction" });
+    }
+  });
+
+  app.put("/api/income/transactions/:id", isAuthenticated, requireAccountantOrAdmin, async (req, res) => {
+    try {
+      const validationResult = insertIncomeTransactionSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const updated = await storage.updateIncomeTransaction(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "income_transaction",
+        req.params.id,
+        `Updated income transaction`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating income transaction:", error);
+      res.status(500).json({ message: "Failed to update income transaction" });
+    }
+  });
+
+  app.post("/api/income/transactions/:id/status", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { status, notes, rejectionReason } = req.body;
+      const userId = (req.user as any).claims.sub;
+
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const updated = await storage.updateIncomeTransactionStatus(
+        req.params.id,
+        status,
+        userId,
+        notes,
+        rejectionReason
+      );
+
+      await createAuditLog(
+        req,
+        "update",
+        "income_transaction",
+        req.params.id,
+        `Changed income transaction status to ${status}`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating income transaction status:", error);
+      res.status(500).json({ message: "Failed to update income transaction status" });
+    }
+  });
+
+  // Income Reports endpoint (Admin only)
+  app.get("/api/income/reports", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { beneficiaryId, propertyId, category, status, fromDate, toDate, groupBy } = req.query;
+
+      const reports = await storage.getIncomeReports({
+        beneficiaryId: beneficiaryId as string,
+        propertyId: propertyId as string,
+        category: category as string,
+        status: status as string,
+        fromDate: fromDate ? new Date(fromDate as string) : undefined,
+        toDate: toDate ? new Date(toDate as string) : undefined,
+        groupBy: groupBy as any,
+      });
+
+      res.json(reports);
+    } catch (error: any) {
+      console.error("Error fetching income reports:", error);
+      res.status(500).json({ message: "Failed to fetch income reports" });
     }
   });
 

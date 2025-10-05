@@ -41,6 +41,10 @@ import {
   clientReferrals,
   ownerReferrals,
   feedback,
+  rentalCommissionConfigs,
+  accountantAssignments,
+  payoutBatches,
+  incomeTransactions,
   type User,
   type Colony,
   type InsertColony,
@@ -123,6 +127,14 @@ import {
   type PropertyReview,
   type InsertPropertyReview,
   type AppointmentReview,
+  type RentalCommissionConfig,
+  type InsertRentalCommissionConfig,
+  type AccountantAssignment,
+  type InsertAccountantAssignment,
+  type PayoutBatch,
+  type InsertPayoutBatch,
+  type IncomeTransaction,
+  type InsertIncomeTransaction,
   type InsertAppointmentReview,
   type ConciergeReview,
   type InsertConciergeReview,
@@ -421,6 +433,59 @@ export interface IStorage {
   getAllFeedback(filters?: { type?: string; status?: string; userId?: string }): Promise<Feedback[]>;
   createFeedback(feedbackData: InsertFeedback): Promise<Feedback>;
   updateFeedback(id: string, updates: UpdateFeedback): Promise<Feedback>;
+
+  // Rental Commission Config operations
+  getRentalCommissionConfig(id: string): Promise<RentalCommissionConfig | undefined>;
+  getRentalCommissionConfigs(filters?: { propertyId?: string; userId?: string }): Promise<RentalCommissionConfig[]>;
+  createRentalCommissionConfig(config: InsertRentalCommissionConfig): Promise<RentalCommissionConfig>;
+  updateRentalCommissionConfig(id: string, updates: Partial<InsertRentalCommissionConfig>): Promise<RentalCommissionConfig>;
+  deleteRentalCommissionConfig(id: string): Promise<void>;
+
+  // Accountant Assignment operations
+  getAccountantAssignment(id: string): Promise<AccountantAssignment | undefined>;
+  getAccountantAssignments(filters?: { accountantId?: string; assignmentType?: string; propertyId?: string; userId?: string }): Promise<AccountantAssignment[]>;
+  createAccountantAssignment(assignment: InsertAccountantAssignment): Promise<AccountantAssignment>;
+  updateAccountantAssignment(id: string, updates: Partial<InsertAccountantAssignment>): Promise<AccountantAssignment>;
+  deleteAccountantAssignment(id: string): Promise<void>;
+  getAccountantActiveAssignments(accountantId: string): Promise<AccountantAssignment[]>;
+
+  // Payout Batch operations
+  getPayoutBatch(id: string): Promise<PayoutBatch | undefined>;
+  getPayoutBatches(filters?: { status?: string; createdBy?: string }): Promise<PayoutBatch[]>;
+  createPayoutBatch(batch: InsertPayoutBatch): Promise<PayoutBatch>;
+  updatePayoutBatch(id: string, updates: Partial<InsertPayoutBatch>): Promise<PayoutBatch>;
+  updatePayoutBatchStatus(id: string, status: string, updatedBy: string, notes?: string): Promise<PayoutBatch>;
+  generatePayoutBatchNumber(): Promise<string>;
+
+  // Income Transaction operations
+  getIncomeTransaction(id: string): Promise<IncomeTransaction | undefined>;
+  getIncomeTransactions(filters?: { 
+    beneficiaryId?: string;
+    category?: string;
+    status?: string;
+    propertyId?: string;
+    payoutBatchId?: string;
+    accountantId?: string; // For scope filtering
+    fromDate?: Date;
+    toDate?: Date;
+  }): Promise<IncomeTransaction[]>;
+  createIncomeTransaction(transaction: InsertIncomeTransaction): Promise<IncomeTransaction>;
+  updateIncomeTransaction(id: string, updates: Partial<InsertIncomeTransaction>): Promise<IncomeTransaction>;
+  updateIncomeTransactionStatus(id: string, status: string, updatedBy: string, notes?: string, rejectionReason?: string): Promise<IncomeTransaction>;
+  getIncomeReports(filters?: {
+    beneficiaryId?: string;
+    propertyId?: string;
+    category?: string;
+    status?: string;
+    fromDate?: Date;
+    toDate?: Date;
+    groupBy?: 'beneficiary' | 'property' | 'category' | 'status';
+  }): Promise<Array<{
+    groupKey: string;
+    totalAmount: string;
+    count: number;
+    avgAmount: string;
+  }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2338,6 +2403,392 @@ export class DatabaseStorage implements IStorage {
       .where(eq(feedback.id, id))
       .returning();
     return updated;
+  }
+
+  // Rental Commission Config operations
+  async getRentalCommissionConfig(id: string): Promise<RentalCommissionConfig | undefined> {
+    const [config] = await db.select().from(rentalCommissionConfigs).where(eq(rentalCommissionConfigs.id, id));
+    return config;
+  }
+
+  async getRentalCommissionConfigs(filters?: { propertyId?: string; userId?: string }): Promise<RentalCommissionConfig[]> {
+    let query = db.select().from(rentalCommissionConfigs);
+    
+    const conditions = [];
+    if (filters?.propertyId) {
+      conditions.push(eq(rentalCommissionConfigs.propertyId, filters.propertyId));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(rentalCommissionConfigs.userId, filters.userId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(rentalCommissionConfigs.createdAt));
+  }
+
+  async createRentalCommissionConfig(configData: InsertRentalCommissionConfig): Promise<RentalCommissionConfig> {
+    const [config] = await db.insert(rentalCommissionConfigs).values(configData).returning();
+    return config;
+  }
+
+  async updateRentalCommissionConfig(id: string, updates: Partial<InsertRentalCommissionConfig>): Promise<RentalCommissionConfig> {
+    const [updated] = await db
+      .update(rentalCommissionConfigs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(rentalCommissionConfigs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRentalCommissionConfig(id: string): Promise<void> {
+    await db.delete(rentalCommissionConfigs).where(eq(rentalCommissionConfigs.id, id));
+  }
+
+  // Accountant Assignment operations
+  async getAccountantAssignment(id: string): Promise<AccountantAssignment | undefined> {
+    const [assignment] = await db.select().from(accountantAssignments).where(eq(accountantAssignments.id, id));
+    return assignment;
+  }
+
+  async getAccountantAssignments(filters?: { accountantId?: string; assignmentType?: string; propertyId?: string; userId?: string }): Promise<AccountantAssignment[]> {
+    let query = db.select().from(accountantAssignments);
+    
+    const conditions = [];
+    if (filters?.accountantId) {
+      conditions.push(eq(accountantAssignments.accountantId, filters.accountantId));
+    }
+    if (filters?.assignmentType) {
+      conditions.push(eq(accountantAssignments.assignmentType, filters.assignmentType as any));
+    }
+    if (filters?.propertyId) {
+      conditions.push(eq(accountantAssignments.propertyId, filters.propertyId));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(accountantAssignments.userId, filters.userId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(accountantAssignments.createdAt));
+  }
+
+  async createAccountantAssignment(assignmentData: InsertAccountantAssignment): Promise<AccountantAssignment> {
+    const [assignment] = await db.insert(accountantAssignments).values(assignmentData).returning();
+    return assignment;
+  }
+
+  async updateAccountantAssignment(id: string, updates: Partial<InsertAccountantAssignment>): Promise<AccountantAssignment> {
+    const [updated] = await db
+      .update(accountantAssignments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(accountantAssignments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAccountantAssignment(id: string): Promise<void> {
+    await db.delete(accountantAssignments).where(eq(accountantAssignments.id, id));
+  }
+
+  async getAccountantActiveAssignments(accountantId: string): Promise<AccountantAssignment[]> {
+    const now = new Date();
+    return await db
+      .select()
+      .from(accountantAssignments)
+      .where(
+        and(
+          eq(accountantAssignments.accountantId, accountantId),
+          lte(accountantAssignments.effectiveFrom, now),
+          or(
+            isNull(accountantAssignments.effectiveTo),
+            gte(accountantAssignments.effectiveTo, now)
+          )
+        )
+      )
+      .orderBy(desc(accountantAssignments.createdAt));
+  }
+
+  // Payout Batch operations
+  async getPayoutBatch(id: string): Promise<PayoutBatch | undefined> {
+    const [batch] = await db.select().from(payoutBatches).where(eq(payoutBatches.id, id));
+    return batch;
+  }
+
+  async getPayoutBatches(filters?: { status?: string; createdBy?: string }): Promise<PayoutBatch[]> {
+    let query = db.select().from(payoutBatches);
+    
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(payoutBatches.status, filters.status as any));
+    }
+    if (filters?.createdBy) {
+      conditions.push(eq(payoutBatches.createdBy, filters.createdBy));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(payoutBatches.createdAt));
+  }
+
+  async createPayoutBatch(batchData: InsertPayoutBatch): Promise<PayoutBatch> {
+    const [batch] = await db.insert(payoutBatches).values(batchData).returning();
+    return batch;
+  }
+
+  async updatePayoutBatch(id: string, updates: Partial<InsertPayoutBatch>): Promise<PayoutBatch> {
+    const [updated] = await db
+      .update(payoutBatches)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(payoutBatches.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updatePayoutBatchStatus(id: string, status: string, updatedBy: string, notes?: string): Promise<PayoutBatch> {
+    const updates: any = {
+      status: status as any,
+      updatedAt: new Date(),
+    };
+
+    if (notes) {
+      updates.notes = notes;
+    }
+
+    if (status === "approved") {
+      updates.approvedBy = updatedBy;
+      updates.approvedAt = new Date();
+    } else if (status === "paid") {
+      updates.paidBy = updatedBy;
+      updates.paidAt = new Date();
+      updates.actualPaymentDate = new Date();
+    }
+
+    const [updated] = await db
+      .update(payoutBatches)
+      .set(updates)
+      .where(eq(payoutBatches.id, id))
+      .returning();
+    return updated;
+  }
+
+  async generatePayoutBatchNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(payoutBatches)
+      .where(sql`EXTRACT(YEAR FROM created_at) = ${year}`);
+    
+    const count = Number(result[0]?.count || 0) + 1;
+    return `PAYOUT-${year}-${String(count).padStart(3, '0')}`;
+  }
+
+  // Income Transaction operations
+  async getIncomeTransaction(id: string): Promise<IncomeTransaction | undefined> {
+    const [transaction] = await db.select().from(incomeTransactions).where(eq(incomeTransactions.id, id));
+    return transaction;
+  }
+
+  async getIncomeTransactions(filters?: { 
+    beneficiaryId?: string;
+    category?: string;
+    status?: string;
+    propertyId?: string;
+    payoutBatchId?: string;
+    accountantId?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  }): Promise<IncomeTransaction[]> {
+    let query = db.select().from(incomeTransactions);
+    
+    const conditions = [];
+    
+    if (filters?.beneficiaryId) {
+      conditions.push(eq(incomeTransactions.beneficiaryId, filters.beneficiaryId));
+    }
+    if (filters?.category) {
+      conditions.push(eq(incomeTransactions.category, filters.category as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(incomeTransactions.status, filters.status as any));
+    }
+    if (filters?.propertyId) {
+      conditions.push(eq(incomeTransactions.propertyId, filters.propertyId));
+    }
+    if (filters?.payoutBatchId) {
+      conditions.push(eq(incomeTransactions.payoutBatchId, filters.payoutBatchId));
+    }
+    if (filters?.fromDate) {
+      conditions.push(gte(incomeTransactions.createdAt, filters.fromDate));
+    }
+    if (filters?.toDate) {
+      conditions.push(lte(incomeTransactions.createdAt, filters.toDate));
+    }
+
+    // Accountant scope filtering
+    if (filters?.accountantId) {
+      const assignments = await this.getAccountantActiveAssignments(filters.accountantId);
+      const hasAllAccess = assignments.some(a => a.assignmentType === 'all');
+      
+      if (!hasAllAccess) {
+        const propertyIds = assignments
+          .filter(a => a.assignmentType === 'property' && a.propertyId)
+          .map(a => a.propertyId!);
+        
+        const userIds = assignments
+          .filter(a => a.assignmentType === 'user' && a.userId)
+          .map(a => a.userId!);
+
+        if (propertyIds.length > 0 || userIds.length > 0) {
+          const scopeConditions = [];
+          if (propertyIds.length > 0) {
+            scopeConditions.push(sql`${incomeTransactions.propertyId} IN ${propertyIds}`);
+          }
+          if (userIds.length > 0) {
+            scopeConditions.push(sql`${incomeTransactions.beneficiaryId} IN ${userIds}`);
+          }
+          conditions.push(or(...scopeConditions) as any);
+        } else {
+          // No assignments, return empty result
+          conditions.push(sql`1 = 0`);
+        }
+      }
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(incomeTransactions.createdAt));
+  }
+
+  async createIncomeTransaction(transactionData: InsertIncomeTransaction): Promise<IncomeTransaction> {
+    const [transaction] = await db.insert(incomeTransactions).values(transactionData).returning();
+    return transaction;
+  }
+
+  async updateIncomeTransaction(id: string, updates: Partial<InsertIncomeTransaction>): Promise<IncomeTransaction> {
+    const [updated] = await db
+      .update(incomeTransactions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(incomeTransactions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateIncomeTransactionStatus(id: string, status: string, updatedBy: string, notes?: string, rejectionReason?: string): Promise<IncomeTransaction> {
+    const updates: any = {
+      status: status as any,
+      updatedAt: new Date(),
+    };
+
+    if (notes) {
+      updates.notes = notes;
+    }
+
+    if (status === "approved") {
+      updates.approvedBy = updatedBy;
+      updates.approvedAt = new Date();
+    } else if (status === "rejected") {
+      updates.rejectedBy = updatedBy;
+      updates.rejectedAt = new Date();
+      if (rejectionReason) {
+        updates.rejectionReason = rejectionReason;
+      }
+    } else if (status === "paid") {
+      updates.actualPaymentDate = new Date();
+    }
+
+    const [updated] = await db
+      .update(incomeTransactions)
+      .set(updates)
+      .where(eq(incomeTransactions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getIncomeReports(filters?: {
+    beneficiaryId?: string;
+    propertyId?: string;
+    category?: string;
+    status?: string;
+    fromDate?: Date;
+    toDate?: Date;
+    groupBy?: 'beneficiary' | 'property' | 'category' | 'status';
+  }): Promise<Array<{
+    groupKey: string;
+    totalAmount: string;
+    count: number;
+    avgAmount: string;
+  }>> {
+    const conditions = [];
+    
+    if (filters?.beneficiaryId) {
+      conditions.push(eq(incomeTransactions.beneficiaryId, filters.beneficiaryId));
+    }
+    if (filters?.propertyId) {
+      conditions.push(eq(incomeTransactions.propertyId, filters.propertyId));
+    }
+    if (filters?.category) {
+      conditions.push(eq(incomeTransactions.category, filters.category as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(incomeTransactions.status, filters.status as any));
+    }
+    if (filters?.fromDate) {
+      conditions.push(gte(incomeTransactions.createdAt, filters.fromDate));
+    }
+    if (filters?.toDate) {
+      conditions.push(lte(incomeTransactions.createdAt, filters.toDate));
+    }
+
+    const groupByField = filters?.groupBy || 'beneficiary';
+    let groupColumn;
+    
+    switch (groupByField) {
+      case 'beneficiary':
+        groupColumn = incomeTransactions.beneficiaryId;
+        break;
+      case 'property':
+        groupColumn = incomeTransactions.propertyId;
+        break;
+      case 'category':
+        groupColumn = incomeTransactions.category;
+        break;
+      case 'status':
+        groupColumn = incomeTransactions.status;
+        break;
+      default:
+        groupColumn = incomeTransactions.beneficiaryId;
+    }
+
+    let query = db
+      .select({
+        groupKey: groupColumn,
+        totalAmount: sql<string>`SUM(${incomeTransactions.amount})`,
+        count: sql<number>`COUNT(*)`,
+        avgAmount: sql<string>`AVG(${incomeTransactions.amount})`,
+      })
+      .from(incomeTransactions)
+      .groupBy(groupColumn);
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const results = await query;
+    return results.map(r => ({
+      groupKey: r.groupKey || 'unknown',
+      totalAmount: r.totalAmount || '0',
+      count: Number(r.count) || 0,
+      avgAmount: r.avgAmount || '0',
+    }));
   }
 }
 

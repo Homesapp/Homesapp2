@@ -197,6 +197,28 @@ export const opportunityRequestStatusEnum = pgEnum("opportunity_request_status",
   "cancelled",
 ]);
 
+export const incomeCategoryEnum = pgEnum("income_category", [
+  "referral_client",  // Comisión por referido de cliente
+  "referral_owner",   // Comisión por referido de propietario
+  "rental_commission", // Comisión por renta completada
+  "other",            // Otros ingresos
+]);
+
+export const payoutStatusEnum = pgEnum("payout_status", [
+  "draft",      // Borrador, en preparación
+  "pending",    // Pendiente de aprobación
+  "approved",   // Aprobado, listo para pagar
+  "paid",       // Pagado
+  "rejected",   // Rechazado
+  "cancelled",  // Cancelado
+]);
+
+export const accountantAssignmentTypeEnum = pgEnum("accountant_assignment_type", [
+  "property",  // Asignado a propiedad específica
+  "user",      // Asignado a usuario específico (vendedor, propietario, etc)
+  "all",       // Acceso a todos los registros
+]);
+
 export const notificationTypeEnum = pgEnum("notification_type", [
   "appointment",
   "offer",
@@ -1527,6 +1549,118 @@ export const insertOwnerReferralSchema = createInsertSchema(ownerReferrals).omit
 
 export type InsertOwnerReferral = z.infer<typeof insertOwnerReferralSchema>;
 export type OwnerReferral = typeof ownerReferrals.$inferSelect;
+
+// Rental Commission Configuration table
+export const rentalCommissionConfigs = pgTable("rental_commission_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  defaultCommissionPercent: decimal("default_commission_percent", { precision: 5, scale: 2 }).notNull().default("10.00"),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Override for specific property
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Override for specific user
+  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }),
+  fixedFee: decimal("fixed_fee", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertRentalCommissionConfigSchema = createInsertSchema(rentalCommissionConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRentalCommissionConfig = z.infer<typeof insertRentalCommissionConfigSchema>;
+export type RentalCommissionConfig = typeof rentalCommissionConfigs.$inferSelect;
+
+// Accountant Assignments table - defines which properties/users each accountant manages
+export const accountantAssignments = pgTable("accountant_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountantId: varchar("accountant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignmentType: accountantAssignmentTypeEnum("assignment_type").notNull(),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // For property assignments
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // For user assignments
+  effectiveFrom: timestamp("effective_from").notNull().defaultNow(),
+  effectiveTo: timestamp("effective_to"), // NULL means active indefinitely
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAccountantAssignmentSchema = createInsertSchema(accountantAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAccountantAssignment = z.infer<typeof insertAccountantAssignmentSchema>;
+export type AccountantAssignment = typeof accountantAssignments.$inferSelect;
+
+// Payout Batches table - groups multiple income transactions for bulk payment processing
+export const payoutBatches = pgTable("payout_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchNumber: varchar("batch_number").notNull().unique(), // e.g., "PAYOUT-2025-001"
+  status: payoutStatusEnum("status").notNull().default("draft"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method"), // e.g., "bank_transfer", "check", "cash"
+  paymentReference: varchar("payment_reference"), // Bank reference number, check number, etc.
+  notes: text("notes"),
+  scheduledPaymentDate: timestamp("scheduled_payment_date"),
+  actualPaymentDate: timestamp("actual_payment_date"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  paidBy: varchar("paid_by").references(() => users.id),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPayoutBatchSchema = createInsertSchema(payoutBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayoutBatch = z.infer<typeof insertPayoutBatchSchema>;
+export type PayoutBatch = typeof payoutBatches.$inferSelect;
+
+// Income Transactions table - unified table for all income types
+export const incomeTransactions = pgTable("income_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: incomeCategoryEnum("category").notNull(),
+  beneficiaryId: varchar("beneficiary_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Who receives the payment
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "set null" }), // Related property if applicable
+  sourceReferralClientId: varchar("source_referral_client_id").references(() => clientReferrals.id, { onDelete: "set null" }), // For referral_client category
+  sourceReferralOwnerId: varchar("source_referral_owner_id").references(() => ownerReferrals.id, { onDelete: "set null" }), // For referral_owner category
+  sourceOfferId: varchar("source_offer_id").references(() => offers.id, { onDelete: "set null" }), // For rental_commission category
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }),
+  description: text("description").notNull(),
+  notes: text("notes"),
+  payoutBatchId: varchar("payout_batch_id").references(() => payoutBatches.id, { onDelete: "set null" }),
+  status: payoutStatusEnum("status").notNull().default("pending"),
+  scheduledPaymentDate: timestamp("scheduled_payment_date"),
+  actualPaymentDate: timestamp("actual_payment_date"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertIncomeTransactionSchema = createInsertSchema(incomeTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertIncomeTransaction = z.infer<typeof insertIncomeTransactionSchema>;
+export type IncomeTransaction = typeof incomeTransactions.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
