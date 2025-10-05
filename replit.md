@@ -2,193 +2,47 @@
 
 ## Overview
 
-HomesApp is a comprehensive SaaS platform designed for real estate property management in Tulum, Quintana Roo. Currently focused exclusively on the Tulum market to validate operations before expanding to other areas in Quintana Roo, the platform supports multiple user roles (master, admin, admin_jr, seller, owner, cliente, management, concierge, providers, abogado, contador, agente_servicios_especiales) to manage properties, schedule appointments, create client presentations, coordinate services, and process offers. The platform features role-based access control, Google Calendar integration, a service provider marketplace, property submission workflow with digital agreement signing, and a full back office for offer management. Its UI is a professional, data-dense dashboard with light/dark mode support, aiming to streamline property management operations and enhance user experience in the real estate sector.
+HomesApp is a comprehensive SaaS platform designed for real estate property management, currently focused on the Tulum, Quintana Roo market. It supports multiple user roles (e.g., master, admin, seller, owner, client) to manage properties, schedule appointments, create client presentations, coordinate services, and process offers. Key capabilities include role-based access control, Google Calendar integration, a service provider marketplace, a property submission workflow with digital agreement signing, and a full back office for offer management. The platform aims to streamline property management operations and enhance user experience in the real estate sector with a professional, data-dense dashboard.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-
-**October 2025 - Tulum Market Focus & UX Improvements**:
-- **Tulum Market Limitation**: Application currently focused exclusively on Tulum, Quintana Roo
-  - Updated hero title and subtitle to reflect Tulum focus
-  - Search placeholder updated to mention "zona en Tulum"
-  - Operational policy: Only properties in Tulum are published/approved by admin team
-  - Future expansion planned to other areas in Quintana Roo after validation
-- **Logo & Header Enhancement**:
-  - Logo size increased from h-16 (64px) to h-32 (128px) for better visibility
-  - Header height adjusted from h-20 to h-36 to accommodate larger logo
-- **Property Listing Improvements**:
-  - Area (m²) now displayed in all property cards in PublicDashboard
-  - Pet-friendly indicator (paw print icon) added to cards when "Mascotas permitidas" amenity is present
-  - Consistent display across featured properties carousel and property grid
-  - Same indicators added to PropertySearch results
-- **Performance Investigation**: 
-  - Investigated reported "loading stuck" issue when clicking properties
-  - Root cause: API response times of 2-3 seconds on initial requests (likely database cold start)
-  - Not a code bug - navigation and data loading work correctly
-  - Future optimization: Consider implementing loading skeleton states or progress indicators
-
-**October 2025 - Public Dashboard Enhancements & Dual Pricing Support**:
-- **Dual Pricing System**: Properties now support both rental and sale prices
-  - Added `salePrice` decimal column to properties table
-  - PropertyCard component enhanced to display both prices when `status='both'`
-  - Rental price shown prominently (text-2xl) with sale price smaller below (text-lg)
-  - Agency's primary focus (rentals) is visually prioritized
-- **Public Dashboard UI Improvements**:
-  - Logo enlarged from h-12 to h-16 for better visibility
-  - Removed redundant "HomesApp" text next to logo
-  - Quick filter badges replaced with large buttons (size='lg') for better UX
-  - Converted to use Button component instead of Badge for consistency
-- **Featured Properties Carousel**:
-  - Implemented auto-scrolling carousel using embla-carousel-autoplay
-  - Auto-advances every 3 seconds with loop enabled
-  - Maintains responsive grid layout (1/2/3 columns based on screen size)
-  - Manual navigation preserved with previous/next buttons
-- **Internationalization**: Full Spanish/English translations implemented for PublicDashboard
-  - All user-facing text uses translation keys via LanguageContext
-  - Supports language toggle between Spanish and English
-
 ## System Architecture
 
 ### Frontend
 
-The frontend is built with React 18, TypeScript, and Vite. It uses Wouter for routing and TanStack Query for server state management. The UI is constructed with Radix UI primitives, Shadcn/ui components, and styled using Tailwind CSS with custom design tokens. It supports light/dark themes, internationalization (Spanish/English), and utilizes a professional design system with the Inter and JetBrains Mono fonts. The platform includes role-switching capabilities allowing users to toggle between owner and client modes seamlessly.
+The frontend is built with React 18, TypeScript, and Vite, utilizing Wouter for routing and TanStack Query for server state management. UI components are built with Radix UI primitives and Shadcn/ui, styled with Tailwind CSS, supporting light/dark themes and internationalization (Spanish/English). It features a professional design system and role-switching capabilities (owner/client).
 
 ### Backend
 
-The backend uses Node.js with Express.js and TypeScript, enforcing ESM modules. It provides a RESTful API with role-based middleware for authorization and consistent JSON-based error handling. A unique dual authentication system is implemented: Replit Auth (OpenID Connect) for regular users and local username/password authentication for administrators. This system includes session management, user approval workflows, and an admin role-switching feature for testing.
+The backend uses Node.js with Express.js and TypeScript (ESM modules), providing a RESTful API with role-based middleware and JSON-based error handling. It employs a dual authentication system: Replit Auth (OpenID Connect) for regular users and local username/password for administrators, including session management and user approval workflows.
 
 ### Data Storage
 
-The application uses PostgreSQL (via Neon serverless platform) and Drizzle ORM for type-safe database interactions. The schema supports user management with role-based permissions, flexible property statuses, appointment scheduling, client presentation cards, service providers, offer workflows, and staff assignments. Audit logs are implemented for tracking critical user actions.
+The application uses PostgreSQL (Neon serverless) and Drizzle ORM for type-safe interactions. The schema supports user management, property statuses, appointment scheduling, client presentation cards, service providers, offer workflows, and staff assignments, with audit logs for critical actions. A lead capture system tracks user actions and manages rental opportunity requests.
 
-**Lead Capture System (Phase A - Stage 4)**: The platform now includes a complete lead capture workflow with:
-- **Lead Journeys**: Tracks user actions throughout the rental process (search, view details, save favorites, request opportunities)
-- **Rental Opportunity Requests (SOR)**: Allows users to formally request rental opportunities with:
-  - Desired move-in date (optional)
-  - Preferred contact method (email, phone, WhatsApp)
-  - Additional notes
-  - System enforces limit of 3 active SORs per user
-  - One active SOR per property per user
-  - Automatic logging in lead_journeys table
+### Key Features and Workflows
 
-**Owner Property Management System (Current Implementation)**:
-- **Property Approval Workflow**: Properties follow draft → pending → approved/rejected states
-- **Owner-Submitted Change Requests**: Owners edit properties via change requests with:
-  - Zod-validated whitelisted fields (title, description, price, location, etc.)
-  - Transactional integrity for multi-step operations
-  - Admin approval/rejection with review notes
-  - Cascade logic that updates property.approvalStatus when change requests reach terminal states
-- **Owner Settings**: Auto-approve visit appointments, notification preferences
-- **Owner Property Management Pages**:
-  - `/mis-propiedades`: List view with approval status badges
-  - `/owner/property/:id`: Detailed view with tabs for details, change requests, staff, and appointments
-  - `/owner/appointments`: Appointment management with approve/reject functionality and auto-approval toggle
-    - Includes "Configuración de Visitas" card with switch to enable/disable automatic appointment approval
-    - When enabled, visit requests are automatically approved without owner intervention
-    - Settings persist in owner_settings.autoApproveAppointments field
-  - `/owner/dashboard`: Owner dashboard with metrics and pending actions
-- **Admin Management Pages**:
-  - `/admin/change-requests`: Review and approve/reject property change requests
-  - `/admin/inspection-reports`: Manage property inspection reports
-  - `/admin/dashboard`: Admin dashboard with global statistics
-- **Security**: All endpoints use Zod validation with whitelisted fields to prevent arbitrary field injection
-
-**Property Submission Workflow with Digital Agreements (Latest Implementation)**:
-- **Agreement Templates System**: Admin-managed templates for property submission agreements
-  - Support for variable substitution with {{owner.name}}, {{property.address}}, etc.
-  - Template rendering utility with nested value extraction
-  - Template validation to ensure all variables can be resolved
-  - CRUD endpoints for template management (admin only)
-  - Active/inactive template status
-  - **Frontend UI**: `/admin/agreement-templates` page with full CRUD interface
-    - Template cards displaying title, type, status, and metadata
-    - Create/edit dialogs with Textarea editor for template content
-    - Delete confirmations with proper state management
-    - Status toggle switches for activating/deactivating templates
-    - Comprehensive data-testid coverage for automated testing
-- **Property Submission Drafts**: Multi-step property submission with automatic draft saving
-  - CRUD endpoints for draft management
-  - Draft status tracking (draft, in_review, approved, rejected)
-  - User-scoped access control
-  - Automatic progress saving with 2-second debounce
-  - **Frontend UI**: `/owner/property/new` - 7-step wizard with:
-    - Step 1: Property type selection (rent/sale)
-    - Step 2: Basic information (title, type, description)
-    - Step 3: Location (address, city, state, country)
-    - Step 4: Property details (bedrooms, bathrooms, area, features)
-    - Step 5: Media upload (images with preview and removal)
-    - Step 6: Commercial terms (price, available date, additional terms)
-    - Step 7: Review and submit (displays all collected data)
-    - Auto-save functionality saves progress every 30 seconds
-    - Navigation between steps with validation
-    - Draft restoration on page reload
-    - All interactive elements instrumented with data-testid attributes
-- **Property Agreements**: Digital agreement signing workflow
-  - Agreement generation from templates with property context
-  - Digital signature capture with signer name and IP address
-  - Agreement status tracking (pending, signed, rejected)
-  - Timestamped signature records
-  - Audit logging for all agreement actions
-- **Backend Infrastructure**:
-  - Storage layer functions for templates, drafts, and agreements
-  - RESTful API endpoints with Zod validation
-  - Template rendering utility (server/templateRenderer.ts)
-  - Role-based access control (admin for templates, user for drafts/agreements)
-  - Comprehensive audit logging
-
-**User Experience Enhancements**:
-- **Role Switching (Airbnb-style)**: Users can seamlessly switch between owner and client roles via a toggle in the header, enabling them to manage properties as owners or search/rent as clients
-- **Internationalization**: Full i18n support with English/Spanish language toggle, implemented via React Context with localStorage persistence
-- **Real-Time Chat System**: WebSocket-based live messaging between users with:
-  - Secure authentication via session cookies
-  - Per-conversation authorization (participants only)
-  - Real-time message delivery
-  - Conversation management (create, list, participants)
-  - Automatic connection/disconnection handling
-- **Enhanced Presentation Cards**: Extended client presentation cards with:
-  - Move-in date (fecha de ingreso)
-  - Contract duration (6 months to 5 years)
-  - Pet information (hasPets checkbox and petPhotoUrl)
-  - Additional requirements/special amenity requests field
-  - Full Zod validation
-- **Email Notification Preferences**: Granular user control over email notifications:
-  - Appointments (citas)
-  - Offers (ofertas)
-  - Messages (mensajes)
-  - Property updates (actualizaciones de propiedades)
-  - Rental updates (actualizaciones de rentas)
-  - Marketing and promotions (marketing y promociones)
-  - Settings stored in owner_settings.notificationPreferences JSONB field
-- **Improved Client Dashboard**: Redesigned layout with:
-  - Reduced spacing for more compact, data-dense display
-  - Fixed text alignment in property cards
-  - Better title handling (min-height ensures consistent card heights)
-  - Improved responsive layout with flex-wrap on property details
+*   **Property Management**: Includes a property approval workflow (draft → pending → approved/rejected), owner-submitted change requests with admin approval, and owner settings for appointment auto-approval.
+*   **Property Submission**: A multi-step wizard with automatic draft saving, digital agreement signing using admin-managed templates, and audit logging for all agreement actions.
+*   **User Experience**: Features an Airbnb-style role switching, full i18n support, a WebSocket-based real-time chat system with secure authentication, enhanced presentation cards with detailed property and client information, and granular email notification preferences.
+*   **Public Dashboard**: An Airbnb-inspired design adapting for authenticated vs. non-authenticated users, with dual pricing support (rental/sale) and improved property listing displays.
 
 ### System Design Choices
 
-The platform employs a unified middleware approach to normalize all authentication types (Replit Auth, local user auth, admin local auth) into a consistent `req.user` structure, simplifying authorization logic and ensuring seamless operation across different user types. Critical operations are automatically logged for auditing purposes. A public dashboard with an Airbnb-inspired design provides a user-friendly entry point, adapting its experience for authenticated vs. non-authenticated users. A calendar view for appointments enhances scheduling visualization, and detailed user profiles with activity history are available.
-
-**WebSocket Security**: The real-time chat system implements defense-in-depth security:
-- Session-based authentication: Validates Express session cookies on WebSocket upgrade
-- Per-conversation authorization: Verifies participant membership before allowing room joins
-- Secure connection handling: Closes unauthorized connections with appropriate status codes
-- Audit logging: Tracks all connection attempts, joins, and authorization failures
-- Session store integration: Shares authentication state with HTTP endpoints
+The platform uses a unified middleware for consistent authentication handling (`req.user`), automatic logging for auditing, and a public dashboard that adapts its experience based on user authentication. A calendar view for appointments and detailed user profiles are also included. WebSocket security for the real-time chat implements session-based authentication, per-conversation authorization, and secure connection handling.
 
 ## External Dependencies
 
-*   **Google Calendar API**: Used for automated Google Meet event creation and calendar event management.
-*   **Neon Database**: Serverless PostgreSQL database solution.
-*   **Replit Auth**: OpenID Connect provider for OAuth-based user authentication.
-*   **Resend API**: Used for email verification during user registration.
-*   **Radix UI**: Primitive component library for accessible UI elements.
+*   **Google Calendar API**: For event creation and management.
+*   **Neon Database**: Serverless PostgreSQL.
+*   **Replit Auth**: OpenID Connect provider for user authentication.
+*   **Resend API**: For email notifications.
+*   **Radix UI**: Primitive component library.
 *   **Lucide React**: Icon library.
-*   **date-fns**: Library for date manipulation and formatting.
-*   **react-day-picker**: Calendar component for date selection.
-*   **Zod**: Runtime type validation and schema definition.
-*   **WebSocket (ws)**: Server-side WebSocket implementation for real-time chat.
-*   **cookie**: Cookie parsing library for WebSocket authentication.
+*   **date-fns**: Date manipulation.
+*   **react-day-picker**: Calendar component.
+*   **Zod**: Runtime type validation.
+*   **WebSocket (ws)**: Server-side WebSocket implementation.
+*   **cookie**: Cookie parsing.

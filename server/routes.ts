@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/properties/search", async (req, res) => {
+  app.get("/api/properties/search", async (req: any, res) => {
     try {
       const {
         q,
@@ -811,6 +811,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.availableTo = new Date(availableTo);
       }
 
+      // Only show approved properties to non-authenticated users
+      const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
+      if (!isUserAuthenticated) {
+        filters.approvalStatus = "approved";
+      }
+
       const properties = await storage.searchPropertiesAdvanced(filters);
       res.json(properties);
     } catch (error) {
@@ -819,13 +825,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/properties/:id", async (req, res) => {
+  app.get("/api/properties/:id", async (req: any, res) => {
     try {
       const { id } = req.params;
       const property = await storage.getProperty(id);
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
+      
+      // Only show approved properties to non-authenticated users
+      const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
+      if (!isUserAuthenticated && property.approvalStatus !== "approved") {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
       res.json(property);
     } catch (error) {
       console.error("Error fetching property:", error);
