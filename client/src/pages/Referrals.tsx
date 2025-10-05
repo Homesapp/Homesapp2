@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Home, TrendingUp } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Plus, Users, Home, TrendingUp, AlertCircle } from "lucide-react";
 import { CreateClientReferralDialog } from "@/components/referrals/CreateClientReferralDialog";
 import { CreateOwnerReferralDialog } from "@/components/referrals/CreateOwnerReferralDialog";
 import { ReferralsList } from "@/components/referrals/ReferralsList";
@@ -16,17 +18,20 @@ export default function Referrals() {
   const [showClientDialog, setShowClientDialog] = useState(false);
   const [showOwnerDialog, setShowOwnerDialog] = useState(false);
 
-  const { data: config } = useQuery<ReferralConfig>({
+  const { data: config, isLoading: configLoading, isError: configError } = useQuery<ReferralConfig>({
     queryKey: ["/api/referrals/config"],
   });
 
-  const { data: clientReferrals = [] } = useQuery<ClientReferral[]>({
+  const { data: clientReferrals = [], isLoading: clientsLoading, isError: clientsError } = useQuery<ClientReferral[]>({
     queryKey: ["/api/referrals/clients"],
   });
 
-  const { data: ownerReferrals = [] } = useQuery<OwnerReferral[]>({
+  const { data: ownerReferrals = [], isLoading: ownersLoading, isError: ownersError } = useQuery<OwnerReferral[]>({
     queryKey: ["/api/referrals/owners"],
   });
+
+  const isLoading = configLoading || clientsLoading || ownersLoading;
+  const hasError = configError || clientsError || ownersError;
 
   const completedClientReferrals = clientReferrals.filter(r => r.status === "completado");
   const completedOwnerReferrals = ownerReferrals.filter(r => r.status === "completado");
@@ -35,6 +40,70 @@ export default function Referrals() {
     ...completedClientReferrals.map(r => parseFloat(r.commissionEarned || "0")),
     ...completedOwnerReferrals.map(r => parseFloat(r.commissionEarned || "0")),
   ].reduce((sum, amount) => sum + amount, 0);
+
+  if (hasError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-referrals-title">
+            {t("referrals.title", "Red de Referidos")}
+          </h1>
+          <p className="text-secondary-foreground mt-2" data-testid="text-referrals-description">
+            {t("referrals.description", "Recomienda clientes y propietarios y gana comisiones")}
+          </p>
+        </div>
+        
+        <Alert variant="destructive" data-testid="alert-referrals-error">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t("common.error", "Error")}</AlertTitle>
+          <AlertDescription>
+            {t("referrals.loadError", "No se pudo cargar la información de referidos. Por favor, intenta de nuevo.")}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-referrals-title">
+            {t("referrals.title", "Red de Referidos")}
+          </h1>
+          <p className="text-secondary-foreground mt-2" data-testid="text-referrals-description">
+            {t("referrals.description", "Recomienda clientes y propietarios y gana comisiones")}
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3" data-testid="loading-stats">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-20 mb-2" />
+                <Skeleton className="h-3 w-40" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card data-testid="loading-referrals">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
