@@ -13,6 +13,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { format } from "date-fns";
 import logoIcon from "@assets/Sin título (6 x 6 cm) (1024 x 1024 px) (2)_1759620872379.png";
 
@@ -129,7 +130,8 @@ export default function Dashboard() {
               <img src={logoIcon} alt="HomesApp" className="h-10 w-10" data-testid="img-header-logo" />
               <h1 className="text-xl font-bold">HomesApp</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <LanguageToggle />
               <ThemeToggle />
               <Button variant="ghost" onClick={() => setLocation("/login")} data-testid="button-header-login">
                 <UserCircle className="h-4 w-4 mr-2" />
@@ -143,29 +145,28 @@ export default function Dashboard() {
         </header>
       )}
 
-      {/* Hero Section */}
-      <div className="relative h-[600px] bg-gradient-to-br from-primary/10 via-background to-primary/5">
+      {/* Hero Section - More Compact */}
+      <div className="relative bg-gradient-to-br from-primary/10 via-background to-primary/5 py-12">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5Q0RCNEEiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJ2LTJoLTJ6bTAgNHYyaDJ2LTJoLTJ6bS0yIDJ2LTJoLTJ2Mmgyem0wLTR2LTJoLTJ2Mmgyem0yLTJ2LTJoLTJ2Mmgyem0wLTRoMnYyaC0ydi0yem0tNiA0djJoMnYtMmgtMnptMi00djJoMnYtMmgtMnptMiAydjJoMnYtMmgtMnptMC00djJoMnYtMmgtMnptMi00djJoMnYtMmgtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-40"></div>
         
-        <div className="relative container mx-auto px-4 h-full flex flex-col justify-center items-center">
-          <div className="mb-8">
-            <img src={logoIcon} alt="HomesApp" className="h-20 w-20 mx-auto mb-4" data-testid="img-logo" />
-            <h1 className="text-5xl md:text-6xl font-bold text-center mb-4" data-testid="text-hero-title">
+        <div className="relative container mx-auto px-4">
+          <div className="text-center mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold mb-3" data-testid="text-hero-title">
               Encuentra tu hogar ideal
             </h1>
-            <p className="text-xl text-muted-foreground text-center max-w-2xl mx-auto" data-testid="text-hero-subtitle">
-              Descubre propiedades únicas en las mejores ubicaciones de México
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-hero-subtitle">
+              Descubre propiedades únicas en las mejores ubicaciones
             </p>
           </div>
 
           {/* Search Bar */}
-          <Card className="w-full max-w-4xl p-2 shadow-xl">
+          <Card className="max-w-4xl mx-auto p-2 shadow-lg">
             <div className="flex flex-col md:flex-row gap-2">
               <div className="flex-1 relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   placeholder="¿Dónde quieres vivir?"
-                  className="pl-12 h-14 text-lg border-0 focus-visible:ring-0"
+                  className="pl-11 h-12 border-0 focus-visible:ring-0"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -173,21 +174,21 @@ export default function Dashboard() {
                 />
               </div>
               <Button 
-                size="lg" 
-                className="h-14 px-8 text-lg"
+                className="h-12 px-6"
                 onClick={handleSearch}
                 data-testid="button-hero-search"
               >
-                <Search className="h-5 w-5 mr-2" />
+                <Search className="h-4 w-4 mr-2" />
                 Buscar
               </Button>
             </div>
           </Card>
 
           {/* Quick Categories */}
-          <div className="mt-8 flex flex-wrap gap-3 justify-center">
+          <div className="mt-6 flex flex-wrap gap-2 justify-center">
             <Button 
               variant="outline" 
+              size="sm"
               className="rounded-full"
               onClick={() => setLocation("/buscar-propiedades?status=rent")}
               data-testid="button-category-rent"
@@ -197,6 +198,7 @@ export default function Dashboard() {
             </Button>
             <Button 
               variant="outline" 
+              size="sm"
               className="rounded-full"
               onClick={() => setLocation("/buscar-propiedades?status=sale")}
               data-testid="button-category-sale"
@@ -206,6 +208,7 @@ export default function Dashboard() {
             </Button>
             <Button 
               variant="outline" 
+              size="sm"
               className="rounded-full"
               onClick={() => setLocation("/buscar-propiedades?featured=true")}
               data-testid="button-category-featured"
@@ -217,10 +220,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6">
         {/* Upcoming Appointments Section - Only for authenticated users */}
         {isUserAuthenticated && upcomingAppointments.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -258,11 +261,11 @@ export default function Dashboard() {
 
         {/* Featured Properties Section */}
         {featuredProperties.length > 0 && (
-          <div className="mb-12">
-            <div className="flex items-center justify-between mb-6">
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-3xl font-bold mb-2" data-testid="text-featured-title">Propiedades Destacadas</h2>
-                <p className="text-muted-foreground">Las mejores opciones seleccionadas para ti</p>
+                <h2 className="text-2xl font-bold mb-1" data-testid="text-featured-title">Propiedades Destacadas</h2>
+                <p className="text-sm text-muted-foreground">Las mejores opciones seleccionadas para ti</p>
               </div>
               <Button 
                 variant="ghost" 
@@ -272,7 +275,7 @@ export default function Dashboard() {
                 Ver todas
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {featuredProperties.map((property) => (
                 <Card
                   key={property.id}
@@ -280,7 +283,7 @@ export default function Dashboard() {
                   onClick={() => setLocation(`/propiedad/${property.id}`)}
                   data-testid={`card-featured-${property.id}`}
                 >
-                  <div className="relative h-72 overflow-hidden">
+                  <div className="relative h-56 overflow-hidden">
                     {property.images && property.images.length > 0 ? (
                       <img
                         src={property.images[0]}
@@ -290,17 +293,17 @@ export default function Dashboard() {
                       />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <Home className="h-16 w-16 text-muted-foreground" />
+                        <Home className="h-12 w-12 text-muted-foreground" />
                       </div>
                     )}
-                    <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground">
+                    <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs">
                       Destacada
                     </Badge>
                     {isUserAuthenticated && (
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm hover:bg-background"
+                        className="absolute top-3 left-3 h-8 w-8 bg-background/80 backdrop-blur-sm hover:bg-background"
                         onClick={(e) => {
                           e.stopPropagation();
                         }}
@@ -310,8 +313,8 @@ export default function Dashboard() {
                       </Button>
                     )}
                   </div>
-                  <div className="p-5">
-                    <h3 className="text-lg font-semibold mb-2 line-clamp-2 min-h-[3.5rem]" data-testid={`text-title-featured-${property.id}`}>
+                  <div className="p-4">
+                    <h3 className="font-semibold mb-2 line-clamp-2 min-h-[2.75rem]" data-testid={`text-title-featured-${property.id}`}>
                       {property.title}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
@@ -320,18 +323,18 @@ export default function Dashboard() {
                         {property.location}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mb-4">
-                      <span data-testid={`text-bedrooms-featured-${property.id}`}>{property.bedrooms} recámaras</span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-3">
+                      <span data-testid={`text-bedrooms-featured-${property.id}`}>{property.bedrooms} rec</span>
                       <span>•</span>
-                      <span data-testid={`text-bathrooms-featured-${property.id}`}>{property.bathrooms} baños</span>
+                      <span data-testid={`text-bathrooms-featured-${property.id}`}>{property.bathrooms} ba</span>
                       <span>•</span>
                       <span data-testid={`text-area-featured-${property.id}`}>{property.area} m²</span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xl font-bold text-primary" data-testid={`text-price-featured-${property.id}`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-lg font-bold text-primary" data-testid={`text-price-featured-${property.id}`}>
                         {formatPrice(property.price)}
                       </span>
-                      <Badge variant="outline" className="capitalize flex-shrink-0" data-testid={`badge-status-featured-${property.id}`}>
+                      <Badge variant="outline" className="capitalize text-xs" data-testid={`badge-status-featured-${property.id}`}>
                         {property.status === "rent" ? "Renta" : "Venta"}
                       </Badge>
                     </div>
@@ -344,10 +347,10 @@ export default function Dashboard() {
 
         {/* All Properties Section */}
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-3xl font-bold mb-2" data-testid="text-all-properties-title">Explora Propiedades</h2>
-              <p className="text-muted-foreground">Descubre todas nuestras opciones disponibles</p>
+              <h2 className="text-2xl font-bold mb-1" data-testid="text-all-properties-title">Explora Propiedades</h2>
+              <p className="text-sm text-muted-foreground">Descubre todas nuestras opciones disponibles</p>
             </div>
             <Button 
               variant="ghost"
@@ -376,7 +379,7 @@ export default function Dashboard() {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {allProperties.map((property) => (
                 <Card
                   key={property.id}
@@ -384,7 +387,7 @@ export default function Dashboard() {
                   onClick={() => setLocation(`/propiedad/${property.id}`)}
                   data-testid={`card-all-${property.id}`}
                 >
-                  <div className="relative h-56 overflow-hidden">
+                  <div className="relative h-48 overflow-hidden">
                     {property.images && property.images.length > 0 ? (
                       <img
                         src={property.images[0]}
@@ -394,17 +397,17 @@ export default function Dashboard() {
                       />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <Home className="h-12 w-12 text-muted-foreground" />
+                        <Home className="h-10 w-10 text-muted-foreground" />
                       </div>
                     )}
                     {property.featured && (
-                      <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs">
+                      <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5">
                         Destacada
                       </Badge>
                     )}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold line-clamp-2 mb-2 min-h-[2.5rem]" data-testid={`text-title-all-${property.id}`}>
+                  <div className="p-3">
+                    <h3 className="font-semibold line-clamp-2 mb-2 min-h-[2.5rem] text-sm" data-testid={`text-title-all-${property.id}`}>
                       {property.title}
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
@@ -413,14 +416,14 @@ export default function Dashboard() {
                         {property.location}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mb-3">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mb-2">
                       <span data-testid={`text-bedrooms-all-${property.id}`}>{property.bedrooms} rec</span>
                       <span>•</span>
                       <span data-testid={`text-bathrooms-all-${property.id}`}>{property.bathrooms} ba</span>
                       <span>•</span>
                       <span data-testid={`text-area-all-${property.id}`}>{property.area} m²</span>
                     </div>
-                    <div className="font-bold text-primary text-base" data-testid={`text-price-all-${property.id}`}>
+                    <div className="font-bold text-primary text-sm" data-testid={`text-price-all-${property.id}`}>
                       {formatPrice(property.price)}
                     </div>
                   </div>
@@ -431,27 +434,27 @@ export default function Dashboard() {
         </div>
 
         {/* CTA Section */}
-        <div className="mt-12">
+        <div className="mt-8">
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-            <div className="p-12 text-center">
-              <h2 className="text-3xl font-bold mb-4">¿No encuentras lo que buscas?</h2>
-              <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <div className="p-8 text-center">
+              <h2 className="text-2xl font-bold mb-3">¿No encuentras lo que buscas?</h2>
+              <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
                 {isUserAuthenticated 
                   ? "Nuestro equipo de expertos está listo para ayudarte a encontrar la propiedad perfecta"
                   : "Regístrate para acceder a todas nuestras propiedades y recibir asesoría personalizada"
                 }
               </p>
-              <div className="flex gap-4 justify-center flex-wrap">
-                <Button size="lg" onClick={() => setLocation("/buscar-propiedades")} data-testid="button-cta-search">
-                  <Search className="h-5 w-5 mr-2" />
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Button onClick={() => setLocation("/buscar-propiedades")} data-testid="button-cta-search">
+                  <Search className="h-4 w-4 mr-2" />
                   Búsqueda Avanzada
                 </Button>
                 {!isUserAuthenticated ? (
-                  <Button size="lg" onClick={() => setLocation("/register")} data-testid="button-cta-register">
+                  <Button onClick={() => setLocation("/register")} data-testid="button-cta-register">
                     Registrarse Gratis
                   </Button>
                 ) : (
-                  <Button size="lg" variant="outline" data-testid="button-cta-contact">
+                  <Button variant="outline" data-testid="button-cta-contact">
                     Contactar Asesor
                   </Button>
                 )}

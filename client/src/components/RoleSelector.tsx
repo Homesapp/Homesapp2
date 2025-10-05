@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ const ROLE_LABELS: Record<string, string> = {
   master: "Master",
   admin: "Administrador",
   admin_jr: "Admin Jr",
+  cliente: "Cliente",
   seller: "Vendedor",
   owner: "Propietario",
   management: "Gestión",
@@ -25,6 +27,7 @@ const ALL_ROLES = [
   "master",
   "admin",
   "admin_jr",
+  "cliente",
   "seller",
   "owner",
   "management",
@@ -34,12 +37,39 @@ const ALL_ROLES = [
 
 export function RoleSelector() {
   const { realUser, viewAsRole, setViewAsRole, clearViewAsRole, isViewingAsOtherRole, canChangeRole } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (!canChangeRole) {
     return null;
   }
 
   const currentRole = viewAsRole || realUser?.role || "";
+
+  const handleRoleChange = (value: string) => {
+    if (!value) return;
+    
+    if (value === realUser?.role) {
+      clearViewAsRole();
+      
+      if (realUser.role === "owner") {
+        setLocation("/owner/dashboard");
+      } else if (realUser.role === "admin" || realUser.role === "master" || realUser.role === "admin_jr") {
+        setLocation("/admin/dashboard");
+      } else {
+        setLocation("/");
+      }
+    } else {
+      setViewAsRole(value);
+      
+      if (value === "owner") {
+        setLocation("/owner/dashboard");
+      } else if (value === "admin" || value === "master" || value === "admin_jr") {
+        setLocation("/admin/dashboard");
+      } else {
+        setLocation("/");
+      }
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -52,13 +82,7 @@ export function RoleSelector() {
       
       <Select
         value={currentRole}
-        onValueChange={(value) => {
-          if (value === realUser?.role) {
-            clearViewAsRole();
-          } else {
-            setViewAsRole(value);
-          }
-        }}
+        onValueChange={handleRoleChange}
       >
         <SelectTrigger 
           className="w-[160px]" 
@@ -84,7 +108,7 @@ export function RoleSelector() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={clearViewAsRole}
+          onClick={() => handleRoleChange(realUser?.role || "")}
           title="Volver a tu rol"
           data-testid="button-clear-role"
         >

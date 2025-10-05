@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { type Property } from "@shared/schema";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import logoIcon from "@assets/Sin título (6 x 6 cm) (1024 x 1024 px) (2)_1759620872379.png";
 
 export default function PublicDashboard() {
@@ -37,7 +38,8 @@ export default function PublicDashboard() {
             <img src={logoIcon} alt="HomesApp" className="h-10 w-10" />
             <span className="text-xl font-bold">HomesApp</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
             <ThemeToggle />
             <Button
               variant="ghost"

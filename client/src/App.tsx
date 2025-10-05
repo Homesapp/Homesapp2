@@ -68,7 +68,7 @@ function AuthenticatedApp() {
   });
 
   const style = {
-    "--sidebar-width": "15rem",
+    "--sidebar-width": "12rem",
     "--sidebar-width-icon": "3rem",
   };
 

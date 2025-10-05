@@ -203,6 +203,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  bio: text("bio"),
   role: userRoleEnum("role").notNull().default("cliente"),
   additionalRole: userRoleEnum("additional_role"),
   status: userStatusEnum("status").notNull().default("approved"),
@@ -482,6 +483,7 @@ export type Appointment = typeof appointments.$inferSelect;
 export const presentationCards = pgTable("presentation_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name"),
   propertyType: text("property_type").notNull(),
   modality: propertyStatusEnum("modality").notNull(),
   minPrice: decimal("min_price", { precision: 12, scale: 2 }).notNull(),

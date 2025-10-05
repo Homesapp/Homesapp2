@@ -76,7 +76,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
 
   const adminItems = [
     { title: "Dashboard Admin", url: "/admin/dashboard", icon: Home, roles: ["master", "admin", "admin_jr"] },
-    { title: "Backoffice", url: "/backoffice", icon: FolderKanban, roles: ["master", "admin", "admin_jr"] },
+    { title: "Backoffice", url: "/backoffice", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider"] },
     { title: "Solicitudes de Cambio", url: "/admin/change-requests", icon: FileEdit, roles: ["master", "admin", "admin_jr"] },
     { title: "Reportes de Inspección", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { title: "Gestión Usuarios", url: "/users", icon: UserCog, roles: ["master", "admin"] },
