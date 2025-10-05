@@ -39,9 +39,12 @@ import {
   MessageSquare,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
+import logoIconUrl from "@assets/Sin título (6 x 6 cm)_1759706217639.png";
 import { Link, useLocation } from "wouter";
 import { RoleToggle } from "@/components/RoleToggle";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +79,8 @@ const roleLabels: Record<UserRole, string> = {
 export function AppSidebar({ userRole }: AppSidebarProps) {
   const [location] = useLocation();
   const [helpOpen, setHelpOpen] = useState(false);
+  const { t } = useLanguage();
+  const { state } = useSidebar();
 
   const mainItems = [
     { title: "Inicio", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider", "cliente"] },
@@ -141,16 +146,25 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     : [];
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <div className="flex items-center justify-center px-4 py-3">
-            <img 
-              src={logoUrl} 
-              alt="HomesApp Logo" 
-              className="h-16 w-auto object-contain"
-              data-testid="img-sidebar-logo"
-            />
+            {state === "expanded" ? (
+              <img 
+                src={logoUrl} 
+                alt="HomesApp Logo" 
+                className="h-16 w-auto object-contain"
+                data-testid="img-sidebar-logo"
+              />
+            ) : (
+              <img 
+                src={logoIconUrl} 
+                alt="HomesApp" 
+                className="h-8 w-8 object-contain"
+                data-testid="img-sidebar-logo-icon"
+              />
+            )}
           </div>
         </SidebarGroup>
         {filteredMain.length > 0 && (
@@ -221,82 +235,145 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
             <DialogTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full justify-start gap-2"
+                size={state === "expanded" ? "default" : "icon"}
+                className={state === "expanded" ? "w-full justify-start gap-2" : ""}
                 data-testid="button-help"
               >
                 <HelpCircle className="h-4 w-4" />
-                <span>Ayuda y Guías</span>
+                {state === "expanded" && <span>{t("help.title")}</span>}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>HomesApp - Ayuda y Guías</DialogTitle>
+                <DialogTitle>{t("help.dialog.title")}</DialogTitle>
                 <DialogDescription>
-                  Información sobre la aplicación y guías de uso
+                  {t("help.dialog.subtitle")}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <section>
-                  <h3 className="font-semibold text-lg mb-2">Acerca de HomesApp</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-primary">{t("help.about.title")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    HomesApp es una plataforma integral de gestión inmobiliaria diseñada para
-                    facilitar la administración de propiedades, citas, ofertas y comunicación entre
-                    propietarios, clientes y personal de la agencia.
+                    {t("help.about.desc")}
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="font-semibold text-lg mb-2">Guías Rápidas</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">Para Clientes:</h4>
-                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                        <li>Busca propiedades desde "Buscar Propiedades"</li>
-                        <li>Guarda tus favoritos para revisarlos más tarde</li>
-                        <li>Solicita oportunidades de renta desde los detalles de la propiedad</li>
-                        <li>Crea tu tarjeta de presentación en "Tarjetas"</li>
-                        <li>Revisa tus oportunidades en "Mis Oportunidades"</li>
-                      </ul>
+                  <h3 className="font-semibold text-lg mb-3 text-primary">{t("help.tutorials.title")}</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        {t("help.tutorials.search.title")}
+                      </h4>
+                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                        <li>{t("help.tutorials.search.step1")}</li>
+                        <li>{t("help.tutorials.search.step2")}</li>
+                        <li>{t("help.tutorials.search.step3")}</li>
+                        <li>{t("help.tutorials.search.step4")}</li>
+                      </ol>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">Para Propietarios:</h4>
-                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                        <li>Gestiona tus propiedades desde "Mis Propiedades"</li>
-                        <li>Revisa y aprueba citas en "Gestión de Visitas"</li>
-                        <li>Actualiza tu configuración de notificaciones</li>
-                        <li>Solicita cambios a tus propiedades (sujeto a aprobación)</li>
-                      </ul>
+
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {t("help.tutorials.appointments.title")}
+                      </h4>
+                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                        <li>{t("help.tutorials.appointments.step1")}</li>
+                        <li>{t("help.tutorials.appointments.step2")}</li>
+                        <li>{t("help.tutorials.appointments.step3")}</li>
+                        <li>{t("help.tutorials.appointments.step4")}</li>
+                      </ol>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">Para Administradores:</h4>
-                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                        <li>Gestiona usuarios desde "Gestión Usuarios"</li>
-                        <li>Revisa solicitudes de cambio en propiedades</li>
-                        <li>Administra reportes de inspección</li>
-                        <li>Accede al backoffice para operaciones administrativas</li>
-                      </ul>
+
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                        <Heart className="h-4 w-4" />
+                        {t("help.tutorials.favorites.title")}
+                      </h4>
+                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                        <li>{t("help.tutorials.favorites.step1")}</li>
+                        <li>{t("help.tutorials.favorites.step2")}</li>
+                        <li>{t("help.tutorials.favorites.step3")}</li>
+                      </ol>
                     </div>
+
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                        <ClipboardList className="h-4 w-4" />
+                        {t("help.tutorials.cards.title")}
+                      </h4>
+                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                        <li>{t("help.tutorials.cards.step1")}</li>
+                        <li>{t("help.tutorials.cards.step2")}</li>
+                        <li>{t("help.tutorials.cards.step3")}</li>
+                        <li>{t("help.tutorials.cards.step4")}</li>
+                      </ol>
+                    </div>
+
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" />
+                        {t("help.tutorials.chat.title")}
+                      </h4>
+                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                        <li>{t("help.tutorials.chat.step1")}</li>
+                        <li>{t("help.tutorials.chat.step2")}</li>
+                        <li>{t("help.tutorials.chat.step3")}</li>
+                      </ol>
+                    </div>
+
+                    {userRole === "owner" && (
+                      <div className="border rounded-lg p-4 bg-accent/5">
+                        <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {t("help.tutorials.owner.title")}
+                        </h4>
+                        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                          <li>{t("help.tutorials.owner.step1")}</li>
+                          <li>{t("help.tutorials.owner.step2")}</li>
+                          <li>{t("help.tutorials.owner.step3")}</li>
+                          <li>{t("help.tutorials.owner.step4")}</li>
+                        </ol>
+                      </div>
+                    )}
+
+                    {(userRole === "master" || userRole === "admin" || userRole === "admin_jr") && (
+                      <div className="border rounded-lg p-4 bg-accent/5">
+                        <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                          <UserCog className="h-4 w-4" />
+                          {t("help.tutorials.admin.title")}
+                        </h4>
+                        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                          <li>{t("help.tutorials.admin.step1")}</li>
+                          <li>{t("help.tutorials.admin.step2")}</li>
+                          <li>{t("help.tutorials.admin.step3")}</li>
+                          <li>{t("help.tutorials.admin.step4")}</li>
+                        </ol>
+                      </div>
+                    )}
                   </div>
                 </section>
 
                 <section>
-                  <h3 className="font-semibold text-lg mb-2">Características Principales</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-primary">{t("help.features.title")}</h3>
                   <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                    <li>Sistema de roles con permisos personalizados</li>
-                    <li>Chat en tiempo real entre usuarios</li>
-                    <li>Gestión de citas con integración de Google Calendar</li>
-                    <li>Sistema de ofertas y contrafertas</li>
-                    <li>Kanban para leads y rentas</li>
-                    <li>Presupuestos y gestión de servicios</li>
-                    <li>Sistema de notificaciones personalizable</li>
+                    <li>{t("help.features.item1")}</li>
+                    <li>{t("help.features.item2")}</li>
+                    <li>{t("help.features.item3")}</li>
+                    <li>{t("help.features.item4")}</li>
+                    <li>{t("help.features.item5")}</li>
+                    <li>{t("help.features.item6")}</li>
+                    <li>{t("help.features.item7")}</li>
                   </ul>
                 </section>
 
-                <section>
-                  <h3 className="font-semibold text-lg mb-2">Soporte</h3>
+                <section className="border-t pt-4">
+                  <h3 className="font-semibold text-lg mb-2">{t("help.support.title")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    ¿Necesitas ayuda adicional? Contacta al equipo de soporte a través del sistema
-                    de mensajes o comunícate con tu administrador.
+                    {t("help.support.desc")}
                   </p>
                 </section>
               </div>
