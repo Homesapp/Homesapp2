@@ -1103,6 +1103,33 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 
+// Chatbot Configuration table
+export const chatbotConfig = pgTable("chatbot_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull().default("MARCO"),
+  systemPrompt: text("system_prompt").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  welcomeMessage: text("welcome_message").notNull(),
+  conversationalMode: boolean("conversational_mode").notNull().default(true),
+  canSuggestPresentationCards: boolean("can_suggest_presentation_cards").notNull().default(true),
+  canScheduleAppointments: boolean("can_schedule_appointments").notNull().default(true),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertChatbotConfigSchema = createInsertSchema(chatbotConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateChatbotConfigSchema = insertChatbotConfigSchema.partial();
+
+export type InsertChatbotConfig = z.infer<typeof insertChatbotConfigSchema>;
+export type UpdateChatbotConfig = z.infer<typeof updateChatbotConfigSchema>;
+export type ChatbotConfig = typeof chatbotConfig.$inferSelect;
+
 // Agreement Templates table - for admin-editable templates
 export const agreementTemplates = pgTable("agreement_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
