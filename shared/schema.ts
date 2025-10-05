@@ -1137,6 +1137,42 @@ export const insertPropertyAgreementSchema = createInsertSchema(propertyAgreemen
 export type InsertPropertyAgreement = z.infer<typeof insertPropertyAgreementSchema>;
 export type PropertyAgreement = typeof propertyAgreements.$inferSelect;
 
+// Service Booking Status Enum
+export const serviceBookingStatusEnum = pgEnum("service_booking_status", [
+  "pending",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);
+
+// Service Bookings table - for hiring service providers
+export const serviceBookings = pgTable("service_bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serviceId: varchar("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  providerId: varchar("provider_id").notNull().references(() => serviceProviders.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "set null" }),
+  status: serviceBookingStatusEnum("status").notNull().default("pending"),
+  scheduledDate: timestamp("scheduled_date"),
+  notes: text("notes"),
+  clientMessage: text("client_message"), // Message from client when booking
+  providerResponse: text("provider_response"), // Response from provider
+  totalCost: decimal("total_cost", { precision: 12, scale: 2 }),
+  currency: varchar("currency", { length: 3 }).notNull().default("MXN"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertServiceBookingSchema = createInsertSchema(serviceBookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
+export type ServiceBooking = typeof serviceBookings.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   properties: many(properties, { relationName: "owner" }),

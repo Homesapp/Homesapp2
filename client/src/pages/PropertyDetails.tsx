@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Heart, MapPin, Bed, Bath, Square, Star, ArrowLeft, ExternalLink, Image, Video, Map, Scan } from "lucide-react";
 import { type Property } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useFavoriteStatus, useToggleFavorite } from "@/hooks/useFavorites";
 
 export default function PropertyDetails() {
   const [, params] = useRoute("/propiedad/:id");
@@ -22,20 +22,8 @@ export default function PropertyDetails() {
     enabled: !!params?.id,
   });
 
-  const toggleFavoriteMutation = useMutation({
-    mutationFn: async () => {
-      if (!property) return;
-      const { data: isFavorite } = await fetch(`/api/favorites/check/${property.id}`).then(r => r.json());
-      if (isFavorite) {
-        await apiRequest("DELETE", `/api/favorites/${property.id}`);
-      } else {
-        await apiRequest("POST", "/api/favorites", { propertyId: property.id });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
-    },
-  });
+  const { isFavorite, isLoading: isFavoriteLoading } = useFavoriteStatus(params?.id || "");
+  const toggleFavoriteMutation = useToggleFavorite();
 
   const formatPrice = (price: string) => {
     return new Intl.NumberFormat("es-MX", {
@@ -65,15 +53,21 @@ export default function PropertyDetails() {
           Volver a búsqueda
         </Button>
         <div className="flex gap-2">
-          {isAuthenticated && (
+          {isAuthenticated && property && (
             <Button
               variant="outline"
-              onClick={() => toggleFavoriteMutation.mutate()}
-              disabled={toggleFavoriteMutation.isPending}
+              onClick={() => {
+                toggleFavoriteMutation.mutate({ propertyId: property.id, isFavorite });
+                toast({
+                  title: isFavorite ? "Eliminado de favoritos" : "Agregado a favoritos",
+                  description: isFavorite ? "La propiedad se eliminó de tus favoritos" : "La propiedad se agregó a tus favoritos",
+                });
+              }}
+              disabled={toggleFavoriteMutation.isPending || isFavoriteLoading}
               data-testid="button-toggle-favorite"
             >
-              <Heart className="h-4 w-4 mr-2" />
-              Guardar en favoritos
+              <Heart className={`h-4 w-4 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+              {isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
             </Button>
           )}
           <Button

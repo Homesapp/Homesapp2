@@ -30,6 +30,7 @@ import {
   agreementTemplates,
   propertySubmissionDrafts,
   propertyAgreements,
+  serviceBookings,
   type User,
   type Colony,
   type InsertColony,
@@ -93,6 +94,8 @@ import {
   type InsertPropertySubmissionDraft,
   type PropertyAgreement,
   type InsertPropertyAgreement,
+  type ServiceBooking,
+  type InsertServiceBooking,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql } from "drizzle-orm";
@@ -197,6 +200,14 @@ export interface IStorage {
   createService(service: InsertService): Promise<Service>;
   updateService(id: string, updates: Partial<InsertService>): Promise<Service>;
   deleteService(id: string): Promise<void>;
+  
+  // Service Booking operations
+  getServiceBooking(id: string): Promise<ServiceBooking | undefined>;
+  getServiceBookings(filters?: { clientId?: string; providerId?: string; status?: string }): Promise<ServiceBooking[]>;
+  createServiceBooking(booking: InsertServiceBooking): Promise<ServiceBooking>;
+  updateServiceBooking(id: string, updates: Partial<InsertServiceBooking>): Promise<ServiceBooking>;
+  updateServiceBookingStatus(id: string, status: string): Promise<ServiceBooking>;
+  deleteServiceBooking(id: string): Promise<void>;
   
   // Offer operations
   getOffer(id: string): Promise<Offer | undefined>;
@@ -940,6 +951,60 @@ export class DatabaseStorage implements IStorage {
 
   async deleteService(id: string): Promise<void> {
     await db.delete(services).where(eq(services.id, id));
+  }
+
+  // Service Booking operations
+  async getServiceBooking(id: string): Promise<ServiceBooking | undefined> {
+    const [booking] = await db.select().from(serviceBookings).where(eq(serviceBookings.id, id));
+    return booking;
+  }
+
+  async getServiceBookings(filters?: { clientId?: string; providerId?: string; status?: string }): Promise<ServiceBooking[]> {
+    let query = db.select().from(serviceBookings);
+    const conditions = [];
+
+    if (filters?.clientId) {
+      conditions.push(eq(serviceBookings.clientId, filters.clientId));
+    }
+    if (filters?.providerId) {
+      conditions.push(eq(serviceBookings.providerId, filters.providerId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(serviceBookings.status, filters.status as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(serviceBookings.createdAt));
+  }
+
+  async createServiceBooking(bookingData: InsertServiceBooking): Promise<ServiceBooking> {
+    const [booking] = await db.insert(serviceBookings).values(bookingData).returning();
+    return booking;
+  }
+
+  async updateServiceBooking(id: string, updates: Partial<InsertServiceBooking>): Promise<ServiceBooking> {
+    const [booking] = await db
+      .update(serviceBookings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(serviceBookings.id, id))
+      .returning();
+    return booking;
+  }
+
+  async updateServiceBookingStatus(id: string, status: string): Promise<ServiceBooking> {
+    const [booking] = await db
+      .update(serviceBookings)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(serviceBookings.id, id))
+      .returning();
+    return booking;
+  }
+
+  async deleteServiceBooking(id: string): Promise<void> {
+    await db.delete(serviceBookings).where(eq(serviceBookings.id, id));
   }
 
   // Offer operations

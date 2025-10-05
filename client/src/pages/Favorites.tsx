@@ -1,38 +1,16 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Bed, Bath, Square, Star } from "lucide-react";
-import { type Property } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Heart, MapPin, Bed, Bath, Square, Star, ExternalLink } from "lucide-react";
+import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Favorites() {
   const { toast } = useToast();
-
-  const { data: favorites = [], isLoading } = useQuery<Property[]>({
-    queryKey: ["/api/favorites"],
-  });
-
-  const removeFavoriteMutation = useMutation({
-    mutationFn: async (propertyId: string) => {
-      await apiRequest("DELETE", `/api/favorites/${propertyId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
-      toast({
-        title: "Favorito eliminado",
-        description: "La propiedad se eliminó de tus favoritos",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el favorito",
-        variant: "destructive",
-      });
-    },
-  });
+  const [, setLocation] = useLocation();
+  const { favorites, isLoading } = useFavorites();
+  const toggleFavoriteMutation = useToggleFavorite();
 
   const formatPrice = (price: string) => {
     return new Intl.NumberFormat("es-MX", {
@@ -90,8 +68,15 @@ export default function Favorites() {
                 size="icon"
                 variant="ghost"
                 className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => removeFavoriteMutation.mutate(property.id)}
-                disabled={removeFavoriteMutation.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavoriteMutation.mutate({ propertyId: property.id, isFavorite: true });
+                  toast({
+                    title: "Eliminado de favoritos",
+                    description: "La propiedad se eliminó de tus favoritos",
+                  });
+                }}
+                disabled={toggleFavoriteMutation.isPending}
                 data-testid={`button-remove-favorite-${property.id}`}
               >
                 <Heart className="h-4 w-4 fill-destructive text-destructive" />
@@ -171,6 +156,17 @@ export default function Favorites() {
                   </div>
                 )}
               </CardContent>
+              
+              <CardFooter>
+                <Button
+                  className="w-full"
+                  onClick={() => setLocation(`/propiedad/${property.id}`)}
+                  data-testid={`button-view-property-${property.id}`}
+                >
+                  Ver detalles
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>

@@ -15,6 +15,7 @@ import {
   insertPresentationCardSchema,
   insertServiceProviderSchema,
   insertServiceSchema,
+  insertServiceBookingSchema,
   insertOfferSchema,
   insertPermissionSchema,
   insertPropertyStaffSchema,
@@ -3226,6 +3227,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting service:", error);
       res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
+  // Service Booking routes
+  app.get("/api/service-bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { clientId, providerId, status } = req.query;
+      
+      const filters: any = {};
+      
+      if (clientId) {
+        filters.clientId = clientId;
+      } else if (user?.role !== "master" && user?.role !== "admin") {
+        filters.clientId = userId;
+      }
+      
+      if (providerId) filters.providerId = providerId;
+      if (status) filters.status = status;
+
+      const bookings = await storage.getServiceBookings(filters);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching service bookings:", error);
+      res.status(500).json({ message: "Failed to fetch service bookings" });
+    }
+  });
+
+  app.post("/api/service-bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookingData = insertServiceBookingSchema.parse({
+        ...req.body,
+        clientId: userId,
+      });
+      
+      const booking = await storage.createServiceBooking(bookingData);
+      
+      await createAuditLog(req, "create", "service_booking", booking.id, 
+        `Created service booking for service ${booking.serviceId}`);
+      
+      res.status(201).json(booking);
+    } catch (error: any) {
+      console.error("Error creating service booking:", error);
+      res.status(400).json({ message: error.message || "Failed to create service booking" });
+    }
+  });
+
+  app.patch("/api/service-bookings/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const booking = await storage.updateServiceBooking(id, req.body);
+      res.json(booking);
+    } catch (error) {
+      console.error("Error updating service booking:", error);
+      res.status(500).json({ message: "Failed to update service booking" });
+    }
+  });
+
+  app.delete("/api/service-bookings/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteServiceBooking(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting service booking:", error);
+      res.status(500).json({ message: "Failed to delete service booking" });
     }
   });
 

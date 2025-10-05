@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { ServiceProviderCard } from "@/components/ServiceProviderCard";
 import { ServiceProviderFormDialog } from "@/components/ServiceProviderFormDialog";
 import { ServiceFormDialog } from "@/components/ServiceFormDialog";
+import { HireServiceDialog } from "@/components/HireServiceDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,7 +18,7 @@ import { useServiceProviders, useServicesByProvider } from "@/hooks/useServicePr
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-function ProviderCardWithServices({ provider }: { provider: any }) {
+function ProviderCardWithServices({ provider, onHire }: { provider: any; onHire: (providerId: string, providerName: string) => void }) {
   const { data: services, isLoading: servicesLoading } = useServicesByProvider(provider.id);
   const { toast } = useToast();
 
@@ -36,10 +37,8 @@ function ProviderCardWithServices({ provider }: { provider: any }) {
   };
 
   const handleHire = () => {
-    toast({
-      title: "Contratación iniciada",
-      description: `Se ha iniciado el proceso de contratación de ${provider.user.firstName} ${provider.user.lastName}`,
-    });
+    const fullName = `${provider.user.firstName || ""} ${provider.user.lastName || ""}`.trim();
+    onHire(provider.id, fullName || "Sin nombre");
   };
 
   const formattedServices = useMemo(() => {
@@ -78,6 +77,8 @@ export default function Directory() {
   const [providerFormOpen, setProviderFormOpen] = useState(false);
   const [serviceFormOpen, setServiceFormOpen] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+  const [hireDialogOpen, setHireDialogOpen] = useState(false);
+  const [selectedProviderForHire, setSelectedProviderForHire] = useState<{ id: string; name: string } | null>(null);
 
   const filters = useMemo(() => {
     const f: { specialty?: string; available?: boolean } = {};
@@ -114,6 +115,17 @@ export default function Directory() {
   }, [user, providers]);
 
   const canRegisterAsProvider = user?.role === "provider" || user?.role === "admin" || user?.role === "master";
+
+  const handleHireProvider = (providerId: string, providerName: string) => {
+    setSelectedProviderForHire({ id: providerId, name: providerName });
+    setHireDialogOpen(true);
+  };
+
+  const selectedProviderServices = useMemo(() => {
+    if (!selectedProviderForHire || !providers) return [];
+    const provider = providers.find(p => p.id === selectedProviderForHire.id);
+    return provider?.services || [];
+  }, [selectedProviderForHire, providers]);
 
   if (error) {
     return (
@@ -159,6 +171,21 @@ export default function Directory() {
         onOpenChange={setServiceFormOpen}
         providerId={selectedProviderId}
       />
+
+      {selectedProviderForHire && (
+        <HireServiceDialog
+          open={hireDialogOpen}
+          onOpenChange={setHireDialogOpen}
+          providerId={selectedProviderForHire.id}
+          providerName={selectedProviderForHire.name}
+          services={selectedProviderServices.map(s => ({
+            id: s.id,
+            name: s.name,
+            price: Number(s.price),
+            description: s.description,
+          }))}
+        />
+      )}
 
       <div className="flex flex-col gap-4 md:flex-row">
         <div className="relative flex-1">
@@ -208,7 +235,11 @@ export default function Directory() {
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredProviders.map((provider) => (
-              <ProviderCardWithServices key={provider.id} provider={provider} />
+              <ProviderCardWithServices 
+                key={provider.id} 
+                provider={provider} 
+                onHire={handleHireProvider}
+              />
             ))}
           </div>
 
