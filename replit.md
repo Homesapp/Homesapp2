@@ -8,6 +8,14 @@ HomesApp is a comprehensive SaaS platform designed for real estate property mana
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**October 5, 2025:**
+- Updated logo to final version ("H mes (500 x 300 px)_1759672952263.png") and resized to h-16 across all components
+- Header height adjusted to h-20 to match smaller logo
+- Primary brand color changed to #21ad44 (HSL: 141 68% 40%) throughout application
+- Carousel navigation arrows repositioned below carousel content, centered with gap-4 spacing for better UX
+
 ## System Architecture
 
 ### Frontend
