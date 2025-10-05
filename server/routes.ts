@@ -4735,6 +4735,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chatbot status route (public for clients)
+  app.get("/api/chatbot/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const config = await storage.getChatbotConfig();
+      
+      if (!config) {
+        return res.status(404).json({ message: "Chatbot configuration not found" });
+      }
+
+      // Only return public status information
+      res.json({
+        isActive: config.isActive,
+        name: config.name,
+      });
+    } catch (error: any) {
+      console.error("Error fetching chatbot status:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch chatbot status" });
+    }
+  });
+
   // Chatbot Configuration routes (admin only)
   app.get("/api/chatbot/config", isAuthenticated, async (req: any, res) => {
     try {

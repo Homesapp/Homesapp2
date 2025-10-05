@@ -39,6 +39,16 @@ export default function Chat() {
     },
   });
 
+  const { data: chatbotStatus } = useQuery<{ isActive: boolean; name: string }>({
+    queryKey: ["/api/chatbot/status"],
+    queryFn: async () => {
+      const response = await fetch("/api/chatbot/status");
+      if (!response.ok) throw new Error("Failed to fetch chatbot status");
+      return response.json();
+    },
+    enabled: user?.role === "cliente",
+  });
+
   const { data: messages = [] } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat/conversations", selectedConversation, "messages"],
     queryFn: async () => {
@@ -202,7 +212,7 @@ export default function Chat() {
               <CardContent className="p-0">
                 <ScrollArea className="h-[500px]">
                   {/* Show chatbot button for clients in appointment tab */}
-                  {activeTab === "appointment" && user?.role === "cliente" && (
+                  {activeTab === "appointment" && user?.role === "cliente" && chatbotStatus?.isActive && (
                     <div className="p-4 border-b">
                       <Button 
                         onClick={() => startChatbotMutation.mutate()}
@@ -212,7 +222,7 @@ export default function Chat() {
                         data-testid="button-start-chatbot"
                       >
                         <Headset className="h-4 w-4 mr-2" />
-                        Iniciar Chat con Asistente Virtual
+                        Iniciar Chat con {chatbotStatus.name || "Asistente Virtual"}
                       </Button>
                     </div>
                   )}
