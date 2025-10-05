@@ -12,8 +12,15 @@ Preferred communication style: Simple, everyday language.
 
 **October 5, 2025:**
 - Updated logo to final version ("H mes (500 x 300 px)_1759672952263.png") and resized to h-16 across all components
-- Header height adjusted to h-20 to match smaller logo
+- Header height adjusted to h-16 for more compact design
 - Primary brand color changed to #21ad44 (HSL: 141 68% 40%) throughout application
+- **Public Home Page Improvements**: Enhanced affiliate banner and reduced spacing for more compact design
+  - Affiliate banner now includes professional image matching other carousel banners
+  - Added 4th benefit to affiliate program: "Dedicated support and ongoing training"
+  - Reduced global spacing throughout home page (py-12→py-8, mb-16→mb-10, mb-12→mb-8)
+  - Banner padding reduced (p-6 md:p-8 → p-4 md:p-6) for tighter, more professional look
+  - Benefits section spacing reduced (gap-8→gap-6, p-8→p-6)
+  - All carousel banners now follow consistent grid layout with images
 - **Chat System Fix**: Fixed chat functionality for all users including clients
   - Added "cliente" role to sidebar Mensajes menu for client access
   - Fixed getChatConversations to properly filter by user participation
