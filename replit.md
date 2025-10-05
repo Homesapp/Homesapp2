@@ -42,6 +42,20 @@ Preferred communication style: Simple, everyday language.
   - Updated search placeholder: "Buscar por ubicación, colonia, condominio o descripción..."
   - Backend support for propertyType, colonyName, condoName, unitType filters
   - Search parameters use "q" for text query, properly mapped to filters in API
+- **Service Provider Messaging**: Implemented real-time messaging with service providers
+  - One-click chat initiation from provider cards in Directory
+  - Creates internal conversation with provider title
+  - Properly adds both current user (as creator) and provider as participants
+  - Redirects to chat page with new conversation ready to use
+  - Integrated with existing WebSocket chat infrastructure
+- **Property Owner Controls**: Enhanced property management for owners
+  - Property deletion with confirmation dialog in OwnerPropertyDetails
+  - Backend permission checks ensure only owners/admins can delete
+  - Property edit workflow uses change request system (requires admin approval)
+- **Bug Fixes**: Fixed critical type safety issues in WebSocket and API handling
+  - WebSocket null safety checks for conversation IDs
+  - Proper type casting for API responses in Directory component
+  - Service provider data correctly loaded via hooks
 
 ## System Architecture
 
