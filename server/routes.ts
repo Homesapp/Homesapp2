@@ -604,6 +604,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Create user with custom role
+  const adminCreateUserSchema = z.object({
+    email: z.string().email("Email inválido"),
+    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+    firstName: z.string().min(1, "El nombre es requerido"),
+    lastName: z.string().min(1, "El apellido es requerido"),
+    role: z.enum([
+      "master",
+      "admin",
+      "admin_jr",
+      "cliente",
+      "seller",
+      "owner",
+      "management",
+      "concierge",
+      "provider",
+      "abogado",
+      "contador",
+      "agente_servicios_especiales",
+    ]),
+    phone: z.string().optional(),
+    sendEmail: z.boolean().optional(),
+  });
+
+  app.post("/api/admin/users", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const validationResult = adminCreateUserSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Datos de usuario inválidos",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const { email, password, firstName, lastName, role, phone, sendEmail } = validationResult.data;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ message: "El email ya está registrado" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create user with specified role
+      const user = await storage.createUserWithPassword({
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        phone: phone || null,
+        role,
+        status: "approved",
+        emailVerified: true, // Auto-verify admin-created accounts
+        preferredLanguage: "es",
+      });
+
+      // Optionally send welcome email
+      if (sendEmail) {
+        try {
+          // Generate verification token (even though auto-verified, for welcome email)
+          const verificationToken = crypto.randomBytes(32).toString("hex");
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+
+          await storage.createEmailVerificationToken({
+            userId: user.id,
+            token: verificationToken,
+            expiresAt,
+          });
+
+          await sendVerificationEmail(user.email, verificationToken);
+        } catch (emailError) {
+          console.error("Error sending welcome email:", emailError);
+          // Don't fail user creation if email fails
+        }
+      }
+
+      // Create audit log
+      await createAuditLog(
+        req,
+        "create",
+        "user",
+        user.id,
+        `Admin created user with role ${role}`
+      );
+
+      res.status(201).json({
+        message: "Usuario creado exitosamente",
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Error al crear el usuario" });
+    }
+  });
+
   // Role request routes
   app.post("/api/role-requests", isAuthenticated, async (req: any, res) => {
     try {

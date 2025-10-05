@@ -56,6 +56,7 @@ import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import ProviderApplication from "@/pages/ProviderApplication";
+import CreateUser from "@/pages/CreateUser";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -154,6 +155,7 @@ function AuthenticatedApp() {
               <Route path="/admin/inspection-reports" component={AdminInspectionReports} />
               <Route path="/admin/agreement-templates" component={AdminAgreementTemplates} />
               <Route path="/admin/condominiums" component={AdminCondominiums} />
+              <Route path="/admin/create-user" component={CreateUser} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />
               <Route path="/properties" component={Properties} />
