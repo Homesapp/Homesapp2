@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { Search, MapPin, Home, Sparkles, TrendingUp, Heart, Calendar, Clock } from "lucide-react";
+import { Search, MapPin, Home, Sparkles, TrendingUp, Heart, Calendar, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +8,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { type Property } from "@shared/schema";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentCard } from "@/components/AppointmentCard";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { format } from "date-fns";
 import logoIcon from "@assets/Sin título (6 x 6 cm) (1024 x 1024 px) (2)_1759620872379.png";
 
@@ -17,19 +20,25 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const { isAdminAuthenticated } = useAdminAuth();
+
+  const isUserAuthenticated = isAuthenticated || isAdminAuthenticated;
 
   const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties/search"],
   });
 
-  const { data: appointments, isLoading: appointmentsLoading } = useAppointments();
+  const { data: appointments, isLoading: appointmentsLoading } = useAppointments(undefined, {
+    enabled: isUserAuthenticated,
+  });
   const updateAppointment = useUpdateAppointment();
 
   const featuredProperties = properties.filter(p => p.featured).slice(0, 6);
   const allProperties = properties.slice(0, 12);
 
   const upcomingAppointments = useMemo(() => {
-    if (!appointments || !properties) return [];
+    if (!appointments || !properties || !isUserAuthenticated) return [];
 
     const now = new Date();
     const upcoming = appointments
@@ -54,7 +63,7 @@ export default function Dashboard() {
         meetLink: appointment.meetLink || undefined,
       };
     });
-  }, [appointments, properties]);
+  }, [appointments, properties, isUserAuthenticated]);
 
   const handleConfirm = async (id: string) => {
     try {
@@ -112,6 +121,28 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Public Header - Only shown when not authenticated */}
+      {!isUserAuthenticated && (
+        <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={logoIcon} alt="HomesApp" className="h-10 w-10" data-testid="img-header-logo" />
+              <h1 className="text-xl font-bold">HomesApp</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Button variant="ghost" onClick={() => setLocation("/login")} data-testid="button-header-login">
+                <UserCircle className="h-4 w-4 mr-2" />
+                Iniciar Sesión
+              </Button>
+              <Button onClick={() => setLocation("/register")} data-testid="button-header-register">
+                Registrarse
+              </Button>
+            </div>
+          </div>
+        </header>
+      )}
+
       {/* Hero Section */}
       <div className="relative h-[600px] bg-gradient-to-br from-primary/10 via-background to-primary/5">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5Q0RCNEEiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJ2LTJoLTJ6bTAgNHYyaDJ2LTJoLTJ6bS0yIDJ2LTJoLTJ2Mmgyem0wLTR2LTJoLTJ2Mmgyem0yLTJ2LTJoLTJ2Mmgyem0wLTRoMnYyaC0ydi0yem0tNiA0djJoMnYtMmgtMnptMi00djJoMnYtMmgtMnptMiAydjJoMnYtMmgtMnptMC00djJoMnYtMmgtMnptMi00djJoMnYtMmgtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-40"></div>
@@ -187,8 +218,8 @@ export default function Dashboard() {
       </div>
 
       <div className="container mx-auto px-4 py-16">
-        {/* Upcoming Appointments Section */}
-        {upcomingAppointments.length > 0 && (
+        {/* Upcoming Appointments Section - Only for authenticated users */}
+        {isUserAuthenticated && upcomingAppointments.length > 0 && (
           <div className="mb-16">
             <Card>
               <CardHeader>
@@ -265,17 +296,19 @@ export default function Dashboard() {
                     <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground">
                       Destacada
                     </Badge>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm hover:bg-background"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                      data-testid={`button-featured-favorite-${property.id}`}
-                    >
-                      <Heart className="h-4 w-4" />
-                    </Button>
+                    {isUserAuthenticated && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm hover:bg-background"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        data-testid={`button-featured-favorite-${property.id}`}
+                      >
+                        <Heart className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-2">
@@ -335,6 +368,13 @@ export default function Dashboard() {
                 <p className="text-muted-foreground mb-6">
                   Actualmente no tenemos propiedades para mostrar. Por favor, vuelve más tarde.
                 </p>
+                {!isUserAuthenticated && (
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={() => setLocation("/register")} data-testid="button-empty-register">
+                      Registrarse para más información
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ) : (
@@ -398,16 +438,25 @@ export default function Dashboard() {
             <div className="p-12 text-center">
               <h2 className="text-3xl font-bold mb-4">¿No encuentras lo que buscas?</h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                Nuestro equipo de expertos está listo para ayudarte a encontrar la propiedad perfecta
+                {isUserAuthenticated 
+                  ? "Nuestro equipo de expertos está listo para ayudarte a encontrar la propiedad perfecta"
+                  : "Regístrate para acceder a todas nuestras propiedades y recibir asesoría personalizada"
+                }
               </p>
               <div className="flex gap-4 justify-center flex-wrap">
                 <Button size="lg" onClick={() => setLocation("/buscar-propiedades")} data-testid="button-cta-search">
                   <Search className="h-5 w-5 mr-2" />
                   Búsqueda Avanzada
                 </Button>
-                <Button size="lg" variant="outline" data-testid="button-cta-contact">
-                  Contactar Asesor
-                </Button>
+                {!isUserAuthenticated ? (
+                  <Button size="lg" onClick={() => setLocation("/register")} data-testid="button-cta-register">
+                    Registrarse Gratis
+                  </Button>
+                ) : (
+                  <Button size="lg" variant="outline" data-testid="button-cta-contact">
+                    Contactar Asesor
+                  </Button>
+                )}
               </div>
             </div>
           </Card>

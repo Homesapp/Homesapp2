@@ -65,7 +65,7 @@ function AuthenticatedApp() {
     );
   }
 
-  // If not authenticated with either system, show landing/admin login/register
+  // If not authenticated with either system, show public pages
   if (!isAuthenticated && !isAdminAuthenticated) {
     return (
       <Switch>
@@ -74,8 +74,11 @@ function AuthenticatedApp() {
         <Route path="/register" component={Register} />
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/buscar-propiedades" component={PropertySearch} />
-        <Route path="/" component={Landing} />
-        <Route component={Landing} />
+        <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
+        <Route path="/propiedad/:id" component={PropertyDetails} />
+        <Route path="/favoritos" component={Favorites} />
+        <Route path="/" component={Dashboard} />
+        <Route component={Dashboard} />
       </Switch>
     );
   }

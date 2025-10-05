@@ -8,7 +8,11 @@ type AppointmentsFilters = {
   propertyId?: string;
 };
 
-export function useAppointments(filters?: AppointmentsFilters) {
+type AppointmentsOptions = {
+  enabled?: boolean;
+};
+
+export function useAppointments(filters?: AppointmentsFilters, options?: AppointmentsOptions) {
   const queryParams = new URLSearchParams();
   if (filters?.status) queryParams.append("status", filters.status);
   if (filters?.clientId) queryParams.append("clientId", filters.clientId);
@@ -19,6 +23,7 @@ export function useAppointments(filters?: AppointmentsFilters) {
 
   return useQuery<Appointment[]>({
     queryKey: ["/api/appointments", filters],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const res = await fetch(url, {
         credentials: "include",
