@@ -3274,10 +3274,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reviews/properties", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Security: Remove clientId from body to prevent impersonation
+      const { clientId: _, ...bodyWithoutClientId } = req.body;
+      
+      // Enforce authenticated user as the reviewer
       const reviewData = {
-        ...req.body,
+        ...bodyWithoutClientId,
         clientId: userId,
       };
+      
       const review = await storage.createPropertyReview(reviewData);
       
       await createAuditLog(
@@ -3313,10 +3319,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reviews/appointments", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Security: Remove clientId from body to prevent impersonation
+      const { clientId: _, ...bodyWithoutClientId } = req.body;
+      
+      // Optional: Verify user attended the appointment
+      if (req.body.appointmentId) {
+        const appointment = await storage.getAppointment(req.body.appointmentId);
+        if (!appointment || appointment.clientId !== userId) {
+          return res.status(403).json({ 
+            message: "Solo puedes dejar reviews de citas a las que asististe" 
+          });
+        }
+      }
+      
+      // Enforce authenticated user as the reviewer
       const reviewData = {
-        ...req.body,
+        ...bodyWithoutClientId,
         clientId: userId,
       };
+      
       const review = await storage.createAppointmentReview(reviewData);
       
       await createAuditLog(
@@ -3352,10 +3374,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reviews/concierges", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Security: Remove clientId from body to prevent impersonation
+      const { clientId: _, ...bodyWithoutClientId } = req.body;
+      
+      // Enforce authenticated user as the reviewer
       const reviewData = {
-        ...req.body,
+        ...bodyWithoutClientId,
         clientId: userId,
       };
+      
       const review = await storage.createConciergeReview(reviewData);
       
       await createAuditLog(
@@ -3401,15 +3429,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Only concierges can create client reviews
+      // Security: Only concierges can create client reviews
       if (user?.role !== "concierge") {
         return res.status(403).json({ message: "Solo los conserjes pueden dejar reviews de clientes" });
       }
       
+      // Security: Remove conciergeId from body to prevent impersonation
+      const { conciergeId: _, ...bodyWithoutConciergeId } = req.body;
+      
+      // Enforce authenticated concierge as the reviewer
       const reviewData = {
-        ...req.body,
+        ...bodyWithoutConciergeId,
         conciergeId: userId,
       };
+      
       const review = await storage.createClientReview(reviewData);
       
       await createAuditLog(
