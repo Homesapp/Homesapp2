@@ -27,6 +27,7 @@ import {
   chatConversations,
   chatParticipants,
   chatMessages,
+  chatbotConfig,
   agreementTemplates,
   propertySubmissionDrafts,
   propertyAgreements,
@@ -89,6 +90,9 @@ import {
   type InsertChatParticipant,
   type ChatMessage,
   type InsertChatMessage,
+  type ChatbotConfig,
+  type InsertChatbotConfig,
+  type UpdateChatbotConfig,
   type AgreementTemplate,
   type InsertAgreementTemplate,
   type PropertySubmissionDraft,
@@ -317,6 +321,10 @@ export interface IStorage {
   addChatParticipant(participant: InsertChatParticipant): Promise<ChatParticipant>;
   getChatParticipants(conversationId: string): Promise<ChatParticipant[]>;
   markConversationAsRead(conversationId: string, userId: string): Promise<boolean>;
+  
+  // Chatbot Configuration operations
+  getChatbotConfig(): Promise<ChatbotConfig | undefined>;
+  updateChatbotConfig(updates: UpdateChatbotConfig): Promise<ChatbotConfig>;
   
   // Agreement Template operations
   getAgreementTemplate(id: string): Promise<AgreementTemplate | undefined>;
@@ -1762,6 +1770,31 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return result.length > 0;
+  }
+
+  // Chatbot Configuration operations
+  async getChatbotConfig(): Promise<ChatbotConfig | undefined> {
+    const [config] = await db.select().from(chatbotConfig).limit(1);
+    return config;
+  }
+
+  async updateChatbotConfig(updates: UpdateChatbotConfig): Promise<ChatbotConfig> {
+    const existingConfig = await this.getChatbotConfig();
+    
+    if (!existingConfig) {
+      throw new Error("Chatbot configuration not found");
+    }
+
+    const [updatedConfig] = await db
+      .update(chatbotConfig)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(chatbotConfig.id, existingConfig.id))
+      .returning();
+    
+    return updatedConfig;
   }
 
   // Agreement Template operations
