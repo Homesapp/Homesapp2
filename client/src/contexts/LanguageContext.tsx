@@ -41,6 +41,23 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.leads": "CRM - Leads",
     "nav.rentals": "Kanban - Rentas",
     "nav.calendar": "Calendario",
+    
+    // Public Dashboard
+    "public.hero.title": "Encuentra tu hogar ideal",
+    "public.hero.subtitle": "Miles de propiedades esperando por ti",
+    "public.search.placeholder": "Busca por ubicación, tipo de propiedad...",
+    "public.search.button": "Buscar",
+    "public.filter.rent": "En Renta",
+    "public.filter.sale": "En Venta",
+    "public.filter.featured": "Destacadas",
+    "public.featured.title": "Propiedades Destacadas",
+    "public.featured.viewAll": "Ver todas",
+    "public.explore.title": "Explora Propiedades",
+    "public.cta.title": "¿Listo para encontrar tu hogar?",
+    "public.cta.subtitle": "Regístrate hoy y accede a miles de propiedades exclusivas",
+    "public.cta.button": "Comenzar Ahora",
+    "public.login": "Iniciar Sesión",
+    "public.register": "Registrarse",
   },
   en: {
     // Header
@@ -72,6 +89,23 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.leads": "CRM - Leads",
     "nav.rentals": "Kanban - Rentals",
     "nav.calendar": "Calendar",
+    
+    // Public Dashboard
+    "public.hero.title": "Find your ideal home",
+    "public.hero.subtitle": "Thousands of properties waiting for you",
+    "public.search.placeholder": "Search by location, property type...",
+    "public.search.button": "Search",
+    "public.filter.rent": "For Rent",
+    "public.filter.sale": "For Sale",
+    "public.filter.featured": "Featured",
+    "public.featured.title": "Featured Properties",
+    "public.featured.viewAll": "View all",
+    "public.explore.title": "Explore Properties",
+    "public.cta.title": "Ready to find your home?",
+    "public.cta.subtitle": "Register today and access thousands of exclusive properties",
+    "public.cta.button": "Get Started",
+    "public.login": "Login",
+    "public.register": "Register",
   },
 };
 

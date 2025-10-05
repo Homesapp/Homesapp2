@@ -7,6 +7,7 @@ export type PropertyCardProps = {
   id: string;
   title: string;
   price: number;
+  salePrice?: number;
   currency?: string;
   bedrooms: number;
   bathrooms: number;
@@ -24,6 +25,7 @@ export type PropertyCardProps = {
 export function PropertyCard({
   title,
   price,
+  salePrice,
   currency = "MXN",
   bedrooms,
   bathrooms,
@@ -73,10 +75,22 @@ export function PropertyCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <div className="text-2xl font-bold text-primary">
-          ${price.toLocaleString()} {currency}
-          {status === "rent" && <span className="text-sm font-normal text-muted-foreground">/mes</span>}
-        </div>
+        {status === "both" && salePrice ? (
+          <div className="space-y-1">
+            <div className="text-2xl font-bold text-primary">
+              ${price.toLocaleString()} {currency}
+              <span className="text-sm font-normal text-muted-foreground">/mes</span>
+            </div>
+            <div className="text-base font-semibold text-muted-foreground">
+              Venta: ${salePrice.toLocaleString()} {currency}
+            </div>
+          </div>
+        ) : (
+          <div className="text-2xl font-bold text-primary">
+            ${price.toLocaleString()} {currency}
+            {status === "rent" && <span className="text-sm font-normal text-muted-foreground">/mes</span>}
+          </div>
+        )}
         
         <div className="flex gap-4 text-sm">
           <div className="flex items-center gap-1">

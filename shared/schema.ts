@@ -362,6 +362,7 @@ export const properties = pgTable("properties", {
   description: text("description"),
   propertyType: text("property_type").notNull().default("house"),
   price: decimal("price", { precision: 12, scale: 2 }).notNull(),
+  salePrice: decimal("sale_price", { precision: 12, scale: 2 }),
   currency: varchar("currency", { length: 3 }).notNull().default("MXN"),
   bedrooms: integer("bedrooms").notNull(),
   bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }).notNull(),
