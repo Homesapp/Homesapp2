@@ -172,7 +172,7 @@ function AuthenticatedApp() {
           <main className="flex-1 overflow-auto p-6">
             <Switch>
               <Route path="/" component={getHomeDashboard()} />
-              <Route path="/mis-citas" component={ClientDashboard} />
+              <Route path="/mis-citas" component={Appointments} />
               <Route path="/buscar-propiedades" component={PropertySearch} />
               <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
               <Route path="/propiedad/:id" component={PropertyDetails} />
