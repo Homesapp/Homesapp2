@@ -4507,10 +4507,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Get chatbot config
+      const config = await storage.getChatbotConfig();
+      
+      if (!config) {
+        return res.status(500).json({ message: "Chatbot configuration not found" });
+      }
+
+      // Check if chatbot is active
+      if (!config.isActive) {
+        return res.status(503).json({ message: "El asistente virtual no está disponible en este momento" });
+      }
+
       // Create chatbot conversation
       const conversation = await storage.createChatConversation({
         type: "appointment",
-        title: `Chat con Asistente Virtual - ${user.firstName || user.email}`,
+        title: `Chat con ${config.name || 'Asistente Virtual'} - ${user.firstName || user.email}`,
         createdById: userId,
         isBot: true,
       });
@@ -4521,7 +4533,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: userId,
       });
 
-      res.status(201).json(conversation);
+      // Send welcome message
+      const welcomeMessage = await storage.createChatMessage({
+        conversationId: conversation.id,
+        senderId: userId,
+        message: config.welcomeMessage,
+        isBot: true,
+      });
+
+      res.status(201).json({
+        ...conversation,
+        welcomeMessage
+      });
     } catch (error: any) {
       console.error("Error starting chatbot conversation:", error);
       res.status(500).json({ message: error.message || "Failed to start chatbot conversation" });
@@ -4543,6 +4566,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Get chatbot config
+      const config = await storage.getChatbotConfig();
+      if (!config) {
+        return res.status(500).json({ message: "Chatbot configuration not found" });
+      }
+
+      // Check if chatbot is active
+      if (!config.isActive) {
+        return res.status(503).json({ message: "El asistente virtual no está disponible en este momento" });
+      }
+
       // Get user's presentation cards
       const presentationCardsData = await storage.getPresentationCards(userId);
 
@@ -4562,7 +4596,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           user,
           presentationCards: presentationCardsData,
-          availableProperties: allProperties
+          availableProperties: allProperties,
+          config
         },
         conversationHistory
       );

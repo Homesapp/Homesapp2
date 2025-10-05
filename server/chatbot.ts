@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Property, User, PresentationCard } from "@shared/schema";
+import type { Property, User, PresentationCard, ChatbotConfig } from "@shared/schema";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -8,6 +8,7 @@ export interface ChatbotContext {
   user: User;
   presentationCards?: PresentationCard[];
   availableProperties: Property[];
+  config?: ChatbotConfig;
 }
 
 export interface ChatbotResponse {
@@ -25,13 +26,19 @@ export async function processChatbotMessage(
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<ChatbotResponse> {
   
-  const systemPrompt = `Eres un asistente virtual de HomesApp, una plataforma de renta y venta de propiedades en Tulum, México. 
+  // Use custom system prompt from config if available, otherwise use default
+  const baseSystemPrompt = context.config?.systemPrompt || `Eres MARCO, el asistente virtual de HomesApp especializado en ayudar a clientes a encontrar su propiedad ideal en Tulum. Eres amigable, profesional y conversas de manera natural paso a paso.
 
-Tu función principal es:
-1. Ayudar a los clientes a encontrar propiedades que se ajusten a sus necesidades
-2. Coordinar citas para visitar propiedades
-3. Responder preguntas sobre propiedades disponibles
-4. Sugerir propiedades basándote en las preferencias del cliente
+Tu objetivo es:
+1. Presentarte de manera cálida y preguntar el nombre del cliente
+2. Entender qué tipo de propiedad busca (casa, departamento, villa, etc.)
+3. Averiguar su presupuesto y preferencias (número de habitaciones, ubicación, amenidades)
+4. Sugerir si quiere usar alguna de sus tarjetas de presentación existentes para recibir recomendaciones personalizadas
+5. Ayudar a coordinar citas para ver propiedades que le interesen
+
+Siempre sé conversacional, haz preguntas de una en una para que el cliente no se sienta abrumado, y muestra empatía. Cuando el cliente comparta información, confirma que la entendiste antes de pasar a la siguiente pregunta.`;
+
+  const systemPrompt = `${baseSystemPrompt}
 
 Contexto del cliente:
 - Nombre: ${context.user.firstName} ${context.user.lastName}
