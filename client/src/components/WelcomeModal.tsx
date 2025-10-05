@@ -52,8 +52,8 @@ export function WelcomeModal({ userRole, hasSeenWelcome, onDismiss }: WelcomeMod
   const prefix = userRole === "cliente" ? "welcome.client" : "welcome.owner";
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleDismiss()}>
-      <DialogContent className="sm:max-w-[500px]" data-testid="modal-welcome">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleDismiss(); }}>
+      <DialogContent className="sm:max-w-[500px]" data-testid="modal-welcome" onEscapeKeyDown={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {t(`${prefix}.title`)}
