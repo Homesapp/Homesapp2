@@ -26,6 +26,7 @@ import {
   Heart,
   FileEdit,
   ClipboardCheck,
+  CalendarCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,7 @@ export function AppSidebar({ userRole, userName, userAvatar }: AppSidebarProps) 
     { title: "Mis Favoritos", url: "/favoritos", icon: Heart, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider"] },
     { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider"] },
     { title: "Mis Propiedades", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
+    { title: "Gestión de Visitas", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },
     { title: "CRM - Leads", url: "/leads", icon: Users, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { title: "Kanban - Rentas", url: "/rentas", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { title: "Propiedades", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "management"] },
