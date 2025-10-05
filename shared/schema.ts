@@ -398,6 +398,7 @@ export const appointments = pgTable("appointments", {
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   clientId: varchar("client_id").notNull().references(() => users.id),
   conciergeId: varchar("concierge_id").references(() => users.id),
+  opportunityRequestId: varchar("opportunity_request_id").references(() => rentalOpportunityRequests.id, { onDelete: "set null" }), // Link to SOR
   date: timestamp("date").notNull(),
   type: appointmentTypeEnum("type").notNull(),
   status: appointmentStatusEnum("status").notNull().default("pending"),

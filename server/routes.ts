@@ -869,7 +869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(rentalOpportunityRequests.userId, userId),
-            inArray(rentalOpportunityRequests.status, ["pending", "contacted", "qualified"])
+            inArray(rentalOpportunityRequests.status, ["pending", "scheduled_visit"])
           )
         );
 
@@ -916,7 +916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(rentalOpportunityRequests.userId, userId),
-            inArray(rentalOpportunityRequests.status, ["pending", "contacted", "qualified"])
+            inArray(rentalOpportunityRequests.status, ["pending", "scheduled_visit"])
           )
         );
 
@@ -939,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(rentalOpportunityRequests.userId, userId),
             eq(rentalOpportunityRequests.propertyId, propertyId),
-            inArray(rentalOpportunityRequests.status, ["pending", "contacted", "qualified"])
+            inArray(rentalOpportunityRequests.status, ["pending", "scheduled_visit"])
           )
         )
         .limit(1);
