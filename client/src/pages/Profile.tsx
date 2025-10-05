@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateUserProfileSchema, type UpdateUserProfile } from "@shared/schema";
+import { useEffect } from "react";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -34,13 +35,25 @@ export default function Profile() {
   const form = useForm<UpdateUserProfile>({
     resolver: zodResolver(updateUserProfileSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      phone: user?.phone || "",
-      bio: user?.bio || "",
-      profileImageUrl: user?.profileImageUrl || "",
+      firstName: "",
+      lastName: "",
+      phone: "",
+      bio: "",
+      profileImageUrl: "",
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        bio: user.bio || "",
+        profileImageUrl: user.profileImageUrl || "",
+      });
+    }
+  }, [user, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateUserProfile) => {
