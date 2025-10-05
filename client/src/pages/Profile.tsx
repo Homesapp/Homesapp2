@@ -1,12 +1,17 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Trash2, Save, Upload, X } from "lucide-react";
+import { Trash2, Save, Upload, X, MessageCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import type { ChatConversation } from "@shared/schema";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,13 +179,36 @@ export default function Profile() {
     return "U";
   };
 
+  const { data: conversations = [] } = useQuery<ChatConversation[]>({
+    queryKey: ["/api/chat/conversations"],
+    queryFn: async () => {
+      const response = await fetch("/api/chat/conversations");
+      if (!response.ok) throw new Error("Failed to fetch conversations");
+      return response.json();
+    },
+  });
+
+  const recentConversations = conversations.slice(0, 5);
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <h1 className="text-3xl font-bold mb-6">Mi Perfil</h1>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <Card>
+      <Tabs defaultValue="personal" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="personal" data-testid="tab-personal">
+            Información Personal
+          </TabsTrigger>
+          <TabsTrigger value="chat" data-testid="tab-chat">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Conversaciones
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="personal">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <Card>
             <CardHeader>
               <CardTitle>Información Personal</CardTitle>
             </CardHeader>
@@ -363,9 +391,80 @@ export default function Profile() {
                 {updateProfileMutation.isPending ? "Guardando..." : "Guardar Cambios"}
               </Button>
             </CardFooter>
+              </Card>
+            </form>
+          </Form>
+        </TabsContent>
+
+        <TabsContent value="chat">
+          <Card>
+            <CardHeader>
+              <CardTitle>Conversaciones Recientes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {recentConversations.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No tienes conversaciones aún</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentConversations.map((conversation) => (
+                    <Card
+                      key={conversation.id}
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => setLocation("/chat")}
+                      data-testid={`conversation-${conversation.id}`}
+                    >
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback>
+                                {conversation.isBot ? "🤖" : "👤"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-semibold text-sm">
+                                  {conversation.title}
+                                </h4>
+                                {conversation.isBot && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Bot
+                                  </Badge>
+                                )}
+                              </div>
+                              {conversation.lastMessageAt && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {formatDistanceToNow(new Date(conversation.lastMessageAt), {
+                                    addSuffix: true,
+                                    locale: es,
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation("/chat")}
+                  data-testid="button-view-all-chats"
+                >
+                  Ver Todas las Conversaciones
+                </Button>
+              </div>
+            </CardContent>
           </Card>
-        </form>
-      </Form>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
