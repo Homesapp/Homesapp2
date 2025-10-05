@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import type { User } from "@shared/schema";
+import { getQueryFn } from "@/lib/queryClient";
 
 const VIEW_AS_ROLE_KEY = "homesapp_view_as_role";
 
@@ -12,8 +13,9 @@ export function useAuth() {
     return null;
   });
 
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: Infinity,
