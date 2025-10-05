@@ -33,6 +33,8 @@ export default function Profile() {
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageChanged, setImageChanged] = useState(false);
+  const [originalImage, setOriginalImage] = useState<string>("");
 
   const form = useForm<UpdateUserProfile>({
     resolver: zodResolver(updateUserProfileSchema),
@@ -47,23 +49,34 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
+      const userImage = user.profileImageUrl || "";
       form.reset({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         phone: user.phone || "",
         bio: user.bio || "",
-        profileImageUrl: user.profileImageUrl || "",
+        profileImageUrl: userImage,
       });
-      setImagePreview(user.profileImageUrl || "");
+      setImagePreview(userImage);
+      setOriginalImage(userImage);
+      setImageChanged(false);
     }
   }, [user, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateUserProfile) => {
-      return await apiRequest("PATCH", "/api/profile", data);
+      const payload = { ...data };
+      
+      // Solo incluir profileImageUrl si cambió
+      if (!imageChanged) {
+        delete payload.profileImageUrl;
+      }
+      
+      return await apiRequest("PATCH", "/api/profile", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setImageChanged(false);
       toast({
         title: "Perfil actualizado",
         description: "Tu perfil ha sido actualizado exitosamente",
@@ -130,14 +143,16 @@ export default function Profile() {
     reader.onloadend = () => {
       const base64String = reader.result as string;
       setImagePreview(base64String);
-      form.setValue("profileImageUrl", base64String);
+      form.setValue("profileImageUrl", base64String, { shouldDirty: true });
+      setImageChanged(true);
     };
     reader.readAsDataURL(file);
   };
 
   const handleRemoveImage = () => {
     setImagePreview("");
-    form.setValue("profileImageUrl", "");
+    form.setValue("profileImageUrl", "", { shouldDirty: true });
+    setImageChanged(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
