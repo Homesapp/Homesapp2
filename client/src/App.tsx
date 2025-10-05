@@ -111,7 +111,37 @@ function AuthenticatedApp() {
     ? `${currentUser.firstName} ${currentUser.lastName}`
     : currentUser?.email || (isAdminAuthenticated && adminUser ? adminUser.username : undefined) || "Usuario";
   
-  const userRole = currentUser?.role || "owner";
+  // Determine user role - admin authenticated users get 'admin' fallback, others get undefined
+  const userRole = isAdminAuthenticated 
+    ? (currentUser?.role || "admin") 
+    : currentUser?.role;
+
+  // Determine home dashboard based on authentication type and role
+  const getHomeDashboard = () => {
+    // Admin authenticated users always see AdminDashboard
+    if (isAdminAuthenticated) {
+      return AdminDashboard;
+    }
+    
+    // Route based on user role
+    switch (userRole) {
+      case "cliente":
+        return ClientDashboard;
+      case "owner":
+        return OwnerDashboard;
+      case "master":
+      case "admin":
+      case "admin_jr":
+        return AdminDashboard;
+      case "seller":
+      case "management":
+      case "concierge":
+      case "provider":
+      default:
+        // Users without a defined role or with unrecognized roles get generic Dashboard
+        return Dashboard;
+    }
+  };
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
@@ -139,7 +169,7 @@ function AuthenticatedApp() {
           </header>
           <main className="flex-1 overflow-auto p-6">
             <Switch>
-              <Route path="/" component={userRole === "cliente" ? ClientDashboard : Dashboard} />
+              <Route path="/" component={getHomeDashboard()} />
               <Route path="/mis-citas" component={ClientDashboard} />
               <Route path="/buscar-propiedades" component={PropertySearch} />
               <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />

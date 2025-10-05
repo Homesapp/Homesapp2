@@ -54,7 +54,7 @@ import { useState } from "react";
 export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "cliente" | "abogado" | "contador" | "agente_servicios_especiales";
 
 export type AppSidebarProps = {
-  userRole: UserRole;
+  userRole: UserRole | undefined;
 };
 
 const roleLabels: Record<UserRole, string> = {
@@ -118,9 +118,23 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Mis Servicios", url: "/my-services", icon: CreditCard, roles: ["provider"] },
   ];
 
-  const filteredMain = mainItems.filter((item) => item.roles.includes(userRole));
-  const filteredAdmin = adminItems.filter((item) => item.roles.includes(userRole));
-  const filteredService = serviceItems.filter((item) => item.roles.includes(userRole));
+  // For users without a role, show only basic navigation items (no privileged routes)
+  const basicItems = [
+    { title: "Inicio", url: "/", icon: Home },
+    { title: "Notificaciones", url: "/notificaciones", icon: Bell },
+    { title: "Mensajes", url: "/chat", icon: MessageCircle },
+    { title: "Perfil", url: "/perfil", icon: User },
+  ];
+
+  const filteredMain = userRole 
+    ? mainItems.filter((item) => item.roles.includes(userRole))
+    : basicItems;
+  const filteredAdmin = userRole 
+    ? adminItems.filter((item) => item.roles.includes(userRole))
+    : [];
+  const filteredService = userRole 
+    ? serviceItems.filter((item) => item.roles.includes(userRole))
+    : [];
 
   return (
     <Sidebar>
