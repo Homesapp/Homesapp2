@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { useState } from "react";
 
-export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "abogado" | "contador" | "agente_servicios_especiales";
+export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "cliente" | "abogado" | "contador" | "agente_servicios_especiales";
 
 export type AppSidebarProps = {
   userRole: UserRole;
@@ -60,6 +60,7 @@ const roleLabels: Record<UserRole, string> = {
   management: "Management",
   concierge: "Conserje",
   provider: "Proveedor",
+  cliente: "Cliente",
   abogado: "Abogado",
   contador: "Contador",
   agente_servicios_especiales: "Agente de Servicios Especiales",

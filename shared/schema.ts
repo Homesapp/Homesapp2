@@ -198,6 +198,25 @@ export const chatTypeEnum = pgEnum("chat_type", [
   "support", // Chat con HomesApp
 ]);
 
+export const agreementTemplateTypeEnum = pgEnum("agreement_template_type", [
+  "terms_and_conditions",   // Términos y condiciones generales
+  "rent_authorization",     // Autorización de renta
+  "sale_authorization",     // Autorización de venta
+]);
+
+export const propertySubmissionStatusEnum = pgEnum("property_submission_status", [
+  "draft",      // En progreso, guardando pasos
+  "submitted",  // Enviado para revisión
+  "approved",   // Aprobado, se creó la propiedad
+  "rejected",   // Rechazado
+]);
+
+export const agreementSignatureStatusEnum = pgEnum("agreement_signature_status", [
+  "pending",    // Pendiente de firma
+  "signed",     // Firmado
+  "declined",   // Rechazado
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -971,6 +990,88 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Agreement Templates table - for admin-editable templates
+export const agreementTemplates = pgTable("agreement_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: agreementTemplateTypeEnum("type").notNull().unique(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  content: text("content").notNull(), // Template content with variables like {{owner.name}}, {{property.title}}
+  allowedVariables: text("allowed_variables").array().default(sql`ARRAY[]::text[]`), // List of allowed variables
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAgreementTemplateSchema = createInsertSchema(agreementTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAgreementTemplate = z.infer<typeof insertAgreementTemplateSchema>;
+export type AgreementTemplate = typeof agreementTemplates.$inferSelect;
+
+// Property Submission Drafts - for saving wizard progress
+export const propertySubmissionDrafts = pgTable("property_submission_drafts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: propertySubmissionStatusEnum("status").notNull().default("draft"),
+  currentStep: integer("current_step").notNull().default(1),
+  // Property data stored as JSON (will be converted to property record when submitted)
+  basicInfo: jsonb("basic_info"), // title, description, propertyType, price, etc.
+  locationInfo: jsonb("location_info"), // location, address details
+  details: jsonb("details"), // bedrooms, bathrooms, area, amenities
+  media: jsonb("media"), // images, videos, virtualTourUrl
+  commercialTerms: jsonb("commercial_terms"), // rental/sale specific terms
+  // Property type selection
+  isForRent: boolean("is_for_rent").notNull().default(false),
+  isForSale: boolean("is_for_sale").notNull().default(false),
+  // Review/rejection info
+  reviewNotes: text("review_notes"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertySubmissionDraftSchema = createInsertSchema(propertySubmissionDrafts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPropertySubmissionDraft = z.infer<typeof insertPropertySubmissionDraftSchema>;
+export type PropertySubmissionDraft = typeof propertySubmissionDrafts.$inferSelect;
+
+// Property Agreements - for storing signed agreements
+export const propertyAgreements = pgTable("property_agreements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionDraftId: varchar("submission_draft_id").references(() => propertySubmissionDrafts.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }),
+  templateId: varchar("template_id").notNull().references(() => agreementTemplates.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  templateType: agreementTemplateTypeEnum("template_type").notNull(),
+  status: agreementSignatureStatusEnum("status").notNull().default("pending"),
+  // Rendered content with variables replaced
+  renderedContent: text("rendered_content").notNull(),
+  // Signature information
+  signedAt: timestamp("signed_at"),
+  signerName: varchar("signer_name"),
+  signerIp: varchar("signer_ip"),
+  // Variable data used for rendering (stored for record)
+  variableData: jsonb("variable_data"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPropertyAgreementSchema = createInsertSchema(propertyAgreements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPropertyAgreement = z.infer<typeof insertPropertyAgreementSchema>;
+export type PropertyAgreement = typeof propertyAgreements.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
