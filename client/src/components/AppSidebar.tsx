@@ -89,7 +89,6 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Tareas", url: "/tareas", icon: ListTodo, roles: ["master", "admin", "admin_jr", "management", "concierge"] },
     { title: "Clientes", url: "/clientes", icon: Users, roles: ["master", "admin", "admin_jr", "seller"] },
     { title: "Tarjetas", url: "/presentation-cards", icon: ClipboardList, roles: ["master", "admin", "admin_jr", "seller", "cliente"] },
-    { title: "Mi Perfil", url: "/perfil", icon: User, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente", "abogado", "contador", "agente_servicios_especiales"] },
   ];
 
   const adminItems = [

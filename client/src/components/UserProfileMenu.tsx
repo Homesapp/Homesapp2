@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
-import { User, Building2, LogOut, UserCircle } from "lucide-react";
+import { Building2, LogOut, UserCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserProfileDialog } from "@/components/UserProfileDialog";
 import { type User as UserType, type AdminUser } from "@shared/schema";
 
 interface UserProfileMenuProps {
@@ -22,7 +20,6 @@ interface UserProfileMenuProps {
 
 export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfileMenuProps) {
   const [, setLocation] = useLocation();
-  const [showProfileDialog, setShowProfileDialog] = useState(false);
 
   const fullName = user?.firstName && user?.lastName 
     ? `${user.firstName} ${user.lastName}`
@@ -63,11 +60,11 @@ export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfile
           <DropdownMenuSeparator />
           {!isAdmin && (
             <DropdownMenuItem
-              onClick={() => setShowProfileDialog(true)}
+              onClick={() => setLocation("/perfil")}
               data-testid="menu-item-profile"
             >
               <UserCircle className="mr-2 h-4 w-4" />
-              <span>Ver Perfil</span>
+              <span>Mi Perfil</span>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -87,14 +84,6 @@ export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfile
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {!isAdmin && 'role' in user && (
-        <UserProfileDialog
-          user={user as UserType}
-          open={showProfileDialog}
-          onOpenChange={setShowProfileDialog}
-        />
-      )}
     </>
   );
 }
