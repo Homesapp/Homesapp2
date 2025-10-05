@@ -64,6 +64,7 @@ export function AppSidebar({ userRole, userName, userAvatar }: AppSidebarProps) 
     { title: "Inicio", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "owner", "management"] },
     { title: "Buscar Propiedades", url: "/buscar-propiedades", icon: Search, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider"] },
     { title: "Mis Favoritos", url: "/favoritos", icon: Heart, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider"] },
+    { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider"] },
     { title: "CRM - Leads", url: "/leads", icon: Users, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { title: "Kanban - Rentas", url: "/rentas", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { title: "Propiedades", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "owner", "management"] },

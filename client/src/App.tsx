@@ -34,6 +34,7 @@ import Users from "@/pages/Users";
 import Clients from "@/pages/Clients";
 import Budgets from "@/pages/Budgets";
 import Tasks from "@/pages/Tasks";
+import MyOpportunities from "@/pages/MyOpportunities";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -136,6 +137,7 @@ function AuthenticatedApp() {
               <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
               <Route path="/propiedad/:id" component={PropertyDetails} />
               <Route path="/favoritos" component={Favorites} />
+              <Route path="/mis-oportunidades" component={MyOpportunities} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />
               <Route path="/properties" component={Properties} />

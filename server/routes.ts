@@ -25,6 +25,7 @@ import {
   insertRoleRequestSchema,
   rentalOpportunityRequests,
   leadJourneys,
+  appointments,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
@@ -947,6 +948,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(existingSOR[0] || null);
     } catch (error: any) {
       console.error("Error checking existing SOR:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get user's SORs with property and appointment details
+  app.get("/api/my-rental-opportunities", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const sorsWithDetails = await db
+        .select({
+          id: rentalOpportunityRequests.id,
+          userId: rentalOpportunityRequests.userId,
+          propertyId: rentalOpportunityRequests.propertyId,
+          status: rentalOpportunityRequests.status,
+          notes: rentalOpportunityRequests.notes,
+          desiredMoveInDate: rentalOpportunityRequests.desiredMoveInDate,
+          preferredContactMethod: rentalOpportunityRequests.preferredContactMethod,
+          createdAt: rentalOpportunityRequests.createdAt,
+          updatedAt: rentalOpportunityRequests.updatedAt,
+        })
+        .from(rentalOpportunityRequests)
+        .where(eq(rentalOpportunityRequests.userId, userId))
+        .orderBy(rentalOpportunityRequests.createdAt);
+
+      // Enrich with property and appointment data
+      const enrichedSORs = await Promise.all(
+        sorsWithDetails.map(async (sor) => {
+          const property = await storage.getProperty(sor.propertyId);
+          
+          // Get appointment if status is scheduled_visit
+          let appointment = null;
+          if (sor.status === "scheduled_visit") {
+            const appointments = await storage.getAppointments();
+            appointment = appointments.find(
+              (apt) => apt.opportunityRequestId === sor.id
+            );
+          }
+
+          return {
+            ...sor,
+            property,
+            appointment,
+          };
+        })
+      );
+
+      res.json(enrichedSORs);
+    } catch (error: any) {
+      console.error("Error fetching user SORs:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Schedule visit from SOR
+  app.post("/api/rental-opportunity-requests/:sorId/schedule-visit", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sorId } = req.params;
+      const { date, type, notes } = req.body;
+
+      // Verificar que la SOR existe y pertenece al usuario
+      const [sor] = await db
+        .select()
+        .from(rentalOpportunityRequests)
+        .where(
+          and(
+            eq(rentalOpportunityRequests.id, sorId),
+            eq(rentalOpportunityRequests.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (!sor) {
+        return res.status(404).json({ error: "Solicitud de oportunidad no encontrada" });
+      }
+
+      if (sor.status !== "pending") {
+        return res.status(400).json({ 
+          error: "Esta solicitud ya tiene una visita programada o ha sido procesada" 
+        });
+      }
+
+      // Preparar datos del appointment
+      let meetLink: string | null = null;
+      let googleEventId: string | null = null;
+
+      // Crear evento de Google Meet si es video
+      if (type === "video") {
+        const property = await storage.getProperty(sor.propertyId);
+        const appointmentDate = new Date(date);
+        const endDate = new Date(appointmentDate.getTime() + 60 * 60 * 1000);
+
+        const eventResult = await createGoogleMeetEvent({
+          summary: `Visita Virtual: ${property?.title || "Propiedad"}`,
+          description: `Visita virtual programada desde solicitud de oportunidad`,
+          start: appointmentDate,
+          end: endDate,
+          attendees: [],
+        });
+
+        if (eventResult) {
+          meetLink = eventResult.meetLink;
+          googleEventId = eventResult.eventId;
+        }
+      }
+
+      // Crear appointment
+      const [appointment] = await db
+        .insert(appointments)
+        .values({
+          propertyId: sor.propertyId,
+          clientId: userId,
+          opportunityRequestId: sorId,
+          date: new Date(date),
+          type,
+          status: "pending",
+          meetLink,
+          googleEventId,
+          notes: notes || null,
+        })
+        .returning();
+
+      // Actualizar estado de SOR a scheduled_visit
+      await db
+        .update(rentalOpportunityRequests)
+        .set({ 
+          status: "scheduled_visit",
+          updatedAt: new Date()
+        })
+        .where(eq(rentalOpportunityRequests.id, sorId));
+
+      // Registrar en lead_journeys
+      await db.insert(leadJourneys).values({
+        propertyId: sor.propertyId,
+        userId,
+        action: "view_layer2", // Visita programada
+        metadata: { appointmentId: appointment.id, sorId },
+      });
+
+      res.json(appointment);
+    } catch (error: any) {
+      console.error("Error scheduling visit from SOR:", error);
       res.status(500).json({ error: error.message });
     }
   });
