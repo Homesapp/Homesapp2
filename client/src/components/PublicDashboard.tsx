@@ -64,7 +64,7 @@ export default function PublicDashboard() {
     <div className="min-h-screen bg-background">
       {/* Public Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center">
             <img src={logoIcon} alt="HomesApp" className="h-16 w-auto" />
           </div>
@@ -89,13 +89,13 @@ export default function PublicDashboard() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8">
         {/* Hero Section */}
-        <div className="mb-16 text-center">
-          <h1 className="mb-6 text-5xl font-bold tracking-tight">
+        <div className="mb-10 text-center">
+          <h1 className="mb-4 text-5xl font-bold tracking-tight">
             {t("public.hero.title")}
           </h1>
-          <p className="mb-8 text-xl text-muted-foreground">
+          <p className="mb-6 text-xl text-muted-foreground">
             {t("public.hero.subtitle")}
           </p>
           
@@ -195,7 +195,7 @@ export default function PublicDashboard() {
             )}
             
             {/* Quick Filters */}
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
               <Button
                 variant="outline"
                 size="lg"
@@ -231,7 +231,7 @@ export default function PublicDashboard() {
         </div>
 
         {/* Promotional Banners Carousel */}
-        <div className="mb-12">
+        <div className="mb-8">
           <Carousel
             opts={{
               align: "start",
@@ -257,12 +257,12 @@ export default function PublicDashboard() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
                     </div>
-                    <div className="p-6 md:p-8 flex flex-col justify-center">
-                      <h2 className="text-2xl md:text-3xl font-bold mb-4">{t("public.ownerBanner.title")}</h2>
-                      <p className="text-base text-muted-foreground mb-6">
+                    <div className="p-4 md:p-6 flex flex-col justify-center">
+                      <h2 className="text-2xl md:text-3xl font-bold mb-3">{t("public.ownerBanner.title")}</h2>
+                      <p className="text-base text-muted-foreground mb-4">
                         {t("public.ownerBanner.subtitle")}
                       </p>
-                      <div className="space-y-3 mb-6">
+                      <div className="space-y-2 mb-4">
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
                           <span className="text-sm">{t("public.ownerBanner.benefit1")}</span>
@@ -293,12 +293,12 @@ export default function PublicDashboard() {
               <CarouselItem>
                 <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                   <div className="grid md:grid-cols-2 gap-0">
-                    <div className="p-6 md:p-8 flex flex-col justify-center">
-                      <h2 className="text-2xl md:text-3xl font-bold mb-4">{t("public.serviceBanner.title")}</h2>
-                      <p className="text-base text-muted-foreground mb-6">
+                    <div className="p-4 md:p-6 flex flex-col justify-center">
+                      <h2 className="text-2xl md:text-3xl font-bold mb-3">{t("public.serviceBanner.title")}</h2>
+                      <p className="text-base text-muted-foreground mb-4">
                         {t("public.serviceBanner.subtitle")}
                       </p>
-                      <div className="space-y-3 mb-6">
+                      <div className="space-y-2 mb-4">
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
                           <span className="text-sm">{t("public.serviceBanner.benefit1")}</span>
@@ -345,12 +345,12 @@ export default function PublicDashboard() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
                     </div>
-                    <div className="p-6 md:p-8 flex flex-col justify-center">
-                      <h2 className="text-2xl md:text-3xl font-bold mb-4">{t("public.affiliateBanner.title")}</h2>
-                      <p className="text-base text-muted-foreground mb-6">
+                    <div className="p-4 md:p-6 flex flex-col justify-center">
+                      <h2 className="text-2xl md:text-3xl font-bold mb-3">{t("public.affiliateBanner.title")}</h2>
+                      <p className="text-base text-muted-foreground mb-4">
                         {t("public.affiliateBanner.subtitle")}
                       </p>
-                      <div className="space-y-3 mb-6">
+                      <div className="space-y-2 mb-4">
                         <div className="flex items-start gap-3">
                           <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
                           <span className="text-sm">{t("public.affiliateBanner.benefit1")}</span>
@@ -381,7 +381,7 @@ export default function PublicDashboard() {
                 </div>
               </CarouselItem>
             </CarouselContent>
-            <div className="mt-6 flex justify-center gap-4">
+            <div className="mt-4 flex justify-center gap-4">
               <CarouselPrevious className="static translate-y-0" data-testid="button-banner-carousel-prev" />
               <CarouselNext className="static translate-y-0" data-testid="button-banner-carousel-next" />
             </div>
@@ -390,8 +390,8 @@ export default function PublicDashboard() {
 
         {/* Featured Properties */}
         {featuredProperties.length > 0 && (
-          <div className="mb-16">
-            <div className="mb-8 flex items-center justify-between">
+          <div className="mb-10">
+            <div className="mb-6 flex items-center justify-between">
               <h2 className="text-3xl font-bold">{t("public.featured.title")}</h2>
               <Button
                 variant="outline"
@@ -461,7 +461,7 @@ export default function PublicDashboard() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <div className="mt-6 flex justify-center gap-4">
+              <div className="mt-4 flex justify-center gap-4">
                 <CarouselPrevious className="static translate-y-0" data-testid="button-carousel-prev" />
                 <CarouselNext className="static translate-y-0" data-testid="button-carousel-next" />
               </div>
@@ -470,14 +470,14 @@ export default function PublicDashboard() {
         )}
 
         {/* Benefits Section */}
-        <div className="mb-16 grid md:grid-cols-2 gap-8">
+        <div className="mb-10 grid md:grid-cols-2 gap-6">
           {/* Client Benefits */}
-          <div className="p-8 rounded-lg border bg-card">
-            <div className="mb-6">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="p-6 rounded-lg border bg-card">
+            <div className="mb-4">
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                 <Home className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">{t("public.clientBenefits.title")}</h3>
+              <h3 className="text-2xl font-bold mb-1">{t("public.clientBenefits.title")}</h3>
               <p className="text-muted-foreground">{t("public.clientBenefits.subtitle")}</p>
             </div>
             <ul className="space-y-3">
@@ -509,12 +509,12 @@ export default function PublicDashboard() {
           </div>
 
           {/* Owner Benefits */}
-          <div className="p-8 rounded-lg border bg-card">
-            <div className="mb-6">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+          <div className="p-6 rounded-lg border bg-card">
+            <div className="mb-4">
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                 <Building2 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">{t("public.ownerBenefits.title")}</h3>
+              <h3 className="text-2xl font-bold mb-1">{t("public.ownerBenefits.title")}</h3>
               <p className="text-muted-foreground">{t("public.ownerBenefits.subtitle")}</p>
             </div>
             <ul className="space-y-3">
@@ -548,7 +548,7 @@ export default function PublicDashboard() {
 
         {/* All Properties */}
         <div>
-          <div className="mb-8 flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-3xl font-bold">{t("public.explore.title")}</h2>
             <Button
               variant="outline"
@@ -558,7 +558,7 @@ export default function PublicDashboard() {
               {t("public.featured.viewAll")}
             </Button>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {allProperties.map((property) => (
               <div
                 key={property.id}
