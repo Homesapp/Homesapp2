@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Building2, Calendar, Users, Shield } from "lucide-react";
 import { Link } from "wouter";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Landing() {
+  const { t } = useLanguage();
+  
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -13,10 +16,10 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" asChild data-testid="button-login">
-              <Link href="/login">Iniciar Sesión</Link>
+              <Link href="/login">{t("landing.login")}</Link>
             </Button>
             <Button asChild data-testid="button-register">
-              <Link href="/register">Registrarse</Link>
+              <Link href="/register">{t("landing.register")}</Link>
             </Button>
           </div>
         </div>
@@ -26,54 +29,53 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="space-y-4">
             <h2 className="text-4xl md:text-5xl font-bold">
-              HomesApp - Plataforma Completa de Gestión Inmobiliaria
+              {t("landing.title")}
             </h2>
             <p className="text-xl text-muted-foreground">
-              Administra propiedades, coordina citas, gestiona clientes y servicios
-              todo en un solo lugar
+              {t("landing.subtitle")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
             <div className="p-6 space-y-2 border rounded-lg">
               <Building2 className="h-10 w-10 text-primary mx-auto" />
-              <h3 className="font-semibold">Gestión de Propiedades</h3>
+              <h3 className="font-semibold">{t("landing.feature1.title")}</h3>
               <p className="text-sm text-muted-foreground">
-                Administra tu portafolio completo con detalles, imágenes y estado
+                {t("landing.feature1.desc")}
               </p>
             </div>
 
             <div className="p-6 space-y-2 border rounded-lg">
               <Calendar className="h-10 w-10 text-primary mx-auto" />
-              <h3 className="font-semibold">Coordinación de Citas</h3>
+              <h3 className="font-semibold">{t("landing.feature2.title")}</h3>
               <p className="text-sm text-muted-foreground">
-                Agenda visitas presenciales y videollamadas con Google Meet
+                {t("landing.feature2.desc")}
               </p>
             </div>
 
             <div className="p-6 space-y-2 border rounded-lg">
               <Users className="h-10 w-10 text-primary mx-auto" />
-              <h3 className="font-semibold">Multi-Rol</h3>
+              <h3 className="font-semibold">{t("landing.feature3.title")}</h3>
               <p className="text-sm text-muted-foreground">
-                Sistema completo de roles para propietarios, vendedores y más
+                {t("landing.feature3.desc")}
               </p>
             </div>
 
             <div className="p-6 space-y-2 border rounded-lg">
               <Shield className="h-10 w-10 text-primary mx-auto" />
-              <h3 className="font-semibold">Directorio de Servicios</h3>
+              <h3 className="font-semibold">{t("landing.feature4.title")}</h3>
               <p className="text-sm text-muted-foreground">
-                Marketplace de proveedores para mantenimiento y servicios
+                {t("landing.feature4.desc")}
               </p>
             </div>
           </div>
 
           <div className="pt-8 flex gap-4 justify-center">
             <Button size="lg" asChild data-testid="button-get-started">
-              <Link href="/register">Crear Cuenta Gratis</Link>
+              <Link href="/register">{t("landing.createAccount")}</Link>
             </Button>
             <Button size="lg" variant="outline" asChild data-testid="button-get-started-login">
-              <Link href="/login">Iniciar Sesión</Link>
+              <Link href="/login">{t("landing.loginButton")}</Link>
             </Button>
           </div>
         </div>
