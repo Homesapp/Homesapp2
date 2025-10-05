@@ -11,6 +11,16 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **October 5, 2025:**
+- **Welcome Modal & Navigation Fixes**: 
+  - Welcome modal now requires explicit button click to dismiss (prevented ESC/outside click)
+  - Client "Inicio" navigation now correctly redirects to ClientDashboard instead of PropertySearch
+  - Fixed apiRequest call syntax in WelcomeModal (corrected parameter order to method-first)
+- **Referral Filtering Security Enhancement**:
+  - Added assignedTo field to clientReferrals and ownerReferrals tables for admin assignment tracking
+  - Implemented secure role-based referral filtering: regular users see only their own referrals
+  - Sellers see: their own created referrals + admin-assigned referrals + platform referrals (assignedTo IS NULL)
+  - Backend enforces security: users can only access their own data via authenticated user ID
+  - Admins can view/filter all referrals by any referrerId
 - Updated logo to final version ("H mes (500 x 300 px)_1759672952263.png") and resized to h-16 across all components
 - Header height adjusted to h-16 for more compact design
 - Primary brand color changed to #21ad44 (HSL: 141 68% 40%) throughout application
