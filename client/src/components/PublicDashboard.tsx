@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
+import tulumProperty1 from "@assets/stock_images/tulum_mexico_luxury__2d50d3ea.jpg";
+import tulumBeach from "@assets/stock_images/tulum_mexico_beach_t_21c511ca.jpg";
+import serviceProvider from "@assets/stock_images/professional_service_ac32cdb7.jpg";
 
 export default function PublicDashboard() {
   const [, setLocation] = useLocation();
@@ -226,6 +229,49 @@ export default function PublicDashboard() {
           </div>
         </div>
 
+        {/* Owner Banner - List Your Property */}
+        <div className="mb-16 overflow-hidden rounded-lg border bg-card shadow-sm">
+          <div className="grid md:grid-cols-2 gap-0">
+            <div className="relative h-64 md:h-full">
+              <img
+                src={tulumProperty1}
+                alt="Lista tu propiedad en Tulum"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+            </div>
+            <div className="p-8 md:p-12 flex flex-col justify-center">
+              <h2 className="text-3xl font-bold mb-4">¿Tienes una propiedad en Tulum?</h2>
+              <p className="text-lg text-muted-foreground mb-6">
+                Únete a nuestra plataforma y alcanza miles de clientes potenciales. 
+                Gestiona reservas, citas y mucho más desde un solo lugar.
+              </p>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span>Exposición a miles de clientes verificados</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span>Herramientas de gestión profesionales</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span>Sin comisiones ocultas</span>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                onClick={() => setLocation("/register")}
+                className="w-fit"
+                data-testid="button-list-property"
+              >
+                Enlistar mi Propiedad
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Featured Properties */}
         {featuredProperties.length > 0 && (
           <div className="mb-16">
@@ -307,6 +353,83 @@ export default function PublicDashboard() {
           </div>
         )}
 
+        {/* Benefits Section */}
+        <div className="mb-16 grid md:grid-cols-2 gap-8">
+          {/* Client Benefits */}
+          <div className="p-8 rounded-lg border bg-card">
+            <div className="mb-6">
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <Home className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Para Clientes</h3>
+              <p className="text-muted-foreground">Encuentra tu hogar perfecto en el paraíso</p>
+            </div>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Acceso exclusivo a propiedades verificadas en Tulum</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Agenda visitas virtuales o presenciales fácilmente</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Chat directo con propietarios y agentes</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Guarda tus favoritas y compáralas</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Owner Benefits */}
+          <div className="p-8 rounded-lg border bg-card">
+            <div className="mb-6">
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Para Propietarios</h3>
+              <p className="text-muted-foreground">Maximiza el potencial de tu inversión</p>
+            </div>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Plataforma completa para gestionar tu propiedad</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Calendario integrado de citas y reservas</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Marketplace de proveedores de servicios confiables</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">✓</span>
+                </div>
+                <span>Reportes y análisis en tiempo real</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
         {/* All Properties */}
         <div>
           <div className="mb-8 flex items-center justify-between">
@@ -365,6 +488,93 @@ export default function PublicDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Service Provider Banner */}
+        <div className="mt-16 mb-16 overflow-hidden rounded-lg border bg-card shadow-sm">
+          <div className="grid md:grid-cols-2 gap-0">
+            <div className="p-8 md:p-12 flex flex-col justify-center">
+              <h2 className="text-3xl font-bold mb-4">¿Ofreces Servicios para Propiedades?</h2>
+              <p className="text-lg text-muted-foreground mb-6">
+                Únete a nuestra red de proveedores de servicios confiables. 
+                Conecta con propietarios que necesitan tus servicios profesionales.
+              </p>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span>Limpieza, mantenimiento, jardinería y más</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span>Acceso a una base de clientes establecida</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span>Sistema de reservas y pagos integrado</span>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                onClick={() => setLocation("/solicitud-proveedor")}
+                className="w-fit"
+                data-testid="button-provider-apply"
+              >
+                Aplicar como Proveedor
+              </Button>
+            </div>
+            <div className="relative h-64 md:h-full">
+              <img
+                src={serviceProvider}
+                alt="Proveedores de servicios"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-l from-black/40 to-transparent" />
+            </div>
+          </div>
+        </div>
+
+        {/* Seller/Affiliate Banner */}
+        <div className="mt-16 mb-16 relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/10 to-primary/5">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+          <div className="relative p-8 md:p-12">
+            <div className="max-w-3xl">
+              <h2 className="text-3xl font-bold mb-4">Programa de Afiliados</h2>
+              <p className="text-lg text-muted-foreground mb-6">
+                ¿Conoces personas buscando propiedades en Tulum? Conviértete en nuestro aliado 
+                y gana comisiones atractivas por cada cliente que refiera.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-6 mb-8">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <span>Comisiones competitivas por cada venta</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <span>Material de marketing profesional</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <span>Soporte dedicado para vendedores</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <span>Sin inversión inicial</span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                onClick={() => setLocation("/register")}
+                data-testid="button-affiliate-join"
+              >
+                Únete al Programa
+              </Button>
+            </div>
           </div>
         </div>
 
