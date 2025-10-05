@@ -328,4 +328,20 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* Custom loading animation for logo */
+  @keyframes pulse-color {
+    0%, 100% {
+      filter: grayscale(100%) brightness(0.9);
+      opacity: 0.6;
+    }
+    50% {
+      filter: grayscale(0%) brightness(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-pulse-color {
+    animation: pulse-color 1.5s ease-in-out infinite;
+  }
 }
