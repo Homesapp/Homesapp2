@@ -75,6 +75,16 @@ Preferred communication style: Simple, everyday language.
   - WebSocket null safety checks for conversation IDs
   - Proper type casting for API responses in Directory component
   - Service provider data correctly loaded via hooks
+- **Chatbot Internationalization**: Updated virtual assistant name to be language-aware
+  - Chatbot now identifies as "Marco-IA" in Spanish and "Marco-AI" in English
+  - System prompts adapt automatically to user's preferred language
+  - Responses generated in appropriate language (Spanish/English) based on user preference
+  - Enhanced multilingual support for property search conversations
+- **Profile Page Translation**: Completed internationalization of client profile page
+  - All text elements now use translation system for Spanish/English support
+  - Added comprehensive translations for profile page UI elements
+  - Profile updates, error messages, and form labels fully translated
+  - Date formatting respects user's language preference (Spanish/English locale)
 
 ## System Architecture
 
