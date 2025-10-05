@@ -74,10 +74,8 @@ function AuthenticatedApp() {
         <Route path="/register" component={Register} />
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/buscar-propiedades" component={PropertySearch} />
-        <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
-        <Route path="/propiedad/:id" component={PropertyDetails} />
-        <Route path="/" component={Dashboard} />
-        <Route component={Dashboard} />
+        <Route path="/" component={Landing} />
+        <Route component={Landing} />
       </Switch>
     );
   }

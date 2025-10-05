@@ -312,14 +312,14 @@ export function TaskFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Presupuesto (Opcional)</FormLabel>
-                  <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-budget">
                         <SelectValue placeholder="Seleccionar presupuesto" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">Sin presupuesto</SelectItem>
+                      <SelectItem value="">Sin presupuesto</SelectItem>
                       {budgets?.map((budget) => (
                         <SelectItem key={budget.id} value={budget.id}>
                           {budget.title} - ${budget.estimatedCost}
