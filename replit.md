@@ -17,11 +17,34 @@ Preferred communication style: Simple, everyday language.
   - "Mis Oportunidades" → "Oportunidades"
 - English translations updated accordingly (Appointments, Favorites, Opportunities)
 
+### Internationalization Enhancements
+- Added comprehensive translations for RoleToggle component (Spanish/English)
+  - Role labels: Owner/Propietario, Client/Cliente
+  - Mode switching UI: "Cambiar modo"/"Switch mode"
+  - Role descriptions and success/error messages
+- Fully translated ClientPresentationCard component
+  - Card actions: Activate/Activar, Deactivate/Desactivar, Edit/Editar, Delete/Eliminar
+  - Property details: bedrooms, bathrooms, amenities
+  - Modality labels: Rent/Renta, Sale/Venta, Rent or Sale/Renta o Venta
+  - Match counters with proper pluralization
+- All UI text now properly internationalized
+
+### Sidebar Improvements
+- Collapsible sidebar with icon-only mode (uses Shadcn sidebar primitives)
+- Logo displays correctly: full logo when expanded, small icon when collapsed
+- RoleToggle adapts to sidebar state: full button with text when expanded, icon-only when collapsed
+- Help button adapts similarly to sidebar state
+- Button sizes consistent across collapsed/expanded states
+
 ### Review System Implementation
 - Complete database schema for bidirectional reviews
 - RESTful API endpoints for all review types
 - Storage layer methods with filtering capabilities
 - See TEST_ACCOUNTS.md for detailed role-based review functionality
+
+### Bug Fixes
+- Fixed toggle-active endpoint for presentation cards to properly toggle state instead of always activating
+- Endpoint now checks existing state before toggling, preventing "card not found" errors
 
 ## System Architecture
 

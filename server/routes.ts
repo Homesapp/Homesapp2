@@ -3541,23 +3541,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { id } = req.params;
 
-      // First, deactivate all other cards for this user
-      await db.update(presentationCards)
-        .set({ isActive: false })
-        .where(eq(presentationCards.clientId, userId));
+      // First, find the card and check its current state
+      const existingCard = await db.query.presentationCards.findFirst({
+        where: and(
+          eq(presentationCards.id, id),
+          eq(presentationCards.clientId, userId)
+        )
+      });
 
-      // Then activate this card
+      if (!existingCard) {
+        return res.status(404).json({ message: "Presentation card not found" });
+      }
+
+      // If activating, deactivate all other cards first
+      if (!existingCard.isActive) {
+        await db.update(presentationCards)
+          .set({ isActive: false })
+          .where(eq(presentationCards.clientId, userId));
+      }
+
+      // Toggle the card's active state
       const card = await db.update(presentationCards)
-        .set({ isActive: true })
+        .set({ isActive: !existingCard.isActive })
         .where(and(
           eq(presentationCards.id, id),
           eq(presentationCards.clientId, userId)
         ))
         .returning();
-
-      if (!card[0]) {
-        return res.status(404).json({ message: "Presentation card not found" });
-      }
 
       res.json(card[0]);
     } catch (error) {
