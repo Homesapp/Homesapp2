@@ -3827,16 +3827,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
+      if (!user) {
+        return res.status(403).json({ message: "User not found" });
+      }
+      
       let filters: any = {};
       
-      if (user && ["master", "admin", "admin_jr"].includes(user.role)) {
+      if (["master", "admin", "admin_jr"].includes(user.role)) {
         if (req.query.referrerId) {
           filters.referrerId = req.query.referrerId;
         }
         if (req.query.status) {
           filters.status = req.query.status;
         }
-      } else if (user && user.role === "seller") {
+      } else if (user.role === "seller") {
         filters.sellerView = userId;
         if (req.query.status) {
           filters.status = req.query.status;
@@ -3914,16 +3918,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
+      if (!user) {
+        return res.status(403).json({ message: "User not found" });
+      }
+      
       let filters: any = {};
       
-      if (user && ["master", "admin", "admin_jr"].includes(user.role)) {
+      if (["master", "admin", "admin_jr"].includes(user.role)) {
         if (req.query.referrerId) {
           filters.referrerId = req.query.referrerId;
         }
         if (req.query.status) {
           filters.status = req.query.status;
         }
-      } else if (user && user.role === "seller") {
+      } else if (user.role === "seller") {
         filters.sellerView = userId;
         if (req.query.status) {
           filters.status = req.query.status;

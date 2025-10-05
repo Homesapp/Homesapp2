@@ -32,9 +32,7 @@ export function WelcomeModal({ userRole, hasSeenWelcome, onDismiss }: WelcomeMod
 
   const markAsSeenMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/user/mark-welcome-seen", {
-        method: "PATCH",
-      });
+      return await apiRequest("PATCH", "/api/user/mark-welcome-seen");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
