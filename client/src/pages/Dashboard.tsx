@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { type Property } from "@shared/schema";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { format } from "date-fns";
@@ -17,19 +18,22 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties/search"],
   });
 
-  const { data: appointments, isLoading: appointmentsLoading } = useAppointments();
+  const { data: appointments, isLoading: appointmentsLoading } = useAppointments({ 
+    enabled: isAuthenticated 
+  });
   const updateAppointment = useUpdateAppointment();
 
   const featuredProperties = properties.filter(p => p.featured).slice(0, 6);
   const allProperties = properties.slice(0, 12);
 
   const upcomingAppointments = useMemo(() => {
-    if (!appointments || !properties) return [];
+    if (!isAuthenticated || !appointments || !properties) return [];
 
     const now = new Date();
     const upcoming = appointments
@@ -54,7 +58,7 @@ export default function Dashboard() {
         meetLink: appointment.meetLink || undefined,
       };
     });
-  }, [appointments, properties]);
+  }, [isAuthenticated, appointments, properties]);
 
   const handleConfirm = async (id: string) => {
     try {
@@ -187,8 +191,8 @@ export default function Dashboard() {
       </div>
 
       <div className="container mx-auto px-4 py-16">
-        {/* Upcoming Appointments Section */}
-        {upcomingAppointments.length > 0 && (
+        {/* Upcoming Appointments Section - Only show for authenticated users */}
+        {isAuthenticated && upcomingAppointments.length > 0 && (
           <div className="mb-16">
             <Card>
               <CardHeader>
