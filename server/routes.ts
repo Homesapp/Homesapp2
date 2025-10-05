@@ -4700,6 +4700,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chatbot Configuration routes (admin only)
+  app.get("/api/chatbot/config", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user.role;
+      
+      // Only admin and master can access chatbot config
+      if (userRole !== "admin" && userRole !== "master") {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const config = await storage.getChatbotConfig();
+      
+      if (!config) {
+        return res.status(404).json({ message: "Chatbot configuration not found" });
+      }
+
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching chatbot config:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch chatbot configuration" });
+    }
+  });
+
+  app.put("/api/chatbot/config", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user.role;
+      const userId = req.user.claims.sub;
+      
+      // Only admin and master can update chatbot config
+      if (userRole !== "admin" && userRole !== "master") {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const updates = req.body;
+      
+      // Add updatedBy field
+      updates.updatedBy = userId;
+
+      const updatedConfig = await storage.updateChatbotConfig(updates);
+
+      res.json(updatedConfig);
+    } catch (error: any) {
+      console.error("Error updating chatbot config:", error);
+      res.status(500).json({ message: error.message || "Failed to update chatbot configuration" });
+    }
+  });
+
   const httpServer = createServer(app);
   const sessionMiddleware = getSession();
   
