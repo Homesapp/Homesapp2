@@ -38,10 +38,6 @@ export default function MyProperties() {
     queryKey: ["/api/owner/properties"],
   });
 
-  const { data: ownerSettings } = useQuery<{ autoApproveVisits: boolean }>({
-    queryKey: ["/api/owner/settings"],
-  });
-
   const handlePropertyClick = (propertyId: string) => {
     setLocation(`/owner/property/${propertyId}`);
   };
@@ -79,22 +75,6 @@ export default function MyProperties() {
           Nueva Propiedad
         </Button>
       </div>
-
-      {ownerSettings && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Configuración de Aprobación</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-muted-foreground">Aprobación Automática de Visitas:</span>
-              <Badge variant={ownerSettings.autoApproveVisits ? "default" : "secondary"}>
-                {ownerSettings.autoApproveVisits ? "Activada" : "Desactivada"}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {properties.length === 0 ? (
         <Card>
