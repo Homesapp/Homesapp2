@@ -127,6 +127,29 @@ export const rentalApplicationStatusEnum = pgEnum("rental_application_status", [
   "cancelado",
 ]);
 
+export const propertyApprovalStatusEnum = pgEnum("property_approval_status", [
+  "draft",              // Borrador, aún no enviada
+  "pending_review",     // Enviada, esperando revisión inicial
+  "inspection_scheduled", // Inspección programada
+  "inspection_completed", // Inspección realizada
+  "approved",           // Aprobada para publicación
+  "published",          // Publicada en el sitio
+  "changes_requested",  // Se solicitaron cambios
+  "rejected",           // Rechazada
+]);
+
+export const changeRequestStatusEnum = pgEnum("change_request_status", [
+  "pending",   // Pendiente de revisión
+  "approved",  // Aprobado
+  "rejected",  // Rechazado
+]);
+
+export const ownerApprovalStatusEnum = pgEnum("owner_approval_status", [
+  "pending",   // Pendiente de aprobación
+  "approved",  // Aprobado
+  "rejected",  // Rechazado
+]);
+
 export const leadJourneyActionEnum = pgEnum("lead_journey_action", [
   "search",
   "view_layer1",
@@ -296,12 +319,16 @@ export const properties = pgTable("properties", {
   location: text("location").notNull(),
   status: propertyStatusEnum("status").notNull(),
   images: text("images").array().default(sql`ARRAY[]::text[]`),
+  videos: text("videos").array().default(sql`ARRAY[]::text[]`), // URLs de videos
+  virtualTourUrl: text("virtual_tour_url"), // Link de tour 360
   amenities: text("amenities").array().default(sql`ARRAY[]::text[]`),
   specifications: jsonb("specifications"),
   accessInfo: jsonb("access_info"), // lockboxCode, contactPerson, contactPhone
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   managementId: varchar("management_id").references(() => users.id),
+  approvalStatus: propertyApprovalStatusEnum("approval_status").notNull().default("draft"),
   active: boolean("active").notNull().default(true),
+  published: boolean("published").notNull().default(false), // Solo publicada si está aprobada
   availableFrom: timestamp("available_from"),
   availableTo: timestamp("available_to"),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
@@ -409,10 +436,13 @@ export const appointments = pgTable("appointments", {
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   clientId: varchar("client_id").notNull().references(() => users.id),
   conciergeId: varchar("concierge_id").references(() => users.id),
+  presentationCardId: varchar("presentation_card_id").references(() => presentationCards.id), // Tarjeta de presentación requerida
   opportunityRequestId: varchar("opportunity_request_id").references(() => rentalOpportunityRequests.id, { onDelete: "set null" }), // Link to SOR
   date: timestamp("date").notNull(),
   type: appointmentTypeEnum("type").notNull(),
   status: appointmentStatusEnum("status").notNull().default("pending"),
+  ownerApprovalStatus: ownerApprovalStatusEnum("owner_approval_status").notNull().default("pending"),
+  ownerApprovedAt: timestamp("owner_approved_at"),
   meetLink: text("meet_link"),
   googleEventId: text("google_event_id"),
   notes: text("notes"),
@@ -444,6 +474,7 @@ export const presentationCards = pgTable("presentation_cards", {
   bathrooms: integer("bathrooms"),
   amenities: text("amenities").array().default(sql`ARRAY[]::text[]`),
   additionalRequirements: text("additional_requirements"),
+  timesUsed: integer("times_used").notNull().default(0), // Tracking de uso
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -594,6 +625,78 @@ export const insertWorkReportSchema = createInsertSchema(workReports).omit({
 
 export type InsertWorkReport = z.infer<typeof insertWorkReportSchema>;
 export type WorkReport = typeof workReports.$inferSelect;
+
+// Property Change Requests table (cambios pendientes de aprobación)
+export const propertyChangeRequests = pgTable("property_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  requestedById: varchar("requested_by_id").notNull().references(() => users.id),
+  status: changeRequestStatusEnum("status").notNull().default("pending"),
+  changedFields: jsonb("changed_fields").notNull(), // { price: { old: 1000, new: 1500 }, title: { old: "...", new: "..." } }
+  reviewedById: varchar("reviewed_by_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertyChangeRequestSchema = createInsertSchema(propertyChangeRequests).omit({
+  id: true,
+  status: true,
+  reviewedById: true,
+  reviewedAt: true,
+  reviewNotes: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPropertyChangeRequest = z.infer<typeof insertPropertyChangeRequestSchema>;
+export type PropertyChangeRequest = typeof propertyChangeRequests.$inferSelect;
+
+// Inspection Reports table (reportes de inspección de propiedades)
+export const inspectionReports = pgTable("inspection_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  inspectorId: varchar("inspector_id").notNull().references(() => users.id),
+  inspectionDate: timestamp("inspection_date").notNull(),
+  status: varchar("status").notNull().default("pending"), // pending, scheduled, completed
+  overallCondition: varchar("overall_condition"), // excellent, good, fair, poor
+  observations: text("observations"),
+  images: text("images").array().default(sql`ARRAY[]::text[]`),
+  approved: boolean("approved"),
+  approvalNotes: text("approval_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertInspectionReportSchema = createInsertSchema(inspectionReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInspectionReport = z.infer<typeof insertInspectionReportSchema>;
+export type InspectionReport = typeof inspectionReports.$inferSelect;
+
+// Owner Settings table (configuración de propietarios)
+export const ownerSettings = pgTable("owner_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  autoApproveAppointments: boolean("auto_approve_appointments").notNull().default(false),
+  autoAcceptOffers: boolean("auto_accept_offers").notNull().default(false),
+  notificationPreferences: jsonb("notification_preferences"), // { email: true, sms: false, push: true }
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOwnerSettingsSchema = createInsertSchema(ownerSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOwnerSettings = z.infer<typeof insertOwnerSettingsSchema>;
+export type OwnerSettings = typeof ownerSettings.$inferSelect;
 
 // Permissions table (for admin_jr granular permissions)
 export const permissions = pgTable("permissions", {

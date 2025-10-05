@@ -18,6 +18,9 @@ import {
   favorites,
   leads,
   rentalApplications,
+  propertyChangeRequests,
+  inspectionReports,
+  ownerSettings,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -57,6 +60,12 @@ import {
   type InsertLead,
   type RentalApplication,
   type InsertRentalApplication,
+  type PropertyChangeRequest,
+  type InsertPropertyChangeRequest,
+  type InspectionReport,
+  type InsertInspectionReport,
+  type OwnerSettings,
+  type InsertOwnerSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql } from "drizzle-orm";
@@ -207,6 +216,23 @@ export interface IStorage {
   updateRentalApplication(id: string, updates: Partial<InsertRentalApplication>): Promise<RentalApplication>;
   updateRentalApplicationStatus(id: string, status: string): Promise<RentalApplication>;
   deleteRentalApplication(id: string): Promise<void>;
+
+  // Property Change Request operations
+  getPropertyChangeRequest(id: string): Promise<PropertyChangeRequest | undefined>;
+  getPropertyChangeRequests(filters?: { propertyId?: string; status?: string; requestedById?: string }): Promise<PropertyChangeRequest[]>;
+  createPropertyChangeRequest(request: InsertPropertyChangeRequest): Promise<PropertyChangeRequest>;
+  updatePropertyChangeRequestStatus(id: string, status: string, reviewedById: string, reviewNotes?: string): Promise<PropertyChangeRequest>;
+  
+  // Inspection Report operations
+  getInspectionReport(id: string): Promise<InspectionReport | undefined>;
+  getInspectionReports(filters?: { propertyId?: string; inspectorId?: string; status?: string }): Promise<InspectionReport[]>;
+  createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport>;
+  updateInspectionReport(id: string, updates: Partial<InsertInspectionReport>): Promise<InspectionReport>;
+  
+  // Owner Settings operations
+  getOwnerSettings(userId: string): Promise<OwnerSettings | undefined>;
+  createOwnerSettings(settings: InsertOwnerSettings): Promise<OwnerSettings>;
+  updateOwnerSettings(userId: string, updates: Partial<InsertOwnerSettings>): Promise<OwnerSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1148,6 +1174,162 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRentalApplication(id: string): Promise<void> {
     await db.delete(rentalApplications).where(eq(rentalApplications.id, id));
+  }
+
+  // Property Change Request operations
+  async getPropertyChangeRequest(id: string): Promise<PropertyChangeRequest | undefined> {
+    const [request] = await db.select().from(propertyChangeRequests).where(eq(propertyChangeRequests.id, id));
+    return request;
+  }
+
+  async getPropertyChangeRequests(filters?: { propertyId?: string; status?: string; requestedById?: string }): Promise<PropertyChangeRequest[]> {
+    let query = db.select().from(propertyChangeRequests);
+    
+    const conditions = [];
+    if (filters?.propertyId) {
+      conditions.push(eq(propertyChangeRequests.propertyId, filters.propertyId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(propertyChangeRequests.status, filters.status as any));
+    }
+    if (filters?.requestedById) {
+      conditions.push(eq(propertyChangeRequests.requestedById, filters.requestedById));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(propertyChangeRequests.createdAt));
+  }
+
+  async createPropertyChangeRequest(requestData: InsertPropertyChangeRequest): Promise<PropertyChangeRequest> {
+    const [request] = await db.insert(propertyChangeRequests).values(requestData).returning();
+    return request;
+  }
+
+  async updatePropertyChangeRequestStatus(id: string, status: string, reviewedById: string, reviewNotes?: string): Promise<PropertyChangeRequest> {
+    const [updated] = await db
+      .update(propertyChangeRequests)
+      .set({ 
+        status: status as any, 
+        reviewedById, 
+        reviewedAt: new Date(), 
+        reviewNotes,
+        updatedAt: new Date() 
+      })
+      .where(eq(propertyChangeRequests.id, id))
+      .returning();
+    
+    // If approved, apply the changes to the property
+    if (status === 'approved' && updated) {
+      const changedFields = updated.changedFields as any;
+      if (changedFields && updated.propertyId) {
+        await db.update(properties)
+          .set({ ...changedFields, updatedAt: new Date() })
+          .where(eq(properties.id, updated.propertyId));
+      }
+    }
+    
+    return updated;
+  }
+
+  // Inspection Report operations
+  async getInspectionReport(id: string): Promise<InspectionReport | undefined> {
+    const [report] = await db.select().from(inspectionReports).where(eq(inspectionReports.id, id));
+    return report;
+  }
+
+  async getInspectionReports(filters?: { propertyId?: string; inspectorId?: string; status?: string }): Promise<InspectionReport[]> {
+    let query = db.select().from(inspectionReports);
+    
+    const conditions = [];
+    if (filters?.propertyId) {
+      conditions.push(eq(inspectionReports.propertyId, filters.propertyId));
+    }
+    if (filters?.inspectorId) {
+      conditions.push(eq(inspectionReports.inspectorId, filters.inspectorId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(inspectionReports.status, filters.status));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(inspectionReports.createdAt));
+  }
+
+  async createInspectionReport(reportData: InsertInspectionReport): Promise<InspectionReport> {
+    const [report] = await db.insert(inspectionReports).values(reportData).returning();
+    return report;
+  }
+
+  async updateInspectionReport(id: string, updates: Partial<InsertInspectionReport>): Promise<InspectionReport> {
+    const [updated] = await db
+      .update(inspectionReports)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(inspectionReports.id, id))
+      .returning();
+    
+    // Update property approval status based on inspection result
+    if (updated && updated.propertyId) {
+      if (updates.approved === true) {
+        await db.update(properties)
+          .set({ 
+            approvalStatus: 'approved',
+            published: true,
+            updatedAt: new Date() 
+          })
+          .where(eq(properties.id, updated.propertyId));
+      } else if (updates.approved === false) {
+        await db.update(properties)
+          .set({ 
+            approvalStatus: 'rejected',
+            published: false,
+            updatedAt: new Date() 
+          })
+          .where(eq(properties.id, updated.propertyId));
+      } else if (updates.status === 'completed' && updates.approved === undefined) {
+        // Inspection completed but approval not set yet
+        await db.update(properties)
+          .set({ 
+            approvalStatus: 'inspection_completed',
+            updatedAt: new Date() 
+          })
+          .where(eq(properties.id, updated.propertyId));
+      } else if (updates.status === 'scheduled') {
+        await db.update(properties)
+          .set({ 
+            approvalStatus: 'inspection_scheduled',
+            updatedAt: new Date() 
+          })
+          .where(eq(properties.id, updated.propertyId));
+      }
+    }
+    
+    return updated;
+  }
+
+  // Owner Settings operations
+  async getOwnerSettings(userId: string): Promise<OwnerSettings | undefined> {
+    const [settings] = await db.select().from(ownerSettings).where(eq(ownerSettings.userId, userId));
+    return settings;
+  }
+
+  async createOwnerSettings(settingsData: InsertOwnerSettings): Promise<OwnerSettings> {
+    const [settings] = await db.insert(ownerSettings).values(settingsData).returning();
+    return settings;
+  }
+
+  async updateOwnerSettings(userId: string, updates: Partial<InsertOwnerSettings>): Promise<OwnerSettings> {
+    const [updated] = await db
+      .update(ownerSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ownerSettings.userId, userId))
+      .returning();
+    return updated;
   }
 }
 
