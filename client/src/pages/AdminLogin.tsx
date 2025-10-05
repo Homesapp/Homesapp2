@@ -33,7 +33,7 @@ export default function AdminLogin() {
         title: "Inicio de sesión exitoso",
         description: "Bienvenido al panel de administración",
       });
-      setLocation("/");
+      setLocation("/admin/dashboard");
     },
     onError: (error: any) => {
       toast({

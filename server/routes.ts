@@ -36,6 +36,10 @@ import {
   insertRentalApplicationSchema,
   createInspectionReportSchema,
   updateInspectionReportSchema,
+  insertNotificationSchema,
+  insertChatConversationSchema,
+  insertChatMessageSchema,
+  insertChatParticipantSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -3075,6 +3079,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating audit log:", error);
       res.status(400).json({ message: error.message || "Failed to create audit log" });
+    }
+  });
+
+  // Notification routes
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const notificationData = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(notificationData);
+      res.status(201).json(notification);
+    } catch (error: any) {
+      console.error("Error creating notification:", error);
+      res.status(400).json({ message: error.message || "Failed to create notification" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const notification = await storage.markNotificationAsRead(id);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post("/api/notifications/mark-all-read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Chat routes
+  app.get("/api/chat/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const { type } = req.query;
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getChatConversations({ type: type as string, userId });
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching chat conversations:", error);
+      res.status(500).json({ message: "Failed to fetch chat conversations" });
+    }
+  });
+
+  app.get("/api/chat/conversations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const conversation = await storage.getChatConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error fetching chat conversation:", error);
+      res.status(500).json({ message: "Failed to fetch chat conversation" });
+    }
+  });
+
+  app.post("/api/chat/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const conversationData = insertChatConversationSchema.parse(req.body);
+      const conversation = await storage.createChatConversation(conversationData);
+      res.status(201).json(conversation);
+    } catch (error: any) {
+      console.error("Error creating chat conversation:", error);
+      res.status(400).json({ message: error.message || "Failed to create chat conversation" });
+    }
+  });
+
+  app.get("/api/chat/conversations/:id/messages", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const messages = await storage.getChatMessages(id);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching chat messages:", error);
+      res.status(500).json({ message: "Failed to fetch chat messages" });
+    }
+  });
+
+  app.post("/api/chat/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const messageData = insertChatMessageSchema.parse(req.body);
+      const message = await storage.createChatMessage(messageData);
+      res.status(201).json(message);
+    } catch (error: any) {
+      console.error("Error creating chat message:", error);
+      res.status(400).json({ message: error.message || "Failed to create chat message" });
+    }
+  });
+
+  app.post("/api/chat/participants", isAuthenticated, async (req: any, res) => {
+    try {
+      const participantData = insertChatParticipantSchema.parse(req.body);
+      const participant = await storage.addChatParticipant(participantData);
+      res.status(201).json(participant);
+    } catch (error: any) {
+      console.error("Error adding chat participant:", error);
+      res.status(400).json({ message: error.message || "Failed to add chat participant" });
+    }
+  });
+
+  app.get("/api/chat/conversations/:id/participants", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const participants = await storage.getChatParticipants(id);
+      res.json(participants);
+    } catch (error) {
+      console.error("Error fetching chat participants:", error);
+      res.status(500).json({ message: "Failed to fetch chat participants" });
     }
   });
 

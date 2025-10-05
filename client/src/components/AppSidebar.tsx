@@ -27,6 +27,8 @@ import {
   FileEdit,
   ClipboardCheck,
   CalendarCheck,
+  Bell,
+  MessageCircle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { RoleToggle } from "@/components/RoleToggle";
@@ -59,10 +61,12 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Calendar, roles: ["cliente"] },
     { title: "Mis Propiedades", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
     { title: "Gestión de Visitas", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },
+    { title: "Notificaciones", url: "/notificaciones", icon: Bell, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
+    { title: "Mensajes", url: "/chat", icon: MessageCircle, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider"] },
     { title: "CRM - Leads", url: "/leads", icon: Users, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { title: "Kanban - Rentas", url: "/rentas", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { title: "Propiedades", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "management"] },
-    { title: "Citas", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge"] },
+    { title: "Citas", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge"] },
     { title: "Calendario", url: "/calendario", icon: Calendar, roles: ["master", "admin", "admin_jr"] },
     { title: "Presupuestos", url: "/presupuestos", icon: FileText, roles: ["master", "admin", "admin_jr", "owner", "management", "provider"] },
     { title: "Tareas", url: "/tareas", icon: ListTodo, roles: ["master", "admin", "admin_jr", "management", "concierge"] },

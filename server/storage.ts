@@ -21,6 +21,10 @@ import {
   propertyChangeRequests,
   inspectionReports,
   ownerSettings,
+  notifications,
+  chatConversations,
+  chatParticipants,
+  chatMessages,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -66,6 +70,14 @@ import {
   type InsertInspectionReport,
   type OwnerSettings,
   type InsertOwnerSettings,
+  type Notification,
+  type InsertNotification,
+  type ChatConversation,
+  type InsertChatConversation,
+  type ChatParticipant,
+  type InsertChatParticipant,
+  type ChatMessage,
+  type InsertChatMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql } from "drizzle-orm";
@@ -233,6 +245,21 @@ export interface IStorage {
   getOwnerSettings(userId: string): Promise<OwnerSettings | undefined>;
   createOwnerSettings(settings: InsertOwnerSettings): Promise<OwnerSettings>;
   updateOwnerSettings(userId: string, updates: Partial<InsertOwnerSettings>): Promise<OwnerSettings>;
+  
+  // Notification operations
+  getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string): Promise<Notification>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  
+  // Chat operations
+  getChatConversations(filters?: { type?: string; userId?: string }): Promise<ChatConversation[]>;
+  getChatConversation(id: string): Promise<ChatConversation | undefined>;
+  createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation>;
+  getChatMessages(conversationId: string): Promise<ChatMessage[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  addChatParticipant(participant: InsertChatParticipant): Promise<ChatParticipant>;
+  getChatParticipants(conversationId: string): Promise<ChatParticipant[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1330,6 +1357,82 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ownerSettings.userId, userId))
       .returning();
     return updated;
+  }
+
+  // Notification operations
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notificationData: InsertNotification): Promise<Notification> {
+    const [notification] = await db.insert(notifications).values(notificationData).returning();
+    return notification;
+  }
+
+  async markNotificationAsRead(id: string): Promise<Notification> {
+    const [notification] = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    return notification;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  // Chat operations
+  async getChatConversations(filters?: { type?: string; userId?: string }): Promise<ChatConversation[]> {
+    let query = db.select().from(chatConversations);
+    
+    if (filters?.type) {
+      query = query.where(eq(chatConversations.type, filters.type as any)) as any;
+    }
+    
+    return await query.orderBy(desc(chatConversations.createdAt));
+  }
+
+  async getChatConversation(id: string): Promise<ChatConversation | undefined> {
+    const [conversation] = await db.select().from(chatConversations).where(eq(chatConversations.id, id));
+    return conversation;
+  }
+
+  async createChatConversation(conversationData: InsertChatConversation): Promise<ChatConversation> {
+    const [conversation] = await db.insert(chatConversations).values(conversationData).returning();
+    return conversation;
+  }
+
+  async getChatMessages(conversationId: string): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(chatMessages.createdAt);
+  }
+
+  async createChatMessage(messageData: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db.insert(chatMessages).values(messageData).returning();
+    return message;
+  }
+
+  async addChatParticipant(participantData: InsertChatParticipant): Promise<ChatParticipant> {
+    const [participant] = await db.insert(chatParticipants).values(participantData).returning();
+    return participant;
+  }
+
+  async getChatParticipants(conversationId: string): Promise<ChatParticipant[]> {
+    return await db
+      .select()
+      .from(chatParticipants)
+      .where(eq(chatParticipants.conversationId, conversationId));
   }
 }
 

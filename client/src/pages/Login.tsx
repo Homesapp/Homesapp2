@@ -32,9 +32,22 @@ export default function Login() {
     mutationFn: async (data: FormData) => {
       return await apiRequest("POST", "/api/auth/login", data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setLocation("/");
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      const userData = await queryClient.fetchQuery({ queryKey: ["/api/auth/user"] });
+      
+      if (userData && typeof userData === 'object' && 'role' in userData) {
+        const role = (userData as any).role;
+        if (role === "owner") {
+          setLocation("/owner/dashboard");
+        } else if (role === "master" || role === "admin" || role === "admin_jr") {
+          setLocation("/admin/dashboard");
+        } else {
+          setLocation("/");
+        }
+      } else {
+        setLocation("/");
+      }
     },
     onError: (error: any) => {
       toast({

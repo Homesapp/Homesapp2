@@ -11,6 +11,7 @@ import { RoleSelector } from "@/components/RoleSelector";
 import { AppSidebar } from "@/components/AppSidebar";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -46,6 +47,8 @@ import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import OwnerAppointments from "@/pages/OwnerAppointments";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
+import Notifications from "@/pages/Notifications";
+import Chat from "@/pages/Chat";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -116,6 +119,7 @@ function AuthenticatedApp() {
           <header className="flex items-center justify-between p-4 border-b bg-background">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <LanguageToggle />
               <ThemeToggle />
               {isAdminAuthenticated && adminUser ? (
@@ -157,6 +161,8 @@ function AuthenticatedApp() {
               <Route path="/backoffice" component={Backoffice} />
               <Route path="/users" component={Users} />
               <Route path="/clientes" component={Clients} />
+              <Route path="/notificaciones" component={Notifications} />
+              <Route path="/chat" component={Chat} />
               <Route component={NotFound} />
             </Switch>
           </main>
