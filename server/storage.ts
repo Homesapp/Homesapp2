@@ -33,6 +33,9 @@ import {
   propertyAgreements,
   serviceBookings,
   providerApplications,
+  referralConfig,
+  clientReferrals,
+  ownerReferrals,
   type User,
   type Colony,
   type InsertColony,
@@ -103,6 +106,12 @@ import {
   type InsertServiceBooking,
   type ProviderApplication,
   type InsertProviderApplication,
+  type ReferralConfig,
+  type InsertReferralConfig,
+  type ClientReferral,
+  type InsertClientReferral,
+  type OwnerReferral,
+  type InsertOwnerReferral,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql } from "drizzle-orm";
@@ -226,6 +235,24 @@ export interface IStorage {
   getProviderApplications(filters?: { status?: string }): Promise<ProviderApplication[]>;
   createProviderApplication(application: InsertProviderApplication): Promise<ProviderApplication>;
   updateProviderApplicationStatus(id: string, status: string, adminId: string, notes?: string): Promise<ProviderApplication>;
+  
+  // Referral Configuration operations
+  getReferralConfig(): Promise<ReferralConfig | undefined>;
+  updateReferralConfig(updates: Partial<InsertReferralConfig>, updatedBy: string): Promise<ReferralConfig>;
+  
+  // Client Referral operations
+  getClientReferral(id: string): Promise<ClientReferral | undefined>;
+  getClientReferrals(filters?: { referrerId?: string; status?: string }): Promise<ClientReferral[]>;
+  createClientReferral(referral: InsertClientReferral): Promise<ClientReferral>;
+  updateClientReferral(id: string, updates: Partial<InsertClientReferral>): Promise<ClientReferral>;
+  updateClientReferralStatus(id: string, status: string): Promise<ClientReferral>;
+  
+  // Owner Referral operations
+  getOwnerReferral(id: string): Promise<OwnerReferral | undefined>;
+  getOwnerReferrals(filters?: { referrerId?: string; status?: string }): Promise<OwnerReferral[]>;
+  createOwnerReferral(referral: InsertOwnerReferral): Promise<OwnerReferral>;
+  updateOwnerReferral(id: string, updates: Partial<InsertOwnerReferral>): Promise<OwnerReferral>;
+  updateOwnerReferralStatus(id: string, status: string): Promise<OwnerReferral>;
   
   // Offer operations
   getOffer(id: string): Promise<Offer | undefined>;
@@ -1088,6 +1115,125 @@ export class DatabaseStorage implements IStorage {
       .where(eq(providerApplications.id, id))
       .returning();
     return application;
+  }
+
+  // Referral Configuration operations
+  async getReferralConfig(): Promise<ReferralConfig | undefined> {
+    const [config] = await db.select().from(referralConfig).limit(1);
+    return config;
+  }
+
+  async updateReferralConfig(updates: Partial<InsertReferralConfig>, updatedBy: string): Promise<ReferralConfig> {
+    const existing = await this.getReferralConfig();
+    
+    if (existing) {
+      const [config] = await db
+        .update(referralConfig)
+        .set({ ...updates, updatedBy, updatedAt: new Date() })
+        .where(eq(referralConfig.id, existing.id))
+        .returning();
+      return config;
+    } else {
+      const [config] = await db
+        .insert(referralConfig)
+        .values({ ...updates, updatedBy })
+        .returning();
+      return config;
+    }
+  }
+
+  // Client Referral operations
+  async getClientReferral(id: string): Promise<ClientReferral | undefined> {
+    const [referral] = await db.select().from(clientReferrals).where(eq(clientReferrals.id, id));
+    return referral;
+  }
+
+  async getClientReferrals(filters?: { referrerId?: string; status?: string }): Promise<ClientReferral[]> {
+    let query = db.select().from(clientReferrals);
+    const conditions = [];
+
+    if (filters?.referrerId) {
+      conditions.push(eq(clientReferrals.referrerId, filters.referrerId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(clientReferrals.status, filters.status as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(clientReferrals.createdAt));
+  }
+
+  async createClientReferral(referralData: InsertClientReferral): Promise<ClientReferral> {
+    const [referral] = await db.insert(clientReferrals).values(referralData).returning();
+    return referral;
+  }
+
+  async updateClientReferral(id: string, updates: Partial<InsertClientReferral>): Promise<ClientReferral> {
+    const [referral] = await db
+      .update(clientReferrals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(clientReferrals.id, id))
+      .returning();
+    return referral;
+  }
+
+  async updateClientReferralStatus(id: string, status: string): Promise<ClientReferral> {
+    const [referral] = await db
+      .update(clientReferrals)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(clientReferrals.id, id))
+      .returning();
+    return referral;
+  }
+
+  // Owner Referral operations
+  async getOwnerReferral(id: string): Promise<OwnerReferral | undefined> {
+    const [referral] = await db.select().from(ownerReferrals).where(eq(ownerReferrals.id, id));
+    return referral;
+  }
+
+  async getOwnerReferrals(filters?: { referrerId?: string; status?: string }): Promise<OwnerReferral[]> {
+    let query = db.select().from(ownerReferrals);
+    const conditions = [];
+
+    if (filters?.referrerId) {
+      conditions.push(eq(ownerReferrals.referrerId, filters.referrerId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(ownerReferrals.status, filters.status as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(ownerReferrals.createdAt));
+  }
+
+  async createOwnerReferral(referralData: InsertOwnerReferral): Promise<OwnerReferral> {
+    const [referral] = await db.insert(ownerReferrals).values(referralData).returning();
+    return referral;
+  }
+
+  async updateOwnerReferral(id: string, updates: Partial<InsertOwnerReferral>): Promise<OwnerReferral> {
+    const [referral] = await db
+      .update(ownerReferrals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ownerReferrals.id, id))
+      .returning();
+    return referral;
+  }
+
+  async updateOwnerReferralStatus(id: string, status: string): Promise<OwnerReferral> {
+    const [referral] = await db
+      .update(ownerReferrals)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(ownerReferrals.id, id))
+      .returning();
+    return referral;
   }
 
   // Offer operations

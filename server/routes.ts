@@ -3785,6 +3785,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Referral Configuration routes
+  app.get("/api/referrals/config", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const config = await storage.getReferralConfig();
+      res.json(config || { clientReferralCommissionPercent: "5.00", ownerReferralCommissionPercent: "10.00" });
+    } catch (error) {
+      console.error("Error fetching referral config:", error);
+      res.status(500).json({ message: "Failed to fetch referral configuration" });
+    }
+  });
+
+  app.patch("/api/referrals/config", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientReferralCommissionPercent, ownerReferralCommissionPercent } = req.body;
+
+      const config = await storage.updateReferralConfig({
+        clientReferralCommissionPercent,
+        ownerReferralCommissionPercent,
+      }, userId);
+
+      await createAuditLog(
+        req,
+        "update",
+        "referral_config",
+        config.id,
+        `Configuración de comisiones actualizada - Clientes: ${config.clientReferralCommissionPercent}%, Propietarios: ${config.ownerReferralCommissionPercent}%`
+      );
+
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error updating referral config:", error);
+      res.status(500).json({ message: error.message || "Failed to update referral configuration" });
+    }
+  });
+
+  // Client Referral routes
+  app.get("/api/referrals/clients", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      let filters: any = {};
+      
+      // Admins can see all referrals or filter by referrerId
+      if (user && ["master", "admin", "admin_jr"].includes(user.role)) {
+        if (req.query.referrerId) {
+          filters.referrerId = req.query.referrerId;
+        }
+        if (req.query.status) {
+          filters.status = req.query.status;
+        }
+      } else {
+        // Regular users can only see their own referrals
+        filters.referrerId = userId;
+        if (req.query.status) {
+          filters.status = req.query.status;
+        }
+      }
+
+      const referrals = await storage.getClientReferrals(filters);
+      res.json(referrals);
+    } catch (error) {
+      console.error("Error fetching client referrals:", error);
+      res.status(500).json({ message: "Failed to fetch client referrals" });
+    }
+  });
+
+  app.post("/api/referrals/clients", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get current commission config
+      const config = await storage.getReferralConfig();
+      const commissionPercent = config?.clientReferralCommissionPercent || "5.00";
+
+      const referralData = {
+        ...req.body,
+        referrerId: userId,
+        commissionPercent,
+        status: "pendiente_confirmacion",
+      };
+
+      const referral = await storage.createClientReferral(referralData);
+
+      await createAuditLog(
+        req,
+        "create",
+        "client_referral",
+        referral.id,
+        `Referido de cliente creado: ${referral.firstName} ${referral.lastName}`
+      );
+
+      res.status(201).json(referral);
+    } catch (error: any) {
+      console.error("Error creating client referral:", error);
+      res.status(400).json({ message: error.message || "Failed to create client referral" });
+    }
+  });
+
+  app.patch("/api/referrals/clients/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const referral = await storage.updateClientReferral(id, req.body);
+
+      await createAuditLog(
+        req,
+        "update",
+        "client_referral",
+        id,
+        `Referido de cliente actualizado - Estado: ${referral.status}`
+      );
+
+      res.json(referral);
+    } catch (error: any) {
+      console.error("Error updating client referral:", error);
+      res.status(500).json({ message: error.message || "Failed to update client referral" });
+    }
+  });
+
+  // Owner Referral routes
+  app.get("/api/referrals/owners", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      let filters: any = {};
+      
+      // Admins can see all referrals or filter by referrerId
+      if (user && ["master", "admin", "admin_jr"].includes(user.role)) {
+        if (req.query.referrerId) {
+          filters.referrerId = req.query.referrerId;
+        }
+        if (req.query.status) {
+          filters.status = req.query.status;
+        }
+      } else {
+        // Regular users can only see their own referrals
+        filters.referrerId = userId;
+        if (req.query.status) {
+          filters.status = req.query.status;
+        }
+      }
+
+      const referrals = await storage.getOwnerReferrals(filters);
+      res.json(referrals);
+    } catch (error) {
+      console.error("Error fetching owner referrals:", error);
+      res.status(500).json({ message: "Failed to fetch owner referrals" });
+    }
+  });
+
+  app.post("/api/referrals/owners", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get current commission config
+      const config = await storage.getReferralConfig();
+      const commissionPercent = config?.ownerReferralCommissionPercent || "10.00";
+
+      const referralData = {
+        ...req.body,
+        referrerId: userId,
+        commissionPercent,
+        status: "pendiente_confirmacion",
+      };
+
+      const referral = await storage.createOwnerReferral(referralData);
+
+      await createAuditLog(
+        req,
+        "create",
+        "owner_referral",
+        referral.id,
+        `Referido de propietario creado: ${referral.firstName} ${referral.lastName}`
+      );
+
+      res.status(201).json(referral);
+    } catch (error: any) {
+      console.error("Error creating owner referral:", error);
+      res.status(400).json({ message: error.message || "Failed to create owner referral" });
+    }
+  });
+
+  app.patch("/api/referrals/owners/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const referral = await storage.updateOwnerReferral(id, req.body);
+
+      await createAuditLog(
+        req,
+        "update",
+        "owner_referral",
+        id,
+        `Referido de propietario actualizado - Estado: ${referral.status}`
+      );
+
+      res.json(referral);
+    } catch (error: any) {
+      console.error("Error updating owner referral:", error);
+      res.status(500).json({ message: error.message || "Failed to update owner referral" });
+    }
+  });
+
   // Offer routes
   app.get("/api/offers", isAuthenticated, async (req, res) => {
     try {
