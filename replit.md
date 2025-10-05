@@ -61,11 +61,29 @@ The application uses PostgreSQL (via Neon serverless platform) and Drizzle ORM f
   - Template validation to ensure all variables can be resolved
   - CRUD endpoints for template management (admin only)
   - Active/inactive template status
+  - **Frontend UI**: `/admin/agreement-templates` page with full CRUD interface
+    - Template cards displaying title, type, status, and metadata
+    - Create/edit dialogs with Textarea editor for template content
+    - Delete confirmations with proper state management
+    - Status toggle switches for activating/deactivating templates
+    - Comprehensive data-testid coverage for automated testing
 - **Property Submission Drafts**: Multi-step property submission with automatic draft saving
   - CRUD endpoints for draft management
   - Draft status tracking (draft, in_review, approved, rejected)
   - User-scoped access control
-  - Automatic progress saving
+  - Automatic progress saving with 2-second debounce
+  - **Frontend UI**: `/owner/property/new` - 7-step wizard with:
+    - Step 1: Property type selection (rent/sale)
+    - Step 2: Basic information (title, type, description)
+    - Step 3: Location (address, city, state, country)
+    - Step 4: Property details (bedrooms, bathrooms, area, features)
+    - Step 5: Media upload (images with preview and removal)
+    - Step 6: Commercial terms (price, available date, additional terms)
+    - Step 7: Review and submit (displays all collected data)
+    - Auto-save functionality saves progress every 30 seconds
+    - Navigation between steps with validation
+    - Draft restoration on page reload
+    - All interactive elements instrumented with data-testid attributes
 - **Property Agreements**: Digital agreement signing workflow
   - Agreement generation from templates with property context
   - Digital signature capture with signer name and IP address
