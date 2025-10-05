@@ -1046,10 +1046,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/appointments", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const appointmentData = insertAppointmentSchema.parse({
+      
+      // Clean special values
+      const cleanedBody = {
         ...req.body,
         clientId: req.body.clientId || userId,
-      });
+        conciergeId: req.body.conciergeId === "none" ? undefined : req.body.conciergeId,
+      };
+      
+      const appointmentData = insertAppointmentSchema.parse(cleanedBody);
 
       // Create Google Meet event if type is video
       let meetLink = null;
@@ -1316,10 +1321,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/offers", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const offerData = insertOfferSchema.parse({
+      
+      // Clean special values
+      const cleanedBody = {
         ...req.body,
         clientId: req.body.clientId || userId,
-      });
+        appointmentId: req.body.appointmentId === "none" ? undefined : req.body.appointmentId,
+      };
+      
+      const offerData = insertOfferSchema.parse(cleanedBody);
 
       const offer = await storage.createOffer(offerData);
       
@@ -1533,7 +1543,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const taskData = insertTaskSchema.parse(req.body);
+      // Clean special values
+      const cleanedBody = {
+        ...req.body,
+        budgetId: req.body.budgetId === "none" ? undefined : req.body.budgetId,
+      };
+
+      const taskData = insertTaskSchema.parse(cleanedBody);
       const task = await storage.createTask(taskData);
       
       // Log task creation
