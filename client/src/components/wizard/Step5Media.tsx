@@ -23,7 +23,7 @@ type MediaForm = z.infer<typeof mediaSchema>;
 type Step5Props = {
   data: any;
   onUpdate: (data: any) => void;
-  onNext: () => void;
+  onNext: (stepData?: any) => void;
   onPrevious: () => void;
 };
 
@@ -84,8 +84,7 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
       coverImageIndex,
       images: allImages, // Backward compatibility
     };
-    onUpdate({ media: mediaData });
-    onNext();
+    onNext({ media: mediaData });
   };
 
   const handleAddPrimaryImage = () => {

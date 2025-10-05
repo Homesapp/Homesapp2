@@ -19,7 +19,7 @@ type TermsForm = z.infer<typeof termsSchema>;
 type Step6Props = {
   data: any;
   onUpdate: (data: any) => void;
-  onNext: () => void;
+  onNext: (stepData?: any) => void;
   onPrevious: () => void;
 };
 
@@ -35,8 +35,7 @@ export default function Step6Terms({ data, onUpdate, onNext, onPrevious }: Step6
   });
 
   const onSubmit = (formData: TermsForm) => {
-    onUpdate({ commercialTerms: formData });
-    onNext();
+    onNext({ commercialTerms: formData });
   };
 
   return (

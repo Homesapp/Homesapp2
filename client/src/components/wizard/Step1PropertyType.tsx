@@ -10,7 +10,7 @@ type Step1Props = {
     isForSale: boolean;
   };
   onUpdate: (data: any) => void;
-  onNext: () => void;
+  onNext: (stepData?: any) => void;
 };
 
 export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props) {
@@ -22,6 +22,10 @@ export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props
     } else {
       onUpdate({ isForSale: !data.isForSale });
     }
+  };
+
+  const handleNext = () => {
+    onNext({ isForRent: data.isForRent, isForSale: data.isForSale });
   };
 
   return (
@@ -85,7 +89,7 @@ export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props
 
       <div className="flex justify-end">
         <Button
-          onClick={onNext}
+          onClick={handleNext}
           disabled={!canProceed}
           data-testid="button-next-step1"
         >

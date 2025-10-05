@@ -19,7 +19,7 @@ type DetailsForm = z.infer<typeof detailsSchema>;
 type Step4Props = {
   data: any;
   onUpdate: (data: any) => void;
-  onNext: () => void;
+  onNext: (stepData?: any) => void;
   onPrevious: () => void;
 };
 
@@ -35,8 +35,7 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
   });
 
   const onSubmit = (formData: DetailsForm) => {
-    onUpdate({ details: formData });
-    onNext();
+    onNext({ details: formData });
   };
 
   return (

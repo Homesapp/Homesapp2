@@ -22,7 +22,7 @@ type LocationForm = z.infer<typeof locationSchema>;
 type Step3Props = {
   data: any;
   onUpdate: (data: any) => void;
-  onNext: () => void;
+  onNext: (stepData?: any) => void;
   onPrevious: () => void;
 };
 
@@ -42,8 +42,7 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
   });
 
   const onSubmit = (formData: LocationForm) => {
-    onUpdate({ locationInfo: formData });
-    onNext();
+    onNext({ locationInfo: formData });
   };
 
   return (

@@ -18,7 +18,6 @@ import Step6Terms from "@/components/wizard/Step6Terms";
 import Step7Review from "@/components/wizard/Step7Review";
 
 const TOTAL_STEPS = 7;
-const AUTO_SAVE_DELAY = 2000; // 2 seconds
 
 type WizardData = {
   isForRent: boolean;
@@ -39,7 +38,6 @@ export default function PropertySubmissionWizard() {
     isForRent: false,
     isForSale: false,
   });
-  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -88,19 +86,17 @@ export default function PropertySubmissionWizard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/property-submission-drafts"] });
-      setLastSaved(new Date());
-      setIsSaving(false);
     },
   });
 
-  // Auto-save function
-  const autoSave = useCallback(async () => {
+  // Save function - accepts optional step number to save
+  const saveDraft = useCallback(async (stepToSave?: number) => {
     if (isSaving) return;
 
     setIsSaving(true);
     const dataToSave = {
       ...wizardData,
-      currentStep,
+      currentStep: stepToSave !== undefined ? stepToSave : currentStep,
     };
 
     try {
@@ -110,57 +106,63 @@ export default function PropertySubmissionWizard() {
         const newDraft = await createDraftMutation.mutateAsync(dataToSave);
         setDraftId(newDraft.id);
       }
+      setLastSaved(new Date());
     } catch (error) {
-      console.error("Auto-save failed:", error);
+      console.error("Save failed:", error);
+    } finally {
       setIsSaving(false);
     }
-  }, [wizardData, currentStep, draftId, isSaving]);
-
-  // Trigger auto-save when data changes
-  useEffect(() => {
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
-    }
-
-    const timeout = setTimeout(() => {
-      autoSave();
-    }, AUTO_SAVE_DELAY);
-
-    setAutoSaveTimeout(timeout);
-
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [wizardData]);
-
-  // Save current step when it changes
-  useEffect(() => {
-    if (draftId && currentStep > 1) {
-      updateDraftMutation.mutate({
-        id: draftId,
-        data: { currentStep },
-      });
-    }
-  }, [currentStep, draftId]);
+  }, [wizardData, currentStep, draftId, isSaving, draftId, updateDraftMutation, createDraftMutation]);
 
   const updateWizardData = (stepData: Partial<WizardData>) => {
     setWizardData(prev => ({ ...prev, ...stepData }));
   };
 
-  const handleNext = () => {
+  const handleNext = async (stepData?: Partial<WizardData>) => {
     if (currentStep < TOTAL_STEPS) {
-      setCurrentStep(prev => prev + 1);
+      // Update wizard data with latest changes
+      const updatedData = stepData ? { ...wizardData, ...stepData } : wizardData;
+      if (stepData) {
+        setWizardData(updatedData);
+      }
+      
+      const nextStep = currentStep + 1;
+      // Save with next step number and updated data
+      setIsSaving(true);
+      const dataToSave = {
+        ...updatedData,
+        currentStep: nextStep,
+      };
+
+      try {
+        if (draftId) {
+          await updateDraftMutation.mutateAsync({ id: draftId, data: dataToSave });
+        } else {
+          const newDraft = await createDraftMutation.mutateAsync(dataToSave);
+          setDraftId(newDraft.id);
+        }
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error("Save failed:", error);
+      } finally {
+        setIsSaving(false);
+      }
+      
+      setCurrentStep(nextStep);
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
+      const prevStep = currentStep - 1;
+      // Save with previous step number
+      await saveDraft(prevStep);
+      setCurrentStep(prevStep);
     }
   };
 
-  const handleManualSave = () => {
-    autoSave();
+  const handleManualSave = async () => {
+    await saveDraft(currentStep);
     toast({
       title: "Progreso guardado",
       description: "Tu progreso ha sido guardado exitosamente",
@@ -174,7 +176,7 @@ export default function PropertySubmissionWizard() {
           <Step1PropertyType
             data={wizardData}
             onUpdate={updateWizardData}
-            onNext={handleNext}
+            onNext={(stepData) => handleNext(stepData)}
           />
         );
       case 2:
@@ -182,7 +184,7 @@ export default function PropertySubmissionWizard() {
           <Step2BasicInfo
             data={wizardData}
             onUpdate={updateWizardData}
-            onNext={handleNext}
+            onNext={(stepData) => handleNext(stepData)}
             onPrevious={handlePrevious}
           />
         );
@@ -191,7 +193,7 @@ export default function PropertySubmissionWizard() {
           <Step3Location
             data={wizardData}
             onUpdate={updateWizardData}
-            onNext={handleNext}
+            onNext={(stepData) => handleNext(stepData)}
             onPrevious={handlePrevious}
           />
         );
@@ -200,7 +202,7 @@ export default function PropertySubmissionWizard() {
           <Step4Details
             data={wizardData}
             onUpdate={updateWizardData}
-            onNext={handleNext}
+            onNext={(stepData) => handleNext(stepData)}
             onPrevious={handlePrevious}
           />
         );
@@ -209,7 +211,7 @@ export default function PropertySubmissionWizard() {
           <Step5Media
             data={wizardData}
             onUpdate={updateWizardData}
-            onNext={handleNext}
+            onNext={(stepData) => handleNext(stepData)}
             onPrevious={handlePrevious}
           />
         );
@@ -218,7 +220,7 @@ export default function PropertySubmissionWizard() {
           <Step6Terms
             data={wizardData}
             onUpdate={updateWizardData}
-            onNext={handleNext}
+            onNext={(stepData) => handleNext(stepData)}
             onPrevious={handlePrevious}
           />
         );
@@ -240,15 +242,15 @@ export default function PropertySubmissionWizard() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle data-testid="heading-wizard-title">Cargar Nueva Propiedad</CardTitle>
-              <CardDescription data-testid="text-wizard-description">
+              <CardDescription className="mt-2" data-testid="text-wizard-description">
                 Paso {currentStep} de {TOTAL_STEPS}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {lastSaved && (
                 <span className="text-sm text-muted-foreground" data-testid="text-last-saved">
                   Guardado {new Date(lastSaved).toLocaleTimeString()}
@@ -271,9 +273,9 @@ export default function PropertySubmissionWizard() {
               </Button>
             </div>
           </div>
-          <Progress value={progress} className="mt-4" data-testid="progress-wizard" />
+          <Progress value={progress} data-testid="progress-wizard" />
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 pb-6">
           {renderStep()}
         </CardContent>
       </Card>
