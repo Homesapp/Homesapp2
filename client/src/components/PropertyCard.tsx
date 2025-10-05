@@ -6,6 +6,7 @@ import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2 } from "lucide-r
 export type PropertyCardProps = {
   id: string;
   title: string;
+  customListingTitle?: string;
   price: number;
   salePrice?: number;
   currency?: string;
@@ -13,6 +14,11 @@ export type PropertyCardProps = {
   bathrooms: number;
   area: number;
   location: string;
+  colonyName?: string;
+  condoName?: string;
+  unitNumber?: string;
+  showCondoInListing?: boolean;
+  showUnitNumberInListing?: boolean;
   status: "rent" | "sale" | "both";
   image?: string;
   onView?: () => void;
@@ -24,6 +30,7 @@ export type PropertyCardProps = {
 
 export function PropertyCard({
   title,
+  customListingTitle,
   price,
   salePrice,
   currency = "MXN",
@@ -31,6 +38,11 @@ export function PropertyCard({
   bathrooms,
   area,
   location,
+  colonyName,
+  condoName,
+  unitNumber,
+  showCondoInListing = true,
+  showUnitNumberInListing = true,
   status,
   image,
   onView,
@@ -51,6 +63,22 @@ export function PropertyCard({
     both: "outline" as const,
   };
 
+  // Construct display title
+  const displayTitle = customListingTitle || title;
+
+  // Construct display location: "Colony, Tulum" or fallback to location
+  const displayLocation = colonyName ? `${colonyName}, Tulum` : location;
+
+  // Construct condo/unit display
+  const condoUnitParts: string[] = [];
+  if (showCondoInListing && condoName) {
+    condoUnitParts.push(condoName);
+  }
+  if (showUnitNumberInListing && unitNumber) {
+    condoUnitParts.push(`#${unitNumber}`);
+  }
+  const condoUnitDisplay = condoUnitParts.length > 0 ? condoUnitParts.join(" ") : null;
+
   return (
     <Card className="overflow-hidden hover-elevate">
       <div className="aspect-video bg-muted relative overflow-hidden">
@@ -67,10 +95,17 @@ export function PropertyCard({
       </div>
       
       <CardHeader className="gap-1 space-y-0 pb-2">
-        <h3 className="font-semibold text-lg">{title}</h3>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="h-3 w-3" />
-          <span>{location}</span>
+        <h3 className="font-semibold text-lg line-clamp-2" title={displayTitle}>{displayTitle}</h3>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="h-3 w-3 flex-shrink-0" />
+            <span>{displayLocation}</span>
+          </div>
+          {condoUnitDisplay && (
+            <div className="text-xs text-muted-foreground pl-4">
+              {condoUnitDisplay}
+            </div>
+          )}
         </div>
       </CardHeader>
 

@@ -422,6 +422,7 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
   updatedAt: true,
 }).extend({
   accessInfo: accessInfoSchema,
+  customListingTitle: z.string().max(60, "El título personalizado no puede exceder 60 caracteres").optional(),
 });
 
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
