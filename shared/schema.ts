@@ -239,6 +239,7 @@ export const users = pgTable("users", {
   phone: varchar("phone"),
   emailVerified: boolean("email_verified").notNull().default(false),
   preferredLanguage: varchar("preferred_language", { length: 2 }).notNull().default("es"),
+  hasSeenWelcome: boolean("has_seen_welcome").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -410,6 +411,7 @@ export const properties = pgTable("properties", {
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   reviewCount: integer("review_count").notNull().default(0),
   featured: boolean("featured").notNull().default(false),
+  allowsSubleasing: boolean("allows_subleasing").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
