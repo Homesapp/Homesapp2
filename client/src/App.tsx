@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSelector } from "@/components/RoleSelector";
 import { AppSidebar } from "@/components/AppSidebar";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -110,24 +111,15 @@ function AuthenticatedApp() {
             <div className="flex items-center gap-4">
               <RoleSelector />
               <ThemeToggle />
-              {isAdminAuthenticated ? (
-                <button
-                  onClick={() => adminLogoutMutation.mutate()}
-                  disabled={adminLogoutMutation.isPending}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                  data-testid="button-logout"
-                >
-                  {adminLogoutMutation.isPending ? "Cerrando..." : "Cerrar Sesión"}
-                </button>
-              ) : (
-                <a
-                  href="/api/logout"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                  data-testid="link-logout"
-                >
-                  Cerrar Sesión
-                </a>
-              )}
+              {isAdminAuthenticated && adminUser ? (
+                <UserProfileMenu
+                  user={adminUser as any}
+                  isAdmin={true}
+                  onLogout={() => adminLogoutMutation.mutate()}
+                />
+              ) : user ? (
+                <UserProfileMenu user={user} />
+              ) : null}
             </div>
           </header>
           <main className="flex-1 overflow-auto p-6">
