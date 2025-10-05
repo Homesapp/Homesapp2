@@ -593,6 +593,7 @@ export const presentationCards = pgTable("presentation_cards", {
   contractDuration: text("contract_duration"),
   hasPets: boolean("has_pets").default(false),
   petPhotoUrl: text("pet_photo_url"),
+  isActive: boolean("is_active").notNull().default(false), // Tarjeta activa para recibir oportunidades
   timesUsed: integer("times_used").notNull().default(0), // Tracking de uso
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -606,6 +607,50 @@ export const insertPresentationCardSchema = createInsertSchema(presentationCards
 
 export type InsertPresentationCard = z.infer<typeof insertPresentationCardSchema>;
 export type PresentationCard = typeof presentationCards.$inferSelect;
+
+// Property Recommendations table (recomendaciones de vendedores a clientes)
+export const propertyRecommendations = pgTable("property_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sellerId: varchar("seller_id").notNull().references(() => users.id),
+  presentationCardId: varchar("presentation_card_id").references(() => presentationCards.id, { onDelete: "set null" }),
+  message: text("message"), // Mensaje personalizado del vendedor
+  isRead: boolean("is_read").notNull().default(false),
+  isInterested: boolean("is_interested"), // null = no respondido, true = interesado, false = no interesado
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPropertyRecommendationSchema = createInsertSchema(propertyRecommendations).omit({
+  id: true,
+  isRead: true,
+  createdAt: true,
+});
+
+export type InsertPropertyRecommendation = z.infer<typeof insertPropertyRecommendationSchema>;
+export type PropertyRecommendation = typeof propertyRecommendations.$inferSelect;
+
+// Auto Suggestions table (sugerencias automáticas basadas en tarjeta activa)
+export const autoSuggestions = pgTable("auto_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  presentationCardId: varchar("presentation_card_id").notNull().references(() => presentationCards.id, { onDelete: "cascade" }),
+  matchScore: integer("match_score"), // Score de coincidencia (0-100)
+  matchReasons: text("match_reasons").array().default(sql`ARRAY[]::text[]`), // Razones de coincidencia
+  isRead: boolean("is_read").notNull().default(false),
+  isInterested: boolean("is_interested"), // null = no respondido, true = interesado, false = no interesado
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAutoSuggestionSchema = createInsertSchema(autoSuggestions).omit({
+  id: true,
+  isRead: true,
+  createdAt: true,
+});
+
+export type InsertAutoSuggestion = z.infer<typeof insertAutoSuggestionSchema>;
+export type AutoSuggestion = typeof autoSuggestions.$inferSelect;
 
 // Service providers table
 export const serviceProviders = pgTable("service_providers", {

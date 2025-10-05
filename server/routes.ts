@@ -34,6 +34,8 @@ import {
   properties,
   users,
   presentationCards,
+  propertyRecommendations,
+  autoSuggestions,
   createPropertyChangeRequestSchema,
   updateOwnerSettingsSchema,
   insertRentalApplicationSchema,
@@ -3247,9 +3249,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/presentation-cards", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const clientId = req.body.clientId || userId;
+
+      // Check if user already has 3 cards
+      const existingCards = await db
+        .select()
+        .from(presentationCards)
+        .where(eq(presentationCards.clientId, clientId));
+
+      if (existingCards.length >= 3) {
+        return res.status(400).json({ 
+          message: "Has alcanzado el límite de 3 tarjetas de presentación. Elimina una existente para crear una nueva." 
+        });
+      }
+
       const cardData = insertPresentationCardSchema.parse({
         ...req.body,
-        clientId: req.body.clientId || userId,
+        clientId,
       });
 
       const card = await storage.createPresentationCard(cardData);
@@ -3273,12 +3289,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/presentation-cards/:id", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id} = req.params;
       await storage.deletePresentationCard(id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting presentation card:", error);
       res.status(500).json({ message: "Failed to delete presentation card" });
+    }
+  });
+
+  // Activate/deactivate presentation card
+  app.patch("/api/presentation-cards/:id/toggle-active", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      // First, deactivate all other cards for this user
+      await db.update(presentationCards)
+        .set({ isActive: false })
+        .where(eq(presentationCards.clientId, userId));
+
+      // Then activate this card
+      const card = await db.update(presentationCards)
+        .set({ isActive: true })
+        .where(and(
+          eq(presentationCards.id, id),
+          eq(presentationCards.clientId, userId)
+        ))
+        .returning();
+
+      if (!card[0]) {
+        return res.status(404).json({ message: "Presentation card not found" });
+      }
+
+      res.json(card[0]);
+    } catch (error) {
+      console.error("Error toggling presentation card:", error);
+      res.status(500).json({ message: "Failed to toggle presentation card" });
+    }
+  });
+
+  // Property Recommendations routes (seller to client)
+  app.post("/api/property-recommendations", isAuthenticated, async (req: any, res) => {
+    try {
+      const sellerId = req.user.claims.sub;
+      const { propertyId, clientId, presentationCardId, message } = req.body;
+
+      const recommendation = await db.insert(propertyRecommendations)
+        .values({
+          propertyId,
+          clientId,
+          sellerId,
+          presentationCardId: presentationCardId || null,
+          message: message || null,
+        })
+        .returning();
+
+      res.status(201).json(recommendation[0]);
+    } catch (error) {
+      console.error("Error creating recommendation:", error);
+      res.status(500).json({ message: "Failed to create recommendation" });
+    }
+  });
+
+  app.get("/api/my-property-recommendations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const recommendations = await db
+        .select({
+          id: propertyRecommendations.id,
+          propertyId: propertyRecommendations.propertyId,
+          sellerId: propertyRecommendations.sellerId,
+          presentationCardId: propertyRecommendations.presentationCardId,
+          message: propertyRecommendations.message,
+          isRead: propertyRecommendations.isRead,
+          isInterested: propertyRecommendations.isInterested,
+          createdAt: propertyRecommendations.createdAt,
+        })
+        .from(propertyRecommendations)
+        .where(eq(propertyRecommendations.clientId, userId))
+        .orderBy(desc(propertyRecommendations.createdAt));
+
+      // Enrich with property and seller data
+      const enriched = await Promise.all(
+        recommendations.map(async (rec) => {
+          const property = await db.select().from(properties).where(eq(properties.id, rec.propertyId)).limit(1);
+          const seller = await db.select().from(users).where(eq(users.id, rec.sellerId)).limit(1);
+          return {
+            ...rec,
+            property: property[0] || null,
+            seller: seller[0] ? { 
+              id: seller[0].id, 
+              firstName: seller[0].firstName, 
+              lastName: seller[0].lastName,
+              profileImageUrl: seller[0].profileImageUrl
+            } : null,
+          };
+        })
+      );
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+      res.status(500).json({ message: "Failed to fetch recommendations" });
+    }
+  });
+
+  app.patch("/api/property-recommendations/:id/mark-read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      const recommendation = await db.update(propertyRecommendations)
+        .set({ isRead: true })
+        .where(and(
+          eq(propertyRecommendations.id, id),
+          eq(propertyRecommendations.clientId, userId)
+        ))
+        .returning();
+
+      if (!recommendation[0]) {
+        return res.status(404).json({ message: "Recommendation not found" });
+      }
+
+      res.json(recommendation[0]);
+    } catch (error) {
+      console.error("Error marking recommendation as read:", error);
+      res.status(500).json({ message: "Failed to mark recommendation as read" });
+    }
+  });
+
+  app.patch("/api/property-recommendations/:id/set-interest", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { isInterested } = req.body;
+
+      const recommendation = await db.update(propertyRecommendations)
+        .set({ isInterested, isRead: true })
+        .where(and(
+          eq(propertyRecommendations.id, id),
+          eq(propertyRecommendations.clientId, userId)
+        ))
+        .returning();
+
+      if (!recommendation[0]) {
+        return res.status(404).json({ message: "Recommendation not found" });
+      }
+
+      res.json(recommendation[0]);
+    } catch (error) {
+      console.error("Error setting interest:", error);
+      res.status(500).json({ message: "Failed to set interest" });
+    }
+  });
+
+  // Auto Suggestions routes
+  app.get("/api/my-auto-suggestions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const suggestions = await db
+        .select({
+          id: autoSuggestions.id,
+          propertyId: autoSuggestions.propertyId,
+          presentationCardId: autoSuggestions.presentationCardId,
+          matchScore: autoSuggestions.matchScore,
+          matchReasons: autoSuggestions.matchReasons,
+          isRead: autoSuggestions.isRead,
+          isInterested: autoSuggestions.isInterested,
+          createdAt: autoSuggestions.createdAt,
+        })
+        .from(autoSuggestions)
+        .where(eq(autoSuggestions.clientId, userId))
+        .orderBy(desc(autoSuggestions.matchScore), desc(autoSuggestions.createdAt));
+
+      // Enrich with property data
+      const enriched = await Promise.all(
+        suggestions.map(async (sug) => {
+          const property = await db.select().from(properties).where(eq(properties.id, sug.propertyId)).limit(1);
+          return {
+            ...sug,
+            property: property[0] || null,
+          };
+        })
+      );
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching auto suggestions:", error);
+      res.status(500).json({ message: "Failed to fetch auto suggestions" });
+    }
+  });
+
+  app.patch("/api/auto-suggestions/:id/mark-read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      const suggestion = await db.update(autoSuggestions)
+        .set({ isRead: true })
+        .where(and(
+          eq(autoSuggestions.id, id),
+          eq(autoSuggestions.clientId, userId)
+        ))
+        .returning();
+
+      if (!suggestion[0]) {
+        return res.status(404).json({ message: "Suggestion not found" });
+      }
+
+      res.json(suggestion[0]);
+    } catch (error) {
+      console.error("Error marking suggestion as read:", error);
+      res.status(500).json({ message: "Failed to mark suggestion as read" });
+    }
+  });
+
+  app.patch("/api/auto-suggestions/:id/set-interest", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { isInterested } = req.body;
+
+      const suggestion = await db.update(autoSuggestions)
+        .set({ isInterested, isRead: true })
+        .where(and(
+          eq(autoSuggestions.id, id),
+          eq(autoSuggestions.clientId, userId)
+        ))
+        .returning();
+
+      if (!suggestion[0]) {
+        return res.status(404).json({ message: "Suggestion not found" });
+      }
+
+      res.json(suggestion[0]);
+    } catch (error) {
+      console.error("Error setting interest:", error);
+      res.status(500).json({ message: "Failed to set interest" });
     }
   });
 

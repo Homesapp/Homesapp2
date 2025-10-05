@@ -33,6 +33,7 @@ import {
   HelpCircle,
   Plus,
   UserPlus,
+  Zap,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import { Link, useLocation } from "wouter";
@@ -79,7 +80,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { title: "Buscar Propiedades", url: "/buscar-propiedades", icon: Search, roles: ["cliente"] },
     { title: "Mis Citas", url: "/mis-citas", icon: CalendarCheck, roles: ["cliente"] },
     { title: "Mis Favoritos", url: "/favoritos", icon: Heart, roles: ["cliente"] },
-    { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Calendar, roles: ["cliente"] },
+    { title: "Mis Oportunidades", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
     { title: "Mis Propiedades", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
     { title: "Cargar Propiedad", url: "/owner/property/new", icon: Plus, roles: ["owner"] },
     { title: "Gestión de Visitas", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },
