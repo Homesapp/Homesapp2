@@ -104,7 +104,7 @@ export default function PublicDashboard() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por ubicación, colonia, condominio o descripción..."
+                  placeholder={t("public.searchPlaceholder")}
                   className="h-14 pl-11 text-base"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -127,7 +127,7 @@ export default function PublicDashboard() {
                 onClick={handleSearch}
                 data-testid="button-search"
               >
-                Buscar
+                {t("public.searchButton")}
               </Button>
             </div>
 
@@ -136,29 +136,29 @@ export default function PublicDashboard() {
               <div className="mt-4 p-6 bg-card border rounded-lg shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Tipo de Propiedad</label>
+                    <label className="text-sm font-medium">{t("public.filterPropertyType")}</label>
                     <Select value={propertyType} onValueChange={setPropertyType}>
                       <SelectTrigger data-testid="select-property-type">
-                        <SelectValue placeholder="Todos los tipos" />
+                        <SelectValue placeholder={t("public.filterAllTypes")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos los tipos</SelectItem>
-                        <SelectItem value="house">Casa</SelectItem>
-                        <SelectItem value="apartment">Departamento</SelectItem>
-                        <SelectItem value="villa">Villa</SelectItem>
-                        <SelectItem value="condo">Condominio</SelectItem>
-                        <SelectItem value="penthouse">Penthouse</SelectItem>
-                        <SelectItem value="studio">Estudio</SelectItem>
-                        <SelectItem value="loft">Loft</SelectItem>
-                        <SelectItem value="townhouse">Casa adosada</SelectItem>
+                        <SelectItem value="all">{t("public.filterAllTypes")}</SelectItem>
+                        <SelectItem value="house">{t("public.propertyType.house")}</SelectItem>
+                        <SelectItem value="apartment">{t("public.propertyType.apartment")}</SelectItem>
+                        <SelectItem value="villa">{t("public.propertyType.villa")}</SelectItem>
+                        <SelectItem value="condo">{t("public.propertyType.condo")}</SelectItem>
+                        <SelectItem value="penthouse">{t("public.propertyType.penthouse")}</SelectItem>
+                        <SelectItem value="studio">{t("public.propertyType.studio")}</SelectItem>
+                        <SelectItem value="loft">{t("public.propertyType.loft")}</SelectItem>
+                        <SelectItem value="townhouse">{t("public.propertyType.townhouse")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Colonia</label>
+                    <label className="text-sm font-medium">{t("public.filterColony")}</label>
                     <Input
-                      placeholder="Ej: La Veleta, Aldea Zama..."
+                      placeholder={t("public.filterColonyPlaceholder")}
                       value={colonyName}
                       onChange={(e) => setColonyName(e.target.value)}
                       data-testid="input-colony"
@@ -166,9 +166,9 @@ export default function PublicDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Condominio</label>
+                    <label className="text-sm font-medium">{t("public.filterCondo")}</label>
                     <Input
-                      placeholder="Nombre del condominio..."
+                      placeholder={t("public.filterCondoPlaceholder")}
                       value={condoName}
                       onChange={(e) => setCondoName(e.target.value)}
                       data-testid="input-condo"
@@ -187,7 +187,7 @@ export default function PublicDashboard() {
                     }}
                     data-testid="button-clear-filters"
                   >
-                    Limpiar filtros
+                    {t("public.clearFilters")}
                   </Button>
                 </div>
               </div>
@@ -203,7 +203,7 @@ export default function PublicDashboard() {
                 data-testid="badge-rent"
               >
                 <Home className="mr-2 h-5 w-5" />
-                En Renta
+                {t("public.filter.rent")}
               </Button>
               <Button
                 variant="outline"
@@ -213,7 +213,7 @@ export default function PublicDashboard() {
                 data-testid="badge-sale"
               >
                 <TrendingUp className="mr-2 h-5 w-5" />
-                En Venta
+                {t("public.filter.sale")}
               </Button>
               <Button
                 variant="outline"
@@ -223,7 +223,7 @@ export default function PublicDashboard() {
                 data-testid="badge-featured"
               >
                 <Sparkles className="mr-2 h-5 w-5" />
-                Destacadas
+                {t("public.filter.featured")}
               </Button>
             </div>
           </div>
@@ -241,23 +241,22 @@ export default function PublicDashboard() {
               <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
             </div>
             <div className="p-4 md:p-6 flex flex-col justify-center">
-              <h2 className="text-2xl font-bold mb-3">¿Tienes una propiedad en Tulum?</h2>
+              <h2 className="text-2xl font-bold mb-3">{t("public.ownerBanner.title")}</h2>
               <p className="text-base text-muted-foreground mb-4">
-                Únete a nuestra plataforma y alcanza miles de clientes potenciales. 
-                Gestiona reservas, citas y mucho más desde un solo lugar.
+                {t("public.ownerBanner.subtitle")}
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span>Exposición a miles de clientes verificados</span>
+                  <span>{t("public.ownerBanner.benefit1")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span>Herramientas de gestión profesionales</span>
+                  <span>{t("public.ownerBanner.benefit2")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span>Sin comisiones ocultas</span>
+                  <span>{t("public.ownerBanner.benefit3")}</span>
                 </div>
               </div>
               <Button
@@ -265,7 +264,7 @@ export default function PublicDashboard() {
                 className="w-fit"
                 data-testid="button-list-property"
               >
-                Enlistar mi Propiedad
+                {t("public.ownerBanner.button")}
               </Button>
             </div>
           </div>
@@ -330,9 +329,9 @@ export default function PublicDashboard() {
                           {property.location}
                         </p>
                         <div className="flex items-center gap-4 text-sm">
-                          <span data-testid={`text-bedrooms-${property.id}`}>{property.bedrooms} hab</span>
-                          <span data-testid={`text-bathrooms-${property.id}`}>{property.bathrooms} baños</span>
-                          <span data-testid={`text-area-${property.id}`}>{property.area} m²</span>
+                          <span data-testid={`text-bedrooms-${property.id}`}>{property.bedrooms} {t("property.bedrooms")}</span>
+                          <span data-testid={`text-bathrooms-${property.id}`}>{property.bathrooms} {t("property.bathrooms")}</span>
+                          <span data-testid={`text-area-${property.id}`}>{property.area} {t("property.area")}</span>
                           {(property.amenities?.includes("Mascotas permitidas") || property.amenities?.includes("Pet Friendly")) && (
                             <span title="Pet-friendly">
                               <PawPrint className="h-4 w-4 text-foreground" />
@@ -360,33 +359,33 @@ export default function PublicDashboard() {
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <Home className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">Para Clientes</h3>
-              <p className="text-muted-foreground">Encuentra tu hogar perfecto en el paraíso</p>
+              <h3 className="text-2xl font-bold mb-2">{t("public.clientBenefits.title")}</h3>
+              <p className="text-muted-foreground">{t("public.clientBenefits.subtitle")}</p>
             </div>
             <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Acceso exclusivo a propiedades verificadas en Tulum</span>
+                <span>{t("public.clientBenefits.benefit1")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Agenda visitas virtuales o presenciales fácilmente</span>
+                <span>{t("public.clientBenefits.benefit2")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Chat directo con propietarios y agentes</span>
+                <span>{t("public.clientBenefits.benefit3")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Guarda tus favoritas y compáralas</span>
+                <span>{t("public.clientBenefits.benefit4")}</span>
               </li>
             </ul>
           </div>
@@ -397,33 +396,33 @@ export default function PublicDashboard() {
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <Building2 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">Para Propietarios</h3>
-              <p className="text-muted-foreground">Maximiza el potencial de tu inversión</p>
+              <h3 className="text-2xl font-bold mb-2">{t("public.ownerBenefits.title")}</h3>
+              <p className="text-muted-foreground">{t("public.ownerBenefits.subtitle")}</p>
             </div>
             <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Plataforma completa para gestionar tu propiedad</span>
+                <span>{t("public.ownerBenefits.benefit1")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Calendario integrado de citas y reservas</span>
+                <span>{t("public.ownerBenefits.benefit2")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Marketplace de proveedores de servicios confiables</span>
+                <span>{t("public.ownerBenefits.benefit3")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">✓</span>
                 </div>
-                <span>Reportes y análisis en tiempo real</span>
+                <span>{t("public.ownerBenefits.benefit4")}</span>
               </li>
             </ul>
           </div>
@@ -475,9 +474,9 @@ export default function PublicDashboard() {
                     {property.location}
                   </p>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span data-testid={`text-all-bedrooms-${property.id}`}>{property.bedrooms} hab</span>
-                    <span data-testid={`text-all-bathrooms-${property.id}`}>{property.bathrooms} baños</span>
-                    <span data-testid={`text-all-area-${property.id}`}>{property.area} m²</span>
+                    <span data-testid={`text-all-bedrooms-${property.id}`}>{property.bedrooms} {t("property.bedrooms")}</span>
+                    <span data-testid={`text-all-bathrooms-${property.id}`}>{property.bathrooms} {t("property.bathrooms")}</span>
+                    <span data-testid={`text-all-area-${property.id}`}>{property.area} {t("property.area")}</span>
                     {(property.amenities?.includes("Mascotas permitidas") || property.amenities?.includes("Pet Friendly")) && (
                       <span title="Pet-friendly">
                         <PawPrint className="h-3 w-3 text-foreground" />
@@ -494,23 +493,22 @@ export default function PublicDashboard() {
         <div className="mt-12 mb-12 overflow-hidden rounded-lg border bg-card shadow-sm">
           <div className="grid md:grid-cols-2 gap-0">
             <div className="p-4 md:p-6 flex flex-col justify-center">
-              <h2 className="text-2xl font-bold mb-3">¿Ofreces Servicios para Propiedades?</h2>
+              <h2 className="text-2xl font-bold mb-3">{t("public.serviceBanner.title")}</h2>
               <p className="text-base text-muted-foreground mb-4">
-                Únete a nuestra red de proveedores de servicios confiables. 
-                Conecta con propietarios que necesitan tus servicios profesionales.
+                {t("public.serviceBanner.subtitle")}
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span>Limpieza, mantenimiento, jardinería y más</span>
+                  <span>{t("public.serviceBanner.benefit1")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span>Acceso a una base de clientes establecida</span>
+                  <span>{t("public.serviceBanner.benefit2")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span>Sistema de reservas y pagos integrado</span>
+                  <span>{t("public.serviceBanner.benefit3")}</span>
                 </div>
               </div>
               <Button
@@ -518,7 +516,7 @@ export default function PublicDashboard() {
                 className="w-fit"
                 data-testid="button-provider-apply"
               >
-                Aplicar como Proveedor
+                {t("public.serviceBanner.button")}
               </Button>
             </div>
             <div className="relative h-48 md:h-64">
@@ -538,30 +536,25 @@ export default function PublicDashboard() {
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
           <div className="relative p-4 md:p-6">
             <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold mb-3">Programa de Afiliados</h2>
+              <h2 className="text-2xl font-bold mb-3">{t("public.affiliateBanner.title")}</h2>
               <p className="text-base text-muted-foreground mb-4">
-                ¿Conoces personas buscando propiedades en Tulum? Conviértete en nuestro aliado 
-                y gana comisiones atractivas por cada cliente que refiera.
+                {t("public.affiliateBanner.subtitle")}
               </p>
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-primary" />
-                    <span>Comisiones competitivas por cada venta</span>
+                    <span>{t("public.affiliateBanner.benefit1")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-primary" />
-                    <span>Material de marketing profesional</span>
+                    <span>{t("public.affiliateBanner.benefit2")}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-primary" />
-                    <span>Soporte dedicado para vendedores</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
-                    <span>Sin inversión inicial</span>
+                    <span>{t("public.affiliateBanner.benefit3")}</span>
                   </div>
                 </div>
               </div>
@@ -569,7 +562,7 @@ export default function PublicDashboard() {
                 onClick={() => setLocation("/register")}
                 data-testid="button-affiliate-join"
               >
-                Únete al Programa
+                {t("public.affiliateBanner.button")}
               </Button>
             </div>
           </div>
