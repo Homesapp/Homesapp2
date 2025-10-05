@@ -666,7 +666,8 @@ export const rentalOpportunityRequests = pgTable("rental_opportunity_requests", 
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   status: opportunityRequestStatusEnum("status").notNull().default("pending"),
   notes: text("notes"),
-  requestedDate: timestamp("requested_date"),
+  desiredMoveInDate: timestamp("desired_move_in_date"),
+  preferredContactMethod: varchar("preferred_contact_method").default("email"), // email, phone, whatsapp
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

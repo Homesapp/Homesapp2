@@ -23,7 +23,11 @@ import {
   userRegistrationSchema,
   userLoginSchema,
   insertRoleRequestSchema,
+  rentalOpportunityRequests,
+  leadJourneys,
 } from "@shared/schema";
+import { db } from "@db";
+import { eq, and, inArray } from "drizzle-orm";
 
 // Helper function to create audit logs
 async function createAuditLog(
@@ -849,6 +853,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching property staff:", error);
       res.status(500).json({ message: "Failed to fetch property staff" });
+    }
+  });
+
+  // Rental Opportunity Requests (SOR) routes
+  app.post("/api/rental-opportunity-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { propertyId, desiredMoveInDate, preferredContactMethod, notes } = req.body;
+
+      // Verificar límite de SORs activas (máximo 3)
+      const activeSORs = await db
+        .select()
+        .from(rentalOpportunityRequests)
+        .where(
+          and(
+            eq(rentalOpportunityRequests.userId, userId),
+            inArray(rentalOpportunityRequests.status, ["pending", "contacted", "qualified"])
+          )
+        );
+
+      if (activeSORs.length >= 3) {
+        return res.status(400).json({ 
+          error: "Ya tienes 3 solicitudes activas. Espera a que se procesen antes de crear una nueva." 
+        });
+      }
+
+      // Crear SOR
+      const [newSOR] = await db
+        .insert(rentalOpportunityRequests)
+        .values({
+          propertyId,
+          userId,
+          desiredMoveInDate: desiredMoveInDate || null,
+          preferredContactMethod: preferredContactMethod || "email",
+          notes: notes || null,
+          status: "pending",
+        })
+        .returning();
+
+      // Registrar acción en lead_journeys
+      await db.insert(leadJourneys).values({
+        propertyId,
+        userId,
+        action: "request_opportunity",
+      });
+
+      res.json(newSOR);
+    } catch (error: any) {
+      console.error("Error creating rental opportunity request:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/rental-opportunity-requests/active-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const activeSORs = await db
+        .select()
+        .from(rentalOpportunityRequests)
+        .where(
+          and(
+            eq(rentalOpportunityRequests.userId, userId),
+            inArray(rentalOpportunityRequests.status, ["pending", "contacted", "qualified"])
+          )
+        );
+
+      res.json({ count: activeSORs.length });
+    } catch (error: any) {
+      console.error("Error getting active SOR count:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/rental-opportunity-requests/by-property/:propertyId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { propertyId } = req.params;
+
+      const existingSOR = await db
+        .select()
+        .from(rentalOpportunityRequests)
+        .where(
+          and(
+            eq(rentalOpportunityRequests.userId, userId),
+            eq(rentalOpportunityRequests.propertyId, propertyId),
+            inArray(rentalOpportunityRequests.status, ["pending", "contacted", "qualified"])
+          )
+        )
+        .limit(1);
+
+      res.json(existingSOR[0] || null);
+    } catch (error: any) {
+      console.error("Error checking existing SOR:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
