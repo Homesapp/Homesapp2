@@ -38,29 +38,26 @@ export async function getUncachableResendClient() {
   };
 }
 
-export async function sendVerificationEmail(to: string, verificationToken: string) {
+export async function sendVerificationEmail(to: string, verificationCode: string) {
   try {
     const { client, fromEmail } = await getUncachableResendClient();
-    
-    const verificationUrl = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
     
     const result = await client.emails.send({
       from: fromEmail,
       to,
-      subject: 'Verifica tu cuenta - HomesApp',
+      subject: 'Código de verificación - HomesApp',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1e293b;">Bienvenido a HomesApp</h2>
           <p>Gracias por registrarte en nuestra plataforma de gestión inmobiliaria.</p>
-          <p>Para completar tu registro y activar tu cuenta, por favor verifica tu dirección de correo electrónico haciendo clic en el siguiente botón:</p>
+          <p>Tu código de verificación es:</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Verificar mi email
-            </a>
+            <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; display: inline-block;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b;">${verificationCode}</span>
+            </div>
           </div>
-          <p style="color: #64748b; font-size: 14px;">Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:</p>
-          <p style="word-break: break-all; color: #64748b; font-size: 12px;">${verificationUrl}</p>
-          <p style="color: #64748b; font-size: 14px; margin-top: 30px;">Este enlace expirará en 24 horas.</p>
+          <p>Ingresa este código en la página de verificación para activar tu cuenta.</p>
+          <p style="color: #64748b; font-size: 14px; margin-top: 30px;">Este código expirará en 15 minutos.</p>
           <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">Si no creaste esta cuenta, puedes ignorar este email.</p>
         </div>
       `,

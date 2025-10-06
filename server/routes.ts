@@ -602,20 +602,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailVerified: false,
       });
 
-      // Generate verification token
-      const verificationToken = crypto.randomBytes(32).toString("hex");
+      // Generate 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiration
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes expiration
 
       await storage.createEmailVerificationToken({
         userId: user.id,
-        token: verificationToken,
+        code: verificationCode,
         expiresAt,
       });
 
       // Send verification email
       try {
-        await sendVerificationEmail(user.email, verificationToken);
+        await sendVerificationEmail(user.email, verificationCode);
       } catch (emailError) {
         console.error("Error sending verification email:", emailError);
         // Don't fail registration if email fails
@@ -624,10 +624,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({
         message: "Cuenta creada exitosamente. Por favor verifica tu email.",
         userId: user.id,
+        email: user.email,
       });
     } catch (error) {
       console.error("Error during registration:", error);
       res.status(500).json({ message: "Error al crear la cuenta" });
+    }
+  });
+
+  app.post("/api/verify-email", emailVerificationLimiter, async (req: any, res) => {
+    try {
+      const { email, code } = req.body;
+
+      if (!email || !code) {
+        return res.status(400).json({ message: "Email y código son requeridos" });
+      }
+
+      // Get user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Get verification token by code
+      const verificationToken = await storage.getEmailVerificationTokenByCode(code);
+      if (!verificationToken || verificationToken.userId !== user.id) {
+        return res.status(400).json({ message: "Código de verificación inválido" });
+      }
+
+      // Check if code is expired
+      if (new Date() > verificationToken.expiresAt) {
+        await storage.deleteEmailVerificationToken(verificationToken.id);
+        return res.status(400).json({ message: "El código ha expirado" });
+      }
+
+      // Verify user email
+      await storage.verifyUserEmail(verificationToken.userId);
+
+      // Delete used token
+      await storage.deleteEmailVerificationToken(verificationToken.id);
+
+      // Auto-login: Create session for the user
+      req.session.userId = user.id;
+
+      // Save session explicitly
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.json({ 
+        message: "Email verificado exitosamente",
+        autoLogin: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        }
+      });
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      res.status(500).json({ message: "Error al verificar el código" });
+    }
+  });
+
+  // Resend verification code
+  app.post("/api/resend-verification", emailVerificationLimiter, async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email es requerido" });
+      }
+
+      // Get user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Check if already verified
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "El email ya está verificado" });
+      }
+
+      // Delete old verification code if exists
+      await storage.deleteEmailVerificationTokenByUserId(user.id);
+
+      // Generate new 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+      await storage.createEmailVerificationToken({
+        userId: user.id,
+        code: verificationCode,
+        expiresAt,
+      });
+
+      // Send verification email
+      try {
+        await sendVerificationEmail(user.email, verificationCode);
+        res.json({ message: "Código de verificación enviado" });
+      } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+        res.status(500).json({ message: "Error al enviar el código" });
+      }
+    } catch (error) {
+      console.error("Error resending verification code:", error);
+      res.status(500).json({ message: "Error al reenviar el código" });
     }
   });
 
@@ -639,63 +748,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Token inválido" });
       }
 
-      // Get verification token
-      const verificationToken = await storage.getEmailVerificationToken(token);
-      if (!verificationToken) {
-        return res.status(404).json({ message: "Token no encontrado o expirado" });
+      // Legacy support - redirect to verification page
+      res.redirect(`/verify-email?token=${token}`);
+    } catch (error) {
+      console.error("Error with legacy verification:", error);
+      res.status(500).json({ message: "Error al verificar" });
+    }
+  });
+
+  app.get("/api/verify-email-old", emailVerificationLimiter, async (req: any, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ message: "Token inválido" });
       }
 
-      // Check if token is expired
-      if (new Date() > verificationToken.expiresAt) {
-        await storage.deleteEmailVerificationToken(token);
-        return res.status(400).json({ message: "El token ha expirado" });
-      }
-
-      // Verify user email
-      await storage.verifyUserEmail(verificationToken.userId);
-
-      // Delete used token
-      await storage.deleteEmailVerificationToken(token);
-
-      // Get user data to check approval status
-      const user = await storage.getUser(verificationToken.userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "Usuario no encontrado" });
-      }
-
-      // Only auto-login if user is approved
-      if (user.status === "approved") {
-        // Auto-login: Create session for the user
-        req.session.userId = verificationToken.userId;
-
-        // Save session explicitly
-        await new Promise<void>((resolve, reject) => {
-          req.session.save((err: any) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-
-        res.json({ 
-          message: "Email verificado exitosamente",
-          autoLogin: true,
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            role: user.role,
-          }
-        });
-      } else {
-        // User is not approved yet - email verified but no auto-login
-        res.json({ 
-          message: "Email verificado exitosamente. Tu cuenta está pendiente de aprobación.",
-          autoLogin: false,
-          requiresApproval: true
-        });
-      }
+      // This is for old-style verification - not used anymore but kept for backward compatibility
+      res.json({ 
+        message: "Este método de verificación ya no está disponible. Por favor solicita un nuevo código.",
+        autoLogin: false,
+        requiresApproval: true
+      });
     } catch (error) {
       console.error("Error during email verification:", error);
       res.status(500).json({ message: "Error al verificar el email" });

@@ -166,8 +166,10 @@ export interface IStorage {
   
   // Email verification token operations
   createEmailVerificationToken(token: InsertEmailVerificationToken): Promise<EmailVerificationToken>;
-  getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
+  getEmailVerificationTokenByCode(code: string): Promise<EmailVerificationToken | undefined>;
+  getEmailVerificationTokenByUserId(userId: string): Promise<EmailVerificationToken | undefined>;
   deleteEmailVerificationToken(token: string): Promise<void>;
+  deleteEmailVerificationTokenByUserId(userId: string): Promise<void>;
   
   // Role request operations
   createRoleRequest(request: InsertRoleRequest): Promise<RoleRequest>;
@@ -612,16 +614,28 @@ export class DatabaseStorage implements IStorage {
     return token;
   }
 
-  async getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> {
+  async getEmailVerificationTokenByCode(code: string): Promise<EmailVerificationToken | undefined> {
     const [verificationToken] = await db
       .select()
       .from(emailVerificationTokens)
-      .where(eq(emailVerificationTokens.token, token));
+      .where(eq(emailVerificationTokens.code, code));
     return verificationToken;
   }
 
-  async deleteEmailVerificationToken(token: string): Promise<void> {
-    await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.token, token));
+  async getEmailVerificationTokenByUserId(userId: string): Promise<EmailVerificationToken | undefined> {
+    const [verificationToken] = await db
+      .select()
+      .from(emailVerificationTokens)
+      .where(eq(emailVerificationTokens.userId, userId));
+    return verificationToken;
+  }
+
+  async deleteEmailVerificationToken(tokenId: string): Promise<void> {
+    await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.id, tokenId));
+  }
+
+  async deleteEmailVerificationTokenByUserId(userId: string): Promise<void> {
+    await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
   }
 
   // Role request operations

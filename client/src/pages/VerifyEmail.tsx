@@ -1,116 +1,208 @@
-import { useEffect, useState } from "react";
-import { useLocation, useSearch } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Building2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { queryClient } from "@/lib/queryClient";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
+
+const verificationSchema = z.object({
+  code: z.string().length(6, "El código debe tener 6 dígitos").regex(/^\d+$/, "El código solo debe contener números"),
+});
+
+type VerificationFormData = z.infer<typeof verificationSchema>;
 
 export default function VerifyEmail() {
   const [_, setLocation] = useLocation();
-  const searchParams = useSearch();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState("");
-  const [autoLogin, setAutoLogin] = useState(false);
-  const [requiresApproval, setRequiresApproval] = useState(false);
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const [email, setEmail] = useState<string>("");
+  const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const token = new URLSearchParams(searchParams).get("token");
+    const storedEmail = sessionStorage.getItem("verificationEmail");
+    if (!storedEmail) {
+      toast({
+        title: "Error",
+        description: "No hay una sesión de verificación activa",
+        variant: "destructive",
+      });
+      setLocation("/register");
+      return;
+    }
+    setEmail(storedEmail);
+  }, []);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  const form = useForm<VerificationFormData>({
+    resolver: zodResolver(verificationSchema),
+    defaultValues: {
+      code: "",
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: async (data: VerificationFormData) => {
+      return await apiRequest("POST", "/api/verify-email", {
+        email,
+        code: data.code,
+      });
+    },
+    onSuccess: async (data: any) => {
+      sessionStorage.removeItem("verificationEmail");
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
-      if (!token) {
-        setStatus("error");
-        setMessage("Token de verificación no encontrado");
-        return;
-      }
+      toast({
+        title: "¡Verificación exitosa!",
+        description: "Tu cuenta ha sido verificada correctamente.",
+      });
 
-      try {
-        const response = await fetch(`/api/verify-email?token=${token}`);
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus("success");
-          setMessage(data.message);
-          
-          // Check if account requires approval
-          if (data.requiresApproval) {
-            setRequiresApproval(true);
-          }
-          
-          // Check if auto-login was successful
-          if (data.autoLogin) {
-            setAutoLogin(true);
-            // Invalidate queries to refresh user data
-            queryClient.invalidateQueries();
-            
-            // Redirect to dashboard after 2 seconds
-            setTimeout(() => {
-              setLocation("/");
-            }, 2000);
-          }
+      // Redirect based on role
+      if (data.user && data.user.role) {
+        const role = data.user.role;
+        if (role === "owner") {
+          setLocation("/owner/dashboard");
+        } else if (role === "master" || role === "admin" || role === "admin_jr") {
+          setLocation("/admin/dashboard");
         } else {
-          setStatus("error");
-          setMessage(data.message || "Error al verificar el email");
+          setLocation("/");
         }
-      } catch (error) {
-        setStatus("error");
-        setMessage("Error de conexión. Por favor intenta de nuevo.");
+      } else {
+        setLocation("/");
       }
-    };
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error de verificación",
+        description: error.message || "El código ingresado es incorrecto o ha expirado",
+        variant: "destructive",
+      });
+    },
+  });
 
-    verifyEmail();
-  }, [searchParams, setLocation]);
+  const resendMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/resend-verification", { email });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Código reenviado",
+        description: "Se ha enviado un nuevo código a tu email",
+      });
+      setCountdown(60);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo reenviar el código",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: VerificationFormData) => {
+    verifyMutation.mutate(data);
+  };
+
+  const handleResend = () => {
+    if (countdown === 0) {
+      resendMutation.mutate();
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 p-4">
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
-            <div className={`p-3 rounded-full ${
-              status === "loading" ? "bg-primary/10" :
-              status === "success" ? "bg-green-100 dark:bg-green-900/20" :
-              "bg-red-100 dark:bg-red-900/20"
-            }`}>
-              {status === "loading" ? (
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              ) : status === "success" ? (
-                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
-              ) : (
-                <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
-              )}
-            </div>
+            <img src={logoIcon} alt="HomesApp" className="h-16 w-auto" data-testid="img-logo" />
           </div>
-          <CardTitle className="text-2xl">
-            {status === "loading" ? "Verificando Email" : 
-             status === "success" ? "¡Email Verificado!" : 
-             "Error de Verificación"}
-          </CardTitle>
+          <CardTitle className="text-2xl">Verifica tu email</CardTitle>
           <CardDescription>
-            {status === "loading" ? "Por favor espera un momento..." : message}
+            Hemos enviado un código de 6 dígitos a<br />
+            <span className="font-medium text-foreground">{email}</span>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {status === "success" && (
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Tu cuenta ha sido verificada exitosamente.</p>
-              {autoLogin ? (
-                <p className="mt-2">Redirigiendo a tu dashboard...</p>
-              ) : requiresApproval ? (
-                <p className="mt-2">Tu cuenta está pendiente de aprobación. Te notificaremos cuando sea aprobada.</p>
-              ) : (
-                <p className="mt-2">Ahora puedes iniciar sesión con tu email y contraseña.</p>
+        <CardContent>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <Input
+                id="code"
+                placeholder="000000"
+                maxLength={6}
+                className="text-center text-2xl tracking-widest font-mono"
+                {...form.register("code")}
+                data-testid="input-verification-code"
+                autoComplete="off"
+                autoFocus
+              />
+              {form.formState.errors.code && (
+                <p className="text-sm text-destructive text-center">
+                  {form.formState.errors.code.message}
+                </p>
               )}
             </div>
-          )}
-          
-          {status !== "loading" && !autoLogin && (
+
             <Button
+              type="submit"
               className="w-full"
-              onClick={() => setLocation("/")}
-              data-testid="button-goto-login"
+              disabled={verifyMutation.isPending}
+              data-testid="button-verify"
             >
-              {status === "success" ? "Ir a Inicio de Sesión" : "Volver"}
+              {verifyMutation.isPending ? "Verificando..." : "Verificar código"}
             </Button>
-          )}
+
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                ¿No recibiste el código?
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                onClick={handleResend}
+                disabled={countdown > 0 || resendMutation.isPending}
+                data-testid="button-resend"
+                className="text-primary"
+              >
+                {countdown > 0
+                  ? `Reenviar en ${countdown}s`
+                  : resendMutation.isPending
+                  ? "Reenviando..."
+                  : "Reenviar código"}
+              </Button>
+            </div>
+
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => {
+                  sessionStorage.removeItem("verificationEmail");
+                  setLocation("/login");
+                }}
+                data-testid="link-back-to-login"
+                className="text-sm text-muted-foreground"
+              >
+                Volver al inicio de sesión
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

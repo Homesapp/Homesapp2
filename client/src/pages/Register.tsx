@@ -51,12 +51,15 @@ export default function Register() {
       const { confirmPassword, ...registerData } = data;
       return await apiRequest("POST", "/api/register", registerData);
     },
-    onSuccess: () => {
+    onSuccess: (data: any, variables: FormData) => {
+      // Store email in session for verification page
+      sessionStorage.setItem("verificationEmail", variables.email);
+      
       toast({
         title: t("register.success"),
-        description: t("register.successDesc"),
+        description: "Revisa tu email para el código de verificación",
       });
-      setLocation("/");
+      setLocation("/verify-email");
     },
     onError: (error: any) => {
       toast({
