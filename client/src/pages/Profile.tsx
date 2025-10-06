@@ -6,13 +6,15 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Trash2, Save, Upload, X, MessageCircle } from "lucide-react";
+import { Trash2, Save, Upload, X, MessageCircle, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { ChatConversation } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +33,48 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateUserProfileSchema, type UpdateUserProfile } from "@shared/schema";
 import { useEffect, useRef, useState } from "react";
+
+function AppearanceSettings() {
+  const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
+
+  return (
+    <div className="space-y-4">
+      <Separator />
+      <div>
+        <h3 className="text-lg font-medium mb-2">{t("profile.appearance") || "Apariencia"}</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          {t("profile.appearanceDesc") || "Personaliza cómo se ve la aplicación"}
+        </p>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={theme === "light" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTheme("light")}
+            data-testid="button-theme-light"
+            className="flex-1"
+          >
+            <Sun className="h-4 w-4 mr-2" />
+            {t("profile.lightMode") || "Modo claro"}
+          </Button>
+          <Button
+            type="button"
+            variant={theme === "dark" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTheme("dark")}
+            data-testid="button-theme-dark"
+            className="flex-1"
+          >
+            <Moon className="h-4 w-4 mr-2" />
+            {t("profile.darkMode") || "Modo oscuro"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Profile() {
   const { user } = useAuth();
@@ -349,6 +393,9 @@ export default function Profile() {
                   </FormItem>
                 )}
               />
+
+              {/* Appearance Settings */}
+              <AppearanceSettings />
             </CardContent>
             <CardFooter className="flex justify-between gap-4">
               <AlertDialog>

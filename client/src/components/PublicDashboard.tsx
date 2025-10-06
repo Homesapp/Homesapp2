@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
 import { type Property, type Colony, type Condominium } from "@shared/schema";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -79,13 +78,10 @@ export default function PublicDashboard() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center">
-            <img src={logoIcon} alt="HomesApp" className="h-10 sm:h-12 md:h-14 w-auto" />
+            <img src={logoIcon} alt="HomesApp" className="h-8 sm:h-10 md:h-12 w-auto" />
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            <div className="hidden sm:flex items-center gap-2">
-              <LanguageToggle />
-              <ThemeToggle />
-            </div>
+            <LanguageToggle />
             <Button
               variant="ghost"
               size="sm"
@@ -102,10 +98,6 @@ export default function PublicDashboard() {
             >
               {t("public.register")}
             </Button>
-            <div className="sm:hidden flex items-center gap-1 ml-1">
-              <LanguageToggle />
-              <ThemeToggle />
-            </div>
           </div>
         </div>
       </header>
