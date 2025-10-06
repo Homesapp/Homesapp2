@@ -35,9 +35,11 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Trust proxy for secure cookies
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // Use secure cookies in production or on Replit (which uses HTTPS even in dev)
+      secure: process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DOMAINS,
       sameSite: 'strict',
       maxAge: sessionTtl,
     },
