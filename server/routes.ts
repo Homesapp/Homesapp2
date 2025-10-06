@@ -69,6 +69,17 @@ import {
   insertPayoutBatchSchema,
   insertIncomeTransactionSchema,
   insertChangelogSchema,
+  insertSlaConfigurationSchema,
+  insertLeadScoringRuleSchema,
+  insertLeadScoreSchema,
+  insertContractChecklistTemplateSchema,
+  insertContractChecklistTemplateItemSchema,
+  insertContractChecklistItemSchema,
+  insertRentalHealthScoreSchema,
+  insertLeadResponseMetricSchema,
+  insertContractCycleMetricSchema,
+  insertWorkflowEventSchema,
+  insertSystemAlertSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -8052,6 +8063,587 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error deleting changelog:", error);
       res.status(500).json({ message: "Failed to delete changelog" });
+    }
+  });
+
+  // SLA Configuration routes
+  app.get("/api/sla-configs", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { isActive } = req.query;
+      const configs = await storage.getSlaConfigurations({
+        isActive: isActive === "true" ? true : isActive === "false" ? false : undefined
+      });
+      res.json(configs);
+    } catch (error: any) {
+      console.error("Error fetching SLA configurations:", error);
+      res.status(500).json({ message: "Failed to fetch SLA configurations" });
+    }
+  });
+
+  app.get("/api/sla-configs/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const config = await storage.getSlaConfiguration(req.params.id);
+      if (!config) {
+        return res.status(404).json({ message: "SLA configuration not found" });
+      }
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching SLA configuration:", error);
+      res.status(500).json({ message: "Failed to fetch SLA configuration" });
+    }
+  });
+
+  app.get("/api/sla-configs/process/:processName", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const config = await storage.getSlaConfigurationByProcess(req.params.processName);
+      if (!config) {
+        return res.status(404).json({ message: "SLA configuration not found for this process" });
+      }
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching SLA configuration:", error);
+      res.status(500).json({ message: "Failed to fetch SLA configuration" });
+    }
+  });
+
+  app.post("/api/sla-configs", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const validationResult = insertSlaConfigurationSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid SLA configuration data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const config = await storage.createSlaConfiguration(validationResult.data);
+
+      await logAuditAction(
+        req,
+        "create",
+        "sla_configuration",
+        config.id,
+        `Created SLA configuration for ${config.processName}`
+      );
+
+      res.status(201).json(config);
+    } catch (error: any) {
+      console.error("Error creating SLA configuration:", error);
+      res.status(500).json({ message: "Failed to create SLA configuration" });
+    }
+  });
+
+  app.patch("/api/sla-configs/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const config = await storage.updateSlaConfiguration(req.params.id, req.body);
+
+      await logAuditAction(
+        req,
+        "update",
+        "sla_configuration",
+        config.id,
+        `Updated SLA configuration for ${config.processName}`
+      );
+
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error updating SLA configuration:", error);
+      res.status(500).json({ message: "Failed to update SLA configuration" });
+    }
+  });
+
+  app.delete("/api/sla-configs/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      await storage.deleteSlaConfiguration(req.params.id);
+
+      await logAuditAction(
+        req,
+        "delete",
+        "sla_configuration",
+        req.params.id,
+        "Deleted SLA configuration"
+      );
+
+      res.json({ message: "SLA configuration deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting SLA configuration:", error);
+      res.status(500).json({ message: "Failed to delete SLA configuration" });
+    }
+  });
+
+  // Lead Scoring Rules routes
+  app.get("/api/lead-scoring-rules", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { isActive } = req.query;
+      const rules = await storage.getLeadScoringRules({
+        isActive: isActive === "true" ? true : isActive === "false" ? false : undefined
+      });
+      res.json(rules);
+    } catch (error: any) {
+      console.error("Error fetching lead scoring rules:", error);
+      res.status(500).json({ message: "Failed to fetch lead scoring rules" });
+    }
+  });
+
+  app.post("/api/lead-scoring-rules", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const validationResult = insertLeadScoringRuleSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid lead scoring rule data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const rule = await storage.createLeadScoringRule(validationResult.data);
+
+      await logAuditAction(
+        req,
+        "create",
+        "lead_scoring_rule",
+        rule.id,
+        `Created lead scoring rule: ${rule.name}`
+      );
+
+      res.status(201).json(rule);
+    } catch (error: any) {
+      console.error("Error creating lead scoring rule:", error);
+      res.status(500).json({ message: "Failed to create lead scoring rule" });
+    }
+  });
+
+  app.patch("/api/lead-scoring-rules/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const rule = await storage.updateLeadScoringRule(req.params.id, req.body);
+
+      await logAuditAction(
+        req,
+        "update",
+        "lead_scoring_rule",
+        rule.id,
+        `Updated lead scoring rule: ${rule.name}`
+      );
+
+      res.json(rule);
+    } catch (error: any) {
+      console.error("Error updating lead scoring rule:", error);
+      res.status(500).json({ message: "Failed to update lead scoring rule" });
+    }
+  });
+
+  app.delete("/api/lead-scoring-rules/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      await storage.deleteLeadScoringRule(req.params.id);
+
+      await logAuditAction(
+        req,
+        "delete",
+        "lead_scoring_rule",
+        req.params.id,
+        "Deleted lead scoring rule"
+      );
+
+      res.json({ message: "Lead scoring rule deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting lead scoring rule:", error);
+      res.status(500).json({ message: "Failed to delete lead scoring rule" });
+    }
+  });
+
+  // Lead Score routes
+  app.get("/api/leads/:leadId/score", isAuthenticated, async (req, res) => {
+    try {
+      const score = await storage.getLeadScore(req.params.leadId);
+      if (!score) {
+        return res.status(404).json({ message: "Lead score not found" });
+      }
+      res.json(score);
+    } catch (error: any) {
+      console.error("Error fetching lead score:", error);
+      res.status(500).json({ message: "Failed to fetch lead score" });
+    }
+  });
+
+  app.post("/api/leads/:leadId/calculate-score", isAuthenticated, async (req, res) => {
+    try {
+      const score = await storage.calculateLeadScore(req.params.leadId);
+      res.json(score);
+    } catch (error: any) {
+      console.error("Error calculating lead score:", error);
+      res.status(500).json({ message: "Failed to calculate lead score" });
+    }
+  });
+
+  // Contract Checklist Template routes
+  app.get("/api/contract-checklist-templates", isAuthenticated, async (req, res) => {
+    try {
+      const { contractType, isActive } = req.query;
+      const templates = await storage.getContractChecklistTemplates({
+        contractType: contractType as string,
+        isActive: isActive === "true" ? true : isActive === "false" ? false : undefined
+      });
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching contract checklist templates:", error);
+      res.status(500).json({ message: "Failed to fetch contract checklist templates" });
+    }
+  });
+
+  app.get("/api/contract-checklist-templates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const template = await storage.getContractChecklistTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ message: "Contract checklist template not found" });
+      }
+      res.json(template);
+    } catch (error: any) {
+      console.error("Error fetching contract checklist template:", error);
+      res.status(500).json({ message: "Failed to fetch contract checklist template" });
+    }
+  });
+
+  app.post("/api/contract-checklist-templates", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const validationResult = insertContractChecklistTemplateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid contract checklist template data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const template = await storage.createContractChecklistTemplate(validationResult.data);
+
+      await logAuditAction(
+        req,
+        "create",
+        "contract_checklist_template",
+        template.id,
+        `Created contract checklist template: ${template.name}`
+      );
+
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error("Error creating contract checklist template:", error);
+      res.status(500).json({ message: "Failed to create contract checklist template" });
+    }
+  });
+
+  app.patch("/api/contract-checklist-templates/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const template = await storage.updateContractChecklistTemplate(req.params.id, req.body);
+
+      await logAuditAction(
+        req,
+        "update",
+        "contract_checklist_template",
+        template.id,
+        `Updated contract checklist template: ${template.name}`
+      );
+
+      res.json(template);
+    } catch (error: any) {
+      console.error("Error updating contract checklist template:", error);
+      res.status(500).json({ message: "Failed to update contract checklist template" });
+    }
+  });
+
+  app.delete("/api/contract-checklist-templates/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      await storage.deleteContractChecklistTemplate(req.params.id);
+
+      await logAuditAction(
+        req,
+        "delete",
+        "contract_checklist_template",
+        req.params.id,
+        "Deleted contract checklist template"
+      );
+
+      res.json({ message: "Contract checklist template deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting contract checklist template:", error);
+      res.status(500).json({ message: "Failed to delete contract checklist template" });
+    }
+  });
+
+  // Contract Checklist Template Items routes
+  app.get("/api/contract-checklist-templates/:templateId/items", isAuthenticated, async (req, res) => {
+    try {
+      const items = await storage.getContractChecklistTemplateItems(req.params.templateId);
+      res.json(items);
+    } catch (error: any) {
+      console.error("Error fetching contract checklist template items:", error);
+      res.status(500).json({ message: "Failed to fetch contract checklist template items" });
+    }
+  });
+
+  app.post("/api/contract-checklist-template-items", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const validationResult = insertContractChecklistTemplateItemSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid contract checklist template item data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const item = await storage.createContractChecklistTemplateItem(validationResult.data);
+      res.status(201).json(item);
+    } catch (error: any) {
+      console.error("Error creating contract checklist template item:", error);
+      res.status(500).json({ message: "Failed to create contract checklist template item" });
+    }
+  });
+
+  app.patch("/api/contract-checklist-template-items/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const item = await storage.updateContractChecklistTemplateItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error: any) {
+      console.error("Error updating contract checklist template item:", error);
+      res.status(500).json({ message: "Failed to update contract checklist template item" });
+    }
+  });
+
+  app.delete("/api/contract-checklist-template-items/:id", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      await storage.deleteContractChecklistTemplateItem(req.params.id);
+      res.json({ message: "Contract checklist template item deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting contract checklist template item:", error);
+      res.status(500).json({ message: "Failed to delete contract checklist template item" });
+    }
+  });
+
+  // Contract Checklist Items routes (actual checklist items for contracts)
+  app.get("/api/contracts/:contractId/checklist", isAuthenticated, async (req, res) => {
+    try {
+      const items = await storage.getContractChecklistItems(req.params.contractId);
+      res.json(items);
+    } catch (error: any) {
+      console.error("Error fetching contract checklist items:", error);
+      res.status(500).json({ message: "Failed to fetch contract checklist items" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/checklist/initialize", isAuthenticated, async (req, res) => {
+    try {
+      const { templateId } = req.body;
+      if (!templateId) {
+        return res.status(400).json({ message: "Template ID is required" });
+      }
+
+      const items = await storage.initializeContractChecklist(req.params.contractId, templateId);
+
+      await logAuditAction(
+        req,
+        "create",
+        "contract_checklist",
+        req.params.contractId,
+        `Initialized contract checklist with template ${templateId}`
+      );
+
+      res.status(201).json(items);
+    } catch (error: any) {
+      console.error("Error initializing contract checklist:", error);
+      res.status(500).json({ message: "Failed to initialize contract checklist" });
+    }
+  });
+
+  app.patch("/api/contract-checklist-items/:id", isAuthenticated, async (req, res) => {
+    try {
+      const item = await storage.updateContractChecklistItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error: any) {
+      console.error("Error updating contract checklist item:", error);
+      res.status(500).json({ message: "Failed to update contract checklist item" });
+    }
+  });
+
+  app.post("/api/contract-checklist-items/:id/complete", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { notes } = req.body;
+      const item = await storage.completeContractChecklistItem(req.params.id, userId, notes);
+
+      await logAuditAction(
+        req,
+        "update",
+        "contract_checklist_item",
+        item.id,
+        `Completed checklist item: ${item.title}`
+      );
+
+      res.json(item);
+    } catch (error: any) {
+      console.error("Error completing contract checklist item:", error);
+      res.status(500).json({ message: "Failed to complete contract checklist item" });
+    }
+  });
+
+  // Rental Health Score routes
+  app.get("/api/contracts/:contractId/health-score", isAuthenticated, async (req, res) => {
+    try {
+      const score = await storage.getRentalHealthScore(req.params.contractId);
+      if (!score) {
+        return res.status(404).json({ message: "Rental health score not found" });
+      }
+      res.json(score);
+    } catch (error: any) {
+      console.error("Error fetching rental health score:", error);
+      res.status(500).json({ message: "Failed to fetch rental health score" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/calculate-health-score", isAuthenticated, async (req, res) => {
+    try {
+      const score = await storage.calculateRentalHealthScore(req.params.contractId);
+      res.json(score);
+    } catch (error: any) {
+      console.error("Error calculating rental health score:", error);
+      res.status(500).json({ message: "Failed to calculate rental health score" });
+    }
+  });
+
+  app.get("/api/rental-health-scores/status/:status", isAuthenticated, async (req, res) => {
+    try {
+      const scores = await storage.getRentalHealthScoresByStatus(req.params.status);
+      res.json(scores);
+    } catch (error: any) {
+      console.error("Error fetching rental health scores by status:", error);
+      res.status(500).json({ message: "Failed to fetch rental health scores" });
+    }
+  });
+
+  // Workflow Event routes
+  app.get("/api/workflow-events", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const { eventType, entityType, entityId } = req.query;
+      const events = await storage.getWorkflowEvents({
+        eventType: eventType as string,
+        entityType: entityType as string,
+        entityId: entityId as string
+      });
+      res.json(events);
+    } catch (error: any) {
+      console.error("Error fetching workflow events:", error);
+      res.status(500).json({ message: "Failed to fetch workflow events" });
+    }
+  });
+
+  app.post("/api/workflow-events", isAuthenticated, async (req, res) => {
+    try {
+      const validationResult = insertWorkflowEventSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid workflow event data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const event = await storage.createWorkflowEvent(validationResult.data);
+      res.status(201).json(event);
+    } catch (error: any) {
+      console.error("Error creating workflow event:", error);
+      res.status(500).json({ message: "Failed to create workflow event" });
+    }
+  });
+
+  // System Alert routes
+  app.get("/api/alerts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const { status, priority, alertType } = req.query;
+      
+      const alerts = await storage.getSystemAlerts({
+        userId: userId || undefined,
+        status: status as string,
+        priority: priority as string,
+        alertType: alertType as string
+      });
+      
+      res.json(alerts);
+    } catch (error: any) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  app.get("/api/alerts/pending", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const alerts = await storage.getUserPendingAlerts(userId);
+      res.json(alerts);
+    } catch (error: any) {
+      console.error("Error fetching pending alerts:", error);
+      res.status(500).json({ message: "Failed to fetch pending alerts" });
+    }
+  });
+
+  app.post("/api/alerts", isAuthenticated, async (req, res) => {
+    try {
+      const validationResult = insertSystemAlertSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid alert data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const alert = await storage.createSystemAlert(validationResult.data);
+      res.status(201).json(alert);
+    } catch (error: any) {
+      console.error("Error creating alert:", error);
+      res.status(500).json({ message: "Failed to create alert" });
+    }
+  });
+
+  app.patch("/api/alerts/:id/acknowledge", isAuthenticated, async (req, res) => {
+    try {
+      const alert = await storage.acknowledgeSystemAlert(req.params.id);
+      res.json(alert);
+    } catch (error: any) {
+      console.error("Error acknowledging alert:", error);
+      res.status(500).json({ message: "Failed to acknowledge alert" });
+    }
+  });
+
+  app.patch("/api/alerts/:id/resolve", isAuthenticated, async (req, res) => {
+    try {
+      const alert = await storage.resolveSystemAlert(req.params.id);
+      res.json(alert);
+    } catch (error: any) {
+      console.error("Error resolving alert:", error);
+      res.status(500).json({ message: "Failed to resolve alert" });
+    }
+  });
+
+  app.patch("/api/alerts/:id/dismiss", isAuthenticated, async (req, res) => {
+    try {
+      const alert = await storage.dismissSystemAlert(req.params.id);
+      res.json(alert);
+    } catch (error: any) {
+      console.error("Error dismissing alert:", error);
+      res.status(500).json({ message: "Failed to dismiss alert" });
+    }
+  });
+
+  app.delete("/api/alerts/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteSystemAlert(req.params.id);
+      res.json({ message: "Alert deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting alert:", error);
+      res.status(500).json({ message: "Failed to delete alert" });
     }
   });
 
