@@ -27,6 +27,8 @@ const providerApplicationFormSchema = z.object({
 });
 
 const sellerApplicationFormSchema = z.object({
+  email: z.string().email("Email inválido"),
+  whatsapp: z.string().min(10, "WhatsApp debe tener al menos 10 dígitos"),
   reason: z.string().min(50, "Describe tu experiencia en ventas (mínimo 50 caracteres)"),
 });
 
@@ -55,6 +57,8 @@ export default function Apply() {
   const sellerForm = useForm<SellerApplicationForm>({
     resolver: zodResolver(sellerApplicationFormSchema),
     defaultValues: {
+      email: "",
+      whatsapp: "",
       reason: "",
     },
   });
