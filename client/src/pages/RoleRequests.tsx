@@ -219,9 +219,18 @@ export default function RoleRequests() {
                     </div>
                   )}
 
+                  {request.yearsOfExperience !== undefined && request.yearsOfExperience !== null && (
+                    <div>
+                      <Label className="text-sm font-semibold">Años de experiencia:</Label>
+                      <p className="text-sm text-muted-foreground mt-1" data-testid={`text-years-${request.id}`}>
+                        {request.yearsOfExperience} {request.yearsOfExperience === 1 ? 'año' : 'años'}
+                      </p>
+                    </div>
+                  )}
+
                   {request.experience && (
                     <div>
-                      <Label className="text-sm font-semibold">Experiencia:</Label>
+                      <Label className="text-sm font-semibold">Descripción de experiencia:</Label>
                       <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap" data-testid={`text-experience-${request.id}`}>
                         {request.experience}
                       </p>

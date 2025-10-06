@@ -404,6 +404,7 @@ export const roleRequests = pgTable("role_requests", {
   requestedRole: userRoleEnum("requested_role").notNull(),
   status: roleRequestStatusEnum("status").notNull().default("pending"),
   reason: text("reason"),
+  yearsOfExperience: integer("years_of_experience"),
   experience: text("experience"),
   additionalInfo: text("additional_info"),
   reviewedBy: varchar("reviewed_by").references(() => users.id),
@@ -421,6 +422,8 @@ export const insertRoleRequestSchema = createInsertSchema(roleRequests).omit({
   reviewNotes: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  yearsOfExperience: z.number().min(0).optional(),
 });
 
 export type RoleRequest = typeof roleRequests.$inferSelect;

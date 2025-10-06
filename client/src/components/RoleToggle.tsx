@@ -98,7 +98,7 @@ const roleApplicationSchema = z.object({
   requestedRole: z.string().min(1, "Debes seleccionar un rol"),
   reason: z.string().min(20, "Explica brevemente por qué necesitas este rol (mínimo 20 caracteres)"),
   experience: z.string().min(50, "Describe tu experiencia en detalle (mínimo 50 caracteres)"),
-  yearsOfExperience: z.string().min(1, "Indica tus años de experiencia"),
+  yearsOfExperience: z.coerce.number().min(0, "Años de experiencia debe ser un número positivo"),
   additionalInfo: z.string().optional(),
 });
 
@@ -121,7 +121,7 @@ export function RoleToggle() {
       requestedRole: "",
       reason: "",
       experience: "",
-      yearsOfExperience: "",
+      yearsOfExperience: 0,
       additionalInfo: "",
     },
   });
@@ -154,7 +154,8 @@ export function RoleToggle() {
         userId: user?.id,
         requestedRole: data.requestedRole,
         reason: data.reason,
-        experience: `${data.yearsOfExperience} años: ${data.experience}`,
+        yearsOfExperience: data.yearsOfExperience,
+        experience: data.experience,
         additionalInfo: data.additionalInfo,
       });
     },
