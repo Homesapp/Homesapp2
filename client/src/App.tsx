@@ -35,6 +35,7 @@ import Appointments from "@/pages/Appointments";
 import Calendar from "@/pages/Calendar";
 import AdminCalendar from "@/pages/AdminCalendar";
 import AdminBusinessHours from "@/pages/AdminBusinessHours";
+import ConciergeSchedule from "@/pages/ConciergeSchedule";
 import Directory from "@/pages/Directory";
 import PresentationCards from "@/pages/PresentationCards";
 import Backoffice from "@/pages/Backoffice";
@@ -231,6 +232,7 @@ function AuthenticatedApp() {
               <Route path="/calendario" component={Calendar} />
               <Route path="/admin/calendario" component={AdminCalendar} />
               <Route path="/admin/horarios" component={AdminBusinessHours} />
+              <Route path="/concierge/horarios" component={ConciergeSchedule} />
               <Route path="/directory" component={Directory} />
               <Route path="/presentation-cards" component={PresentationCards} />
               <Route path="/presupuestos" component={Budgets} />
