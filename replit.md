@@ -80,6 +80,26 @@ Preferred communication style: Simple, everyday language.
   - Separate fields for experience description and additional information
   - Admin review page displays years and description independently
 
+### Admin Panel Enhancements (October 2025)
+- **Full English Translation**: All admin panel sections now fully translated to English
+  - Dashboard stats, pending reviews, property status indicators
+  - Loading states, quick actions, and all admin interface elements
+  - Consistent bilingual support across entire admin experience
+  
+- **Admin Profile Management**: New dedicated profile page for administrators at `/admin/profile`
+  - Personal information editing (first name, last name, email)
+  - Profile photo upload with validation (max 2MB, images only)
+  - Password change functionality with current password verification
+  - Theme toggle integration (light/dark mode)
+  - Separate from regular user profiles, uses admin-specific authentication
+  - Extended `adminUsers` table with `profileImageUrl` field for avatar support
+
+- **User Menu Updates**: Streamlined administrator menu
+  - Removed "Backoffice" menu item for cleaner interface
+  - Added "My Profile" option for administrators (links to `/admin/profile`)
+  - Menu automatically adapts based on user role (admin vs regular user)
+  - Full translation support for menu items
+
 ### Bug Fixes
 - Fixed toggle-active endpoint for presentation cards to properly toggle state instead of always activating
 - Endpoint now checks existing state before toggling, preventing "card not found" errors

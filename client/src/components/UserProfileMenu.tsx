@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Building2, LogOut, UserCircle } from "lucide-react";
+import { LogOut, UserCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { type User as UserType, type AdminUser } from "@shared/schema";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface UserProfileMenuProps {
   user: UserType | AdminUser;
@@ -20,6 +21,7 @@ interface UserProfileMenuProps {
 
 export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfileMenuProps) {
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
 
   const fullName = user?.firstName && user?.lastName 
     ? `${user.firstName} ${user.lastName}`
@@ -36,6 +38,14 @@ export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfile
       onLogout();
     } else {
       window.location.href = "/api/logout";
+    }
+  };
+
+  const handleProfileClick = () => {
+    if (isAdmin) {
+      setLocation("/admin/profile");
+    } else {
+      setLocation("/perfil");
     }
   };
 
@@ -56,23 +66,14 @@ export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfile
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56" data-testid="dropdown-user-menu">
-          <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("userMenu.myAccount")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {!isAdmin && (
-            <DropdownMenuItem
-              onClick={() => setLocation("/perfil")}
-              data-testid="menu-item-profile"
-            >
-              <UserCircle className="mr-2 h-4 w-4" />
-              <span>Mi Perfil</span>
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem
-            onClick={() => setLocation("/backoffice")}
-            data-testid="menu-item-backoffice"
+            onClick={handleProfileClick}
+            data-testid="menu-item-profile"
           >
-            <Building2 className="mr-2 h-4 w-4" />
-            <span>Backoffice</span>
+            <UserCircle className="mr-2 h-4 w-4" />
+            <span>{t("userMenu.myProfile")}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -80,7 +81,7 @@ export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfile
             data-testid="menu-item-logout"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Cerrar Sesión</span>
+            <span>{t("userMenu.logout")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

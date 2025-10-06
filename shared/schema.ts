@@ -359,6 +359,7 @@ export const adminUsers = pgTable("admin_users", {
   email: varchar("email"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  profileImageUrl: text("profile_image_url"),
   role: userRoleEnum("role").notNull().default("admin"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -379,6 +380,26 @@ export const adminLoginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
+
+export const updateAdminProfileSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(100).optional(),
+  lastName: z.string().min(1, "Last name is required").max(100).optional(),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  profileImageUrl: z.string().optional().or(z.literal("")),
+});
+
+export type UpdateAdminProfile = z.infer<typeof updateAdminProfileSchema>;
+
+export const updateAdminPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export type UpdateAdminPassword = z.infer<typeof updateAdminPasswordSchema>;
 
 // Email verification tokens table
 export const emailVerificationTokens = pgTable("email_verification_tokens", {

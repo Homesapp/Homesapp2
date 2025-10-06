@@ -55,6 +55,7 @@ import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
 import OwnerAppointments from "@/pages/OwnerAppointments";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AdminProfile from "@/pages/AdminProfile";
 import ClientDashboard from "@/pages/ClientDashboard";
 import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
@@ -196,6 +197,7 @@ function AuthenticatedApp() {
               <Route path="/mis-oportunidades" component={MyOpportunities} />
               <Route path="/owner/dashboard" component={OwnerDashboard} />
               <Route path="/admin/dashboard" component={AdminDashboard} />
+              <Route path="/admin/profile" component={AdminProfile} />
               <Route path="/mis-propiedades" component={MyProperties} />
               <Route path="/owner/property/new" component={PropertySubmissionWizard} />
               <Route path="/owner/property/:id/edit" component={EditOwnerProperty} />

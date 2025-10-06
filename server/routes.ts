@@ -29,6 +29,8 @@ import {
   insertWorkReportSchema,
   insertAuditLogSchema,
   adminLoginSchema,
+  updateAdminProfileSchema,
+  updateAdminPasswordSchema,
   userRegistrationSchema,
   userLoginSchema,
   insertRoleRequestSchema,
@@ -267,6 +269,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching admin user:", error);
       res.status(500).json({ message: "Failed to fetch admin user" });
+    }
+  });
+
+  // Update admin profile
+  app.patch("/api/auth/admin/profile", async (req: any, res) => {
+    try {
+      if (!req.session.adminUser) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validationResult = updateAdminProfileSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid request data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const adminId = req.session.adminUser.id;
+      const updatedAdmin = await storage.updateAdminProfile(adminId, validationResult.data);
+
+      // Update session with new data
+      req.session.adminUser = {
+        ...req.session.adminUser,
+        firstName: updatedAdmin.firstName,
+        lastName: updatedAdmin.lastName,
+        email: updatedAdmin.email,
+        profileImageUrl: updatedAdmin.profileImageUrl,
+      };
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      const { passwordHash, ...adminWithoutPassword } = updatedAdmin;
+      res.json(adminWithoutPassword);
+    } catch (error) {
+      console.error("Error updating admin profile:", error);
+      res.status(500).json({ message: "Failed to update admin profile" });
+    }
+  });
+
+  // Update admin password
+  app.patch("/api/auth/admin/password", async (req: any, res) => {
+    try {
+      if (!req.session.adminUser) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validationResult = updateAdminPasswordSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid request data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const { currentPassword, newPassword } = validationResult.data;
+      const adminId = req.session.adminUser.id;
+
+      // Get current admin to verify password
+      const admin = await storage.getAdminByUsername(req.session.adminUser.username);
+      if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(currentPassword, admin.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      
+      // Update password
+      await storage.updateAdminPassword(adminId, newPasswordHash);
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error updating admin password:", error);
+      res.status(500).json({ message: "Failed to update admin password" });
     }
   });
 

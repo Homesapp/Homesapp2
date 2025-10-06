@@ -364,6 +364,8 @@ export interface IStorage {
   getAdminByUsername(username: string): Promise<AdminUser | undefined>;
   createAdmin(admin: InsertAdminUser): Promise<AdminUser>;
   getAllAdmins(): Promise<AdminUser[]>;
+  updateAdminProfile(id: string, updates: { firstName?: string; lastName?: string; email?: string; profileImageUrl?: string }): Promise<AdminUser>;
+  updateAdminPassword(id: string, passwordHash: string): Promise<AdminUser>;
   
   // Favorite operations
   addFavorite(favorite: InsertFavorite): Promise<Favorite>;
@@ -1974,6 +1976,24 @@ export class DatabaseStorage implements IStorage {
       .from(adminUsers)
       .where(eq(adminUsers.isActive, true))
       .orderBy(desc(adminUsers.createdAt));
+  }
+  
+  async updateAdminProfile(id: string, updates: { firstName?: string; lastName?: string; email?: string; profileImageUrl?: string }): Promise<AdminUser> {
+    const [admin] = await db
+      .update(adminUsers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(adminUsers.id, id))
+      .returning();
+    return admin;
+  }
+  
+  async updateAdminPassword(id: string, passwordHash: string): Promise<AdminUser> {
+    const [admin] = await db
+      .update(adminUsers)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(adminUsers.id, id))
+      .returning();
+    return admin;
   }
   
   // Favorite operations
