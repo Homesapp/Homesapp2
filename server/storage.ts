@@ -98,6 +98,8 @@ import {
   type InsertSystemConfig,
   type RentalApplication,
   type InsertRentalApplication,
+  type RentalContract,
+  type InsertRentalContract,
   type PropertyChangeRequest,
   type InsertPropertyChangeRequest,
   type InspectionReport,
@@ -414,6 +416,14 @@ export interface IStorage {
   updateRentalApplication(id: string, updates: Partial<InsertRentalApplication>): Promise<RentalApplication>;
   updateRentalApplicationStatus(id: string, status: string): Promise<RentalApplication>;
   deleteRentalApplication(id: string): Promise<void>;
+
+  // Rental Contract operations
+  getRentalContract(id: string): Promise<RentalContract | undefined>;
+  getRentalContracts(filters?: { status?: string; propertyId?: string; tenantId?: string; sellerId?: string }): Promise<RentalContract[]>;
+  createRentalContract(contract: InsertRentalContract): Promise<RentalContract>;
+  updateRentalContract(id: string, updates: Partial<InsertRentalContract>): Promise<RentalContract>;
+  updateRentalContractStatus(id: string, status: string, additionalData?: { apartadoDate?: Date; contractSignedDate?: Date; checkInDate?: Date; payoutReleasedAt?: Date }): Promise<RentalContract>;
+  deleteRentalContract(id: string): Promise<void>;
 
   // Property Change Request operations
   getPropertyChangeRequest(id: string): Promise<PropertyChangeRequest | undefined>;
@@ -2329,6 +2339,82 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRentalApplication(id: string): Promise<void> {
     await db.delete(rentalApplications).where(eq(rentalApplications.id, id));
+  }
+
+  // Rental Contract operations
+  async getRentalContract(id: string): Promise<RentalContract | undefined> {
+    const [contract] = await db.select().from(rentalContracts).where(eq(rentalContracts.id, id));
+    return contract;
+  }
+
+  async getRentalContracts(filters?: { status?: string; propertyId?: string; tenantId?: string; sellerId?: string }): Promise<RentalContract[]> {
+    let query = db.select().from(rentalContracts);
+    
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(rentalContracts.status, filters.status as any));
+    }
+    if (filters?.propertyId) {
+      conditions.push(eq(rentalContracts.propertyId, filters.propertyId));
+    }
+    if (filters?.tenantId) {
+      conditions.push(eq(rentalContracts.tenantId, filters.tenantId));
+    }
+    if (filters?.sellerId) {
+      conditions.push(eq(rentalContracts.sellerId, filters.sellerId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(rentalContracts.createdAt));
+  }
+
+  async createRentalContract(contractData: InsertRentalContract): Promise<RentalContract> {
+    const [contract] = await db.insert(rentalContracts).values(contractData).returning();
+    return contract;
+  }
+
+  async updateRentalContract(id: string, updates: Partial<InsertRentalContract>): Promise<RentalContract> {
+    const [updated] = await db
+      .update(rentalContracts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(rentalContracts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateRentalContractStatus(
+    id: string, 
+    status: string, 
+    additionalData?: { apartadoDate?: Date; contractSignedDate?: Date; checkInDate?: Date; payoutReleasedAt?: Date }
+  ): Promise<RentalContract> {
+    const updateData: any = { status: status as any, updatedAt: new Date() };
+    
+    if (additionalData?.apartadoDate) {
+      updateData.apartadoDate = additionalData.apartadoDate;
+    }
+    if (additionalData?.contractSignedDate) {
+      updateData.contractSignedDate = additionalData.contractSignedDate;
+    }
+    if (additionalData?.checkInDate) {
+      updateData.checkInDate = additionalData.checkInDate;
+    }
+    if (additionalData?.payoutReleasedAt) {
+      updateData.payoutReleasedAt = additionalData.payoutReleasedAt;
+    }
+    
+    const [updated] = await db
+      .update(rentalContracts)
+      .set(updateData)
+      .where(eq(rentalContracts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRentalContract(id: string): Promise<void> {
+    await db.delete(rentalContracts).where(eq(rentalContracts.id, id));
   }
 
   // Property Change Request operations
