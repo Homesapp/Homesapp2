@@ -20,7 +20,6 @@ import {
 import Autoplay from "embla-carousel-autoplay";
 import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import tulumProperty1 from "@assets/stock_images/professional_propert_60662322.jpg";
-import tulumBeach from "@assets/stock_images/tulum_mexico_beach_t_21c511ca.jpg";
 import serviceProvider from "@assets/stock_images/professional_service_1ed9483b.jpg";
 import affiliateImage from "@assets/stock_images/real_estate_agent_re_8e083057.jpg";
 
@@ -116,38 +115,27 @@ export default function PublicDashboard() {
         </div>
       </header>
 
-      {/* Hero Section with Background Image */}
-      <div className="relative h-[70vh] min-h-[500px] w-full overflow-hidden">
-        {/* Background Image with Parallax Effect */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000"
-          style={{
-            backgroundImage: `url(${tulumBeach})`,
-            transform: 'scale(1.1)',
-          }}
-        />
-        
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
-        
-        {/* Hero Content */}
-        <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
-          <h1 className="mb-4 max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
-            {t("public.hero.title")}
-          </h1>
-          <p className="mb-8 max-w-2xl text-lg text-white/90 sm:text-xl md:text-2xl">
-            {t("public.hero.subtitle")}
-          </p>
+      {/* Hero Section */}
+      <div className="bg-gradient-to-b from-primary/5 to-background py-16 sm:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              {t("public.hero.title")}
+            </h1>
+            <p className="mb-8 text-lg text-muted-foreground sm:text-xl">
+              {t("public.hero.subtitle")}
+            </p>
+          </div>
           
-          {/* Search Bar - Glassmorphism */}
-          <div className="w-full max-w-4xl">
-            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-3 shadow-2xl">
+          {/* Search Bar */}
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-card border rounded-lg p-3 shadow-sm">
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/70" />
+                  <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder={t("public.searchPlaceholder")}
-                    className="h-14 pl-11 text-base bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 focus:border-white/50"
+                    className="h-12 pl-11"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -157,16 +145,15 @@ export default function PublicDashboard() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="h-14 px-4 bg-white/20 border-white/30 text-white hover:bg-white/30 hover:border-white/50"
+                    className="h-12 px-4"
                     onClick={() => setShowFilters(!showFilters)}
                     data-testid="button-toggle-filters"
                     aria-label={t("public.toggleFilters") || "Toggle filters"}
                   >
                     <SlidersHorizontal className="h-5 w-5" />
-                    <span className="ml-2 sm:hidden">Filtros</span>
                   </Button>
                   <Button
-                    className="h-14 px-8 bg-white text-primary hover:bg-white/90"
+                    className="h-12 px-8"
                     onClick={handleSearch}
                     data-testid="button-search"
                   >
