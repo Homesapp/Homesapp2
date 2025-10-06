@@ -83,7 +83,7 @@ export default function MyIncome() {
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async (data: { documentType: string; documentUrl: string }) => {
-      return await apiRequest("PATCH", "/api/seller/document", data);
+      return await apiRequest("POST", "/api/seller/upload-document", data);
     },
     onSuccess: () => {
       toast({
