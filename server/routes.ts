@@ -2915,6 +2915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Schedule visit from SOR
   app.post("/api/rental-opportunity-requests/:sorId/schedule-visit", isAuthenticated, async (req: any, res) => {
+    let googleEventId: string | null = null;
+    
     try {
       const userId = req.user.claims.sub;
       const { sorId } = req.params;
@@ -2944,7 +2946,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Preparar datos del appointment
       let meetLink: string | null = null;
-      let googleEventId: string | null = null;
 
       // Crear evento de Google Meet si es video
       if (type === "video") {
@@ -2952,57 +2953,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const appointmentDate = new Date(date);
         const endDate = new Date(appointmentDate.getTime() + 60 * 60 * 1000);
 
-        const eventResult = await createGoogleMeetEvent({
-          summary: `Visita Virtual: ${property?.title || "Propiedad"}`,
-          description: `Visita virtual programada desde solicitud de oportunidad`,
-          start: appointmentDate,
-          end: endDate,
-          attendees: [],
-        });
+        try {
+          const eventResult = await createGoogleMeetEvent({
+            summary: `Visita Virtual: ${property?.title || "Propiedad"}`,
+            description: `Visita virtual programada desde solicitud de oportunidad`,
+            start: appointmentDate,
+            end: endDate,
+            attendees: [],
+          });
 
-        if (eventResult) {
-          meetLink = eventResult.meetLink;
-          googleEventId = eventResult.eventId;
+          if (eventResult) {
+            meetLink = eventResult.meetLink;
+            googleEventId = eventResult.eventId;
+          }
+        } catch (meetError) {
+          console.error("Error creating Google Meet event:", meetError);
+          // Continue without meet link if event creation fails
         }
       }
 
-      // Crear appointment
-      const [appointment] = await db
-        .insert(appointments)
-        .values({
+      try {
+        // Crear appointment
+        const [appointment] = await db
+          .insert(appointments)
+          .values({
+            propertyId: sor.propertyId,
+            clientId: userId,
+            opportunityRequestId: sorId,
+            date: new Date(date),
+            type,
+            status: "pending",
+            meetLink,
+            googleEventId,
+            notes: notes || null,
+          })
+          .returning();
+
+        // Actualizar estado de SOR a scheduled_visit
+        await db
+          .update(rentalOpportunityRequests)
+          .set({ 
+            status: "scheduled_visit",
+            updatedAt: new Date()
+          })
+          .where(eq(rentalOpportunityRequests.id, sorId));
+
+        // Registrar en lead_journeys
+        await db.insert(leadJourneys).values({
           propertyId: sor.propertyId,
-          clientId: userId,
-          opportunityRequestId: sorId,
-          date: new Date(date),
-          type,
-          status: "pending",
-          meetLink,
-          googleEventId,
-          notes: notes || null,
-        })
-        .returning();
+          userId,
+          action: "view_layer2", // Visita programada
+          metadata: { appointmentId: appointment.id, sorId },
+        });
 
-      // Actualizar estado de SOR a scheduled_visit
-      await db
-        .update(rentalOpportunityRequests)
-        .set({ 
-          status: "scheduled_visit",
-          updatedAt: new Date()
-        })
-        .where(eq(rentalOpportunityRequests.id, sorId));
-
-      // Registrar en lead_journeys
-      await db.insert(leadJourneys).values({
-        propertyId: sor.propertyId,
-        userId,
-        action: "view_layer2", // Visita programada
-        metadata: { appointmentId: appointment.id, sorId },
-      });
-
-      res.json(appointment);
+        res.json(appointment);
+      } catch (dbError) {
+        // Rollback: Delete Google Meet event if any DB operation fails
+        if (googleEventId) {
+          try {
+            await deleteGoogleMeetEvent(googleEventId);
+            console.log(`Rolled back Google Meet event ${googleEventId} due to database operation failure`);
+          } catch (rollbackError) {
+            console.error("Error rolling back Google Meet event:", rollbackError);
+          }
+        }
+        throw dbError;
+      }
     } catch (error: any) {
-      console.error("Error scheduling visit from SOR:", error);
-      res.status(500).json({ error: error.message });
+      return handleGenericError(res, error, "al programar la visita desde SOR");
     }
   });
 
@@ -3573,6 +3591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/appointments", isAuthenticated, async (req: any, res) => {
+    let googleEventId: string | null = null;
+    
     try {
       const userId = req.user.claims.sub;
       
@@ -3587,47 +3607,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create Google Meet event if type is video
       let meetLink = null;
-      let googleEventId = null;
       
       if (appointmentData.type === "video") {
         const property = await storage.getProperty(appointmentData.propertyId);
         const appointmentDate = new Date(appointmentData.date);
         const endDate = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1 hour later
 
-        const eventResult = await createGoogleMeetEvent({
-          summary: `Visita Virtual: ${property?.title || "Propiedad"}`,
-          description: `Cita virtual para visitar la propiedad`,
-          start: appointmentDate,
-          end: endDate,
-          attendees: [], // Can be extended to include emails
-        });
+        try {
+          const eventResult = await createGoogleMeetEvent({
+            summary: `Visita Virtual: ${property?.title || "Propiedad"}`,
+            description: `Cita virtual para visitar la propiedad`,
+            start: appointmentDate,
+            end: endDate,
+            attendees: [], // Can be extended to include emails
+          });
 
-        if (eventResult) {
-          meetLink = eventResult.meetLink;
-          googleEventId = eventResult.eventId;
+          if (eventResult) {
+            meetLink = eventResult.meetLink;
+            googleEventId = eventResult.eventId;
+          }
+        } catch (meetError) {
+          console.error("Error creating Google Meet event:", meetError);
+          // Continue without meet link if event creation fails
         }
       }
 
-      const appointment = await storage.createAppointment({
-        ...appointmentData,
-        meetLink: meetLink || appointmentData.meetLink,
-        googleEventId: googleEventId || undefined,
-      });
+      try {
+        const appointment = await storage.createAppointment({
+          ...appointmentData,
+          meetLink: meetLink || appointmentData.meetLink,
+          googleEventId: googleEventId || undefined,
+        });
 
-      // Log appointment creation
-      const property = await storage.getProperty(appointment.propertyId);
-      await createAuditLog(
-        req,
-        "create",
-        "appointment",
-        appointment.id,
-        `Cita creada para ${property?.title || "propiedad"} - ${new Date(appointment.date).toLocaleDateString()}`
-      );
+        // Log appointment creation
+        const property = await storage.getProperty(appointment.propertyId);
+        await createAuditLog(
+          req,
+          "create",
+          "appointment",
+          appointment.id,
+          `Cita creada para ${property?.title || "propiedad"} - ${new Date(appointment.date).toLocaleDateString()}`
+        );
 
-      res.status(201).json(appointment);
+        res.status(201).json(appointment);
+      } catch (dbError) {
+        // Rollback: Delete Google Meet event if appointment creation fails
+        if (googleEventId) {
+          try {
+            await deleteGoogleMeetEvent(googleEventId);
+            console.log(`Rolled back Google Meet event ${googleEventId} due to appointment creation failure`);
+          } catch (rollbackError) {
+            console.error("Error rolling back Google Meet event:", rollbackError);
+          }
+        }
+        throw dbError;
+      }
     } catch (error: any) {
-      console.error("Error creating appointment:", error);
-      res.status(400).json({ message: error.message || "Failed to create appointment" });
+      return handleGenericError(res, error, "al crear la cita");
     }
   });
 

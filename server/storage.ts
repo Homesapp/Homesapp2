@@ -145,7 +145,7 @@ import {
   type InsertClientReview,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count } from "drizzle-orm";
+import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -1064,10 +1064,10 @@ export class DatabaseStorage implements IStorage {
     const presentationCardIds = [...new Set(baseAppointments.map(a => a.presentationCardId).filter(Boolean))];
 
     const [propertiesData, clientsData, conciergesData, cardsData] = await Promise.all([
-      propertyIds.length > 0 ? db.select().from(properties).where(sql`${properties.id} = ANY(${propertyIds})`) : [],
-      clientIds.length > 0 ? db.select().from(users).where(sql`${users.id} = ANY(${clientIds})`) : [],
-      conciergeIds.length > 0 ? db.select().from(users).where(sql`${users.id} = ANY(${conciergeIds})`) : [],
-      presentationCardIds.length > 0 ? db.select().from(presentationCards).where(sql`${presentationCards.id} = ANY(${presentationCardIds})`) : [],
+      propertyIds.length > 0 ? db.select().from(properties).where(inArray(properties.id, propertyIds)) : [],
+      clientIds.length > 0 ? db.select().from(users).where(inArray(users.id, clientIds)) : [],
+      conciergeIds.length > 0 ? db.select().from(users).where(inArray(users.id, conciergeIds)) : [],
+      presentationCardIds.length > 0 ? db.select().from(presentationCards).where(inArray(presentationCards.id, presentationCardIds)) : [],
     ]);
 
     // Create lookup maps
