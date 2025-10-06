@@ -1426,6 +1426,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get duplicate condominiums
+  app.get("/api/admin/condominiums/duplicates/list", isAuthenticated, requireFullAdmin, async (req, res) => {
+    try {
+      const duplicates = await db.execute(sql`
+        WITH duplicates AS (
+          SELECT 
+            id,
+            name,
+            zone,
+            address,
+            approval_status,
+            created_at,
+            LOWER(name) as name_lower,
+            ROW_NUMBER() OVER (PARTITION BY LOWER(name) ORDER BY created_at ASC) as row_num,
+            COUNT(*) OVER (PARTITION BY LOWER(name)) as duplicate_count
+          FROM condominiums
+        )
+        SELECT 
+          id,
+          name,
+          zone,
+          address,
+          approval_status,
+          created_at,
+          duplicate_count::int as duplicate_count,
+          row_num::int as row_num
+        FROM duplicates 
+        WHERE duplicate_count > 1
+        ORDER BY name_lower, created_at
+      `);
+
+      res.json(duplicates.rows);
+    } catch (error) {
+      console.error("Error fetching duplicate condominiums:", error);
+      res.status(500).json({ message: "Error al obtener condominios duplicados" });
+    }
+  });
+
+  // Delete duplicate condominiums (keeps the oldest one)
+  app.delete("/api/admin/condominiums/duplicates/remove", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const result = await db.execute(sql`
+        DELETE FROM condominiums
+        WHERE id IN (
+          SELECT id
+          FROM (
+            SELECT 
+              id,
+              ROW_NUMBER() OVER (PARTITION BY LOWER(name) ORDER BY created_at ASC) as row_num
+            FROM condominiums
+          ) as duplicates
+          WHERE row_num > 1
+        )
+        RETURNING id, name
+      `);
+
+      await createAuditLog(
+        req,
+        "delete",
+        "condominium",
+        "bulk",
+        `Eliminados ${result.rowCount || 0} condominios duplicados`
+      );
+
+      res.json({ 
+        message: `Se eliminaron ${result.rowCount || 0} condominios duplicados`,
+        deletedCount: result.rowCount || 0,
+        deletedCondominiums: result.rows
+      });
+    } catch (error) {
+      console.error("Error deleting duplicate condominiums:", error);
+      res.status(500).json({ message: "Error al eliminar condominios duplicados" });
+    }
+  });
+
   // Get condominium with properties count
   app.get("/api/admin/condominiums/:id/details", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
     try {

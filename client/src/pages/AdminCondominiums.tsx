@@ -23,7 +23,8 @@ import {
   PowerOff,
   MapPin,
   Home,
-  Eye
+  Eye,
+  AlertTriangle
 } from "lucide-react";
 import type { Condominium } from "@shared/schema";
 import { format } from "date-fns";
@@ -50,6 +51,7 @@ export default function AdminCondominiums() {
   const [newCondominiumZone, setNewCondominiumZone] = useState("");
   const [newCondominiumAddress, setNewCondominiumAddress] = useState("");
   const [editData, setEditData] = useState({ name: "", zone: "", address: "" });
+  const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
   const { toast } = useToast();
 
   const { data: stats } = useQuery({
@@ -219,6 +221,33 @@ export default function AdminCondominiums() {
     },
   });
 
+  const { data: duplicates, refetch: refetchDuplicates } = useQuery({
+    queryKey: ["/api/admin/condominiums/duplicates/list"],
+    enabled: false,
+  });
+
+  const removeDuplicatesMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/admin/condominiums/duplicates/remove`, {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Duplicados eliminados",
+        description: `Se eliminaron ${data.deletedCount} condominios duplicados exitosamente`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/condominiums"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/condominiums-stats"] });
+      setShowDuplicatesDialog(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron eliminar los duplicados",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleOpenReview = (condominium: CondominiumStats, action: "approve" | "reject") => {
     setSelectedCondominium(condominium);
     setReviewAction(action);
@@ -298,6 +327,15 @@ export default function AdminCondominiums() {
     }
   };
 
+  const handleCheckDuplicates = async () => {
+    await refetchDuplicates();
+    setShowDuplicatesDialog(true);
+  };
+
+  const handleRemoveDuplicates = () => {
+    removeDuplicatesMutation.mutate();
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; icon: any; label: string }> = {
       pending: { variant: "default", icon: Clock, label: "Pendiente" },
@@ -335,13 +373,23 @@ export default function AdminCondominiums() {
             Administra los condominios del sistema ({filteredCondominiums.length} {filteredCondominiums.length === 1 ? 'condominio' : 'condominios'})
           </p>
         </div>
-        <Button
-          onClick={() => setShowCreateDialog(true)}
-          data-testid="button-create-condominium"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Crear Condominio
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleCheckDuplicates}
+            variant="outline"
+            data-testid="button-check-duplicates"
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Verificar Duplicados
+          </Button>
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            data-testid="button-create-condominium"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Crear Condominio
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -676,6 +724,93 @@ export default function AdminCondominiums() {
             >
               Guardar Cambios
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicates Dialog */}
+      <Dialog open={showDuplicatesDialog} onOpenChange={setShowDuplicatesDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto" data-testid="dialog-duplicates">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-500" />
+              Condominios Duplicados
+            </DialogTitle>
+            <DialogDescription>
+              {duplicates && Array.isArray(duplicates) && duplicates.length > 0
+                ? `Se encontraron ${duplicates.length} condominios duplicados. Se eliminará la versión más reciente de cada duplicado, manteniendo la más antigua.`
+                : "No se encontraron condominios duplicados en el sistema."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {duplicates && Array.isArray(duplicates) && duplicates.length > 0 && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-3">
+                {Object.entries(
+                  (duplicates as any[]).reduce((acc, dup) => {
+                    const key = dup.name.toLowerCase();
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(dup);
+                    return acc;
+                  }, {} as Record<string, any[]>)
+                ).map(([nameLower, dups]) => (
+                  <Card key={nameLower} className="border-orange-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">
+                        Grupo: "{dups[0].name}"
+                        <Badge variant="outline" className="ml-2">
+                          {dups.length} versiones
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {dups.map((dup, index) => (
+                          <div
+                            key={dup.id}
+                            className={`flex items-center justify-between p-2 rounded ${
+                              dup.row_num === 1
+                                ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800'
+                                : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{dup.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Creado: {format(new Date(dup.created_at), "dd/MM/yyyy HH:mm")}
+                              </p>
+                            </div>
+                            <Badge variant={dup.row_num === 1 ? "default" : "destructive"}>
+                              {dup.row_num === 1 ? "Se mantendrá" : "Se eliminará"}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDuplicatesDialog(false)}
+              data-testid="button-cancel-duplicates"
+            >
+              Cancelar
+            </Button>
+            {duplicates && Array.isArray(duplicates) && duplicates.length > 0 && (
+              <Button
+                variant="destructive"
+                onClick={handleRemoveDuplicates}
+                disabled={removeDuplicatesMutation.isPending}
+                data-testid="button-confirm-remove-duplicates"
+              >
+                {removeDuplicatesMutation.isPending ? "Eliminando..." : "Eliminar Duplicados"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
