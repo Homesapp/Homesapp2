@@ -230,8 +230,10 @@ const translations: Record<Language, Record<string, string>> = {
     "public.propertyType.townhouse": "Casa adosada",
     "public.filterColony": "Colonia",
     "public.filterColonyPlaceholder": "Ej: La Veleta, Aldea Zama...",
+    "public.filterAllColonies": "Todas las colonias",
     "public.filterCondo": "Condominio",
     "public.filterCondoPlaceholder": "Nombre del condominio...",
+    "public.filterAllCondos": "Todos los condominios",
     "public.filterAllowsSubleasing": "Permite subarrendamiento",
     "public.clearFilters": "Limpiar filtros",
     
@@ -682,8 +684,10 @@ const translations: Record<Language, Record<string, string>> = {
     "public.propertyType.townhouse": "Townhouse",
     "public.filterColony": "Colony",
     "public.filterColonyPlaceholder": "E.g.: La Veleta, Aldea Zama...",
+    "public.filterAllColonies": "All colonies",
     "public.filterCondo": "Condominium",
     "public.filterCondoPlaceholder": "Condominium name...",
+    "public.filterAllCondos": "All condominiums",
     "public.filterAllowsSubleasing": "Allows subleasing",
     "public.clearFilters": "Clear filters",
     

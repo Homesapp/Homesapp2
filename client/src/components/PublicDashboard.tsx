@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
-import { type Property } from "@shared/schema";
+import { type Property, type Colony, type Condominium } from "@shared/schema";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -39,6 +39,14 @@ export default function PublicDashboard() {
     queryKey: ["/api/properties/search"],
   });
 
+  const { data: colonies = [] } = useQuery<Colony[]>({
+    queryKey: ["/api/colonies/approved"],
+  });
+
+  const { data: condominiums = [] } = useQuery<Condominium[]>({
+    queryKey: ["/api/condominiums/approved"],
+  });
+
   const featuredProperties = properties.filter(p => p.featured);
   const allProperties = properties.slice(0, 12);
 
@@ -51,10 +59,10 @@ export default function PublicDashboard() {
     if (propertyType && propertyType !== "all") {
       params.append("propertyType", propertyType);
     }
-    if (colonyName.trim()) {
+    if (colonyName && colonyName !== "all") {
       params.append("colonyName", colonyName);
     }
-    if (condoName.trim()) {
+    if (condoName && condoName !== "all") {
       params.append("condoName", condoName);
     }
     if (allowsSubleasing) {
@@ -163,22 +171,36 @@ export default function PublicDashboard() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t("public.filterColony")}</label>
-                    <Input
-                      placeholder={t("public.filterColonyPlaceholder")}
-                      value={colonyName}
-                      onChange={(e) => setColonyName(e.target.value)}
-                      data-testid="input-colony"
-                    />
+                    <Select value={colonyName} onValueChange={setColonyName}>
+                      <SelectTrigger data-testid="select-colony">
+                        <SelectValue placeholder={t("public.filterColonyPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("public.filterAllColonies")}</SelectItem>
+                        {colonies.map((colony) => (
+                          <SelectItem key={colony.id} value={colony.name}>
+                            {colony.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t("public.filterCondo")}</label>
-                    <Input
-                      placeholder={t("public.filterCondoPlaceholder")}
-                      value={condoName}
-                      onChange={(e) => setCondoName(e.target.value)}
-                      data-testid="input-condo"
-                    />
+                    <Select value={condoName} onValueChange={setCondoName}>
+                      <SelectTrigger data-testid="select-condo">
+                        <SelectValue placeholder={t("public.filterCondoPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("public.filterAllCondos")}</SelectItem>
+                        {condominiums.map((condo) => (
+                          <SelectItem key={condo.id} value={condo.name}>
+                            {condo.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

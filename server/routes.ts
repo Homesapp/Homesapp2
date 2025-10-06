@@ -941,9 +941,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Colony routes
   app.get("/api/colonies", async (req, res) => {
     try {
-      const { active } = req.query;
+      const { active, approvalStatus } = req.query;
       const filters: any = {};
       if (active !== undefined) filters.active = active === "true";
+      if (approvalStatus) filters.approvalStatus = approvalStatus;
       
       const colonies = await storage.getColonies(filters);
       res.json(colonies);
@@ -960,6 +961,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching active colonies:", error);
       res.status(500).json({ message: "Failed to fetch active colonies" });
+    }
+  });
+
+  app.get("/api/colonies/approved", async (req, res) => {
+    try {
+      const colonies = await storage.getApprovedColonies();
+      res.json(colonies);
+    } catch (error) {
+      console.error("Error fetching approved colonies:", error);
+      res.status(500).json({ message: "Failed to fetch approved colonies" });
+    }
+  });
+
+  app.post("/api/colonies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      // Only owners can suggest colonies
+      if (!user || user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios pueden sugerir colonias" });
+      }
+      
+      // Validate request body with Zod
+      const colonySchema = z.object({
+        name: z.string().min(1, "El nombre de la colonia es requerido"),
+      });
+      
+      const validationResult = colonySchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { name } = validationResult.data;
+
+      // Generate slug from name
+      const slug = name.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+        .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
+        .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+
+      // Create colony with pending status, requires admin approval
+      const colony = await storage.createColony({
+        name,
+        slug,
+        active: true,
+        approvalStatus: "pending",
+        requestedBy: userId,
+      });
+
+      await createAuditLog(
+        req,
+        "create",
+        "colony",
+        colony.id,
+        `Colonia solicitada: ${name}`
+      );
+
+      res.json(colony);
+    } catch (error) {
+      console.error("Error creating colony:", error);
+      res.status(500).json({ message: "Failed to create colony" });
     }
   });
 
@@ -1072,6 +1138,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/admin/colonies/:id/approve", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate colony exists
+      const existingColony = await storage.getColony(id);
+      if (!existingColony) {
+        return res.status(404).json({ message: "Colonia no encontrada" });
+      }
+
+      const colony = await storage.updateColonyStatus(id, "approved");
+      
+      await createAuditLog(
+        req,
+        "approve",
+        "colony",
+        id,
+        `Colonia aprobada: ${colony.name}`
+      );
+
+      res.json(colony);
+    } catch (error) {
+      console.error("Error approving colony:", error);
+      res.status(500).json({ message: "Failed to approve colony" });
+    }
+  });
+
+  app.patch("/api/admin/colonies/:id/reject", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate colony exists
+      const existingColony = await storage.getColony(id);
+      if (!existingColony) {
+        return res.status(404).json({ message: "Colonia no encontrada" });
+      }
+
+      const colony = await storage.updateColonyStatus(id, "rejected");
+      
+      await createAuditLog(
+        req,
+        "reject",
+        "colony",
+        id,
+        `Colonia rechazada: ${colony.name}`
+      );
+
+      res.json(colony);
+    } catch (error) {
+      console.error("Error rejecting colony:", error);
+      res.status(500).json({ message: "Failed to reject colony" });
+    }
+  });
+
   // Condominium routes
   app.get("/api/condominiums", async (req, res) => {
     try {
@@ -1100,6 +1220,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/condominiums", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      // Only owners can suggest condominiums
+      if (!user || user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios pueden sugerir condominios" });
+      }
       
       // Validate request body with Zod
       const condominiumSchema = z.object({
