@@ -157,12 +157,12 @@ export function ReferralsList({ type, referrals }: ReferralsListProps) {
     <>
       <div className="grid gap-4 md:grid-cols-2">
         {referrals.map((referral) => {
-        const status = referral.status;
-        const statusInfo = statusLabels[status] || { es: status, en: status, variant: "outline" as const };
-        const isOwner = type === "owner";
+          const status = referral.status;
+          const statusInfo = statusLabels[status] || { es: status, en: status, variant: "outline" as const };
+          const isOwner = type === "owner";
 
-        return (
-          <Card key={referral.id} className="hover-elevate" data-testid={`card-referral-${referral.id}`}>
+          return (
+            <Card key={referral.id} className="hover-elevate" data-testid={`card-referral-${referral.id}`}>
             <CardHeader>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
