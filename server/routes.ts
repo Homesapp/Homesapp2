@@ -947,7 +947,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userId) filters.userId = userId;
 
       const requests = await storage.getRoleRequests(filters);
-      res.json(requests);
+      
+      // Enrich requests with user data
+      const requestsWithUsers = await Promise.all(
+        requests.map(async (request) => {
+          const user = await storage.getUser(request.userId);
+          return {
+            ...request,
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              profilePictureUrl: user.profileImageUrl,
+            } : undefined,
+          };
+        })
+      );
+      
+      res.json(requestsWithUsers);
     } catch (error) {
       console.error("Error fetching role requests:", error);
       res.status(500).json({ message: "Error al obtener solicitudes" });
