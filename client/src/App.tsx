@@ -47,6 +47,7 @@ import AdminChangeRequests from "@/pages/AdminChangeRequests";
 import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import AdminAgreementTemplates from "@/pages/AdminAgreementTemplates";
 import AdminCondominiums from "@/pages/AdminCondominiums";
+import CondominiumDetails from "@/pages/CondominiumDetails";
 import AdminSuggestions from "@/pages/AdminSuggestions";
 import AdminChatbotConfig from "@/pages/AdminChatbotConfig";
 import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
@@ -64,6 +65,7 @@ import Feedback from "@/pages/Feedback";
 import AdminFeedback from "@/pages/AdminFeedback";
 import AccountantIncome from "@/pages/AccountantIncome";
 import AdminIncome from "@/pages/AdminIncome";
+import Permissions from "@/pages/Permissions";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -191,6 +193,7 @@ function AuthenticatedApp() {
               <Route path="/admin/change-requests" component={AdminChangeRequests} />
               <Route path="/admin/inspection-reports" component={AdminInspectionReports} />
               <Route path="/admin/agreement-templates" component={AdminAgreementTemplates} />
+              <Route path="/admin/condominiums/:id" component={CondominiumDetails} />
               <Route path="/admin/condominiums" component={AdminCondominiums} />
               <Route path="/admin/suggestions" component={AdminSuggestions} />
               <Route path="/admin/chatbot-config" component={AdminChatbotConfig} />
@@ -215,6 +218,7 @@ function AuthenticatedApp() {
               <Route path="/referidos" component={Referrals} />
               <Route path="/feedback" component={Feedback} />
               <Route path="/admin/feedback" component={AdminFeedback} />
+              <Route path="/permissions" component={Permissions} />
               <Route component={NotFound} />
             </Switch>
           </main>

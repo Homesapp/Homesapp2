@@ -189,6 +189,9 @@ export interface IStorage {
   getApprovedCondominiums(): Promise<Condominium[]>;
   createCondominium(condominium: InsertCondominium): Promise<Condominium>;
   updateCondominiumStatus(id: string, approvalStatus: string): Promise<Condominium>;
+  updateCondominium(id: string, updates: Partial<InsertCondominium>): Promise<Condominium>;
+  toggleCondominiumActive(id: string, active: boolean): Promise<Condominium>;
+  deleteCondominium(id: string): Promise<void>;
   
   // Property operations
   getProperty(id: string): Promise<Property | undefined>;
@@ -772,6 +775,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(condominiums.id, id))
       .returning();
     return condominium;
+  }
+
+  async updateCondominium(id: string, updates: Partial<InsertCondominium>): Promise<Condominium> {
+    const [condominium] = await db
+      .update(condominiums)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(condominiums.id, id))
+      .returning();
+    return condominium;
+  }
+
+  async toggleCondominiumActive(id: string, active: boolean): Promise<Condominium> {
+    const [condominium] = await db
+      .update(condominiums)
+      .set({ active, updatedAt: new Date() })
+      .where(eq(condominiums.id, id))
+      .returning();
+    return condominium;
+  }
+
+  async deleteCondominium(id: string): Promise<void> {
+    await db.delete(condominiums).where(eq(condominiums.id, id));
   }
 
   // Property operations

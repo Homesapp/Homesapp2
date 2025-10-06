@@ -1318,6 +1318,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/admin/condominiums/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate condominium exists
+      const existingCondominium = await storage.getCondominium(id);
+      if (!existingCondominium) {
+        return res.status(404).json({ message: "Condominio no encontrado" });
+      }
+
+      // Validate request body with Zod
+      const updateSchema = z.object({
+        name: z.string().min(1, "El nombre del condominio es requerido").optional(),
+        zone: z.string().optional(),
+        address: z.string().optional(),
+      });
+      
+      const validationResult = updateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const condominium = await storage.updateCondominium(id, validationResult.data);
+      
+      await createAuditLog(
+        req,
+        "update",
+        "condominium",
+        id,
+        `Condominio actualizado: ${condominium.name}`
+      );
+
+      res.json(condominium);
+    } catch (error) {
+      console.error("Error updating condominium:", error);
+      res.status(500).json({ message: "Failed to update condominium" });
+    }
+  });
+
+  app.patch("/api/admin/condominiums/:id/toggle-active", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { active } = req.body;
+
+      // Validate condominium exists
+      const existingCondominium = await storage.getCondominium(id);
+      if (!existingCondominium) {
+        return res.status(404).json({ message: "Condominio no encontrado" });
+      }
+
+      if (typeof active !== "boolean") {
+        return res.status(400).json({ message: "El campo 'active' debe ser booleano" });
+      }
+
+      const condominium = await storage.toggleCondominiumActive(id, active);
+      
+      await createAuditLog(
+        req,
+        "update",
+        "condominium",
+        id,
+        `Condominio ${active ? 'activado' : 'suspendido'}: ${condominium.name}`
+      );
+
+      res.json(condominium);
+    } catch (error) {
+      console.error("Error toggling condominium active status:", error);
+      res.status(500).json({ message: "Failed to toggle condominium active status" });
+    }
+  });
+
+  app.delete("/api/admin/condominiums/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate condominium exists
+      const existingCondominium = await storage.getCondominium(id);
+      if (!existingCondominium) {
+        return res.status(404).json({ message: "Condominio no encontrado" });
+      }
+
+      await createAuditLog(
+        req,
+        "delete",
+        "condominium",
+        id,
+        `Condominio eliminado: ${existingCondominium.name}`
+      );
+
+      await storage.deleteCondominium(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting condominium:", error);
+      res.status(500).json({ message: "Failed to delete condominium" });
+    }
+  });
+
+  // Get condominium with properties count
+  app.get("/api/admin/condominiums/:id/details", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const condominium = await storage.getCondominium(id);
+      
+      if (!condominium) {
+        return res.status(404).json({ message: "Condominio no encontrado" });
+      }
+
+      // Get properties in this condominium
+      const allProperties = await storage.getProperties({});
+      const properties = allProperties.filter(p => p.condominiumId === id);
+
+      res.json({
+        ...condominium,
+        propertiesCount: properties.length,
+        properties: properties.map(p => ({
+          id: p.id,
+          title: p.title,
+          unitNumber: p.unitNumber,
+          propertyType: p.propertyType,
+          status: p.status,
+          bedrooms: p.bedrooms,
+          bathrooms: p.bathrooms,
+          price: p.price,
+          ownerId: p.ownerId,
+          managementId: p.managementId,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching condominium details:", error);
+      res.status(500).json({ message: "Failed to fetch condominium details" });
+    }
+  });
+
+  // Get statistics for all condominiums
+  app.get("/api/admin/condominiums-stats", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
+    try {
+      const condominiums = await storage.getCondominiums({});
+      const colonies = await storage.getColonies({});
+      const allProperties = await storage.getProperties({});
+
+      // Group properties by condominium
+      const condominiumStats = condominiums.map(condo => {
+        const properties = allProperties.filter(p => p.condominiumId === condo.id);
+        return {
+          ...condo,
+          propertiesCount: properties.length,
+        };
+      });
+
+      // Group properties by colony
+      const colonyStats = colonies.map(colony => {
+        const properties = allProperties.filter(p => p.colonyId === colony.id);
+        return {
+          ...colony,
+          propertiesCount: properties.length,
+        };
+      });
+
+      // Properties without condominium
+      const propertiesWithoutCondominium = allProperties.filter(p => !p.condominiumId).length;
+
+      res.json({
+        condominiums: condominiumStats,
+        colonies: colonyStats,
+        totalProperties: allProperties.length,
+        propertiesWithoutCondominium,
+      });
+    } catch (error) {
+      console.error("Error fetching condominium stats:", error);
+      res.status(500).json({ message: "Failed to fetch condominium stats" });
+    }
+  });
+
   // Property routes
   app.get("/api/properties", async (req, res) => {
     try {

@@ -521,6 +521,9 @@ export type Colony = typeof colonies.$inferSelect;
 export const condominiums = pgTable("condominiums", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
+  zone: text("zone"),
+  address: text("address"),
+  active: boolean("active").notNull().default(true),
   approvalStatus: condominiumApprovalStatusEnum("approval_status").notNull().default("approved"),
   requestedBy: varchar("requested_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
