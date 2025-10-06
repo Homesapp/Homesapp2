@@ -2001,8 +2001,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only show approved or published properties to non-authenticated users
+      // This is a security-critical check - always override approvalStatus for non-authenticated users
       const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
       if (!isUserAuthenticated) {
+        // Defensively delete any approvalStatus that might have been set and force the correct values
+        delete filters.approvalStatus;
         filters.approvalStatus = ["approved", "published"];
       }
 
