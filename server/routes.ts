@@ -198,6 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupAuth(app);
+  
+  // Initialize business hours with default values if not exists
+  await storage.initializeBusinessHours();
 
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
@@ -4910,6 +4913,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting calendar event:", error);
       res.status(500).json({ message: "Failed to delete calendar event" });
+    }
+  });
+
+  // Business Hours routes
+  app.get("/api/business-hours", async (req, res) => {
+    try {
+      const hours = await storage.getBusinessHours();
+      res.json(hours);
+    } catch (error) {
+      console.error("Error fetching business hours:", error);
+      res.status(500).json({ message: "Error al obtener los horarios de atención" });
+    }
+  });
+
+  app.put("/api/business-hours/:dayOfWeek", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { dayOfWeek } = req.params;
+      const { isOpen, openTime, closeTime } = req.body;
+
+      const updatedHours = await storage.upsertBusinessHours({
+        dayOfWeek: parseInt(dayOfWeek),
+        isOpen,
+        openTime,
+        closeTime,
+      });
+
+      await createAuditLog(
+        req,
+        "update",
+        "business_hours",
+        updatedHours.id,
+        `Horario de atención actualizado para el día ${dayOfWeek}`
+      );
+
+      res.json(updatedHours);
+    } catch (error) {
+      console.error("Error updating business hours:", error);
+      res.status(500).json({ message: "Error al actualizar los horarios de atención" });
+    }
+  });
+
+  // Concierge Blocked Slots routes
+  app.get("/api/concierge-blocked-slots", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.session?.adminUser?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Conserjes ven solo sus slots, admins ven todos
+      let slots;
+      if (user.role === "concierge") {
+        slots = await storage.getConciergeBlockedSlots(userId);
+      } else if (["master", "admin", "admin_jr"].includes(user.role)) {
+        // Admins can filter by conciergeId
+        const { conciergeId } = req.query;
+        slots = conciergeId 
+          ? await storage.getConciergeBlockedSlots(conciergeId as string)
+          : [];
+      } else {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      res.json(slots);
+    } catch (error) {
+      console.error("Error fetching concierge blocked slots:", error);
+      res.status(500).json({ message: "Error al obtener los horarios bloqueados" });
+    }
+  });
+
+  app.post("/api/concierge-blocked-slots", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.session?.adminUser?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "concierge") {
+        return res.status(403).json({ message: "Solo los conserjes pueden bloquear horarios" });
+      }
+
+      const { startTime, endTime, reason } = req.body;
+
+      // Validate no confirmed appointments exist in this timeframe
+      const appointments = await storage.getAppointments({
+        status: "confirmed",
+      });
+
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+
+      const conflictingAppointments = appointments.filter((apt: any) => {
+        if (apt.conciergeId !== userId) return false;
+        const aptDate = new Date(apt.date);
+        return aptDate >= startDate && aptDate <= endDate;
+      });
+
+      if (conflictingAppointments.length > 0) {
+        return res.status(400).json({ 
+          message: "No puedes bloquear horarios con citas confirmadas",
+          conflictingAppointments: conflictingAppointments.length
+        });
+      }
+
+      const slot = await storage.createConciergeBlockedSlot({
+        conciergeId: userId,
+        startTime: startDate,
+        endTime: endDate,
+        reason,
+      });
+
+      await createAuditLog(
+        req,
+        "create",
+        "concierge_blocked_slot",
+        slot.id,
+        `Horario bloqueado: ${startTime} - ${endTime}`
+      );
+
+      res.status(201).json(slot);
+    } catch (error) {
+      console.error("Error creating concierge blocked slot:", error);
+      res.status(500).json({ message: "Error al bloquear el horario" });
+    }
+  });
+
+  app.delete("/api/concierge-blocked-slots/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.session?.adminUser?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const { id } = req.params;
+      const slot = await storage.getConciergeBlockedSlot(id);
+
+      if (!slot) {
+        return res.status(404).json({ message: "Horario bloqueado no encontrado" });
+      }
+
+      // Only the owner concierge can delete their blocked slots
+      if (slot.conciergeId !== userId) {
+        return res.status(403).json({ message: "No autorizado para eliminar este horario" });
+      }
+
+      await storage.deleteConciergeBlockedSlot(id);
+
+      await createAuditLog(
+        req,
+        "delete",
+        "concierge_blocked_slot",
+        id,
+        `Horario desbloqueado`
+      );
+
+      res.json({ message: "Horario desbloqueado exitosamente" });
+    } catch (error) {
+      console.error("Error deleting concierge blocked slot:", error);
+      res.status(500).json({ message: "Error al desbloquear el horario" });
     }
   });
 

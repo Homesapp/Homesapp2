@@ -17,6 +17,7 @@ import {
   Home,
   Building2,
   Calendar,
+  Clock,
   Users,
   ClipboardList,
   FolderKanban,
@@ -115,6 +116,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
   const adminSingleItems = [
     { titleKey: "sidebar.adminDashboard", url: "/admin/dashboard", icon: Home, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.adminCalendar", url: "/admin/calendario", icon: Calendar, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.businessHours", url: "/admin/horarios", icon: Clock, roles: ["master", "admin"] },
     { titleKey: "sidebar.backoffice", url: "/backoffice", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "management", "concierge", "provider"] },
     { titleKey: "sidebar.incomeDashboard", url: "/admin/income", icon: DollarSign, roles: ["master", "admin"] },
   ];
