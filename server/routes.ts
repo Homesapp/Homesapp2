@@ -2022,9 +2022,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Property not found" });
       }
       
-      // Only show approved properties to non-authenticated users
+      // Only show approved or published properties to non-authenticated users
       const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
-      if (!isUserAuthenticated && property.approvalStatus !== "approved") {
+      if (!isUserAuthenticated && !["approved", "published"].includes(property.approvalStatus)) {
         return res.status(404).json({ message: "Property not found" });
       }
       
