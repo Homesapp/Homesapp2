@@ -502,6 +502,8 @@ export const colonies = pgTable("colonies", {
   name: text("name").notNull().unique(),
   slug: text("slug").notNull().unique(),
   active: boolean("active").notNull().default(true),
+  approvalStatus: condominiumApprovalStatusEnum("approval_status").notNull().default("approved"),
+  requestedBy: varchar("requested_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
