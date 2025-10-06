@@ -4,6 +4,7 @@ import {
   colonies,
   condominiums,
   appointments,
+  calendarEvents,
   propertyReviews,
   appointmentReviews,
   conciergeReviews,
@@ -56,6 +57,8 @@ import {
   type InsertProperty,
   type Appointment,
   type InsertAppointment,
+  type CalendarEvent,
+  type InsertCalendarEvent,
   type PresentationCard,
   type InsertPresentationCard,
   type ServiceProvider,
@@ -230,10 +233,17 @@ export interface IStorage {
   
   // Appointment operations
   getAppointment(id: string): Promise<Appointment | undefined>;
-  getAppointments(filters?: { status?: string; clientId?: string; propertyId?: string }): Promise<Appointment[]>;
+  getAppointments(filters?: { status?: string; clientId?: string; propertyId?: string }): Promise<any[]>;
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   updateAppointment(id: string, updates: Partial<InsertAppointment>): Promise<Appointment>;
   deleteAppointment(id: string): Promise<void>;
+  
+  // Calendar Event operations
+  getCalendarEvent(id: string): Promise<CalendarEvent | undefined>;
+  getCalendarEvents(filters?: { eventType?: string; assignedToId?: string; status?: string; propertyId?: string; startDate?: Date; endDate?: Date }): Promise<any[]>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(id: string): Promise<void>;
   
   // Property Review operations
   getPropertyReview(id: string): Promise<PropertyReview | undefined>;
@@ -1023,8 +1033,7 @@ export class DatabaseStorage implements IStorage {
     return appointment;
   }
 
-  async getAppointments(filters?: { status?: string; clientId?: string; propertyId?: string }): Promise<Appointment[]> {
-    let query = db.select().from(appointments);
+  async getAppointments(filters?: { status?: string; clientId?: string; propertyId?: string }): Promise<any[]> {
     const conditions = [];
 
     if (filters?.status) {
@@ -1037,11 +1046,44 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(appointments.propertyId, filters.propertyId));
     }
 
+    let query = db
+      .select()
+      .from(appointments)
+      .orderBy(desc(appointments.date));
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
 
-    return await query.orderBy(desc(appointments.date));
+    const baseAppointments = await query;
+
+    // Fetch all related data in parallel
+    const propertyIds = [...new Set(baseAppointments.map(a => a.propertyId).filter(Boolean))];
+    const clientIds = [...new Set(baseAppointments.map(a => a.clientId).filter(Boolean))];
+    const conciergeIds = [...new Set(baseAppointments.map(a => a.conciergeId).filter(Boolean))];
+    const presentationCardIds = [...new Set(baseAppointments.map(a => a.presentationCardId).filter(Boolean))];
+
+    const [propertiesData, clientsData, conciergesData, cardsData] = await Promise.all([
+      propertyIds.length > 0 ? db.select().from(properties).where(sql`${properties.id} = ANY(${propertyIds})`) : [],
+      clientIds.length > 0 ? db.select().from(users).where(sql`${users.id} = ANY(${clientIds})`) : [],
+      conciergeIds.length > 0 ? db.select().from(users).where(sql`${users.id} = ANY(${conciergeIds})`) : [],
+      presentationCardIds.length > 0 ? db.select().from(presentationCards).where(sql`${presentationCards.id} = ANY(${presentationCardIds})`) : [],
+    ]);
+
+    // Create lookup maps
+    const propertyMap = new Map(propertiesData.map(p => [p.id, p]));
+    const clientMap = new Map(clientsData.map(c => [c.id, c]));
+    const conciergeMap = new Map(conciergesData.map(c => [c.id, c]));
+    const cardMap = new Map(cardsData.map(c => [c.id, c]));
+
+    // Combine data
+    return baseAppointments.map(appointment => ({
+      ...appointment,
+      property: appointment.propertyId ? propertyMap.get(appointment.propertyId) : null,
+      client: appointment.clientId ? clientMap.get(appointment.clientId) : null,
+      concierge: appointment.conciergeId ? conciergeMap.get(appointment.conciergeId) : null,
+      presentationCard: appointment.presentationCardId ? cardMap.get(appointment.presentationCardId) : null,
+    }));
   }
 
   async createAppointment(appointmentData: InsertAppointment): Promise<Appointment> {
@@ -1060,6 +1102,96 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAppointment(id: string): Promise<void> {
     await db.delete(appointments).where(eq(appointments.id, id));
+  }
+
+  // Calendar Event operations
+  async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    return event;
+  }
+
+  async getCalendarEvents(filters?: { 
+    eventType?: string; 
+    assignedToId?: string; 
+    status?: string; 
+    propertyId?: string; 
+    startDate?: Date; 
+    endDate?: Date;
+  }): Promise<any[]> {
+    const conditions = [];
+
+    if (filters?.eventType) {
+      conditions.push(eq(calendarEvents.eventType, filters.eventType as any));
+    }
+    if (filters?.assignedToId) {
+      conditions.push(eq(calendarEvents.assignedToId, filters.assignedToId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(calendarEvents.status, filters.status as any));
+    }
+    if (filters?.propertyId) {
+      conditions.push(eq(calendarEvents.propertyId, filters.propertyId));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(calendarEvents.startDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(calendarEvents.endDate, filters.endDate));
+    }
+
+    let query = db
+      .select()
+      .from(calendarEvents)
+      .orderBy(calendarEvents.startDate);
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const baseEvents = await query;
+
+    // Fetch all related data in parallel
+    const propertyIds = [...new Set(baseEvents.map(e => e.propertyId).filter(Boolean))];
+    const assignedToIds = [...new Set(baseEvents.map(e => e.assignedToId).filter(Boolean))];
+    const clientIds = [...new Set(baseEvents.map(e => e.clientId).filter(Boolean))];
+
+    // Combine assignedTo and client IDs for a single user query
+    const allUserIds = [...new Set([...assignedToIds, ...clientIds])];
+
+    const [propertiesData, usersData] = await Promise.all([
+      propertyIds.length > 0 ? db.select().from(properties).where(sql`${properties.id} = ANY(${propertyIds})`) : [],
+      allUserIds.length > 0 ? db.select().from(users).where(sql`${users.id} = ANY(${allUserIds})`) : [],
+    ]);
+
+    // Create lookup maps
+    const propertyMap = new Map(propertiesData.map(p => [p.id, p]));
+    const userMap = new Map(usersData.map(u => [u.id, u]));
+
+    // Combine data
+    return baseEvents.map(event => ({
+      ...event,
+      property: event.propertyId ? propertyMap.get(event.propertyId) : null,
+      assignedTo: event.assignedToId ? userMap.get(event.assignedToId) : null,
+      client: event.clientId ? userMap.get(event.clientId) : null,
+    }));
+  }
+
+  async createCalendarEvent(eventData: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [event] = await db.insert(calendarEvents).values(eventData).returning();
+    return event;
+  }
+
+  async updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
+    const [event] = await db
+      .update(calendarEvents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+    return event;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
   }
 
   // Property Review operations

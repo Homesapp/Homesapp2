@@ -285,6 +285,22 @@ export const feedbackStatusEnum = pgEnum("feedback_status", [
   "rechazado",   // Rechazado/No se implementará
 ]);
 
+export const calendarEventTypeEnum = pgEnum("calendar_event_type", [
+  "appointment",     // Cita con cliente
+  "maintenance",     // Mantenimiento de propiedad
+  "cleaning",        // Limpieza de propiedad
+  "inspection",      // Inspección
+  "administrative",  // Tarea administrativa
+  "meeting",         // Reunión interna
+]);
+
+export const calendarEventStatusEnum = pgEnum("calendar_event_status", [
+  "scheduled",   // Programado
+  "in_progress", // En progreso
+  "completed",   // Completado
+  "cancelled",   // Cancelado
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -644,6 +660,36 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
 
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type Appointment = typeof appointments.$inferSelect;
+
+// Calendar Events table - for maintenance, cleaning, inspections, etc.
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  eventType: calendarEventTypeEnum("event_type").notNull(),
+  status: calendarEventStatusEnum("status").notNull().default("scheduled"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id), // Staff assigned (concierge, maintenance, cleaning)
+  appointmentId: varchar("appointment_id").references(() => appointments.id, { onDelete: "set null" }), // Link to appointment if applicable
+  clientId: varchar("client_id").references(() => users.id), // Client if applicable
+  googleEventId: text("google_event_id"),
+  notes: text("notes"),
+  color: varchar("color", { length: 7 }).default("#3b82f6"), // Hex color for calendar display
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
 
 // Property Reviews table
 export const propertyReviews = pgTable("property_reviews", {

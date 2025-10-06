@@ -32,6 +32,7 @@ import PublicDashboard from "@/components/PublicDashboard";
 import Properties from "@/pages/Properties";
 import Appointments from "@/pages/Appointments";
 import Calendar from "@/pages/Calendar";
+import AdminCalendar from "@/pages/AdminCalendar";
 import Directory from "@/pages/Directory";
 import PresentationCards from "@/pages/PresentationCards";
 import Backoffice from "@/pages/Backoffice";
@@ -205,6 +206,7 @@ function AuthenticatedApp() {
               <Route path="/properties" component={Properties} />
               <Route path="/appointments" component={Appointments} />
               <Route path="/calendario" component={Calendar} />
+              <Route path="/admin/calendario" component={AdminCalendar} />
               <Route path="/directory" component={Directory} />
               <Route path="/presentation-cards" component={PresentationCards} />
               <Route path="/presupuestos" component={Budgets} />

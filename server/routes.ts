@@ -13,6 +13,7 @@ import { z } from "zod";
 import {
   insertPropertySchema,
   insertAppointmentSchema,
+  insertCalendarEventSchema,
   insertPresentationCardSchema,
   insertServiceProviderSchema,
   insertServiceSchema,
@@ -3663,6 +3664,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting appointment:", error);
       res.status(500).json({ message: "Failed to delete appointment" });
+    }
+  });
+
+  // Calendar Events routes
+  app.get("/api/calendar-events", isAuthenticated, async (req, res) => {
+    try {
+      const { eventType, assignedToId, status, propertyId, startDate, endDate } = req.query;
+      const filters: any = {};
+      if (eventType) filters.eventType = eventType;
+      if (assignedToId) filters.assignedToId = assignedToId;
+      if (status) filters.status = status;
+      if (propertyId) filters.propertyId = propertyId;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+
+      const events = await storage.getCalendarEvents(filters);
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
+  app.post("/api/calendar-events", isAuthenticated, requireRole(["master", "admin", "admin_jr", "management"]), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Include createdById before validation
+      const eventData = {
+        ...req.body,
+        startDate: new Date(req.body.startDate),
+        endDate: new Date(req.body.endDate),
+        createdById: userId,
+      };
+
+      // Validate complete event data
+      const validatedData = insertCalendarEventSchema.parse(eventData);
+
+      const event = await storage.createCalendarEvent(validatedData);
+
+      await createAuditLog(
+        req,
+        "create",
+        "calendar_event",
+        event.id,
+        `Evento de calendario creado: ${event.title} - ${event.eventType}`
+      );
+
+      res.status(201).json(event);
+    } catch (error: any) {
+      console.error("Error creating calendar event:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(400).json({ message: error.message || "Failed to create calendar event" });
+    }
+  });
+
+  app.patch("/api/calendar-events/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr", "management"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate and coerce dates if present
+      const updates = { ...req.body };
+      if (updates.startDate) {
+        updates.startDate = new Date(updates.startDate);
+      }
+      if (updates.endDate) {
+        updates.endDate = new Date(updates.endDate);
+      }
+
+      // Use partial validation
+      const validatedData = insertCalendarEventSchema.partial().parse(updates);
+      
+      const event = await storage.updateCalendarEvent(id, validatedData);
+
+      await createAuditLog(
+        req,
+        "update",
+        "calendar_event",
+        id,
+        `Evento de calendario actualizado: ${event.title} - Estado: ${event.status}`
+      );
+
+      res.json(event);
+    } catch (error: any) {
+      console.error("Error updating calendar event:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update calendar event" });
+    }
+  });
+
+  app.delete("/api/calendar-events/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr", "management"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const event = await storage.getCalendarEvent(id);
+
+      if (event) {
+        await createAuditLog(
+          req,
+          "delete",
+          "calendar_event",
+          id,
+          `Evento de calendario eliminado: ${event.title}`
+        );
+      }
+
+      await storage.deleteCalendarEvent(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting calendar event:", error);
+      res.status(500).json({ message: "Failed to delete calendar event" });
     }
   });
 
