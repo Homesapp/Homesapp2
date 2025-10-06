@@ -7639,6 +7639,251 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard API routes
+  app.get("/api/dashboard/pending-actions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const role = req.user.role;
+      const pendingActions: any[] = [];
+
+      // Obtener acciones pendientes según el rol con filtros de seguridad
+      if (role === "owner") {
+        // Owner: solo ver citas para sus propiedades
+        const userProperties = await db
+          .select({ id: properties.id })
+          .from(properties)
+          .where(eq(properties.ownerId, userId));
+        
+        const propertyIds = userProperties.map(p => p.id);
+        
+        if (propertyIds.length > 0) {
+          const pendingAppointments = await db
+            .select()
+            .from(appointments)
+            .where(
+              and(
+                eq(appointments.status, "pending"),
+                inArray(appointments.propertyId, propertyIds)
+              )
+            )
+            .limit(5);
+          
+          pendingActions.push(...pendingAppointments.map(apt => ({
+            id: apt.id,
+            title: "Cita pendiente de aprobación",
+            description: `Fecha: ${new Date(apt.date).toLocaleDateString()}`,
+            priority: "high",
+            link: "/owner/appointments",
+            icon: "clock",
+          })));
+        }
+      } else if (role === "seller") {
+        // Seller: leads asignados
+        const pendingLeads = await db
+          .select()
+          .from(rentalOpportunityRequests)
+          .where(
+            and(
+              eq(rentalOpportunityRequests.assignedTo, userId),
+              eq(rentalOpportunityRequests.status, "new")
+            )
+          )
+          .limit(5);
+        
+        pendingActions.push(...pendingLeads.map(lead => ({
+          id: lead.id,
+          title: "Lead nuevo asignado",
+          description: `Cliente: ${lead.email}`,
+          priority: "high",
+          link: "/leads",
+          icon: "alert",
+        })));
+      } else if (role === "admin" || role === "master") {
+        // Admin: propiedades pendientes de aprobación
+        const pendingProperties = await db
+          .select()
+          .from(properties)
+          .where(eq(properties.status, "pending"))
+          .limit(5);
+        
+        pendingActions.push(...pendingProperties.map(prop => ({
+          id: prop.id,
+          title: "Propiedad pendiente de aprobación",
+          description: prop.title,
+          priority: "medium",
+          link: "/admin/properties",
+          icon: "alert",
+        })));
+      } else if (role === "concierge") {
+        // Concierge: citas asignadas próximas
+        const upcomingAppointments = await db
+          .select()
+          .from(appointments)
+          .where(
+            and(
+              eq(appointments.conciergeId, userId),
+              eq(appointments.status, "confirmed")
+            )
+          )
+          .limit(5);
+        
+        pendingActions.push(...upcomingAppointments.map(apt => ({
+          id: apt.id,
+          title: "Cita programada",
+          description: `Fecha: ${new Date(apt.date).toLocaleDateString()}`,
+          priority: "medium",
+          link: "/appointments",
+          icon: "clock",
+        })));
+      }
+
+      res.json(pendingActions);
+    } catch (error: any) {
+      console.error("Error fetching pending actions:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch pending actions" });
+    }
+  });
+
+  app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const role = req.user.role;
+      const metrics: any[] = [];
+
+      if (role === "owner") {
+        // Owner: solo sus propiedades y citas
+        const totalProperties = await db
+          .select()
+          .from(properties)
+          .where(eq(properties.ownerId, userId));
+        
+        metrics.push({
+          title: "Mis Propiedades",
+          value: totalProperties.length,
+        });
+
+        const propertyIds = totalProperties.map(p => p.id);
+        
+        if (propertyIds.length > 0) {
+          const myAppointments = await db
+            .select()
+            .from(appointments)
+            .where(inArray(appointments.propertyId, propertyIds));
+          
+          metrics.push({
+            title: "Citas Totales",
+            value: myAppointments.length,
+          });
+
+          const pendingAppointments = await db
+            .select()
+            .from(appointments)
+            .where(
+              and(
+                inArray(appointments.propertyId, propertyIds),
+                eq(appointments.status, "pending")
+              )
+            );
+          
+          metrics.push({
+            title: "Citas Pendientes",
+            value: pendingAppointments.length,
+            trend: pendingAppointments.length > 0 ? "up" : "neutral",
+          });
+        }
+      } else if (role === "seller") {
+        // Seller: solo sus leads
+        const totalLeads = await db
+          .select()
+          .from(rentalOpportunityRequests)
+          .where(eq(rentalOpportunityRequests.assignedTo, userId));
+        
+        metrics.push({
+          title: "Leads Asignados",
+          value: totalLeads.length,
+        });
+
+        const newLeads = await db
+          .select()
+          .from(rentalOpportunityRequests)
+          .where(
+            and(
+              eq(rentalOpportunityRequests.assignedTo, userId),
+              eq(rentalOpportunityRequests.status, "new")
+            )
+          );
+        
+        metrics.push({
+          title: "Leads Nuevos",
+          value: newLeads.length,
+          trend: newLeads.length > 0 ? "up" : "neutral",
+        });
+      } else if (role === "concierge") {
+        // Concierge: solo sus citas
+        const myAppointments = await db
+          .select()
+          .from(appointments)
+          .where(eq(appointments.conciergeId, userId));
+        
+        metrics.push({
+          title: "Mis Citas",
+          value: myAppointments.length,
+        });
+
+        const upcomingAppointments = await db
+          .select()
+          .from(appointments)
+          .where(
+            and(
+              eq(appointments.conciergeId, userId),
+              eq(appointments.status, "confirmed")
+            )
+          );
+        
+        metrics.push({
+          title: "Próximas Citas",
+          value: upcomingAppointments.length,
+          trend: "up",
+        });
+      } else if (role === "admin" || role === "master") {
+        // Admin: métricas globales
+        const totalUsers = await db.select().from(users);
+        metrics.push({
+          title: "Usuarios Totales",
+          value: totalUsers.length,
+          trend: "up",
+        });
+
+        const totalProperties = await db.select().from(properties);
+        metrics.push({
+          title: "Propiedades",
+          value: totalProperties.length,
+        });
+
+        const pendingProperties = await db
+          .select()
+          .from(properties)
+          .where(eq(properties.status, "pending"));
+        metrics.push({
+          title: "Pendientes",
+          value: pendingProperties.length,
+          trend: pendingProperties.length > 0 ? "up" : "neutral",
+        });
+
+        const totalAppointments = await db.select().from(appointments);
+        metrics.push({
+          title: "Citas Totales",
+          value: totalAppointments.length,
+        });
+      }
+
+      res.json(metrics);
+    } catch (error: any) {
+      console.error("Error fetching metrics:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch metrics" });
+    }
+  });
+
   // Feedback routes
   app.get("/api/feedback", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
     try {
