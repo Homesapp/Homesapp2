@@ -3797,12 +3797,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Leads/CRM routes
-  app.get("/api/leads", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req, res) => {
+  app.get("/api/leads", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { status, assignedToId } = req.query;
       const filters: any = {};
       if (status) filters.status = status;
       if (assignedToId) filters.assignedToId = assignedToId;
+      
+      // Sellers can only see their own leads
+      if (currentUser.role === "seller") {
+        filters.registeredById = userId;
+      }
 
       const leads = await storage.getLeads(filters);
       res.json(leads);
@@ -3812,13 +3824,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/leads/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req, res) => {
+  app.get("/api/leads/:id", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const lead = await storage.getLead(id);
       
       if (!lead) {
         return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      // Sellers can only access their own leads
+      if (currentUser.role === "seller" && lead.registeredById !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para acceder a este lead" });
       }
       
       res.json(lead);
@@ -3935,10 +3959,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = req.body;
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
       
       const existingLead = await storage.getLead(id);
       if (!existingLead) {
         return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      // Sellers can only update their own leads
+      if (currentUser.role === "seller" && existingLead.registeredById !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para actualizar este lead" });
       }
       
       const updatedLead = await storage.updateLead(id, updates);
@@ -3956,6 +3991,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { status } = req.body;
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
       
       if (!status) {
         return res.status(400).json({ message: "Status is required" });
@@ -3964,6 +4005,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingLead = await storage.getLead(id);
       if (!existingLead) {
         return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      // Sellers can only update status of their own leads
+      if (currentUser.role === "seller" && existingLead.registeredById !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para actualizar el estado de este lead" });
       }
       
       const updatedLead = await storage.updateLeadStatus(id, status);
@@ -4053,6 +4099,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { leadId } = req.params;
       const { propertyId } = req.body;
       const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
       
       if (!propertyId) {
         return res.status(400).json({ message: "ID de propiedad es requerido" });
@@ -4062,6 +4113,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lead = await storage.getLead(leadId);
       if (!lead) {
         return res.status(404).json({ message: "Lead no encontrado" });
+      }
+      
+      // Sellers can only offer properties to their own leads
+      if (currentUser.role === "seller" && lead.registeredById !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para ofrecer propiedades a este lead" });
       }
       
       // Verificar que la propiedad existe
@@ -4090,9 +4146,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route to get properties offered to a lead
-  app.get("/api/leads/:leadId/offered-properties", isAuthenticated, requireRole(["seller", "master", "admin", "management"]), async (req, res) => {
+  app.get("/api/leads/:leadId/offered-properties", isAuthenticated, requireRole(["seller", "master", "admin", "management"]), async (req: any, res) => {
     try {
       const { leadId } = req.params;
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify the lead exists
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead no encontrado" });
+      }
+      
+      // Sellers can only access offered properties for their own leads
+      if (currentUser.role === "seller" && lead.registeredById !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para acceder a las propiedades ofrecidas de este lead" });
+      }
       
       const offers = await storage.getLeadPropertyOffers({ leadId });
       

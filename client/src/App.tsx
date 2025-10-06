@@ -28,6 +28,7 @@ import Favorites from "@/pages/Favorites";
 import LeadsKanban from "@/pages/LeadsKanban";
 import RentalsKanban from "@/pages/RentalsKanban";
 import Dashboard from "@/pages/Dashboard";
+import SellerDashboard from "@/pages/SellerDashboard";
 import PublicDashboard from "@/components/PublicDashboard";
 import Properties from "@/pages/Properties";
 import Appointments from "@/pages/Appointments";
@@ -152,6 +153,7 @@ function AuthenticatedApp() {
       case "admin_jr":
         return AdminDashboard;
       case "seller":
+        return SellerDashboard;
       case "management":
       case "concierge":
       case "provider":
