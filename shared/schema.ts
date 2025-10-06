@@ -617,10 +617,14 @@ export const leads = pgTable("leads", {
   phone: varchar("phone"),
   status: leadStatusEnum("status").notNull().default("nuevo"),
   source: varchar("source"), // web, referido, llamada, evento, etc
+  registeredById: varchar("registered_by_id").notNull().references(() => users.id), // Vendedor que registró el lead
   assignedToId: varchar("assigned_to_id").references(() => users.id),
+  userId: varchar("user_id").references(() => users.id), // Usuario creado para este lead (después de confirmación)
   budget: decimal("budget", { precision: 12, scale: 2 }),
   notes: text("notes"),
   propertyInterests: text("property_interests").array().default(sql`ARRAY[]::text[]`),
+  emailVerified: boolean("email_verified").notNull().default(false), // Si el lead confirmó su email
+  validUntil: timestamp("valid_until").notNull(), // Fecha de expiración del lead (3 meses por defecto)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -629,10 +633,50 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  emailVerified: true,
 });
 
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
+
+// Lead Property Offers - tracking de propiedades ofrecidas a cada lead
+export const leadPropertyOffers = pgTable("lead_property_offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  offeredById: varchar("offered_by_id").notNull().references(() => users.id), // Vendedor que ofreció la propiedad
+  message: text("message"), // Mensaje personalizado del vendedor
+  isInterested: boolean("is_interested"), // null = no respondido, true = interesado, false = no interesado
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLeadPropertyOfferSchema = createInsertSchema(leadPropertyOffers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLeadPropertyOffer = z.infer<typeof insertLeadPropertyOfferSchema>;
+export type LeadPropertyOffer = typeof leadPropertyOffers.$inferSelect;
+
+// System Configuration - configuraciones del sistema (validez de leads, etc)
+export const systemConfig = pgTable("system_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(), // Clave de configuración (ej: "lead_validity_months")
+  value: text("value").notNull(), // Valor de configuración
+  description: text("description"), // Descripción de qué hace esta configuración
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSystemConfigSchema = createInsertSchema(systemConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSystemConfig = z.infer<typeof insertSystemConfigSchema>;
+export type SystemConfig = typeof systemConfig.$inferSelect;
 
 // Rental Applications table (Rental Process Kanban)
 export const rentalApplications = pgTable("rental_applications", {

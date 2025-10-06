@@ -24,6 +24,8 @@ import {
   roleRequests,
   favorites,
   leads,
+  leadPropertyOffers,
+  systemConfig,
   rentalApplications,
   propertyChangeRequests,
   inspectionReports,
@@ -89,6 +91,10 @@ import {
   type InsertFavorite,
   type Lead,
   type InsertLead,
+  type LeadPropertyOffer,
+  type InsertLeadPropertyOffer,
+  type SystemConfig,
+  type InsertSystemConfig,
   type RentalApplication,
   type InsertRentalApplication,
   type PropertyChangeRequest,
@@ -375,11 +381,26 @@ export interface IStorage {
   
   // Lead operations
   getLead(id: string): Promise<Lead | undefined>;
-  getLeads(filters?: { status?: string; assignedToId?: string }): Promise<Lead[]>;
+  getLeadByEmail(email: string): Promise<Lead | undefined>;
+  getLeads(filters?: { status?: string; assignedToId?: string; registeredById?: string }): Promise<Lead[]>;
+  getActiveLead(email: string): Promise<Lead | undefined>; // Get non-expired lead by email
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead>;
   updateLeadStatus(id: string, status: string): Promise<Lead>;
+  verifyLeadEmail(leadId: string): Promise<Lead>;
   deleteLead(id: string): Promise<void>;
+  
+  // Lead Property Offer operations
+  getLeadPropertyOffer(id: string): Promise<LeadPropertyOffer | undefined>;
+  getLeadPropertyOffers(filters?: { leadId?: string; propertyId?: string; offeredById?: string }): Promise<LeadPropertyOffer[]>;
+  createLeadPropertyOffer(offer: InsertLeadPropertyOffer): Promise<LeadPropertyOffer>;
+  updateLeadPropertyOffer(id: string, updates: Partial<InsertLeadPropertyOffer>): Promise<LeadPropertyOffer>;
+  
+  // System Configuration operations
+  getSystemConfig(key: string): Promise<SystemConfig | undefined>;
+  getAllSystemConfigs(): Promise<SystemConfig[]>;
+  upsertSystemConfig(config: InsertSystemConfig): Promise<SystemConfig>;
+  deleteSystemConfig(key: string): Promise<void>;
   
   // Rental Application operations
   getRentalApplication(id: string): Promise<RentalApplication | undefined>;
@@ -2045,7 +2066,28 @@ export class DatabaseStorage implements IStorage {
     return lead;
   }
 
-  async getLeads(filters?: { status?: string; assignedToId?: string }): Promise<Lead[]> {
+  async getLeadByEmail(email: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.email, email)).orderBy(desc(leads.createdAt)).limit(1);
+    return lead;
+  }
+
+  async getActiveLead(email: string): Promise<Lead | undefined> {
+    const now = new Date();
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(
+        and(
+          eq(leads.email, email),
+          gte(leads.validUntil, now)
+        )
+      )
+      .orderBy(desc(leads.createdAt))
+      .limit(1);
+    return lead;
+  }
+
+  async getLeads(filters?: { status?: string; assignedToId?: string; registeredById?: string }): Promise<Lead[]> {
     let query = db.select().from(leads);
     
     const conditions = [];
@@ -2054,6 +2096,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.assignedToId) {
       conditions.push(eq(leads.assignedToId, filters.assignedToId));
+    }
+    if (filters?.registeredById) {
+      conditions.push(eq(leads.registeredById, filters.registeredById));
     }
     
     if (conditions.length > 0) {
@@ -2086,8 +2131,87 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async verifyLeadEmail(leadId: string): Promise<Lead> {
+    const [updated] = await db
+      .update(leads)
+      .set({ emailVerified: true, updatedAt: new Date() })
+      .where(eq(leads.id, leadId))
+      .returning();
+    return updated;
+  }
+
   async deleteLead(id: string): Promise<void> {
     await db.delete(leads).where(eq(leads.id, id));
+  }
+  
+  // Lead Property Offer operations
+  async getLeadPropertyOffer(id: string): Promise<LeadPropertyOffer | undefined> {
+    const [offer] = await db.select().from(leadPropertyOffers).where(eq(leadPropertyOffers.id, id));
+    return offer;
+  }
+
+  async getLeadPropertyOffers(filters?: { leadId?: string; propertyId?: string; offeredById?: string }): Promise<LeadPropertyOffer[]> {
+    let query = db.select().from(leadPropertyOffers);
+    
+    const conditions = [];
+    if (filters?.leadId) {
+      conditions.push(eq(leadPropertyOffers.leadId, filters.leadId));
+    }
+    if (filters?.propertyId) {
+      conditions.push(eq(leadPropertyOffers.propertyId, filters.propertyId));
+    }
+    if (filters?.offeredById) {
+      conditions.push(eq(leadPropertyOffers.offeredById, filters.offeredById));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(leadPropertyOffers.createdAt));
+  }
+
+  async createLeadPropertyOffer(offerData: InsertLeadPropertyOffer): Promise<LeadPropertyOffer> {
+    const [offer] = await db.insert(leadPropertyOffers).values(offerData).returning();
+    return offer;
+  }
+
+  async updateLeadPropertyOffer(id: string, updates: Partial<InsertLeadPropertyOffer>): Promise<LeadPropertyOffer> {
+    const [updated] = await db
+      .update(leadPropertyOffers)
+      .set(updates)
+      .where(eq(leadPropertyOffers.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // System Configuration operations
+  async getSystemConfig(key: string): Promise<SystemConfig | undefined> {
+    const [config] = await db.select().from(systemConfig).where(eq(systemConfig.key, key));
+    return config;
+  }
+
+  async getAllSystemConfigs(): Promise<SystemConfig[]> {
+    return await db.select().from(systemConfig).orderBy(systemConfig.key);
+  }
+
+  async upsertSystemConfig(configData: InsertSystemConfig): Promise<SystemConfig> {
+    const [config] = await db
+      .insert(systemConfig)
+      .values(configData)
+      .onConflictDoUpdate({
+        target: systemConfig.key,
+        set: {
+          ...configData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return config;
+  }
+
+  async deleteSystemConfig(key: string): Promise<void> {
+    await db.delete(systemConfig).where(eq(systemConfig.key, key));
   }
   
   // Rental Application operations
