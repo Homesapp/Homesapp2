@@ -1402,6 +1402,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Condominio no encontrado" });
       }
 
+      // Check if condominium has associated properties
+      const propertiesCount = await storage.countPropertiesByCondominium(id);
+      if (propertiesCount > 0) {
+        return res.status(400).json({ 
+          message: `No se puede eliminar el condominio porque tiene ${propertiesCount} propiedad${propertiesCount > 1 ? 'es' : ''} asociada${propertiesCount > 1 ? 's' : ''}. Por favor, elimina o reasigna las propiedades primero.` 
+        });
+      }
+
       await createAuditLog(
         req,
         "delete",
