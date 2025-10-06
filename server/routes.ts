@@ -7825,6 +7825,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Status is required" });
       }
 
+      if (status === "paid") {
+        const transaction = await storage.getIncomeTransaction(req.params.id);
+        if (!transaction) {
+          return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        const beneficiary = await storage.getUser(transaction.beneficiaryId);
+        if (!beneficiary) {
+          return res.status(404).json({ message: "Beneficiary not found" });
+        }
+
+        if (beneficiary.role === "seller") {
+          if (!beneficiary.commissionTermsAccepted) {
+            return res.status(400).json({ 
+              message: "El vendedor debe aceptar los términos y condiciones de comisiones antes de recibir pagos",
+              error: "TERMS_NOT_ACCEPTED"
+            });
+          }
+
+          if (beneficiary.documentApprovalStatus !== "approved") {
+            return res.status(400).json({ 
+              message: "El vendedor debe tener un documento de identificación aprobado antes de recibir pagos",
+              error: "DOCUMENT_NOT_APPROVED",
+              documentStatus: beneficiary.documentApprovalStatus || "none"
+            });
+          }
+        }
+      }
+
       const updated = await storage.updateIncomeTransactionStatus(
         req.params.id,
         status,
