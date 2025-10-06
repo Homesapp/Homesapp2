@@ -2,114 +2,17 @@
 
 ## Overview
 
-HomesApp is a comprehensive SaaS platform for real estate property management, primarily focused on the Tulum, Quintana Roo market. It supports various user roles (master, admin, seller, owner, client) to manage properties, schedule appointments, create client presentations, coordinate services, and process offers. The platform aims to streamline property management operations, enhance user experience with a professional, data-dense dashboard, and includes features like role-based access control, Google Calendar integration, a service provider marketplace, property submission with digital agreement signing, and a full back office for offer management.
+HomesApp is a comprehensive SaaS platform for real estate property management, primarily focused on the Tulum, Quintana Roo market. It streamlines operations for various user roles (master, admin, seller, owner, client) through features like property management, appointment scheduling, client presentations, service coordination, and offer processing. The platform aims to enhance user experience with a professional, data-dense dashboard, role-based access, Google Calendar integration, a service provider marketplace, property submission with digital agreement signing, and a full back office for offer management. The business vision is to dominate the real estate property management sector in Tulum.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (October 2025)
-
-### Navigation Updates
-- Removed "Mis" (my) prefix from Spanish navigation items:
-  - "Mis Citas" → "Citas"
-  - "Mis Favoritos" → "Favoritos"
-  - "Mis Oportunidades" → "Oportunidades"
-- English translations updated accordingly (Appointments, Favorites, Opportunities)
-
-### Internationalization Enhancements
-- Added comprehensive translations for RoleToggle component (Spanish/English)
-  - Role labels: Owner/Propietario, Client/Cliente
-  - Mode switching UI: "Cambiar modo"/"Switch mode"
-  - Role descriptions and success/error messages
-- Fully translated ClientPresentationCard component
-  - Card actions: Activate/Activar, Deactivate/Desactivar, Edit/Editar, Delete/Eliminar
-  - Property details: bedrooms, bathrooms, amenities
-  - Modality labels: Rent/Renta, Sale/Venta, Rent or Sale/Renta o Venta
-  - Match counters with proper pluralization
-- Complete sidebar internationalization (October 2025)
-  - Added 40+ translation keys (sidebar.*) for all menu items and sections
-  - All navigation items use titleKey property for consistent translation
-  - Section labels fully translated: Principal/Main, Administración/Administration, Servicios/Services
-  - Role-based menus properly localized for all user types
-- All UI text now properly internationalized
-
-### Sidebar Improvements
-- Collapsible sidebar with icon-only mode (uses Shadcn sidebar primitives)
-- Logo displays correctly: full logo when expanded, small icon when collapsed
-- RoleToggle adapts to sidebar state: full button with text when expanded, icon-only when collapsed
-- Help button adapts similarly to sidebar state
-- Button sizes consistent across collapsed/expanded states
-
-### Review System Implementation
-- Complete database schema for bidirectional reviews
-- RESTful API endpoints for all review types
-- Storage layer methods with filtering capabilities
-- See TEST_ACCOUNTS.md for detailed role-based review functionality
-
-### Promotional Banner Enhancements
-- Updated PublicDashboard promotional banners with relevant stock imagery (October 2025)
-  - Owner banner: professional property management dashboard image
-  - Service provider banner: service team performing maintenance work
-  - Affiliate banner: business partnership and referral network concept
-- Images now clearly represent each banner's purpose and message
-
-### Unified Application System (October 2025)
-- Created unified application page at `/aplicar` for seller and service provider applications
-- **Seller Applications**: Uses role-requests system with requestedRole: "seller"
-  - Form requires detailed sales experience description (min 50 characters)
-  - Integrated with existing role-request approval workflow
-- **Service Provider Applications**: Uses providerApplications system
-  - Supports multiple specialties: Limpieza, Mantenimiento, Plomería, Electricidad, etc.
-  - Collects contact info, experience, description, and optional references
-- Landing page includes visible "Aplicar Ahora" CTA in dedicated section
-- Two-step user flow: selection screen → application form → success confirmation
-- Available to both authenticated and unauthenticated users
-- Forms use React Hook Form with Zod validation
-- Success state shows confirmation message with navigation back to home
-
-### Role Request System Enhancement (October 2025)
-- **Mandatory Contact Information**: Role request applications now require email and WhatsApp contact information
-  - Added `email` (VARCHAR 255, NOT NULL) and `whatsapp` (VARCHAR 20, NOT NULL) fields to role_requests table
-  - Added `yearsOfExperience` (INTEGER) field for structured experience data
-  - Enhanced form validation: email format validation, WhatsApp minimum 10 characters
-  - Admin UI displays contact information prominently in highlighted section for easy access
-  - Full validation on both frontend (Zod) and backend (insert schema)
-- **Structured Experience Data**: Years of experience stored separately from description
-  - Numeric field for years of experience (not embedded in text)
-  - Separate fields for experience description and additional information
-  - Admin review page displays years and description independently
-
-### Admin Panel Enhancements (October 2025)
-- **Full English Translation**: All admin panel sections now fully translated to English
-  - Dashboard stats, pending reviews, property status indicators
-  - Loading states, quick actions, and all admin interface elements
-  - Consistent bilingual support across entire admin experience
-  
-- **Admin Profile Management**: New dedicated profile page for administrators at `/admin/profile`
-  - Personal information editing (first name, last name, email)
-  - Profile photo upload with validation (max 2MB, images only)
-  - Password change functionality with current password verification
-  - Theme toggle integration (light/dark mode)
-  - Separate from regular user profiles, uses admin-specific authentication
-  - Extended `adminUsers` table with `profileImageUrl` field for avatar support
-
-- **User Menu Updates**: Streamlined administrator menu
-  - Removed "Backoffice" menu item for cleaner interface
-  - Added "My Profile" option for administrators (links to `/admin/profile`)
-  - Menu automatically adapts based on user role (admin vs regular user)
-  - Full translation support for menu items
-
-### Bug Fixes
-- Fixed toggle-active endpoint for presentation cards to properly toggle state instead of always activating
-- Endpoint now checks existing state before toggling, preventing "card not found" errors
-- Fixed reviewedBy field in role requests to be optional (prevents foreign key errors for admin users)
-
 ## System Architecture
 
 ### Frontend
 
-The frontend is built with React 18, TypeScript, and Vite, using Wouter for routing and TanStack Query for server state management. UI components are developed with Radix UI primitives and Shadcn/ui, styled using Tailwind CSS, and support light/dark themes and internationalization (Spanish/English). It features a professional design system and role-switching capabilities.
+The frontend is built with React 18, TypeScript, and Vite, using Wouter for routing and TanStack Query for server state management. UI components leverage Radix UI primitives and Shadcn/ui, styled with Tailwind CSS, and support light/dark themes and internationalization (Spanish/English). It features a professional design system and role-switching capabilities.
 
 ### Backend
 
@@ -117,73 +20,31 @@ The backend utilizes Node.js with Express.js and TypeScript (ESM modules), provi
 
 ### Data Storage
 
-The application uses PostgreSQL (Neon serverless) and Drizzle ORM for type-safe interactions. The schema supports user management, property statuses, appointment scheduling, client presentation cards, service providers, offer workflows, and staff assignments, with audit logs for critical actions. A lead capture system tracks user actions and manages rental opportunity requests. A dedicated `condominiums` table manages approved condominium listings with a three-state approval workflow.
+The application uses PostgreSQL (Neon serverless) and Drizzle ORM for type-safe interactions. The schema supports user management, property statuses, appointment scheduling, client presentation cards, service providers, offer workflows, staff assignments, and audit logs. A lead capture system tracks user actions and manages rental opportunity requests. A dedicated `condominiums` table manages approved condominium listings with a three-state approval workflow.
 
-#### Review System (October 2025)
-A comprehensive bidirectional review system enables feedback between users:
-- **Property Reviews**: Clients rate properties (1-5 stars) with optional comments
-- **Appointment Reviews**: Clients review appointment experiences
-- **Concierge Reviews**: Clients rate concierge service quality
-- **Client Reviews**: Concierges provide feedback on client interactions
+A comprehensive bidirectional review system enables feedback between users for properties, appointments, concierges, and clients.
 
-Review tables: `property_reviews`, `appointment_reviews`, `concierge_reviews`, `client_reviews`
-
-#### Income Management System (October 2025)
-A comprehensive financial tracking and payout management system for commissions, referrals, and rental income:
-
-**Database Schema**:
-- `rentalCommissionConfigs`: Defines commission percentages for properties/users (admin-managed)
-- `accountantAssignments`: Scopes which properties/users each accountant manages (property-specific or user-specific)
-- `payoutBatches`: Groups multiple transactions for batch processing with workflow states (draft→approved→paid)
-- `incomeTransactions`: Individual payment records with categories (referral_client, referral_owner, rental_commission, other_income)
-
-**Enums**: `incomeCategory`, `payoutBatchStatus` (draft/approved/rejected/paid/cancelled), `assignmentType` (property/user)
-
-**Access Control**:
-- **Accountants**: Limited scope based on assignments; can create transactions/batches only for assigned properties/users
-- **Admins**: Full access to all transactions, batch approval workflow, and commission configuration
-
-**Workflow**:
-1. Admin assigns accountants to specific properties or users
-2. Accountant creates income transactions within their scope
-3. Accountant groups transactions into payout batches (status: draft)
-4. Admin reviews and approves/rejects batches (dual approval requirement)
-5. Admin marks batches as paid when payment is completed
-6. All status changes are audit-logged
-
-**API Endpoints**:
-- `/api/income/commission-configs` (Admin only): CRUD for commission configuration
-- `/api/income/assignments` (Admin only): CRUD for accountant assignments
-- `/api/income/my-assignments` (Accountant): View own active assignments
-- `/api/income/batches` (Accountant/Admin): CRUD for payout batches with status workflow
-- `/api/income/transactions` (Accountant/Admin): CRUD for income transactions with scope filtering
-- `/api/income/reports` (Admin only): Aggregate reports by user/property/category/timeframe
-
-**Features**:
-- Sequential batch number generation per year (format: YYYY-NNNN)
-- Accountant scope filtering ensures data isolation
-- Comprehensive reporting with grouping by day/week/month/user/property/category
-- Audit logging for all batch status changes and critical operations
-- Zod schema validation on all mutations
+A financial tracking and payout management system handles commissions, referrals, and rental income. This includes `rentalCommissionConfigs`, `accountantAssignments`, `payoutBatches`, and `incomeTransactions` tables, with a workflow for accountants to create transactions and batches, and admins to approve them. Access control is role-based, ensuring data isolation for accountants.
 
 ### Key Features and Workflows
 
-*   **Property Management**: Includes a property approval workflow, owner-submitted change requests, and owner settings for appointment auto-approval. All properties are standardized to Tulum location. Sublease functionality is supported with search filters.
-*   **Property Submission**: A multi-step wizard with automatic draft saving, digital agreement signing using admin-managed templates, and audit logging. Integration with approved condominium listings.
-*   **Condominium Workflow**: User-requested condominiums require admin approval. The system includes 396 pre-approved Tulum condominiums.
-*   **Client Dashboard**: A comprehensive overview for clients with personalized welcome, quick stats (appointments, favorites, opportunities, viewed properties), quick actions, and conditional sections. Includes appointment management with Google Calendar integration.
-*   **User Experience**: Features an Airbnb-style role switching, full i18n support with language persistence across authentication, a WebSocket-based real-time chat system with secure authentication, enhanced presentation cards, granular email notification preferences, and device-based profile picture uploads.
-*   **Public Dashboard**: An Airbnb-inspired design adapting for authenticated vs. non-authenticated users, with dual pricing support (rental/sale), improved property listing displays, and advanced search filters (property type, colony, condominium name). Features promotional banners with relevant imagery for property owners, service providers, and affiliate/referral programs.
-*   **Virtual Assistant (MARCO)**: An intelligent, humanized chatbot named MARCO that guides clients through property search, suggests presentation cards, and coordinates appointments. It's configurable by admins (name, prompt, welcome, active status) and uses OpenAI GPT-5. Chatbot is internationalized (Marco-IA/Marco-AI).
+*   **Property Management**: Includes a property approval workflow, owner-submitted change requests, owner settings for appointment auto-approval, and sublease functionality. All properties are standardized to Tulum location.
+*   **Property Submission**: A multi-step wizard with automatic draft saving, digital agreement signing using admin-managed templates, and integration with approved condominium listings.
+*   **Condominium Workflow**: User-requested condominiums require admin approval, with 396 pre-approved Tulum condominiums in the system.
+*   **Client Dashboard**: Provides a comprehensive overview with personalized welcome, quick stats, quick actions, and appointment management with Google Calendar integration.
+*   **User Experience**: Features an Airbnb-style role switching, full i18n support with language persistence, a WebSocket-based real-time chat system, enhanced presentation cards, granular email notification preferences, and device-based profile picture uploads.
+*   **Public Dashboard**: An Airbnb-inspired design adapting for authenticated vs. non-authenticated users, with dual pricing support (rental/sale), improved property listing displays, advanced search filters, and promotional banners.
+*   **Virtual Assistant (MARCO)**: An intelligent, humanized chatbot powered by OpenAI GPT-5 that guides clients through property search, suggests presentation cards, and coordinates appointments. It's configurable by admins and internationalized.
 *   **Referral System**: Secure, role-based referral filtering ensures users only see their own referrals, with admins having full visibility.
-*   **Welcome Modals**: First-time welcome modals for clients and property owners to introduce features, controlled by a `hasSeenWelcome` flag.
+*   **Welcome Modals**: First-time welcome modals for clients and property owners to introduce features.
 *   **Service Provider Messaging**: One-click chat initiation with service providers from their directory listings.
-*   **Review System**: Bidirectional feedback system allowing clients to review properties, appointments, and concierges, while concierges can review clients. API endpoints: `/api/reviews/{properties|appointments|concierges|clients}` with GET/POST methods.
-*   **Application System**: Unified application flow at `/aplicar` allowing users to apply as sellers (via role-requests) or service providers (via providerApplications). Accessible from landing page with "Aplicar Ahora" CTA. Two-step process with selection screen and specialized forms for each application type.
+*   **Application System**: A unified application flow at `/aplicar` for users to apply as sellers (via role-requests) or service providers (via providerApplications), accessible from the landing page.
+*   **Admin Panel Enhancements**: Includes full English translation, a dedicated admin profile management page with photo upload and password changes, and a streamlined user menu.
+*   **Role Request System**: Enhanced with mandatory email, WhatsApp, and structured years of experience fields for applications.
 
 ### System Design Choices
 
-The platform uses unified middleware for consistent authentication handling, automatic logging for auditing, and a public dashboard that adapts its experience based on user authentication. A calendar view for appointments and detailed user profiles are included. WebSocket security for real-time chat implements session-based authentication, per-conversation authorization, and secure connection handling.
+The platform uses unified middleware for consistent authentication handling, automatic logging for auditing, and a public dashboard that adapts its experience based on user authentication. WebSocket security for real-time chat implements session-based authentication, per-conversation authorization, and secure connection handling.
 
 ## External Dependencies
 
