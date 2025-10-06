@@ -70,6 +70,8 @@ import AdminIncome from "@/pages/AdminIncome";
 import MyIncome from "@/pages/MyIncome";
 import Permissions from "@/pages/Permissions";
 import Contracts from "@/pages/Contracts";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -111,6 +113,8 @@ function AuthenticatedApp() {
         <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
         <Route path="/propiedad/:id" component={PropertyDetails} />
         <Route path="/favoritos" component={Favorites} />
+        <Route path="/terminos" component={Terms} />
+        <Route path="/privacidad" component={Privacy} />
         <Route path="/" component={PublicDashboard} />
         <Route component={PublicDashboard} />
       </Switch>
