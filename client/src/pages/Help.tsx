@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
@@ -624,21 +622,8 @@ export default function Help() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const userRole = (user?.role || "cliente") as UserRole;
-  const [selectedRole, setSelectedRole] = useState<UserRole>(userRole);
 
-  const helpSections = roleHelpContent[selectedRole] || roleHelpContent.cliente;
-
-  const roleOptions: { value: UserRole; label: string; icon: any }[] = [
-    { value: "cliente", label: t("help.roles.cliente"), icon: Home },
-    { value: "owner", label: t("help.roles.owner"), icon: Building2 },
-    { value: "seller", label: t("help.roles.seller"), icon: Briefcase },
-    { value: "concierge", label: t("help.roles.concierge"), icon: Users },
-    { value: "provider", label: t("help.roles.provider"), icon: Package },
-    { value: "master", label: t("help.roles.admin"), icon: Settings },
-    { value: "abogado", label: t("help.roles.abogado"), icon: Scale },
-    { value: "contador", label: t("help.roles.contador"), icon: Calculator },
-    { value: "agente_servicios_especiales", label: t("help.roles.agente"), icon: Wrench },
-  ];
+  const helpSections = roleHelpContent[userRole] || roleHelpContent.cliente;
 
   const VideoPlaceholder = ({ videoId }: { videoId: string }) => (
     <div className="relative w-full aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-border">
@@ -662,103 +647,72 @@ export default function Help() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("help.page.selectRole")}</CardTitle>
-          <CardDescription>{t("help.page.selectRoleDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={selectedRole} onValueChange={(val) => setSelectedRole(val as UserRole)} className="space-y-4">
-            <TabsList className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 h-auto p-2">
-              {roleOptions.map((role) => {
-                const Icon = role.icon;
-                return (
-                  <TabsTrigger 
-                    key={role.value} 
-                    value={role.value}
-                    className="flex flex-col items-center gap-1 p-2"
-                    data-testid={`tab-help-${role.value}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-xs">{role.label}</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+      <div className="space-y-6">
+        <div className="flex items-start gap-4 p-4 bg-accent/50 rounded-lg">
+          <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="font-semibold mb-1">{t(`help.${userRole}.overview.title`)}</h3>
+            <p className="text-sm text-muted-foreground">{t(`help.${userRole}.overview.desc`)}</p>
+          </div>
+        </div>
 
-            {roleOptions.map((role) => (
-              <TabsContent key={role.value} value={role.value} className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 bg-accent/50 rounded-lg">
-                    <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-semibold mb-1">{t(`help.${role.value}.overview.title`)}</h3>
-                      <p className="text-sm text-muted-foreground">{t(`help.${role.value}.overview.desc`)}</p>
-                    </div>
-                  </div>
+        {helpSections.map((section) => {
+          const SectionIcon = section.icon;
+          return (
+            <Card key={section.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <SectionIcon className="h-5 w-5" />
+                  {t(section.titleKey)}
+                </CardTitle>
+                <CardDescription>{t(section.descKey)}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  {section.sections.map((subsection, idx) => (
+                    <AccordionItem key={idx} value={`item-${idx}`}>
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <HelpCircle className="h-4 w-4" />
+                          {t(subsection.titleKey)}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          {t(subsection.contentKey)}
+                        </p>
+                        
+                        {subsection.videoId && (
+                          <div className="space-y-2">
+                            <Badge variant="secondary" className="gap-1">
+                              <Video className="h-3 w-3" />
+                              {t("help.video.tutorial")}
+                            </Badge>
+                            <VideoPlaceholder videoId={subsection.videoId} />
+                          </div>
+                        )}
 
-                  {helpSections.map((section) => {
-                    const SectionIcon = section.icon;
-                    return (
-                      <Card key={section.id}>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <SectionIcon className="h-5 w-5" />
-                            {t(section.titleKey)}
-                          </CardTitle>
-                          <CardDescription>{t(section.descKey)}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <Accordion type="single" collapsible className="w-full">
-                            {section.sections.map((subsection, idx) => (
-                              <AccordionItem key={idx} value={`item-${idx}`}>
-                                <AccordionTrigger className="text-left">
-                                  <div className="flex items-center gap-2">
-                                    <HelpCircle className="h-4 w-4" />
-                                    {t(subsection.titleKey)}
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="space-y-4">
-                                  <p className="text-sm text-muted-foreground">
-                                    {t(subsection.contentKey)}
-                                  </p>
-                                  
-                                  {subsection.videoId && (
-                                    <div className="space-y-2">
-                                      <Badge variant="secondary" className="gap-1">
-                                        <Video className="h-3 w-3" />
-                                        {t("help.video.tutorial")}
-                                      </Badge>
-                                      <VideoPlaceholder videoId={subsection.videoId} />
-                                    </div>
-                                  )}
-
-                                  {subsection.steps && subsection.steps.length > 0 && (
-                                    <div className="space-y-2">
-                                      <p className="font-semibold text-sm">{t("help.steps.title")}</p>
-                                      <ol className="list-decimal list-inside space-y-2">
-                                        {subsection.steps.map((step, stepIdx) => (
-                                          <li key={stepIdx} className="text-sm text-muted-foreground">
-                                            {t(step)}
-                                          </li>
-                                        ))}
-                                      </ol>
-                                    </div>
-                                  )}
-                                </AccordionContent>
-                              </AccordionItem>
-                            ))}
-                          </Accordion>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        </CardContent>
-      </Card>
+                        {subsection.steps && subsection.steps.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="font-semibold text-sm">{t("help.steps.title")}</p>
+                            <ol className="list-decimal list-inside space-y-2">
+                              {subsection.steps.map((step, stepIdx) => (
+                                <li key={stepIdx} className="text-sm text-muted-foreground">
+                                  {t(step)}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       <Card>
         <CardHeader>
