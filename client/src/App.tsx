@@ -66,6 +66,7 @@ import ProviderApplication from "@/pages/ProviderApplication";
 import Apply from "@/pages/Apply";
 import CreateUser from "@/pages/CreateUser";
 import Referrals from "@/pages/Referrals";
+import AdminReferrals from "@/pages/AdminReferrals";
 import Feedback from "@/pages/Feedback";
 import AdminFeedback from "@/pages/AdminFeedback";
 import AccountantIncome from "@/pages/AccountantIncome";
@@ -235,6 +236,7 @@ function AuthenticatedApp() {
               <Route path="/chat" component={Chat} />
               <Route path="/perfil" component={Profile} />
               <Route path="/referidos" component={Referrals} />
+              <Route path="/admin/referidos" component={AdminReferrals} />
               <Route path="/feedback" component={Feedback} />
               <Route path="/admin/feedback" component={AdminFeedback} />
               <Route path="/admin/role-requests" component={RoleRequests} />
