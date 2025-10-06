@@ -3,12 +3,15 @@ import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 export default function VerifyEmail() {
   const [_, setLocation] = useLocation();
   const searchParams = useSearch();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const [autoLogin, setAutoLogin] = useState(false);
+  const [requiresApproval, setRequiresApproval] = useState(false);
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -27,6 +30,23 @@ export default function VerifyEmail() {
         if (response.ok) {
           setStatus("success");
           setMessage(data.message);
+          
+          // Check if account requires approval
+          if (data.requiresApproval) {
+            setRequiresApproval(true);
+          }
+          
+          // Check if auto-login was successful
+          if (data.autoLogin) {
+            setAutoLogin(true);
+            // Invalidate queries to refresh user data
+            queryClient.invalidateQueries();
+            
+            // Redirect to dashboard after 2 seconds
+            setTimeout(() => {
+              setLocation("/");
+            }, 2000);
+          }
         } else {
           setStatus("error");
           setMessage(data.message || "Error al verificar el email");
@@ -38,7 +58,7 @@ export default function VerifyEmail() {
     };
 
     verifyEmail();
-  }, [searchParams]);
+  }, [searchParams, setLocation]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 p-4">
@@ -72,11 +92,17 @@ export default function VerifyEmail() {
           {status === "success" && (
             <div className="text-center text-sm text-muted-foreground">
               <p>Tu cuenta ha sido verificada exitosamente.</p>
-              <p className="mt-2">Ahora puedes iniciar sesión con tu email y contraseña.</p>
+              {autoLogin ? (
+                <p className="mt-2">Redirigiendo a tu dashboard...</p>
+              ) : requiresApproval ? (
+                <p className="mt-2">Tu cuenta está pendiente de aprobación. Te notificaremos cuando sea aprobada.</p>
+              ) : (
+                <p className="mt-2">Ahora puedes iniciar sesión con tu email y contraseña.</p>
+              )}
             </div>
           )}
           
-          {status !== "loading" && (
+          {status !== "loading" && !autoLogin && (
             <Button
               className="w-full"
               onClick={() => setLocation("/")}

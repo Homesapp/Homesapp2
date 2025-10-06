@@ -631,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/verify-email", emailVerificationLimiter, async (req, res) => {
+  app.get("/api/verify-email", emailVerificationLimiter, async (req: any, res) => {
     try {
       const { token } = req.query;
 
@@ -657,7 +657,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete used token
       await storage.deleteEmailVerificationToken(token);
 
-      res.json({ message: "Email verificado exitosamente" });
+      // Get user data to check approval status
+      const user = await storage.getUser(verificationToken.userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Only auto-login if user is approved
+      if (user.status === "approved") {
+        // Auto-login: Create session for the user
+        req.session.userId = verificationToken.userId;
+
+        // Save session explicitly
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err: any) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        res.json({ 
+          message: "Email verificado exitosamente",
+          autoLogin: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+          }
+        });
+      } else {
+        // User is not approved yet - email verified but no auto-login
+        res.json({ 
+          message: "Email verificado exitosamente. Tu cuenta está pendiente de aprobación.",
+          autoLogin: false,
+          requiresApproval: true
+        });
+      }
     } catch (error) {
       console.error("Error during email verification:", error);
       res.status(500).json({ message: "Error al verificar el email" });
