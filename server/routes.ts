@@ -2882,6 +2882,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's property agreements (contracts)
+  app.get("/api/property-agreements", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agreements = await storage.getPropertyAgreements({ userId });
+      res.json(agreements);
+    } catch (error: any) {
+      console.error("Error fetching property agreements:", error);
+      res.status(500).json({ message: error.message || "Error al obtener contratos" });
+    }
+  });
+
   // Rental Opportunity Requests (SOR) routes
   app.post("/api/rental-opportunity-requests", isAuthenticated, async (req: any, res) => {
     try {

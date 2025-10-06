@@ -109,6 +109,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.clients", url: "/clientes", icon: Users, roles: ["master", "admin", "admin_jr", "seller"] },
     { titleKey: "sidebar.cards", url: "/presentation-cards", icon: ClipboardList, roles: ["master", "admin", "admin_jr", "seller", "cliente"] },
     { titleKey: "sidebar.incomeManagement", url: "/accountant/income", icon: DollarSign, roles: ["contador"] },
+    { titleKey: "sidebar.contracts", url: "/contratos", icon: FileText, roles: ["cliente", "owner", "abogado"] },
   ];
 
   const adminItems = [

@@ -69,6 +69,7 @@ import AccountantIncome from "@/pages/AccountantIncome";
 import AdminIncome from "@/pages/AdminIncome";
 import MyIncome from "@/pages/MyIncome";
 import Permissions from "@/pages/Permissions";
+import Contracts from "@/pages/Contracts";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -226,6 +227,7 @@ function AuthenticatedApp() {
               <Route path="/feedback" component={Feedback} />
               <Route path="/admin/feedback" component={AdminFeedback} />
               <Route path="/permissions" component={Permissions} />
+              <Route path="/contratos" component={Contracts} />
               <Route component={NotFound} />
             </Switch>
           </main>

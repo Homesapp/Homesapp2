@@ -469,6 +469,7 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.directory": "Directorio",
     "sidebar.myServices": "Mis Servicios",
     "sidebar.profile": "Perfil",
+    "sidebar.contracts": "Contratos",
     
     // Colony/Condominium Suggestions
     "suggestion.colony.title": "Sugerir Nueva Colonia",
@@ -967,6 +968,7 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.directory": "Directory",
     "sidebar.myServices": "My Services",
     "sidebar.profile": "Profile",
+    "sidebar.contracts": "Contracts",
     
     // Colony/Condominium Suggestions
     "suggestion.colony.title": "Suggest New Colony",
