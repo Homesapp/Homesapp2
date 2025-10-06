@@ -87,6 +87,8 @@ export default function Apply() {
     mutationFn: async (data: SellerApplicationForm) => {
       return await apiRequest("POST", "/api/role-requests", {
         requestedRole: "seller",
+        email: data.email,
+        whatsapp: data.whatsapp,
         reason: data.reason,
       });
     },
