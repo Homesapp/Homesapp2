@@ -48,15 +48,6 @@ import { RoleToggle } from "@/components/RoleToggle";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/components/ui/sidebar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useState } from "react";
 
 export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "cliente" | "abogado" | "contador" | "agente_servicios_especiales";
 
@@ -81,7 +72,6 @@ const roleLabels: Record<UserRole, string> = {
 
 export function AppSidebar({ userRole }: AppSidebarProps) {
   const [location] = useLocation();
-  const [helpOpen, setHelpOpen] = useState(false);
   const { t } = useLanguage();
   const { state } = useSidebar();
 
@@ -243,154 +233,17 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
       <SidebarFooter>
         <div className="p-4 border-t space-y-2">
           <RoleToggle />
-          <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size={state === "expanded" ? "default" : "icon"}
-                className={state === "expanded" ? "w-full justify-start gap-2" : ""}
-                data-testid="button-help"
-              >
-                <HelpCircle className="h-4 w-4" />
-                {state === "expanded" && <span>{t("help.title")}</span>}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{t("help.dialog.title")}</DialogTitle>
-                <DialogDescription>
-                  {t("help.dialog.subtitle")}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-6">
-                <section>
-                  <h3 className="font-semibold text-lg mb-3 text-primary">{t("help.about.title")}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {t("help.about.desc")}
-                  </p>
-                </section>
-
-                <section>
-                  <h3 className="font-semibold text-lg mb-3 text-primary">{t("help.tutorials.title")}</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                        <Search className="h-4 w-4" />
-                        {t("help.tutorials.search.title")}
-                      </h4>
-                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                        <li>{t("help.tutorials.search.step1")}</li>
-                        <li>{t("help.tutorials.search.step2")}</li>
-                        <li>{t("help.tutorials.search.step3")}</li>
-                        <li>{t("help.tutorials.search.step4")}</li>
-                      </ol>
-                    </div>
-
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {t("help.tutorials.appointments.title")}
-                      </h4>
-                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                        <li>{t("help.tutorials.appointments.step1")}</li>
-                        <li>{t("help.tutorials.appointments.step2")}</li>
-                        <li>{t("help.tutorials.appointments.step3")}</li>
-                        <li>{t("help.tutorials.appointments.step4")}</li>
-                      </ol>
-                    </div>
-
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                        <Heart className="h-4 w-4" />
-                        {t("help.tutorials.favorites.title")}
-                      </h4>
-                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                        <li>{t("help.tutorials.favorites.step1")}</li>
-                        <li>{t("help.tutorials.favorites.step2")}</li>
-                        <li>{t("help.tutorials.favorites.step3")}</li>
-                      </ol>
-                    </div>
-
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                        <ClipboardList className="h-4 w-4" />
-                        {t("help.tutorials.cards.title")}
-                      </h4>
-                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                        <li>{t("help.tutorials.cards.step1")}</li>
-                        <li>{t("help.tutorials.cards.step2")}</li>
-                        <li>{t("help.tutorials.cards.step3")}</li>
-                        <li>{t("help.tutorials.cards.step4")}</li>
-                      </ol>
-                    </div>
-
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                        <MessageCircle className="h-4 w-4" />
-                        {t("help.tutorials.chat.title")}
-                      </h4>
-                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                        <li>{t("help.tutorials.chat.step1")}</li>
-                        <li>{t("help.tutorials.chat.step2")}</li>
-                        <li>{t("help.tutorials.chat.step3")}</li>
-                      </ol>
-                    </div>
-
-                    {userRole === "owner" && (
-                      <div className="border rounded-lg p-4 bg-accent/5">
-                        <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          {t("help.tutorials.owner.title")}
-                        </h4>
-                        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                          <li>{t("help.tutorials.owner.step1")}</li>
-                          <li>{t("help.tutorials.owner.step2")}</li>
-                          <li>{t("help.tutorials.owner.step3")}</li>
-                          <li>{t("help.tutorials.owner.step4")}</li>
-                        </ol>
-                      </div>
-                    )}
-
-                    {(userRole === "master" || userRole === "admin" || userRole === "admin_jr") && (
-                      <div className="border rounded-lg p-4 bg-accent/5">
-                        <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
-                          <UserCog className="h-4 w-4" />
-                          {t("help.tutorials.admin.title")}
-                        </h4>
-                        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                          <li>{t("help.tutorials.admin.step1")}</li>
-                          <li>{t("help.tutorials.admin.step2")}</li>
-                          <li>{t("help.tutorials.admin.step3")}</li>
-                          <li>{t("help.tutorials.admin.step4")}</li>
-                        </ol>
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                <section>
-                  <h3 className="font-semibold text-lg mb-3 text-primary">{t("help.features.title")}</h3>
-                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                    <li>{t("help.features.item1")}</li>
-                    <li>{t("help.features.item2")}</li>
-                    <li>{t("help.features.item3")}</li>
-                    <li>{t("help.features.item4")}</li>
-                    <li>{t("help.features.item5")}</li>
-                    <li>{t("help.features.item6")}</li>
-                    <li>{t("help.features.item7")}</li>
-                  </ul>
-                </section>
-
-                <section className="border-t pt-4">
-                  <h3 className="font-semibold text-lg mb-2">{t("help.support.title")}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {t("help.support.desc")}
-                  </p>
-                </section>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Link href="/ayuda" data-testid="link-help">
+            <Button
+              variant="outline"
+              size={state === "expanded" ? "default" : "icon"}
+              className={state === "expanded" ? "w-full justify-start gap-2" : ""}
+              data-testid="button-help"
+            >
+              <HelpCircle className="h-4 w-4" />
+              {state === "expanded" && <span>{t("help.title")}</span>}
+            </Button>
+          </Link>
         </div>
       </SidebarFooter>
     </Sidebar>
