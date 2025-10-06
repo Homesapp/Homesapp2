@@ -73,7 +73,7 @@ export default function PropertySearch() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [filters, setFilters] = useState<SearchFilters>({ location: "Tulum" });
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   // Cargar favoritos del usuario
@@ -184,42 +184,65 @@ export default function PropertySearch() {
       {/* Public Header - Only show when not authenticated */}
       {!isAuthenticated && (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container mx-auto flex h-20 items-center justify-between px-4">
+          <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4 gap-2">
             <div className="flex items-center cursor-pointer" onClick={() => setLocation("/")}>
-              <img src={logoIcon} alt="HomesApp" className="h-16 w-auto" />
+              <img src={logoIcon} alt="HomesApp" className="h-12 md:h-16 w-auto" />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <LanguageToggle />
               <ThemeToggle />
               <Button
                 variant="ghost"
+                size="sm"
                 onClick={() => setLocation("/login")}
                 data-testid="button-login"
+                className="hidden sm:flex"
               >
                 Iniciar Sesión
               </Button>
               <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/login")}
+                data-testid="button-login-mobile"
+                className="sm:hidden"
+              >
+                Entrar
+              </Button>
+              <Button
                 variant="default"
+                size="sm"
                 onClick={() => setLocation("/register")}
                 data-testid="button-register"
+                className="hidden sm:flex"
               >
                 Registrarse
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setLocation("/register")}
+                data-testid="button-register-mobile"
+                className="sm:hidden"
+              >
+                Registro
               </Button>
             </div>
           </div>
         </header>
       )}
       
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Buscar Propiedades en Tulum</h1>
-            <p className="text-muted-foreground">Propiedades exclusivas en Tulum, Quintana Roo</p>
+      <div className="container mx-auto py-4 md:py-6 px-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Buscar Propiedades en Tulum</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Propiedades exclusivas en Tulum, Quintana Roo</p>
           </div>
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
             data-testid="button-toggle-filters"
+            className="w-full sm:w-auto"
           >
             <SlidersHorizontal className="h-4 w-4 mr-2" />
             {showFilters ? "Ocultar" : "Mostrar"} Filtros
