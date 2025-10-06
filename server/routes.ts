@@ -1000,10 +1000,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update role request status
+      // Only pass reviewerId if it's an OIDC user (exists in users table)
+      const reviewerIdToSave = req.user?.claims?.sub || null;
       const updatedRequest = await storage.updateRoleRequestStatus(
         id,
         "approved",
-        reviewerId,
+        reviewerIdToSave,
         reviewNotes
       );
 
@@ -1045,10 +1047,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update role request status
+      // Only pass reviewerId if it's an OIDC user (exists in users table)
+      const reviewerIdToSave = req.user?.claims?.sub || null;
       const updatedRequest = await storage.updateRoleRequestStatus(
         id,
         "rejected",
-        reviewerId,
+        reviewerIdToSave,
         reviewNotes
       );
 

@@ -175,7 +175,7 @@ export interface IStorage {
   createRoleRequest(request: InsertRoleRequest): Promise<RoleRequest>;
   getRoleRequest(id: string): Promise<RoleRequest | undefined>;
   getRoleRequests(filters?: { userId?: string; status?: string }): Promise<RoleRequest[]>;
-  updateRoleRequestStatus(id: string, status: string, reviewedBy: string, reviewNotes?: string): Promise<RoleRequest>;
+  updateRoleRequestStatus(id: string, status: string, reviewedBy?: string | null, reviewNotes?: string): Promise<RoleRequest>;
   getUserActiveRoleRequest(userId: string): Promise<RoleRequest | undefined>;
   
   // Colony operations
@@ -670,14 +670,14 @@ export class DatabaseStorage implements IStorage {
   async updateRoleRequestStatus(
     id: string,
     status: string,
-    reviewedBy: string,
+    reviewedBy?: string | null,
     reviewNotes?: string
   ): Promise<RoleRequest> {
     const [request] = await db
       .update(roleRequests)
       .set({
         status: status as any,
-        reviewedBy,
+        reviewedBy: reviewedBy || null,
         reviewedAt: new Date(),
         reviewNotes,
         updatedAt: new Date(),
