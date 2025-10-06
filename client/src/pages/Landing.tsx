@@ -78,6 +78,18 @@ export default function Landing() {
               <Link href="/login">{t("landing.loginButton")}</Link>
             </Button>
           </div>
+
+          <div className="pt-12 mt-12 border-t">
+            <div className="text-center space-y-4">
+              <h3 className="text-2xl font-semibold">¿Quieres trabajar con nosotros?</h3>
+              <p className="text-muted-foreground">
+                Únete a nuestro equipo como vendedor o proveedor de servicios especializados
+              </p>
+              <Button size="lg" variant="default" asChild data-testid="button-apply">
+                <Link href="/aplicar">Aplicar Ahora</Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </main>
     </div>

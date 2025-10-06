@@ -60,6 +60,7 @@ import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import ProviderApplication from "@/pages/ProviderApplication";
+import Apply from "@/pages/Apply";
 import CreateUser from "@/pages/CreateUser";
 import Referrals from "@/pages/Referrals";
 import Feedback from "@/pages/Feedback";
@@ -105,6 +106,7 @@ function AuthenticatedApp() {
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/buscar-propiedades" component={PropertySearch} />
         <Route path="/solicitud-proveedor" component={ProviderApplication} />
+        <Route path="/aplicar" component={Apply} />
         <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
         <Route path="/propiedad/:id" component={PropertyDetails} />
         <Route path="/favoritos" component={Favorites} />
@@ -181,6 +183,7 @@ function AuthenticatedApp() {
               <Route path="/" component={getHomeDashboard()} />
               <Route path="/mis-citas" component={Appointments} />
               <Route path="/buscar-propiedades" component={PropertySearch} />
+              <Route path="/aplicar" component={Apply} />
               <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
               <Route path="/propiedad/:id" component={PropertyDetails} />
               <Route path="/favoritos" component={Favorites} />
