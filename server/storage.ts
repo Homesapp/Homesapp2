@@ -27,6 +27,7 @@ import {
   leadPropertyOffers,
   systemConfig,
   rentalApplications,
+  rentalContracts,
   propertyChangeRequests,
   inspectionReports,
   ownerSettings,
