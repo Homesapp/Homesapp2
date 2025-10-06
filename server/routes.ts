@@ -602,8 +602,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailVerified: false,
       });
 
-      // Generate 6-digit verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate 6-digit verification code using crypto for security
+      const crypto = await import("crypto");
+      const verificationCode = crypto.randomInt(100000, 1000000).toString();
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes expiration
 
@@ -640,15 +641,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email y código son requeridos" });
       }
 
+      // Validate code format (6 digits)
+      if (!/^\d{6}$/.test(code)) {
+        return res.status(400).json({ message: "Código inválido" });
+      }
+
       // Get user by email
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(404).json({ message: "Usuario no encontrado" });
+        return res.status(400).json({ message: "Código de verificación inválido" });
       }
 
-      // Get verification token by code
-      const verificationToken = await storage.getEmailVerificationTokenByCode(code);
-      if (!verificationToken || verificationToken.userId !== user.id) {
+      // Check if already verified
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "El email ya está verificado" });
+      }
+
+      // Get verification token for this specific user
+      const verificationToken = await storage.getEmailVerificationTokenByUserId(user.id);
+      
+      // Verify code matches and belongs to this user
+      if (!verificationToken || verificationToken.code !== code) {
         return res.status(400).json({ message: "Código de verificación inválido" });
       }
 
@@ -659,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify user email
-      await storage.verifyUserEmail(verificationToken.userId);
+      await storage.verifyUserEmail(user.id);
 
       // Delete used token
       await storage.deleteEmailVerificationToken(verificationToken.id);
@@ -715,8 +728,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete old verification code if exists
       await storage.deleteEmailVerificationTokenByUserId(user.id);
 
-      // Generate new 6-digit verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate new 6-digit verification code using crypto for security
+      const crypto = await import("crypto");
+      const verificationCode = crypto.randomInt(100000, 1000000).toString();
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
