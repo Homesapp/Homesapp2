@@ -46,8 +46,22 @@ export default function PublicDashboard() {
     queryKey: ["/api/condominiums/approved"],
   });
 
-  const featuredProperties = properties.filter(p => p.featured);
-  const allProperties = properties.slice(0, 12);
+  const featuredProperties = properties
+    .filter(p => p.featured)
+    .sort((a, b) => {
+      const aHasImages = (a.images && a.images.length > 0) ? 1 : 0;
+      const bHasImages = (b.images && b.images.length > 0) ? 1 : 0;
+      return bHasImages - aHasImages;
+    });
+  
+  const allProperties = properties
+    .slice(0, 24)
+    .sort((a, b) => {
+      const aHasImages = (a.images && a.images.length > 0) ? 1 : 0;
+      const bHasImages = (b.images && b.images.length > 0) ? 1 : 0;
+      return bHasImages - aHasImages;
+    })
+    .slice(0, 12);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
