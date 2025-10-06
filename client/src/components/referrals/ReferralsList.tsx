@@ -18,6 +18,11 @@ const statusLabels: Record<string, { es: string; en: string; variant: "default" 
   proceso_renta: { es: "Proceso de Renta", en: "Rental Process", variant: "default" },
   contactado: { es: "Contactado", en: "Contacted", variant: "default" },
   propiedad_agregada: { es: "Propiedad Agregada", en: "Property Added", variant: "default" },
+  propiedad_enlistada: { es: "Propiedad Enlistada", en: "Property Listed", variant: "default" },
+  pendiente_aprobacion_admin: { es: "Pendiente Aprobación Admin", en: "Pending Admin Approval", variant: "secondary" },
+  aprobado: { es: "Aprobado", en: "Approved", variant: "default" },
+  rechazado: { es: "Rechazado", en: "Rejected", variant: "destructive" },
+  pagado: { es: "Pagado", en: "Paid", variant: "default" },
   completado: { es: "Completado", en: "Completed", variant: "default" },
   cancelado: { es: "Cancelado", en: "Cancelled", variant: "destructive" },
 };
@@ -101,26 +106,38 @@ export function ReferralsList({ type, referrals }: ReferralsListProps) {
                     </div>
                   )}
 
-                  {("condoName" in referral && referral.condoName) && (
+                  {(("condominiumName" in referral && referral.condominiumName) || ("condoName" in referral && referral.condoName)) && (
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-secondary-foreground flex-shrink-0" />
                       <span className="truncate" data-testid="text-condo">
-                        {referral.condoName}
+                        {"condominiumName" in referral ? referral.condominiumName : referral.condoName}
                         {referral.unitNumber && ` - ${t("referrals.unit", "Unidad")} ${referral.unitNumber}`}
+                      </span>
+                    </div>
+                  )}
+
+                  {("propertyAddress" in referral && referral.propertyAddress) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-secondary-foreground flex-shrink-0" />
+                      <span className="truncate" data-testid="text-property-address">
+                        {referral.propertyAddress}
                       </span>
                     </div>
                   )}
                 </>
               )}
 
-              {referral.commissionEarned && parseFloat(referral.commissionEarned) > 0 && (
+              {(("commissionAmount" in referral && referral.commissionAmount && parseFloat(referral.commissionAmount) > 0) || 
+                ("commissionEarned" in referral && referral.commissionEarned && parseFloat(referral.commissionEarned) > 0)) && (
                 <div className="pt-2 border-t">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-secondary-foreground">
                       {t("referrals.commissionEarned", "Comisión ganada")}:
                     </span>
                     <span className="font-semibold text-green-600 dark:text-green-400" data-testid="text-commission">
-                      ${parseFloat(referral.commissionEarned).toFixed(2)}
+                      ${("commissionAmount" in referral && referral.commissionAmount 
+                        ? parseFloat(referral.commissionAmount) 
+                        : parseFloat(referral.commissionEarned || "0")).toFixed(2)}
                     </span>
                   </div>
                 </div>

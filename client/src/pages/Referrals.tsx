@@ -27,18 +27,18 @@ export default function Referrals() {
   });
 
   const { data: ownerReferrals = [], isLoading: ownersLoading, isError: ownersError } = useQuery<OwnerReferral[]>({
-    queryKey: ["/api/referrals/owners"],
+    queryKey: ["/api/owner-referrals"],
   });
 
   const isLoading = configLoading || clientsLoading || ownersLoading;
   const hasError = configError || clientsError || ownersError;
 
   const completedClientReferrals = clientReferrals.filter(r => r.status === "completado");
-  const completedOwnerReferrals = ownerReferrals.filter(r => r.status === "completado");
+  const completedOwnerReferrals = ownerReferrals.filter(r => r.status === "aprobado" || r.status === "pagado");
 
   const totalEarnings = [
-    ...completedClientReferrals.map(r => parseFloat(r.commissionEarned || "0")),
-    ...completedOwnerReferrals.map(r => parseFloat(r.commissionEarned || "0")),
+    ...completedClientReferrals.map(r => parseFloat(r.commissionAmount || "0")),
+    ...completedOwnerReferrals.map(r => parseFloat(r.commissionAmount || "0")),
   ].reduce((sum, amount) => sum + amount, 0);
 
   if (hasError) {

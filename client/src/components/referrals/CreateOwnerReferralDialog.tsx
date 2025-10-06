@@ -31,13 +31,31 @@ import {
 } from "@/components/ui/select";
 import { insertOwnerReferralSchema } from "@shared/schema";
 
-const formSchema = insertOwnerReferralSchema.omit({
+const formSchema = insertOwnerReferralSchema.extend({
+  propertyAddress: z.string().min(1, "La dirección de la propiedad es requerida"),
+  propertyDescription: z.string().optional(),
+  estimatedValue: z.string().optional(),
+}).omit({
   id: true,
   referrerId: true,
+  assignedTo: true,
+  emailVerified: true,
+  verificationToken: true,
+  verificationTokenExpiry: true,
   status: true,
   commissionPercent: true,
-  commissionEarned: true,
+  commissionAmount: true,
+  commissionPaid: true,
+  commissionPaidAt: true,
+  adminApprovedById: true,
+  adminApprovedAt: true,
+  rejectedById: true,
+  rejectedAt: true,
+  rejectionReason: true,
   notes: true,
+  adminNotes: true,
+  linkedOwnerId: true,
+  linkedPropertyId: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -66,28 +84,31 @@ export function CreateOwnerReferralDialog({
       nationality: "",
       whatsappNumber: "",
       propertyType: "",
-      condoName: "",
+      condominiumName: "",
       unitNumber: "",
+      propertyAddress: "",
+      propertyDescription: "",
+      estimatedValue: "",
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("POST", "/api/referrals/owners", data);
+      return await apiRequest("POST", "/api/owner-referrals", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/referrals/owners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner-referrals"] });
       toast({
         title: t("referrals.ownerReferralCreated", "Referido de propietario creado"),
-        description: t("referrals.ownerReferralCreatedDesc", "El referido ha sido creado exitosamente"),
+        description: t("referrals.ownerReferralCreatedDesc", "Se ha enviado un email de verificación al propietario"),
       });
       form.reset();
       onOpenChange(false);
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: t("common.error", "Error"),
-        description: t("referrals.createError", "No se pudo crear el referido"),
+        description: error.message || t("referrals.createError", "No se pudo crear el referido"),
         variant: "destructive",
       });
     },
@@ -241,12 +262,8 @@ export function CreateOwnerReferralDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="house">{t("propertyTypes.house", "Casa")}</SelectItem>
-                      <SelectItem value="apartment">{t("propertyTypes.apartment", "Departamento")}</SelectItem>
-                      <SelectItem value="condo">{t("propertyTypes.condo", "Condominio")}</SelectItem>
-                      <SelectItem value="villa">{t("propertyTypes.villa", "Villa")}</SelectItem>
-                      <SelectItem value="studio">{t("propertyTypes.studio", "Estudio")}</SelectItem>
-                      <SelectItem value="penthouse">{t("propertyTypes.penthouse", "Penthouse")}</SelectItem>
+                      <SelectItem value="private">{t("propertyTypes.private", "Casa/Propiedad Privada")}</SelectItem>
+                      <SelectItem value="condominium">{t("propertyTypes.condominium", "Condominio")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -257,7 +274,7 @@ export function CreateOwnerReferralDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="condoName"
+                name="condominiumName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("referrals.condoName", "Nombre del Condominio")}</FormLabel>
@@ -292,6 +309,64 @@ export function CreateOwnerReferralDialog({
                   </FormItem>
                 )}
               />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="propertyAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("referrals.propertyAddress", "Dirección de la Propiedad")} *</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder={t("referrals.propertyAddress", "Calle, Número, Colonia, Ciudad")}
+                      data-testid="input-property-address"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="propertyDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("referrals.propertyDescription", "Descripción de la Propiedad")}</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      placeholder={t("referrals.propertyDescription", "Características, habitaciones, etc.")}
+                      data-testid="input-property-description"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="estimatedValue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("referrals.estimatedValue", "Valor Estimado (Renta Mensual)")}</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      type="number"
+                      placeholder={t("referrals.estimatedValue", "Ej: 15000")}
+                      data-testid="input-estimated-value"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
