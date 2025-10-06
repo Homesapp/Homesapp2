@@ -560,10 +560,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { role } = req.body;
 
-      // Validate role is either owner or cliente
-      if (role !== "owner" && role !== "cliente") {
+      // Get current user data to check their approved roles
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // User can always switch between owner and cliente (base roles)
+      const isBaseRole = role === "owner" || role === "cliente";
+      
+      // User can switch to their approved additional role
+      const isApprovedAdditionalRole = role === currentUser.additionalRole;
+
+      if (!isBaseRole && !isApprovedAdditionalRole) {
         return res.status(400).json({ 
-          message: "Solo puedes cambiar entre roles de propietario y cliente" 
+          message: "Solo puedes cambiar a roles que tienes aprobados" 
         });
       }
 
