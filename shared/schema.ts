@@ -628,7 +628,7 @@ export const properties = pgTable("properties", {
   accessInfo: jsonb("access_info"), // lockboxCode, contactPerson, contactPhone
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   managementId: varchar("management_id").references(() => users.id),
-  approvalStatus: propertyApprovalStatusEnum("approval_status").notNull().default("draft"),
+  approvalStatus: propertyApprovalStatusEnum("approval_status").notNull().default("approved"),
   active: boolean("active").notNull().default(true),
   published: boolean("published").notNull().default(false), // Solo publicada si está aprobada
   availableFrom: timestamp("available_from"),
