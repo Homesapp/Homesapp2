@@ -37,6 +37,7 @@ export function SuggestColonyDialog({ open, onOpenChange }: SuggestColonyDialogP
       setName("");
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ["/api/colonies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/colonies/approved"] });
     },
     onError: () => {
       toast({

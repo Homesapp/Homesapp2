@@ -67,7 +67,17 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
   });
 
   const onSubmit = (formData: LocationForm) => {
-    onNext({ locationInfo: formData });
+    // Transform empty strings to undefined for optional fields
+    const cleanedData = {
+      ...formData,
+      colonyId: formData.colonyId && formData.colonyId.trim() !== "" ? formData.colonyId : undefined,
+      condominiumId: formData.condominiumId && formData.condominiumId.trim() !== "" ? formData.condominiumId : undefined,
+      unitNumber: formData.unitNumber && formData.unitNumber.trim() !== "" ? formData.unitNumber : undefined,
+      googleMapsUrl: formData.googleMapsUrl && formData.googleMapsUrl.trim() !== "" ? formData.googleMapsUrl : undefined,
+      latitude: formData.latitude && formData.latitude.trim() !== "" ? formData.latitude : undefined,
+      longitude: formData.longitude && formData.longitude.trim() !== "" ? formData.longitude : undefined,
+    };
+    onNext({ locationInfo: cleanedData });
   };
 
   return (

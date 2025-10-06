@@ -37,6 +37,7 @@ export function SuggestCondominiumDialog({ open, onOpenChange }: SuggestCondomin
       setName("");
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ["/api/condominiums"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/condominiums/approved"] });
     },
     onError: () => {
       toast({

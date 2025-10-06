@@ -116,6 +116,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.inspectionReports", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.agreementTemplates", url: "/admin/agreement-templates", icon: FileText, roles: ["master", "admin"] },
     { titleKey: "sidebar.condominiums", url: "/admin/condominiums", icon: Building2, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.suggestions", url: "/admin/suggestions", icon: MapPin, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.chatbotConfig", url: "/admin/chatbot-config", icon: Bot, roles: ["master", "admin"] },
     { titleKey: "sidebar.feedbackManagement", url: "/admin/feedback", icon: MessageSquare, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.createUser", url: "/admin/create-user", icon: UserPlus, roles: ["master", "admin"] },
