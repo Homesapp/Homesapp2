@@ -92,6 +92,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.favorites", url: "/favoritos", icon: Heart, roles: ["cliente"] },
     { titleKey: "sidebar.opportunities", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
     { titleKey: "sidebar.referrals", url: "/referidos", icon: Share2, roles: ["cliente", "owner", "master", "admin", "admin_jr", "seller"] },
+    { titleKey: "sidebar.myIncome", url: "/mis-ingresos", icon: DollarSign, roles: ["cliente", "owner"] },
     { titleKey: "sidebar.myProperties", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
     { titleKey: "sidebar.uploadProperty", url: "/owner/property/new", icon: Plus, roles: ["owner"] },
     { titleKey: "sidebar.appointmentManagement", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },

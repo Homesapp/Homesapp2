@@ -66,6 +66,7 @@ import Feedback from "@/pages/Feedback";
 import AdminFeedback from "@/pages/AdminFeedback";
 import AccountantIncome from "@/pages/AccountantIncome";
 import AdminIncome from "@/pages/AdminIncome";
+import MyIncome from "@/pages/MyIncome";
 import Permissions from "@/pages/Permissions";
 import NotFound from "@/pages/not-found";
 
@@ -201,6 +202,7 @@ function AuthenticatedApp() {
               <Route path="/admin/create-user" component={CreateUser} />
               <Route path="/admin/income" component={AdminIncome} />
               <Route path="/accountant/income" component={AccountantIncome} />
+              <Route path="/mis-ingresos" component={MyIncome} />
               <Route path="/leads" component={LeadsKanban} />
               <Route path="/rentas" component={RentalsKanban} />
               <Route path="/properties" component={Properties} />
