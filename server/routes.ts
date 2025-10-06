@@ -7593,6 +7593,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dual-AI System routes
+  const { dispatchAIRequest, collaborateAIs } = await import("./ai");
+
+  app.post("/api/ai/analyze", isAuthenticated, async (req: any, res) => {
+    try {
+      const { prompt, context, intentType, collaborationMode } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      const response = await dispatchAIRequest({
+        prompt,
+        context,
+        intentType,
+        collaborationMode,
+      });
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Error in AI analysis:", error);
+      res.status(500).json({ message: error.message || "Failed to analyze request" });
+    }
+  });
+
+  app.post("/api/ai/collaborate", isAuthenticated, async (req: any, res) => {
+    try {
+      const { prompt, context } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      const response = await collaborateAIs({
+        prompt,
+        context,
+        collaborationMode: true,
+      });
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Error in AI collaboration:", error);
+      res.status(500).json({ message: error.message || "Failed to collaborate" });
+    }
+  });
+
   // Feedback routes
   app.get("/api/feedback", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
     try {
