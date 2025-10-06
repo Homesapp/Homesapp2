@@ -54,6 +54,20 @@ Preferred communication style: Simple, everyday language.
   - Affiliate banner: business partnership and referral network concept
 - Images now clearly represent each banner's purpose and message
 
+### Unified Application System (October 2025)
+- Created unified application page at `/aplicar` for seller and service provider applications
+- **Seller Applications**: Uses role-requests system with requestedRole: "seller"
+  - Form requires detailed sales experience description (min 50 characters)
+  - Integrated with existing role-request approval workflow
+- **Service Provider Applications**: Uses providerApplications system
+  - Supports multiple specialties: Limpieza, Mantenimiento, Plomería, Electricidad, etc.
+  - Collects contact info, experience, description, and optional references
+- Landing page includes visible "Aplicar Ahora" CTA in dedicated section
+- Two-step user flow: selection screen → application form → success confirmation
+- Available to both authenticated and unauthenticated users
+- Forms use React Hook Form with Zod validation
+- Success state shows confirmation message with navigation back to home
+
 ### Bug Fixes
 - Fixed toggle-active endpoint for presentation cards to properly toggle state instead of always activating
 - Endpoint now checks existing state before toggling, preventing "card not found" errors
@@ -132,6 +146,7 @@ A comprehensive financial tracking and payout management system for commissions,
 *   **Welcome Modals**: First-time welcome modals for clients and property owners to introduce features, controlled by a `hasSeenWelcome` flag.
 *   **Service Provider Messaging**: One-click chat initiation with service providers from their directory listings.
 *   **Review System**: Bidirectional feedback system allowing clients to review properties, appointments, and concierges, while concierges can review clients. API endpoints: `/api/reviews/{properties|appointments|concierges|clients}` with GET/POST methods.
+*   **Application System**: Unified application flow at `/aplicar` allowing users to apply as sellers (via role-requests) or service providers (via providerApplications). Accessible from landing page with "Aplicar Ahora" CTA. Two-step process with selection screen and specialized forms for each application type.
 
 ### System Design Choices
 
