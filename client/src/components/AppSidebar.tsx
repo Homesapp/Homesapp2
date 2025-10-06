@@ -84,58 +84,58 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
   const { state } = useSidebar();
 
   const mainItems = [
-    { title: "Inicio", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider", "cliente"] },
-    { title: "Dashboard", url: "/owner/dashboard", icon: Home, roles: ["owner"] },
-    { title: "Buscar Propiedades", url: "/buscar-propiedades", icon: Search, roles: ["cliente"] },
-    { title: "Citas", url: "/mis-citas", icon: CalendarCheck, roles: ["cliente"] },
-    { title: "Favoritos", url: "/favoritos", icon: Heart, roles: ["cliente"] },
-    { title: "Oportunidades", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
-    { title: "Red de Referidos", url: "/referidos", icon: Share2, roles: ["cliente", "owner", "master", "admin", "admin_jr", "seller"] },
-    { title: "Mis Propiedades", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
-    { title: "Cargar Propiedad", url: "/owner/property/new", icon: Plus, roles: ["owner"] },
-    { title: "Gestión de Visitas", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },
-    { title: "Notificaciones", url: "/notificaciones", icon: Bell, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
-    { title: "Mensajes", url: "/chat", icon: MessageCircle, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
-    { title: "Feedback", url: "/feedback", icon: MessageSquare, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
-    { title: "CRM - Leads", url: "/leads", icon: Users, roles: ["master", "admin", "admin_jr", "seller", "management"] },
-    { title: "Kanban - Rentas", url: "/rentas", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management"] },
-    { title: "Propiedades", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "management"] },
-    { title: "Citas", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge"] },
-    { title: "Calendario", url: "/calendario", icon: Calendar, roles: ["master", "admin", "admin_jr"] },
-    { title: "Presupuestos", url: "/presupuestos", icon: FileText, roles: ["master", "admin", "admin_jr", "owner", "management", "provider"] },
-    { title: "Tareas", url: "/tareas", icon: ListTodo, roles: ["master", "admin", "admin_jr", "management", "concierge"] },
-    { title: "Clientes", url: "/clientes", icon: Users, roles: ["master", "admin", "admin_jr", "seller"] },
-    { title: "Tarjetas", url: "/presentation-cards", icon: ClipboardList, roles: ["master", "admin", "admin_jr", "seller", "cliente"] },
-    { title: "Gestión de Ingresos", url: "/accountant/income", icon: DollarSign, roles: ["contador"] },
+    { titleKey: "sidebar.home", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider", "cliente"] },
+    { titleKey: "sidebar.dashboard", url: "/owner/dashboard", icon: Home, roles: ["owner"] },
+    { titleKey: "sidebar.searchProperties", url: "/buscar-propiedades", icon: Search, roles: ["cliente"] },
+    { titleKey: "sidebar.appointments", url: "/mis-citas", icon: CalendarCheck, roles: ["cliente"] },
+    { titleKey: "sidebar.favorites", url: "/favoritos", icon: Heart, roles: ["cliente"] },
+    { titleKey: "sidebar.opportunities", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
+    { titleKey: "sidebar.referrals", url: "/referidos", icon: Share2, roles: ["cliente", "owner", "master", "admin", "admin_jr", "seller"] },
+    { titleKey: "sidebar.myProperties", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
+    { titleKey: "sidebar.uploadProperty", url: "/owner/property/new", icon: Plus, roles: ["owner"] },
+    { titleKey: "sidebar.appointmentManagement", url: "/owner/appointments", icon: CalendarCheck, roles: ["owner"] },
+    { titleKey: "sidebar.notifications", url: "/notificaciones", icon: Bell, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
+    { titleKey: "sidebar.messages", url: "/chat", icon: MessageCircle, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
+    { titleKey: "sidebar.feedback", url: "/feedback", icon: MessageSquare, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
+    { titleKey: "sidebar.leads", url: "/leads", icon: Users, roles: ["master", "admin", "admin_jr", "seller", "management"] },
+    { titleKey: "sidebar.kanbanRentals", url: "/rentas", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management"] },
+    { titleKey: "sidebar.properties", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "management"] },
+    { titleKey: "sidebar.appointments", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge"] },
+    { titleKey: "sidebar.calendar", url: "/calendario", icon: Calendar, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.budgets", url: "/presupuestos", icon: FileText, roles: ["master", "admin", "admin_jr", "owner", "management", "provider"] },
+    { titleKey: "sidebar.tasks", url: "/tareas", icon: ListTodo, roles: ["master", "admin", "admin_jr", "management", "concierge"] },
+    { titleKey: "sidebar.clients", url: "/clientes", icon: Users, roles: ["master", "admin", "admin_jr", "seller"] },
+    { titleKey: "sidebar.cards", url: "/presentation-cards", icon: ClipboardList, roles: ["master", "admin", "admin_jr", "seller", "cliente"] },
+    { titleKey: "sidebar.incomeManagement", url: "/accountant/income", icon: DollarSign, roles: ["contador"] },
   ];
 
   const adminItems = [
-    { title: "Dashboard Admin", url: "/admin/dashboard", icon: Home, roles: ["master", "admin", "admin_jr"] },
-    { title: "Backoffice", url: "/backoffice", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider"] },
-    { title: "Solicitudes de Cambio", url: "/admin/change-requests", icon: FileEdit, roles: ["master", "admin", "admin_jr"] },
-    { title: "Reportes de Inspección", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
-    { title: "Plantillas de Acuerdos", url: "/admin/agreement-templates", icon: FileText, roles: ["master", "admin"] },
-    { title: "Condominios", url: "/admin/condominiums", icon: Building2, roles: ["master", "admin", "admin_jr"] },
-    { title: "Configuración Chatbot", url: "/admin/chatbot-config", icon: Bot, roles: ["master", "admin"] },
-    { title: "Gestión de Feedback", url: "/admin/feedback", icon: MessageSquare, roles: ["master", "admin", "admin_jr"] },
-    { title: "Crear Usuario", url: "/admin/create-user", icon: UserPlus, roles: ["master", "admin"] },
-    { title: "Gestión Usuarios", url: "/users", icon: UserCog, roles: ["master", "admin"] },
-    { title: "Permisos", url: "/permissions", icon: Settings, roles: ["master", "admin"] },
-    { title: "Dashboard de Ingresos", url: "/admin/income", icon: DollarSign, roles: ["master", "admin"] },
+    { titleKey: "sidebar.adminDashboard", url: "/admin/dashboard", icon: Home, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.backoffice", url: "/backoffice", icon: FolderKanban, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider"] },
+    { titleKey: "sidebar.changeRequests", url: "/admin/change-requests", icon: FileEdit, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.inspectionReports", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.agreementTemplates", url: "/admin/agreement-templates", icon: FileText, roles: ["master", "admin"] },
+    { titleKey: "sidebar.condominiums", url: "/admin/condominiums", icon: Building2, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.chatbotConfig", url: "/admin/chatbot-config", icon: Bot, roles: ["master", "admin"] },
+    { titleKey: "sidebar.feedbackManagement", url: "/admin/feedback", icon: MessageSquare, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.createUser", url: "/admin/create-user", icon: UserPlus, roles: ["master", "admin"] },
+    { titleKey: "sidebar.userManagement", url: "/users", icon: UserCog, roles: ["master", "admin"] },
+    { titleKey: "sidebar.permissions", url: "/permissions", icon: Settings, roles: ["master", "admin"] },
+    { titleKey: "sidebar.incomeDashboard", url: "/admin/income", icon: DollarSign, roles: ["master", "admin"] },
   ];
 
   const serviceItems = [
-    { title: "Directorio", url: "/directory", icon: Store, roles: ["master", "admin", "admin_jr", "owner", "management"] },
-    { title: "Mis Servicios", url: "/my-services", icon: CreditCard, roles: ["provider"] },
+    { titleKey: "sidebar.directory", url: "/directory", icon: Store, roles: ["master", "admin", "admin_jr", "owner", "management"] },
+    { titleKey: "sidebar.myServices", url: "/my-services", icon: CreditCard, roles: ["provider"] },
   ];
 
   // For users without a role, show only basic navigation items (no privileged routes)
   const basicItems = [
-    { title: "Inicio", url: "/", icon: Home },
-    { title: "Notificaciones", url: "/notificaciones", icon: Bell },
-    { title: "Mensajes", url: "/chat", icon: MessageCircle },
-    { title: "Feedback", url: "/feedback", icon: MessageSquare },
-    { title: "Perfil", url: "/perfil", icon: User },
+    { titleKey: "sidebar.home", url: "/", icon: Home },
+    { titleKey: "sidebar.notifications", url: "/notificaciones", icon: Bell },
+    { titleKey: "sidebar.messages", url: "/chat", icon: MessageCircle },
+    { titleKey: "sidebar.feedback", url: "/feedback", icon: MessageSquare },
+    { titleKey: "sidebar.profile", url: "/perfil", icon: User },
   ];
 
   const filteredMain = userRole 
@@ -172,15 +172,15 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
         </SidebarGroup>
         {filteredMain.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Principal</SidebarGroupLabel>
+            <SidebarGroupLabel>{t("sidebar.main")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredMain.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton asChild isActive={location === item.url}>
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>{t(item.titleKey)}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -192,15 +192,15 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
 
         {filteredAdmin.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administración</SidebarGroupLabel>
+            <SidebarGroupLabel>{t("sidebar.administration")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredAdmin.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton asChild isActive={location === item.url}>
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>{t(item.titleKey)}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -212,15 +212,15 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
 
         {filteredService.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Servicios</SidebarGroupLabel>
+            <SidebarGroupLabel>{t("sidebar.services")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredService.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton asChild isActive={location === item.url}>
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>{t(item.titleKey)}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
