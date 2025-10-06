@@ -7,6 +7,8 @@ import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAut
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { sendVerificationEmail } from "./resend";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
+import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter } from "./rateLimiters";
+import { sanitizeText, sanitizeHtml, sanitizeObject } from "./sanitize";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { z } from "zod";
@@ -182,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin login route (local authentication)
-  app.post("/api/auth/admin/login", async (req: any, res) => {
+  app.post("/api/auth/admin/login", authLimiter, async (req: any, res) => {
     try {
       const validationResult = adminLoginSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -268,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Local user login route (for users who registered with email/password)
-  app.post("/api/auth/login", async (req: any, res) => {
+  app.post("/api/auth/login", authLimiter, async (req: any, res) => {
     try {
       const validationResult = userLoginSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -565,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User registration routes
-  app.post("/api/register", async (req, res) => {
+  app.post("/api/register", registrationLimiter, async (req, res) => {
     try {
       const validationResult = userRegistrationSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -628,7 +630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/verify-email", async (req, res) => {
+  app.get("/api/verify-email", emailVerificationLimiter, async (req, res) => {
     try {
       const { token } = req.query;
 
@@ -5626,7 +5628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chat/chatbot/message", isAuthenticated, async (req: any, res) => {
+  app.post("/api/chat/chatbot/message", chatbotLimiter, isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { conversationId, message } = req.body;
