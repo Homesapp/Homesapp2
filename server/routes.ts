@@ -4365,7 +4365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/owner-referrals/:id/approve", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { commissionAmount } = req.body;
+      let { commissionAmount } = req.body;
       const userId = req.user.claims.sub;
       
       const referral = await storage.getOwnerReferral(id);
@@ -4378,6 +4378,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "El email del propietario debe ser verificado antes de aprobar" });
       }
       
+      // Calculate default 20% commission if not provided
+      if (!commissionAmount && referral.estimatedValue) {
+        const estimatedValue = parseFloat(referral.estimatedValue);
+        if (!isNaN(estimatedValue)) {
+          commissionAmount = (estimatedValue * 0.20).toFixed(2);
+        }
+      }
+      
       const updatedReferral = await storage.approveOwnerReferralByAdmin(id, userId, commissionAmount);
       
       // Send notification to seller
@@ -4388,11 +4396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `${seller.firstName || ''} ${seller.lastName || ''}`.trim(),
           `${referral.firstName} ${referral.lastName}`,
           referral.propertyAddress || 'Propiedad referida',
-          commissionAmount || referral.commissionAmount || '0.00'
+          commissionAmount || updatedReferral.commissionAmount || '0.00'
         );
       }
       
-      await createAuditLog(req, "update", "owner_referral", id, `Referido de propietario aprobado con comisión de $${commissionAmount || referral.commissionAmount}`);
+      await createAuditLog(req, "update", "owner_referral", id, `Referido de propietario aprobado con comisión de $${commissionAmount || updatedReferral.commissionAmount}`);
       
       res.json({ 
         message: "Referido aprobado exitosamente. Se ha notificado al vendedor.",
