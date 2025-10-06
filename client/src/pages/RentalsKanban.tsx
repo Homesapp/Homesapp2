@@ -72,6 +72,7 @@ export default function RentalsKanban() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   
   const form = useForm({
     resolver: zodResolver(rentalFormSchema),
@@ -95,8 +96,24 @@ export default function RentalsKanban() {
     queryKey: ["/api/properties"],
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
+    retry: false,
+  });
+
+  const { data: eligibleApplicants = [] } = useQuery({
+    queryKey: ["/api/rental-applications/eligible-applicants", selectedPropertyId],
+    queryFn: async () => {
+      if (!selectedPropertyId) return [];
+      const response = await fetch(`/api/rental-applications/eligible-applicants?propertyId=${selectedPropertyId}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch eligible applicants");
+      }
+      return response.json();
+    },
+    enabled: !!selectedPropertyId,
   });
 
   const createApplicationMutation = useMutation({
@@ -111,12 +128,13 @@ export default function RentalsKanban() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rental-applications"] });
-      toast({ title: "Solicitud de renta creada exitosamente" });
+      toast({ title: "Oferta de renta creada exitosamente" });
       setDialogOpen(false);
+      setSelectedPropertyId("");
       form.reset();
     },
     onError: () => {
-      toast({ title: "Error al crear solicitud", variant: "destructive" });
+      toast({ title: "Error al crear oferta", variant: "destructive" });
     },
   });
 
@@ -189,7 +207,7 @@ export default function RentalsKanban() {
   };
 
   const getApplicantName = (applicantId: string) => {
-    const applicant = users.find((u: any) => u.id === applicantId);
+    const applicant = allUsers.find((u: any) => u.id === applicantId);
     return applicant ? `${applicant.firstName} ${applicant.lastName}` : "Solicitante";
   };
 
@@ -200,6 +218,7 @@ export default function RentalsKanban() {
   const getStatusColor = (status: string) => {
     return RENTAL_STATUSES.find((s) => s.value === status)?.color || "bg-gray-500";
   };
+
 
   if (isLoading) {
     return (
@@ -264,16 +283,22 @@ export default function RentalsKanban() {
               </Button>
             </div>
             
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) {
+                setSelectedPropertyId("");
+                form.reset();
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-rental-application">
                   <Plus className="h-4 w-4 mr-2" />
-                  Nueva Solicitud
+                  Nueva Oferta
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Crear Solicitud de Renta</DialogTitle>
+                  <DialogTitle>Crear Oferta de Renta</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -284,7 +309,14 @@ export default function RentalsKanban() {
                         render={({ field }) => (
                           <FormItem className="col-span-2">
                             <FormLabel>Propiedad</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedPropertyId(value);
+                                form.setValue("applicantId", "");
+                              }} 
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger data-testid="select-property">
                                   <SelectValue placeholder="Seleccionar propiedad" />
@@ -309,14 +341,24 @@ export default function RentalsKanban() {
                         render={({ field }) => (
                           <FormItem className="col-span-2">
                             <FormLabel>Solicitante</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select 
+                              onValueChange={field.onChange} 
+                              value={field.value}
+                              disabled={!selectedPropertyId}
+                            >
                               <FormControl>
                                 <SelectTrigger data-testid="select-applicant">
-                                  <SelectValue placeholder="Seleccionar solicitante" />
+                                  <SelectValue placeholder={
+                                    !selectedPropertyId 
+                                      ? "Primero selecciona una propiedad" 
+                                      : eligibleApplicants.length === 0
+                                        ? "No hay solicitantes con visitas completadas"
+                                        : "Seleccionar solicitante"
+                                  } />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {users.map((user: any) => (
+                                {eligibleApplicants.map((user: any) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     {user.firstName} {user.lastName} - {user.email}
                                   </SelectItem>

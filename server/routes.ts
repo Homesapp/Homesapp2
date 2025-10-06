@@ -5156,6 +5156,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rental Application routes (Rental Process Kanban)
+  app.get("/api/rental-applications/eligible-applicants", isAuthenticated, async (req, res) => {
+    try {
+      const { propertyId } = req.query;
+      
+      if (!propertyId) {
+        return res.status(400).json({ message: "propertyId is required" });
+      }
+
+      const completedAppointments = await storage.getAppointments({
+        propertyId: propertyId as string,
+        status: "completed",
+      });
+
+      const clientIds = [...new Set(completedAppointments.map(apt => apt.clientId))];
+      
+      const eligibleUsers = await Promise.all(
+        clientIds.map(clientId => storage.getUser(clientId))
+      );
+
+      const validUsers = eligibleUsers.filter(user => user !== undefined);
+
+      res.json(validUsers);
+    } catch (error) {
+      console.error("Error fetching eligible applicants:", error);
+      res.status(500).json({ message: "Failed to fetch eligible applicants" });
+    }
+  });
+
   app.get("/api/rental-applications", isAuthenticated, async (req, res) => {
     try {
       const { status, propertyId, applicantId } = req.query;
