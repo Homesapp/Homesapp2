@@ -392,6 +392,28 @@ export const updateUserProfileSchema = z.object({
 
 export type UpdateUserProfile = z.infer<typeof updateUserProfileSchema>;
 
+export const uploadSellerDocumentSchema = z.object({
+  documentType: z.enum(["passport", "ine"]),
+  documentUrl: z.string().min(1, "El documento es requerido"),
+});
+
+export type UploadSellerDocument = z.infer<typeof uploadSellerDocumentSchema>;
+
+export const acceptCommissionTermsSchema = z.object({
+  accepted: z.boolean().refine((val) => val === true, {
+    message: "Debes aceptar los términos y condiciones",
+  }),
+});
+
+export type AcceptCommissionTerms = z.infer<typeof acceptCommissionTermsSchema>;
+
+export const updateDocumentStatusSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected"]),
+  rejectionReason: z.string().optional(),
+});
+
+export type UpdateDocumentStatus = z.infer<typeof updateDocumentStatusSchema>;
+
 // Admin users table for local authentication
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

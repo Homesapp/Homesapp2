@@ -55,6 +55,9 @@ import {
   insertChatMessageSchema,
   insertChatParticipantSchema,
   updateUserProfileSchema,
+  uploadSellerDocumentSchema,
+  acceptCommissionTermsSchema,
+  updateDocumentStatusSchema,
   insertAgreementTemplateSchema,
   insertPropertySubmissionDraftSchema,
   insertPropertyAgreementSchema,
@@ -682,6 +685,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking welcome as seen:", error);
       res.status(500).json({ message: "Failed to mark welcome as seen" });
+    }
+  });
+
+  // Seller document and commission terms routes
+  app.patch("/api/seller/document", isAuthenticated, requireRole(["seller"]), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validated = uploadSellerDocumentSchema.parse(req.body);
+      
+      await db
+        .update(users)
+        .set({
+          documentType: validated.documentType,
+          documentUrl: validated.documentUrl,
+          documentApprovalStatus: "pending",
+          documentReviewedAt: null,
+          documentRejectionReason: null,
+        })
+        .where(eq(users.id, userId));
+      
+      await createAuditLog(
+        req,
+        "update",
+        "user",
+        userId,
+        `Vendedor subió documento tipo ${validated.documentType}`
+      );
+      
+      res.json({ message: "Documento subido exitosamente, pendiente de revisión" });
+    } catch (error) {
+      console.error("Error uploading seller document:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al subir documento" });
+    }
+  });
+
+  app.patch("/api/seller/commission-terms", isAuthenticated, requireRole(["seller"]), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validated = acceptCommissionTermsSchema.parse(req.body);
+      
+      if (validated.accepted) {
+        await db
+          .update(users)
+          .set({
+            commissionTermsAccepted: true,
+            commissionTermsAcceptedAt: new Date(),
+          })
+          .where(eq(users.id, userId));
+        
+        await createAuditLog(
+          req,
+          "update",
+          "user",
+          userId,
+          "Vendedor aceptó términos y condiciones de comisiones"
+        );
+        
+        res.json({ message: "Términos y condiciones aceptados" });
+      } else {
+        res.status(400).json({ message: "Debes aceptar los términos y condiciones" });
+      }
+    } catch (error) {
+      console.error("Error accepting commission terms:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al aceptar términos" });
+    }
+  });
+
+  app.patch("/api/admin/seller/:id/document-status", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validated = updateDocumentStatusSchema.parse(req.body);
+      
+      const [seller] = await db.select().from(users).where(eq(users.id, id));
+      if (!seller) {
+        return res.status(404).json({ message: "Vendedor no encontrado" });
+      }
+      
+      if (seller.role !== "seller") {
+        return res.status(400).json({ message: "El usuario no es un vendedor" });
+      }
+      
+      const updates: any = {
+        documentApprovalStatus: validated.status,
+        documentReviewedAt: new Date(),
+      };
+      
+      if (validated.status === "rejected" && validated.rejectionReason) {
+        updates.documentRejectionReason = validated.rejectionReason;
+      } else if (validated.status === "approved") {
+        updates.documentRejectionReason = null;
+      }
+      
+      await db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, id));
+      
+      await createAuditLog(
+        req,
+        "update",
+        "user",
+        id,
+        `Admin actualizó estado de documento a: ${validated.status}`
+      );
+      
+      res.json({ message: "Estado de documento actualizado" });
+    } catch (error) {
+      console.error("Error updating document status:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al actualizar estado de documento" });
     }
   });
 
