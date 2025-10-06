@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Building2, User, Plus, FileText, Briefcase, Scale, Calculator, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,8 +32,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import type { User as UserType } from "@shared/schema";
 
 const ROLE_ICONS: Record<string, any> = {
@@ -55,17 +67,63 @@ const ROLE_NAMES: Record<string, string> = {
   agente_servicios_especiales: "Agente de Servicios Especiales",
 };
 
+const ROLE_DESCRIPTIONS: Record<string, { question: string; placeholder: string }> = {
+  abogado: {
+    question: "¿Cuál es tu experiencia como abogado especializado en bienes raíces?",
+    placeholder: "Describe tu experiencia en derecho inmobiliario, transacciones, contratos, etc..."
+  },
+  contador: {
+    question: "¿Cuál es tu experiencia en contabilidad inmobiliaria o gestión financiera?",
+    placeholder: "Describe tu experiencia en contabilidad, finanzas, impuestos, etc..."
+  },
+  seller: {
+    question: "¿Cuál es tu experiencia como vendedor de propiedades?",
+    placeholder: "Describe tu experiencia en ventas, negociación, cierre de tratos, etc..."
+  },
+  management: {
+    question: "¿Cuál es tu experiencia en gestión de propiedades?",
+    placeholder: "Describe tu experiencia en administración de propiedades, mantenimiento, etc..."
+  },
+  provider: {
+    question: "¿Qué tipo de servicios ofreces y cuál es tu experiencia?",
+    placeholder: "Describe los servicios que ofreces (limpieza, mantenimiento, etc.) y tu experiencia..."
+  },
+  concierge: {
+    question: "¿Cuál es tu experiencia en servicios de conserjería o atención al cliente?",
+    placeholder: "Describe tu experiencia en servicio al cliente, coordinación, etc..."
+  },
+};
+
+const roleApplicationSchema = z.object({
+  requestedRole: z.string().min(1, "Debes seleccionar un rol"),
+  reason: z.string().min(20, "Explica brevemente por qué necesitas este rol (mínimo 20 caracteres)"),
+  experience: z.string().min(50, "Describe tu experiencia en detalle (mínimo 50 caracteres)"),
+  yearsOfExperience: z.string().min(1, "Indica tus años de experiencia"),
+  additionalInfo: z.string().optional(),
+});
+
+type RoleApplicationFormData = z.infer<typeof roleApplicationSchema>;
+
 export function RoleToggle() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { state } = useSidebar();
   const [isOpen, setIsOpen] = useState(false);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<string>("");
-  const [reason, setReason] = useState("");
 
   const { data: user } = useQuery<UserType>({
     queryKey: ["/api/auth/user"],
+  });
+
+  const form = useForm<RoleApplicationFormData>({
+    resolver: zodResolver(roleApplicationSchema),
+    defaultValues: {
+      requestedRole: "",
+      reason: "",
+      experience: "",
+      yearsOfExperience: "",
+      additionalInfo: "",
+    },
   });
 
   const switchRoleMutation = useMutation({
@@ -91,11 +149,13 @@ export function RoleToggle() {
   });
 
   const applyRoleMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: RoleApplicationFormData) => {
       return apiRequest("POST", "/api/role-requests", {
         userId: user?.id,
-        requestedRole: selectedRole,
-        reason,
+        requestedRole: data.requestedRole,
+        reason: data.reason,
+        experience: `${data.yearsOfExperience} años: ${data.experience}`,
+        additionalInfo: data.additionalInfo,
       });
     },
     onSuccess: () => {
@@ -104,8 +164,7 @@ export function RoleToggle() {
         description: "Tu solicitud de rol ha sido enviada. Un administrador la revisará pronto.",
       });
       setShowApplicationDialog(false);
-      setSelectedRole("");
-      setReason("");
+      form.reset();
     },
     onError: (error: any) => {
       toast({
@@ -133,6 +192,13 @@ export function RoleToggle() {
 
   // Available roles to apply for
   const availableRoles = ["abogado", "contador", "seller", "management", "provider", "concierge"];
+
+  const selectedRole = form.watch("requestedRole");
+  const roleInfo = selectedRole ? ROLE_DESCRIPTIONS[selectedRole] : null;
+
+  const onSubmit = (data: RoleApplicationFormData) => {
+    applyRoleMutation.mutate(data);
+  };
 
   return (
     <>
@@ -221,59 +287,147 @@ export function RoleToggle() {
       </DropdownMenu>
 
       <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
-        <DialogContent data-testid="dialog-role-application">
+        <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="dialog-role-application">
           <DialogHeader>
             <DialogTitle>Solicitar Rol Adicional</DialogTitle>
             <DialogDescription>
-              Solicita acceso a un rol adicional. Un administrador revisará tu solicitud.
+              Completa el formulario para solicitar acceso a un rol adicional. Un administrador revisará tu solicitud.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="role">Rol a solicitar</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger id="role" data-testid="select-role">
-                  <SelectValue placeholder="Selecciona un rol" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRoles.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {ROLE_NAMES[role]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="reason">Razón de la solicitud</Label>
-              <Textarea
-                id="reason"
-                placeholder="Explica por qué necesitas este rol..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                data-testid="input-reason"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="requestedRole"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rol a solicitar</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-role">
+                          <SelectValue placeholder="Selecciona un rol" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableRoles.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {ROLE_NAMES[role]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowApplicationDialog(false)}
-              data-testid="button-cancel-application"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => applyRoleMutation.mutate()}
-              disabled={!selectedRole || applyRoleMutation.isPending}
-              data-testid="button-submit-application"
-            >
-              {applyRoleMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
-            </Button>
-          </DialogFooter>
+              <FormField
+                control={form.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>¿Por qué necesitas este rol?</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Explica brevemente por qué necesitas este rol..."
+                        {...field}
+                        data-testid="input-reason"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {roleInfo && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="yearsOfExperience"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Años de experiencia</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Ej: 5"
+                            {...field}
+                            data-testid="input-years-experience"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          ¿Cuántos años de experiencia tienes en este rol?
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="experience"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{roleInfo.question}</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder={roleInfo.placeholder}
+                            className="min-h-[120px]"
+                            {...field}
+                            data-testid="input-experience"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Describe en detalle tu experiencia relevante para este rol
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="additionalInfo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Información adicional (opcional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Certificaciones, referencias, logros destacados..."
+                            {...field}
+                            data-testid="input-additional-info"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowApplicationDialog(false);
+                    form.reset();
+                  }}
+                  data-testid="button-cancel-application"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!selectedRole || applyRoleMutation.isPending}
+                  data-testid="button-submit-application"
+                >
+                  {applyRoleMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </>

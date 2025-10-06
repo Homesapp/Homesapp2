@@ -404,6 +404,8 @@ export const roleRequests = pgTable("role_requests", {
   requestedRole: userRoleEnum("requested_role").notNull(),
   status: roleRequestStatusEnum("status").notNull().default("pending"),
   reason: text("reason"),
+  experience: text("experience"),
+  additionalInfo: text("additional_info"),
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"),

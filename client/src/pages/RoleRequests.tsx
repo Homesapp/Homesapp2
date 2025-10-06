@@ -218,6 +218,24 @@ export default function RoleRequests() {
                       </p>
                     </div>
                   )}
+
+                  {request.experience && (
+                    <div>
+                      <Label className="text-sm font-semibold">Experiencia:</Label>
+                      <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap" data-testid={`text-experience-${request.id}`}>
+                        {request.experience}
+                      </p>
+                    </div>
+                  )}
+
+                  {request.additionalInfo && (
+                    <div>
+                      <Label className="text-sm font-semibold">Información adicional:</Label>
+                      <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap" data-testid={`text-additional-${request.id}`}>
+                        {request.additionalInfo}
+                      </p>
+                    </div>
+                  )}
                   
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>
