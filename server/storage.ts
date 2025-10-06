@@ -949,6 +949,7 @@ export class DatabaseStorage implements IStorage {
     condoName?: string;
     unitType?: string;
     allowsSubleasing?: boolean;
+    approvalStatus?: string | string[];
   }): Promise<Property[]> {
     let query = db.select().from(properties);
     const conditions = [];
@@ -1044,6 +1045,16 @@ export class DatabaseStorage implements IStorage {
 
     if (filters.allowsSubleasing !== undefined) {
       conditions.push(eq(properties.allowsSubleasing, filters.allowsSubleasing));
+    }
+
+    if (filters.approvalStatus) {
+      if (Array.isArray(filters.approvalStatus)) {
+        conditions.push(
+          or(...filters.approvalStatus.map(status => eq(properties.approvalStatus, status as any)))
+        );
+      } else {
+        conditions.push(eq(properties.approvalStatus, filters.approvalStatus as any));
+      }
     }
 
     if (conditions.length > 0) {

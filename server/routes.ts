@@ -2000,10 +2000,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.allowsSubleasing = allowsSubleasing === "true";
       }
 
-      // Only show approved properties to non-authenticated users
+      // Only show approved or published properties to non-authenticated users
       const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
       if (!isUserAuthenticated) {
-        filters.approvalStatus = "approved";
+        filters.approvalStatus = ["approved", "published"];
       }
 
       const properties = await storage.searchPropertiesAdvanced(filters);
