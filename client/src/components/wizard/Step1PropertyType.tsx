@@ -57,6 +57,7 @@ export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props
             </div>
             <Checkbox
               checked={data.isForRent}
+              onClick={(e) => e.stopPropagation()}
               onCheckedChange={() => handleToggle("rent")}
               data-testid="checkbox-rent"
             />
@@ -80,6 +81,7 @@ export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props
             </div>
             <Checkbox
               checked={data.isForSale}
+              onClick={(e) => e.stopPropagation()}
               onCheckedChange={() => handleToggle("sale")}
               data-testid="checkbox-sale"
             />
