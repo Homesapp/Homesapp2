@@ -38,6 +38,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PropertyStaffManagement } from "@/components/PropertyStaffManagement";
+import { PropertyVisits } from "@/components/PropertyVisits";
 import type { Property } from "@shared/schema";
 
 const approvalStatusLabels: Record<string, string> = {
@@ -191,6 +193,81 @@ export default function OwnerPropertyDetails() {
           </TabsList>
 
           <TabsContent value="details" className="space-y-6">
+            {/* Rental and Sale Listings Section */}
+            {(property.status === "both" || property.status === "rent" || property.status === "sale") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {(property.status === "rent" || property.status === "both") && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Listing de Renta
+                        <Badge variant="default">Renta</Badge>
+                      </CardTitle>
+                      <CardDescription>Información para renta mensual</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Precio Mensual</label>
+                        <div className="flex items-center gap-1 text-2xl font-semibold mt-1 text-primary">
+                          <DollarSign className="h-6 w-6" />
+                          <span data-testid="text-rental-price">
+                            ${Number(property.price).toLocaleString()}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/mes</span>
+                        </div>
+                      </div>
+                      <Separator />
+                      {property.availableFrom && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Disponible desde</label>
+                          <p className="text-base mt-1">
+                            {new Date(property.availableFrom).toLocaleDateString("es-ES")}
+                          </p>
+                        </div>
+                      )}
+                      {property.acceptedLeaseDurations && property.acceptedLeaseDurations.length > 0 && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">
+                            Duraciones de contrato aceptadas
+                          </label>
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            {property.acceptedLeaseDurations.map((duration) => (
+                              <Badge key={duration} variant="secondary">
+                                {duration}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(property.status === "sale" || property.status === "both") && property.salePrice && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Listing de Venta
+                        <Badge variant="secondary">Venta</Badge>
+                      </CardTitle>
+                      <CardDescription>Información para venta de propiedad</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Precio de Venta</label>
+                        <div className="flex items-center gap-1 text-2xl font-semibold mt-1 text-primary">
+                          <DollarSign className="h-6 w-6" />
+                          <span data-testid="text-sale-price">
+                            ${Number(property.salePrice).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -227,18 +304,6 @@ export default function OwnerPropertyDetails() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Precio</label>
-                      <div className="flex items-center gap-1 text-xl font-semibold mt-1">
-                        <DollarSign className="h-5 w-5" />
-                        <span data-testid="text-property-price">
-                          ${Number(property.price).toLocaleString()}
-                        </span>
-                      </div>
-                      {(property.status === "rent" || property.status === "both") && (
-                        <span className="text-sm text-muted-foreground">/mes</span>
-                      )}
-                    </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Tipo</label>
                       <p className="text-base mt-1 capitalize">{property.propertyType}</p>
@@ -371,27 +436,11 @@ export default function OwnerPropertyDetails() {
           </TabsContent>
 
           <TabsContent value="staff" className="space-y-4">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Gestión de Personal</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Próximamente podrás asignar personal a esta propiedad
-                </p>
-              </CardContent>
-            </Card>
+            <PropertyStaffManagement propertyId={id!} />
           </TabsContent>
 
           <TabsContent value="appointments" className="space-y-4">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <History className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Visitas</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Las solicitudes de visita aparecerán aquí
-                </p>
-              </CardContent>
-            </Card>
+            <PropertyVisits propertyId={id!} />
           </TabsContent>
         </Tabs>
       )}

@@ -331,6 +331,7 @@ const translations: Record<Language, Record<string, string>> = {
     "property.editButton": "Editar",
     "property.deleteButton": "Eliminar",
     "property.scheduleButton": "Agendar",
+    "property.petFriendly": "Acepta Mascotas",
     
     // Property Display
     "property.bedrooms": "hab",
@@ -1009,6 +1010,7 @@ const translations: Record<Language, Record<string, string>> = {
     "property.editButton": "Edit",
     "property.deleteButton": "Delete",
     "property.scheduleButton": "Schedule",
+    "property.petFriendly": "Pet Friendly",
     
     // Property Display
     "property.bedrooms": "bed",

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2, Droplet, Zap, Wifi } from "lucide-react";
+import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2, Droplet, Zap, Wifi, PawPrint } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type IncludedServices = {
@@ -47,6 +47,7 @@ export type PropertyCardProps = {
   showUnitNumberInListing?: boolean;
   status: "rent" | "sale" | "both";
   image?: string;
+  petFriendly?: boolean;
   includedServices?: IncludedServices;
   onView?: () => void;
   onEdit?: () => void;
@@ -72,6 +73,7 @@ export function PropertyCard({
   showUnitNumberInListing = true,
   status,
   image,
+  petFriendly = false,
   includedServices,
   onView,
   onEdit,
@@ -170,6 +172,11 @@ export function PropertyCard({
             <div className="flex items-center gap-1">
               <Square className="h-4 w-4 text-muted-foreground" />
               <span>{area} m²</span>
+            </div>
+          )}
+          {petFriendly && (
+            <div className="flex items-center gap-1" title={t("property.petFriendly")} data-testid="indicator-pet-friendly">
+              <PawPrint className="h-4 w-4 text-black dark:text-white" />
             </div>
           )}
         </div>
