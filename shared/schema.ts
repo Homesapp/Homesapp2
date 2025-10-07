@@ -1814,6 +1814,7 @@ export type AgreementTemplate = typeof agreementTemplates.$inferSelect;
 export const propertySubmissionDrafts = pgTable("property_submission_drafts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "set null" }), // Set when approved and property created
   status: propertySubmissionStatusEnum("status").notNull().default("draft"),
   currentStep: integer("current_step").notNull().default(1),
   // Property data stored as JSON (will be converted to property record when submitted)

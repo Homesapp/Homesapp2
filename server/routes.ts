@@ -7089,6 +7089,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Property not found" });
       }
 
+      // Check if owner accepted rental terms during property submission
+      const ownerSubmission = await storage.getPropertySubmissionDraftByProperty(propertyId);
+      let ownerTermsSignedAt = null;
+      
+      // If submission draft has termsAcceptance, use it to pre-fill owner terms signature
+      if (ownerSubmission?.termsAcceptance) {
+        const terms = ownerSubmission.termsAcceptance as any;
+        
+        // Only use if all terms were properly accepted
+        if (terms.acceptedTerms && terms.confirmedAccuracy && terms.acceptedCommission && terms.acceptedAt) {
+          ownerTermsSignedAt = new Date(terms.acceptedAt);
+        }
+        // Note: If terms incomplete, we continue without pre-filling (backward compatible with legacy data)
+      }
+
       const hasReferral = !!property.referralPartnerId;
       const referralPercent = parseFloat(property.referralPercent || "20");
 
@@ -7102,6 +7117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractData = insertRentalContractSchema.parse({
         ...otherData,
         propertyId,
+        ownerId: property.ownerId,
         monthlyRent: monthlyRent.toString(),
         leaseDurationMonths: parseInt(leaseDurationMonths),
         totalCommissionMonths: commissions.totalCommissionMonths.toString(),
@@ -7113,6 +7129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referralCommissionAmount: commissions.referralCommissionAmount.toString(),
         homesappCommissionAmount: commissions.homesappCommissionAmount.toString(),
         referralPartnerId: property.referralPartnerId || null,
+        ownerTermsSignedAt, // Auto-fill from submission draft acceptance
       });
 
       const contract = await storage.createRentalContract(contractData);

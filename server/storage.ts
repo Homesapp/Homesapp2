@@ -543,6 +543,7 @@ export interface IStorage {
   
   // Property Submission Draft operations
   getPropertySubmissionDraft(id: string): Promise<PropertySubmissionDraft | undefined>;
+  getPropertySubmissionDraftByProperty(propertyId: string): Promise<PropertySubmissionDraft | undefined>;
   getPropertySubmissionDrafts(filters?: { userId?: string; status?: string }): Promise<PropertySubmissionDraft[]>;
   createPropertySubmissionDraft(draft: InsertPropertySubmissionDraft): Promise<PropertySubmissionDraft>;
   updatePropertySubmissionDraft(id: string, updates: Partial<InsertPropertySubmissionDraft>): Promise<PropertySubmissionDraft>;
@@ -3268,6 +3269,17 @@ export class DatabaseStorage implements IStorage {
     return draft;
   }
 
+  async getPropertySubmissionDraftByProperty(propertyId: string): Promise<PropertySubmissionDraft | undefined> {
+    // Find the draft that was approved and created this specific property
+    const [draft] = await db
+      .select()
+      .from(propertySubmissionDrafts)
+      .where(eq(propertySubmissionDrafts.propertyId, propertyId))
+      .limit(1);
+    
+    return draft;
+  }
+
   async getPropertySubmissionDrafts(filters?: { userId?: string; status?: string }): Promise<PropertySubmissionDraft[]> {
     let query = db.select().from(propertySubmissionDrafts);
     
@@ -3324,9 +3336,10 @@ export class DatabaseStorage implements IStorage {
     // Create the property
     const [property] = await db.insert(properties).values(propertyData as any).returning();
     
-    // Update draft status to approved
+    // Update draft status to approved and link to created property
     await this.updatePropertySubmissionDraft(id, { 
       status: "approved",
+      propertyId: property.id, // Link draft to created property
       reviewedBy: adminId,
       reviewedAt: new Date()
     });
