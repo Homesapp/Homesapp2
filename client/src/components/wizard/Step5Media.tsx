@@ -98,6 +98,8 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
       setPrimaryImages(newImages);
       form.setValue("primaryImages", newImages);
       setCurrentPrimaryUrl("");
+    } else if (!currentPrimaryUrl.trim()) {
+      primaryFileInputRef.current?.click();
     }
   };
 
@@ -127,6 +129,8 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
       setSecondaryImages(newImages);
       form.setValue("secondaryImages", newImages);
       setCurrentSecondaryUrl("");
+    } else if (!currentSecondaryUrl.trim()) {
+      secondaryFileInputRef.current?.click();
     }
   };
 
@@ -136,76 +140,122 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
     form.setValue("secondaryImages", newImages);
   };
 
-  const handlePrimaryFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handlePrimaryFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Error",
-        description: "Solo se permiten archivos de imagen",
-        variant: "destructive",
-      });
-      return;
-    }
+    const validFiles: File[] = [];
+    const filesArray = Array.from(files);
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "La imagen no debe superar los 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      if (primaryImages.length < 5) {
-        const newImages = [...primaryImages, base64String];
-        setPrimaryImages(newImages);
-        form.setValue("primaryImages", newImages);
+    // Validate files first
+    filesArray.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Error",
+          description: `${file.name}: Solo se permiten archivos de imagen`,
+          variant: "destructive",
+        });
+        return;
       }
-    };
-    reader.readAsDataURL(file);
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: `${file.name} supera el límite de 5MB`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (primaryImages.length + validFiles.length >= 5) {
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    // Process valid files
+    if (validFiles.length > 0) {
+      const readFilePromises = validFiles.map((file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const base64Images = await Promise.all(readFilePromises);
+      setPrimaryImages((prev) => {
+        const available = 5 - prev.length;
+        const imagesToAdd = base64Images.slice(0, available);
+        const updatedImages = [...prev, ...imagesToAdd];
+        form.setValue("primaryImages", updatedImages);
+        return updatedImages;
+      });
+    }
 
     if (primaryFileInputRef.current) {
       primaryFileInputRef.current.value = "";
     }
   };
 
-  const handleSecondaryFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleSecondaryFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Error",
-        description: "Solo se permiten archivos de imagen",
-        variant: "destructive",
-      });
-      return;
-    }
+    const validFiles: File[] = [];
+    const filesArray = Array.from(files);
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "La imagen no debe superar los 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      if (secondaryImages.length < 20) {
-        const newImages = [...secondaryImages, base64String];
-        setSecondaryImages(newImages);
-        form.setValue("secondaryImages", newImages);
+    // Validate files first
+    filesArray.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Error",
+          description: `${file.name}: Solo se permiten archivos de imagen`,
+          variant: "destructive",
+        });
+        return;
       }
-    };
-    reader.readAsDataURL(file);
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: `${file.name} supera el límite de 5MB`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (secondaryImages.length + validFiles.length >= 20) {
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    // Process valid files
+    if (validFiles.length > 0) {
+      const readFilePromises = validFiles.map((file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const base64Images = await Promise.all(readFilePromises);
+      setSecondaryImages((prev) => {
+        const available = 20 - prev.length;
+        const imagesToAdd = base64Images.slice(0, available);
+        const updatedImages = [...prev, ...imagesToAdd];
+        form.setValue("secondaryImages", updatedImages);
+        return updatedImages;
+      });
+    }
 
     if (secondaryFileInputRef.current) {
       secondaryFileInputRef.current.value = "";
@@ -236,6 +286,16 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              <input
+                ref={primaryFileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+                multiple
+                onChange={handlePrimaryFileUpload}
+                className="hidden"
+                data-testid="input-primary-file"
+              />
+              
               <div className="flex gap-2">
                 <Input
                   placeholder="URL de la imagen principal"
@@ -248,34 +308,11 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                   type="button"
                   variant="outline"
                   onClick={handleAddPrimaryImage}
-                  disabled={primaryImages.length >= 5 || !currentPrimaryUrl.trim()}
+                  disabled={primaryImages.length >= 5}
                   data-testid="button-add-primary-image"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Agregar
-                </Button>
-              </div>
-
-              <div className="flex gap-2 items-center">
-                <p className="text-sm text-muted-foreground">o</p>
-                <input
-                  ref={primaryFileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
-                  onChange={handlePrimaryFileUpload}
-                  className="hidden"
-                  data-testid="input-primary-file"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => primaryFileInputRef.current?.click()}
-                  disabled={primaryImages.length >= 5}
-                  className="flex-1"
-                  data-testid="button-upload-primary-file"
-                >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Subir desde dispositivo
                 </Button>
               </div>
 
@@ -344,6 +381,16 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              <input
+                ref={secondaryFileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+                multiple
+                onChange={handleSecondaryFileUpload}
+                className="hidden"
+                data-testid="input-secondary-file"
+              />
+              
               <div className="flex gap-2">
                 <Input
                   placeholder="URL de la imagen secundaria"
@@ -356,34 +403,11 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                   type="button"
                   variant="outline"
                   onClick={handleAddSecondaryImage}
-                  disabled={secondaryImages.length >= 20 || !currentSecondaryUrl.trim()}
+                  disabled={secondaryImages.length >= 20}
                   data-testid="button-add-secondary-image"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Agregar
-                </Button>
-              </div>
-
-              <div className="flex gap-2 items-center">
-                <p className="text-sm text-muted-foreground">o</p>
-                <input
-                  ref={secondaryFileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
-                  onChange={handleSecondaryFileUpload}
-                  className="hidden"
-                  data-testid="input-secondary-file"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => secondaryFileInputRef.current?.click()}
-                  disabled={secondaryImages.length >= 20}
-                  className="flex-1"
-                  data-testid="button-upload-secondary-file"
-                >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Subir desde dispositivo
                 </Button>
               </div>
 
