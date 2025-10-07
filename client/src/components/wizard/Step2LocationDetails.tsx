@@ -32,7 +32,10 @@ const step2Schema = z.object({
   // Detalles
   bedrooms: z.coerce.number().int().min(0, "Las habitaciones deben ser un número positivo"),
   bathrooms: z.coerce.number().min(0, "Los baños deben ser un número positivo"),
-  area: z.coerce.number().min(1, "El área debe ser mayor a 0"),
+  area: z.string()
+    .optional()
+    .transform((val) => (val === "" || val === undefined) ? undefined : Number(val))
+    .refine((val) => val === undefined || val >= 1, { message: "El área debe ser mayor a 0" }),
   propertyAmenities: z.array(z.string()).optional().default([]),
   condoAmenities: z.array(z.string()).optional().default([]),
 });
@@ -103,7 +106,7 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
       // Detalles
       bedrooms: data.details?.bedrooms || 0,
       bathrooms: data.details?.bathrooms || 0,
-      area: data.details?.area || 0,
+      area: data.details?.area || "",
       propertyAmenities: data.details?.propertyAmenities || [],
       condoAmenities: data.details?.condoAmenities || [],
     },

@@ -1402,6 +1402,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.role !== "owner") {
         return res.status(403).json({ message: "Solo los propietarios pueden sugerir colonias" });
       }
+
+      // Check suggestion limits (3 per day, 15 total)
+      const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
+      const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
+
+      if (todaySuggestions >= 3) {
+        return res.status(429).json({ 
+          message: "Has alcanzado el límite de 3 sugerencias por día" 
+        });
+      }
+
+      if (totalSuggestions >= 15) {
+        return res.status(429).json({ 
+          message: "Has alcanzado el límite de 15 sugerencias totales" 
+        });
+      }
       
       // Validate request body with Zod
       const colonySchema = z.object({
@@ -1650,6 +1666,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only owners can suggest condominiums
       if (!user || user.role !== "owner") {
         return res.status(403).json({ message: "Solo los propietarios pueden sugerir condominios" });
+      }
+
+      // Check suggestion limits (3 per day, 15 total)
+      const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
+      const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
+
+      if (todaySuggestions >= 3) {
+        return res.status(429).json({ 
+          message: "Has alcanzado el límite de 3 sugerencias por día" 
+        });
+      }
+
+      if (totalSuggestions >= 15) {
+        return res.status(429).json({ 
+          message: "Has alcanzado el límite de 15 sugerencias totales" 
+        });
       }
       
       // Validate request body with Zod
@@ -2096,6 +2128,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only owners can suggest amenities
       if (!user || user.role !== "owner") {
         return res.status(403).json({ message: "Solo los propietarios pueden sugerir amenidades" });
+      }
+
+      // Check suggestion limits (3 per day, 15 total)
+      const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
+      const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
+
+      if (todaySuggestions >= 3) {
+        return res.status(429).json({ 
+          message: "Has alcanzado el límite de 3 sugerencias por día" 
+        });
+      }
+
+      if (totalSuggestions >= 15) {
+        return res.status(429).json({ 
+          message: "Has alcanzado el límite de 15 sugerencias totales" 
+        });
       }
       
       // Validate request body with Zod

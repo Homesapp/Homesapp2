@@ -262,6 +262,9 @@ export interface IStorage {
   updateAmenityStatus(id: string, approvalStatus: string): Promise<Amenity>;
   deleteAmenity(id: string): Promise<void>;
   
+  // Suggestion limits
+  getUserSuggestionsCount(userId: string, timeframe?: 'today' | 'total'): Promise<number>;
+  
   // Property operations
   getProperty(id: string): Promise<Property | undefined>;
   getProperties(filters?: { status?: string; ownerId?: string; active?: boolean }): Promise<Property[]>;
@@ -1075,6 +1078,52 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAmenity(id: string): Promise<void> {
     await db.delete(amenities).where(eq(amenities.id, id));
+  }
+
+  // Suggestion limits
+  async getUserSuggestionsCount(userId: string, timeframe: 'today' | 'total' = 'total'): Promise<number> {
+    const startOfDay = timeframe === 'today' ? (() => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      return date;
+    })() : null;
+
+    // Count colonies
+    const coloniesConditions = [eq(colonies.requestedBy, userId)];
+    if (startOfDay) {
+      coloniesConditions.push(gte(colonies.createdAt, startOfDay));
+    }
+    const coloniesCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(colonies)
+      .where(and(...coloniesConditions));
+
+    // Count condominiums
+    const condoConditions = [eq(condominiums.requestedBy, userId)];
+    if (startOfDay) {
+      condoConditions.push(gte(condominiums.createdAt, startOfDay));
+    }
+    const condosCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(condominiums)
+      .where(and(...condoConditions));
+
+    // Count amenities
+    const amenityConditions = [eq(amenities.requestedBy, userId)];
+    if (startOfDay) {
+      amenityConditions.push(gte(amenities.createdAt, startOfDay));
+    }
+    const amenitiesCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(amenities)
+      .where(and(...amenityConditions));
+
+    const total = 
+      Number(coloniesCount[0]?.count || 0) + 
+      Number(condosCount[0]?.count || 0) + 
+      Number(amenitiesCount[0]?.count || 0);
+
+    return total;
   }
 
   // Property operations

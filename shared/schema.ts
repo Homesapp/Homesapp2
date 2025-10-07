@@ -613,7 +613,7 @@ export const properties = pgTable("properties", {
   currency: varchar("currency", { length: 3 }).notNull().default("MXN"),
   bedrooms: integer("bedrooms").notNull(),
   bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }).notNull(),
-  area: decimal("area", { precision: 8, scale: 2 }).notNull(),
+  area: decimal("area", { precision: 8, scale: 2 }),
   location: text("location").notNull(),
   colonyId: varchar("colony_id").references(() => colonies.id),
   colonyName: text("colony_name"),

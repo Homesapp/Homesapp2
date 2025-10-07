@@ -172,13 +172,15 @@ export default function PropertyFullDetails() {
                           <div className="font-semibold">{property.bathrooms}</div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Square className="h-5 w-5 text-primary" />
-                        <div>
-                          <div className="text-sm text-muted-foreground">Área</div>
-                          <div className="font-semibold">{property.area} m²</div>
+                      {property.area && (
+                        <div className="flex items-center gap-3">
+                          <Square className="h-5 w-5 text-primary" />
+                          <div>
+                            <div className="text-sm text-muted-foreground">Área</div>
+                            <div className="font-semibold">{property.area} m²</div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <Building className="h-5 w-5 text-primary" />
                         <div>
@@ -307,10 +309,12 @@ export default function PropertyFullDetails() {
                 <Bath className="h-5 w-5 text-primary" />
                 <span>{property.bathrooms} baños</span>
               </div>
-              <div className="flex items-center gap-3">
-                <Square className="h-5 w-5 text-primary" />
-                <span>{property.area} m²</span>
-              </div>
+              {property.area && (
+                <div className="flex items-center gap-3">
+                  <Square className="h-5 w-5 text-primary" />
+                  <span>{property.area} m²</span>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-primary" />
                 <span className="line-clamp-2">{property.location}</span>

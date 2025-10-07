@@ -544,10 +544,12 @@ export default function PropertySearch() {
                             <Bath className="h-4 w-4" />
                             <span>{property.bathrooms}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Square className="h-4 w-4" />
-                            <span>{property.area} m²</span>
-                          </div>
+                          {property.area && (
+                            <div className="flex items-center gap-1">
+                              <Square className="h-4 w-4" />
+                              <span>{property.area} m²</span>
+                            </div>
+                          )}
                           {(property.amenities?.includes("Mascotas permitidas") || property.amenities?.includes("Pet Friendly")) && (
                             <div className="flex items-center gap-1" title="Pet-friendly">
                               <PawPrint className="h-4 w-4 text-foreground" />
