@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadingScreen } from "@/components/ui/loading-screen";
-import { Bell, Check, CheckCheck, Settings, Mail } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Bell, Check, CheckCheck, Settings, Mail, Filter, Clock, AlertTriangle } from "lucide-react";
+import { formatDistanceToNow, differenceInHours, isPast } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +22,11 @@ export default function Notifications() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -112,8 +120,55 @@ export default function Notifications() {
     }
   };
 
-  const unreadNotifications = notifications.filter(n => !n.read);
-  const readNotifications = notifications.filter(n => n.read);
+  const getPriorityBadge = (priority: string) => {
+    const config = {
+      low: { variant: "secondary" as const, label: "Baja", className: "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200" },
+      medium: { variant: "secondary" as const, label: "Media", className: "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200" },
+      high: { variant: "default" as const, label: "Alta", className: "bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200" },
+      urgent: { variant: "destructive" as const, label: "Urgente", className: "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200" },
+    };
+    return config[priority as keyof typeof config] || config.medium;
+  };
+
+  const getSLAStatus = (slaDeadline: string | null | undefined, read: boolean) => {
+    if (!slaDeadline || read) return null;
+    
+    const deadline = new Date(slaDeadline);
+    const hoursRemaining = differenceInHours(deadline, new Date());
+    const isOverdue = isPast(deadline);
+    
+    if (isOverdue) {
+      return { status: "overdue", label: "Vencido", className: "text-red-600 dark:text-red-400" };
+    } else if (hoursRemaining <= 2) {
+      return { status: "critical", label: `${hoursRemaining}h restantes`, className: "text-orange-600 dark:text-orange-400" };
+    } else if (hoursRemaining <= 24) {
+      return { status: "warning", label: `${hoursRemaining}h restantes`, className: "text-yellow-600 dark:text-yellow-400" };
+    }
+    
+    return { status: "normal", label: `${hoursRemaining}h restantes`, className: "text-muted-foreground" };
+  };
+
+  // Filtrado avanzado
+  const filteredNotifications = notifications.filter((notification) => {
+    const matchesSearch = 
+      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === "all" || notification.type === typeFilter;
+    const matchesPriority = priorityFilter === "all" || notification.priority === priorityFilter;
+    return matchesSearch && matchesType && matchesPriority;
+  }).sort((a, b) => {
+    // Ordenar por prioridad primero (urgente > alta > media > baja)
+    const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+    const priorityDiff = (priorityOrder[a.priority as keyof typeof priorityOrder] ?? 2) - 
+                        (priorityOrder[b.priority as keyof typeof priorityOrder] ?? 2);
+    if (priorityDiff !== 0) return priorityDiff;
+    
+    // Luego por fecha (más reciente primero)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  const unreadNotifications = filteredNotifications.filter(n => !n.read);
+  const readNotifications = filteredNotifications.filter(n => n.read);
 
   if (isLoading) {
     return <LoadingScreen className="h-64" />;
@@ -145,6 +200,50 @@ export default function Notifications() {
           </Button>
         )}
       </div>
+
+      {/* Filtros Avanzados */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Filter className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input
+                placeholder="Buscar notificaciones..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+                data-testid="input-search-notifications"
+              />
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger data-testid="select-type-filter">
+                  <SelectValue placeholder="Filtrar por tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="appointment">Citas</SelectItem>
+                  <SelectItem value="offer">Ofertas</SelectItem>
+                  <SelectItem value="message">Mensajes</SelectItem>
+                  <SelectItem value="property_update">Propiedades</SelectItem>
+                  <SelectItem value="rental_update">Rentas</SelectItem>
+                  <SelectItem value="system">Sistema</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger data-testid="select-priority-filter">
+                  <SelectValue placeholder="Filtrar por prioridad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las prioridades</SelectItem>
+                  <SelectItem value="urgent">Urgente</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="medium">Media</SelectItem>
+                  <SelectItem value="low">Baja</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="all" className="w-full">
         <TabsList>
@@ -190,37 +289,62 @@ export default function Notifications() {
               </CardContent>
             </Card>
           ) : (
-            notifications.map((notification) => (
-              <Card
-                key={notification.id}
-                className={`hover-elevate cursor-pointer transition-all ${
-                  !notification.read ? "border-l-4 border-l-primary" : ""
-                }`}
-                onClick={() => handleNotificationClick(notification)}
-                data-testid={`notification-card-${notification.id}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    <div className="text-3xl">{getNotificationIcon(notification.type)}</div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold">{notification.title}</h3>
-                        {!notification.read && (
-                          <Badge variant="default">Nueva</Badge>
-                        )}
+            filteredNotifications.map((notification) => {
+              const priorityBadge = getPriorityBadge(notification.priority);
+              const slaStatus = getSLAStatus(notification.slaDeadline, notification.read);
+              
+              return (
+                <Card
+                  key={notification.id}
+                  className={`hover-elevate cursor-pointer transition-all ${
+                    !notification.read ? "border-l-4 border-l-primary" : ""
+                  }`}
+                  onClick={() => handleNotificationClick(notification)}
+                  data-testid={`notification-card-${notification.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex gap-4">
+                      <div className="text-3xl">{getNotificationIcon(notification.type)}</div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold flex-1">{notification.title}</h3>
+                          <div className="flex items-center gap-2">
+                            <Badge className={priorityBadge.className}>
+                              {priorityBadge.label}
+                            </Badge>
+                            {!notification.read && (
+                              <Badge variant="default">Nueva</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-muted-foreground">{notification.message}</p>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="text-muted-foreground">
+                            {formatDistanceToNow(new Date(notification.createdAt), {
+                              addSuffix: true,
+                              locale: es,
+                            })}
+                          </span>
+                          {slaStatus && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <div className="flex items-center gap-1">
+                                {slaStatus.status === "overdue" ? (
+                                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                                ) : (
+                                  <Clock className="h-4 w-4" />
+                                )}
+                                <span className={slaStatus.className}>{slaStatus.label}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-muted-foreground">{notification.message}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(notification.createdAt), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
-                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </TabsContent>
 
@@ -236,33 +360,58 @@ export default function Notifications() {
               </CardContent>
             </Card>
           ) : (
-            unreadNotifications.map((notification) => (
-              <Card
-                key={notification.id}
-                className="hover-elevate cursor-pointer transition-all border-l-4 border-l-primary"
-                onClick={() => handleNotificationClick(notification)}
-                data-testid={`notification-card-${notification.id}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    <div className="text-3xl">{getNotificationIcon(notification.type)}</div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold">{notification.title}</h3>
-                        <Badge variant="default">Nueva</Badge>
+            unreadNotifications.map((notification) => {
+              const priorityBadge = getPriorityBadge(notification.priority);
+              const slaStatus = getSLAStatus(notification.slaDeadline, notification.read);
+              
+              return (
+                <Card
+                  key={notification.id}
+                  className="hover-elevate cursor-pointer transition-all border-l-4 border-l-primary"
+                  onClick={() => handleNotificationClick(notification)}
+                  data-testid={`notification-card-${notification.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex gap-4">
+                      <div className="text-3xl">{getNotificationIcon(notification.type)}</div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold flex-1">{notification.title}</h3>
+                          <div className="flex items-center gap-2">
+                            <Badge className={priorityBadge.className}>
+                              {priorityBadge.label}
+                            </Badge>
+                            <Badge variant="default">Nueva</Badge>
+                          </div>
+                        </div>
+                        <p className="text-muted-foreground">{notification.message}</p>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="text-muted-foreground">
+                            {formatDistanceToNow(new Date(notification.createdAt), {
+                              addSuffix: true,
+                              locale: es,
+                            })}
+                          </span>
+                          {slaStatus && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <div className="flex items-center gap-1">
+                                {slaStatus.status === "overdue" ? (
+                                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                                ) : (
+                                  <Clock className="h-4 w-4" />
+                                )}
+                                <span className={slaStatus.className}>{slaStatus.label}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-muted-foreground">{notification.message}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(notification.createdAt), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
-                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </TabsContent>
 
@@ -278,30 +427,39 @@ export default function Notifications() {
               </CardContent>
             </Card>
           ) : (
-            readNotifications.map((notification) => (
-              <Card
-                key={notification.id}
-                className="hover-elevate cursor-pointer transition-all"
-                onClick={() => handleNotificationClick(notification)}
-                data-testid={`notification-card-${notification.id}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    <div className="text-3xl opacity-60">{getNotificationIcon(notification.type)}</div>
-                    <div className="flex-1 space-y-1">
-                      <h3 className="font-semibold opacity-80">{notification.title}</h3>
-                      <p className="text-muted-foreground">{notification.message}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(notification.createdAt), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
-                      </p>
+            readNotifications.map((notification) => {
+              const priorityBadge = getPriorityBadge(notification.priority);
+              
+              return (
+                <Card
+                  key={notification.id}
+                  className="hover-elevate cursor-pointer transition-all"
+                  onClick={() => handleNotificationClick(notification)}
+                  data-testid={`notification-card-${notification.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex gap-4">
+                      <div className="text-3xl opacity-60">{getNotificationIcon(notification.type)}</div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold opacity-80 flex-1">{notification.title}</h3>
+                          <Badge className={priorityBadge.className}>
+                            {priorityBadge.label}
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground">{notification.message}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(notification.createdAt), {
+                            addSuffix: true,
+                            locale: es,
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </TabsContent>
 

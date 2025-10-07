@@ -290,6 +290,13 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "rental_update",
 ]);
 
+export const notificationPriorityEnum = pgEnum("notification_priority", [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+]);
+
 export const chatTypeEnum = pgEnum("chat_type", [
   "appointment", // Chat de citas
   "rental", // Chat de rentas en curso
@@ -1679,9 +1686,11 @@ export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: notificationTypeEnum("type").notNull(),
+  priority: notificationPriorityEnum("priority").notNull().default("medium"),
   title: text("title").notNull(),
   message: text("message").notNull(),
   read: boolean("read").notNull().default(false),
+  slaDeadline: timestamp("sla_deadline"), // SLA deadline for response
   relatedEntityType: varchar("related_entity_type"), // property, appointment, offer, etc.
   relatedEntityId: varchar("related_entity_id"),
   metadata: jsonb("metadata"), // Additional data
