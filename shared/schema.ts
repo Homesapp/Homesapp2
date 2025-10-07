@@ -735,6 +735,7 @@ export const properties = pgTable("properties", {
   reviewCount: integer("review_count").notNull().default(0),
   featured: boolean("featured").notNull().default(false),
   allowsSubleasing: boolean("allows_subleasing").notNull().default(false),
+  petFriendly: boolean("pet_friendly").notNull().default(false), // Acepta mascotas
   referralPartnerId: varchar("referral_partner_id").references(() => users.id), // Socio que refirió la propiedad
   referralPercent: decimal("referral_percent", { precision: 5, scale: 2 }).default("20.00"), // Porcentaje del referido (default 20%)
   wizardMode: wizardModeEnum("wizard_mode").default("simple"), // Modo de wizard: simple o extendido
@@ -879,7 +880,10 @@ export const propertyStaff = pgTable(
     propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
     staffId: varchar("staff_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     role: varchar("role").notNull(), // cleaning, maintenance, concierge, accounting, legal
+    assignedById: varchar("assigned_by_id").notNull().references(() => users.id),
+    active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     unique().on(table.propertyId, table.staffId, table.role),
@@ -889,6 +893,7 @@ export const propertyStaff = pgTable(
 export const insertPropertyStaffSchema = createInsertSchema(propertyStaff).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertPropertyStaff = z.infer<typeof insertPropertyStaffSchema>;
@@ -1567,6 +1572,32 @@ export const updateInspectionReportSchema = z.object({
 
 export type InsertInspectionReport = z.infer<typeof insertInspectionReportSchema>;
 export type InspectionReport = typeof inspectionReports.$inferSelect;
+
+// Property Tasks table (tareas de propiedades)
+export const propertyTasks = pgTable("property_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: text("priority").notNull().default("medium"), // "low", "medium", "high", "urgent"
+  status: text("status").notNull().default("pending"), // "pending", "in_progress", "completed", "cancelled"
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertyTaskSchema = createInsertSchema(propertyTasks).omit({
+  id: true,
+  completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPropertyTask = z.infer<typeof insertPropertyTaskSchema>;
+export type PropertyTask = typeof propertyTasks.$inferSelect;
 
 // Owner Settings table (configuración de propietarios)
 export const ownerSettings = pgTable("owner_settings", {
