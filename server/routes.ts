@@ -7097,7 +7097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/budgets/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/budgets/:id", isAuthenticated, requireResourceOwnership('budget', 'staffId'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
@@ -7120,7 +7120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/budgets/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/budgets/:id", isAuthenticated, requireResourceOwnership('budget', 'staffId'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
@@ -7208,7 +7208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/tasks/:id", isAuthenticated, requireResourceOwnership('task', 'assignedToId'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
@@ -7241,7 +7241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/tasks/:id", isAuthenticated, requireResourceOwnership('task', 'assignedToId'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
@@ -7622,7 +7622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/chat/conversations/:id/mark-read", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/chat/conversations/:id/mark-read", isAuthenticated, requireResourceOwnership('conversation'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;

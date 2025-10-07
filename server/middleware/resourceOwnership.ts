@@ -6,8 +6,8 @@ import { storage } from "../storage";
  * Admin and Master roles can access all resources
  */
 export const requireResourceOwnership = (
-  resourceType: 'appointment' | 'offer' | 'property' | 'rental-contract' | 'rental-application' | 'service-provider' | 'service' | 'service-booking' | 'presentation-card' | 'notification',
-  ownerField: 'clientId' | 'ownerId' | 'sellerId' | 'tenantId' | 'applicantId' | 'userId' | 'providerId' = 'ownerId'
+  resourceType: 'appointment' | 'offer' | 'property' | 'rental-contract' | 'rental-application' | 'service-provider' | 'service' | 'service-booking' | 'presentation-card' | 'notification' | 'budget' | 'task' | 'conversation',
+  ownerField: 'clientId' | 'ownerId' | 'sellerId' | 'tenantId' | 'applicantId' | 'userId' | 'providerId' | 'staffId' | 'assignedToId' = 'ownerId'
 ): RequestHandler => {
   return async (req: any, res: any, next: any) => {
     try {
@@ -61,6 +61,15 @@ export const requireResourceOwnership = (
           break;
         case 'notification':
           resource = await storage.getNotification(resourceId);
+          break;
+        case 'budget':
+          resource = await storage.getBudget(resourceId);
+          break;
+        case 'task':
+          resource = await storage.getTask(resourceId);
+          break;
+        case 'conversation':
+          resource = await storage.getChatConversation(resourceId);
           break;
         default:
           return res.status(400).json({ message: "Invalid resource type" });
@@ -168,6 +177,17 @@ export const requireResourceOwnership = (
               message: "Forbidden: You don't have permission to modify this service booking" 
             });
           }
+        }
+      }
+      // For conversations, check if user is a participant
+      else if (resourceType === 'conversation') {
+        const participants = await storage.getChatParticipants(resourceId);
+        const isParticipant = participants.some(p => p.userId === userId);
+        
+        if (!isParticipant) {
+          return res.status(403).json({ 
+            message: "Forbidden: You don't have permission to modify this conversation" 
+          });
         }
       }
       // For other resources, simple ownership check
