@@ -133,7 +133,7 @@ export default function OwnerPropertyDetails() {
   const hasPendingChanges = pendingChanges.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4 flex-wrap">
         <Button
           variant="ghost"
@@ -144,11 +144,11 @@ export default function OwnerPropertyDetails() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">
             {property?.title || "Nueva Propiedad"}
           </h1>
           {property && (
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-1">
               <Badge
                 variant={approvalStatusColors[property.approvalStatus || "draft"]}
                 className="gap-1"
@@ -185,7 +185,7 @@ export default function OwnerPropertyDetails() {
           {/* Photo Gallery */}
           {property.images && property.images.length > 0 && (
           <Card className="overflow-hidden">
-            <div className="relative h-96">
+            <div className="relative h-72">
               <img
                 src={property.images[currentImageIndex]}
                 alt={`${property.title} - imagen ${currentImageIndex + 1}`}
@@ -254,52 +254,56 @@ export default function OwnerPropertyDetails() {
             <TabsTrigger value="appointments">Visitas</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-6">
+          <TabsContent value="details" className="space-y-4">
             {/* Rental and Sale Listings Section */}
             {(property.status === "both" || property.status === "rent" || property.status === "sale") && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(property.status === "rent" || property.status === "both") && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
                         Listing de Renta
                         <Badge variant="default">Renta</Badge>
                       </CardTitle>
                       <CardDescription>Información para renta mensual</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3">
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Precio Mensual</label>
-                        <div className="flex items-center gap-1 text-2xl font-semibold mt-1 text-primary">
-                          <DollarSign className="h-6 w-6" />
+                        <div className="flex items-center gap-1 text-xl font-semibold mt-1 text-primary">
                           <span data-testid="text-rental-price">
                             ${Number(property.price).toLocaleString()}
                           </span>
                           <span className="text-sm text-muted-foreground">/mes</span>
                         </div>
                       </div>
-                      <Separator />
                       {property.availableFrom && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Disponible desde</label>
-                          <p className="text-base mt-1">
-                            {new Date(property.availableFrom).toLocaleDateString("es-ES")}
-                          </p>
-                        </div>
+                        <>
+                          <Separator />
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Disponible desde</label>
+                            <p className="text-sm mt-1">
+                              {new Date(property.availableFrom).toLocaleDateString("es-ES")}
+                            </p>
+                          </div>
+                        </>
                       )}
                       {property.acceptedLeaseDurations && property.acceptedLeaseDurations.length > 0 && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">
-                            Duraciones de contrato aceptadas
-                          </label>
-                          <div className="flex gap-2 mt-2 flex-wrap">
-                            {property.acceptedLeaseDurations.map((duration) => (
-                              <Badge key={duration} variant="secondary">
-                                {duration}
-                              </Badge>
-                            ))}
+                        <>
+                          <Separator />
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Duraciones aceptadas
+                            </label>
+                            <div className="flex gap-1 mt-2 flex-wrap">
+                              {property.acceptedLeaseDurations.map((duration) => (
+                                <Badge key={duration} variant="secondary" className="text-xs">
+                                  {duration}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        </>
                       )}
                     </CardContent>
                   </Card>
@@ -307,18 +311,17 @@ export default function OwnerPropertyDetails() {
 
                 {(property.status === "sale" || property.status === "both") && property.salePrice && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
                         Listing de Venta
                         <Badge variant="secondary">Venta</Badge>
                       </CardTitle>
                       <CardDescription>Información para venta de propiedad</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Precio de Venta</label>
-                        <div className="flex items-center gap-1 text-2xl font-semibold mt-1 text-primary">
-                          <DollarSign className="h-6 w-6" />
+                        <div className="flex items-center gap-1 text-xl font-semibold mt-1 text-primary">
                           <span data-testid="text-sale-price">
                             ${Number(property.salePrice).toLocaleString()}
                           </span>
@@ -330,22 +333,22 @@ export default function OwnerPropertyDetails() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Información General</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Información General</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Título</label>
-                    <p className="text-base mt-1" data-testid="text-property-title">
+                    <p className="text-sm mt-1" data-testid="text-property-title">
                       {property.title}
                     </p>
                   </div>
                   <Separator />
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Descripción</label>
-                    <p className="text-base mt-1 text-muted-foreground">
+                    <p className="text-sm mt-1 text-muted-foreground">
                       {property.description || "Sin descripción"}
                     </p>
                   </div>
@@ -354,80 +357,53 @@ export default function OwnerPropertyDetails() {
                     <label className="text-sm font-medium text-muted-foreground">Ubicación</label>
                     <div className="flex items-center gap-2 mt-1">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-base">{property.location}</p>
+                      <p className="text-sm">{property.location}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Detalles de Propiedad</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Detalles de Propiedad</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Tipo</label>
-                      <p className="text-base mt-1 capitalize">{property.propertyType}</p>
+                      <p className="text-sm mt-1 capitalize">{property.propertyType}</p>
                     </div>
                     {property.petFriendly && (
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Mascotas</label>
                         <div className="flex items-center gap-2 mt-1">
                           <PawPrint className="h-4 w-4 text-primary" />
-                          <p className="text-base">Pet Friendly</p>
+                          <p className="text-sm">Pet Friendly</p>
                         </div>
                       </div>
                     )}
                   </div>
                   <Separator />
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="flex flex-col items-center gap-2 p-3 border rounded-md">
-                      <Bed className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-lg font-semibold">{property.bedrooms}</span>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col items-center gap-1 p-2 border rounded-md">
+                      <Bed className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-base font-semibold">{property.bedrooms}</span>
                       <span className="text-xs text-muted-foreground">Habitaciones</span>
                     </div>
-                    <div className="flex flex-col items-center gap-2 p-3 border rounded-md">
-                      <Bath className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-lg font-semibold">{property.bathrooms}</span>
+                    <div className="flex flex-col items-center gap-1 p-2 border rounded-md">
+                      <Bath className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-base font-semibold">{property.bathrooms}</span>
                       <span className="text-xs text-muted-foreground">Baños</span>
                     </div>
-                    <div className="flex flex-col items-center gap-2 p-3 border rounded-md">
-                      <Square className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-lg font-semibold">{property.area}</span>
+                    <div className="flex flex-col items-center gap-1 p-2 border rounded-md">
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-base font-semibold">{property.area}</span>
                       <span className="text-xs text-muted-foreground">m²</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
-
-            {property.images && property.images.length > 1 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Galería de Imágenes</CardTitle>
-                  <CardDescription>{property.images.length} fotos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {property.images.map((image, index) => (
-                      <div
-                        key={index}
-                        className="aspect-square rounded-md overflow-hidden border bg-muted cursor-pointer hover-elevate"
-                        onClick={() => setCurrentImageIndex(index)}
-                        data-testid={`thumbnail-${index}`}
-                      >
-                        <img
-                          src={image}
-                          alt={`${property.title} - imagen ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
 
           <TabsContent value="changes" className="space-y-4">

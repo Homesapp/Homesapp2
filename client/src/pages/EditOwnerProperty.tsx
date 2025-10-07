@@ -1134,7 +1134,7 @@ export default function EditOwnerProperty() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium">Servicios Adicionales (opcional)</h4>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         type="button"
                         variant="outline"
@@ -1165,6 +1165,16 @@ export default function EditOwnerProperty() {
                         <Plus className="w-4 h-4 mr-1" />
                         Gas
                       </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddAdditionalService("custom")}
+                        data-testid="button-add-custom"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Otros
+                      </Button>
                     </div>
                   </div>
 
@@ -1172,7 +1182,17 @@ export default function EditOwnerProperty() {
                     <div key={service.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 border rounded-lg">
                       <div>
                         <Label>Servicio</Label>
-                        <p className="text-sm mt-1">{serviceLabels[service.type as keyof typeof serviceLabels] || service.customName}</p>
+                        {service.type === "custom" ? (
+                          <Input
+                            value={service.customName || ""}
+                            onChange={(e) => handleUpdateAdditionalService(service.id, "customName", e.target.value)}
+                            placeholder="Nombre del servicio"
+                            className="mt-1"
+                            data-testid={`input-custom-name-${service.id}`}
+                          />
+                        ) : (
+                          <p className="text-sm mt-1">{serviceLabels[service.type as keyof typeof serviceLabels]}</p>
+                        )}
                       </div>
                       <div>
                         <Label>Proveedor</Label>
@@ -1180,6 +1200,7 @@ export default function EditOwnerProperty() {
                           value={service.provider}
                           onChange={(e) => handleUpdateAdditionalService(service.id, "provider", e.target.value)}
                           placeholder="Nombre del proveedor"
+                          data-testid={`input-provider-${service.id}`}
                         />
                       </div>
                       <div className="flex gap-2">
@@ -1189,6 +1210,7 @@ export default function EditOwnerProperty() {
                             value={service.cost}
                             onChange={(e) => handleUpdateAdditionalService(service.id, "cost", e.target.value)}
                             placeholder="Ej: 500"
+                            data-testid={`input-cost-${service.id}`}
                           />
                         </div>
                         <Button
@@ -1197,6 +1219,7 @@ export default function EditOwnerProperty() {
                           size="icon"
                           onClick={() => handleRemoveAdditionalService(service.id)}
                           className="mt-6"
+                          data-testid={`button-remove-${service.id}`}
                         >
                           <X className="w-4 h-4" />
                         </Button>
