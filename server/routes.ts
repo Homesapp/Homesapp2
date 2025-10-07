@@ -3190,6 +3190,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
+      // Add concierge info if available
+      if (appointment.conciergeId) {
+        const concierge = await storage.getUser(appointment.conciergeId);
+        if (concierge) {
+          filteredAppointment.concierge = {
+            id: concierge.id,
+            firstName: concierge.firstName,
+            lastName: concierge.lastName,
+            email: concierge.email,
+            phone: concierge.phone,
+            profileImageUrl: concierge.profileImageUrl,
+          };
+        }
+      }
+
       res.json(filteredAppointment);
     } catch (error: any) {
       console.error("Error fetching appointment details:", error);

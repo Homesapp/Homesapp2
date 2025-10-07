@@ -462,13 +462,13 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="p-4 border-t space-y-2">
+        <div className={state === "expanded" ? "p-4 border-t space-y-2" : "p-2 border-t space-y-2"}>
           <RoleToggle />
           <Link href="/ayuda" data-testid="link-help">
             <Button
               variant="outline"
               size={state === "expanded" ? "default" : "icon"}
-              className={state === "expanded" ? "w-full justify-start gap-2" : ""}
+              className={state === "expanded" ? "w-full justify-start gap-2" : "w-full"}
               data-testid="button-help"
             >
               <HelpCircle className="h-4 w-4" />

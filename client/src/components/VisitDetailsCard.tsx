@@ -188,6 +188,57 @@ export function VisitDetailsCard({
           </div>
         )}
 
+        {/* Información del Conserje */}
+        {appointment.concierge && (
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Conserje Designado
+            </h3>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                {appointment.concierge.profileImageUrl && (
+                  <AvatarImage src={appointment.concierge.profileImageUrl} />
+                )}
+                <AvatarFallback>
+                  {getInitials(`${appointment.concierge.firstName} ${appointment.concierge.lastName}`)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-1">
+                <p className="font-medium">
+                  {appointment.concierge.firstName} {appointment.concierge.lastName}
+                </p>
+                {appointment.concierge.phone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-3 w-3 text-muted-foreground" />
+                    <a 
+                      href={`https://wa.me/${appointment.concierge.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                      data-testid="link-concierge-phone"
+                    >
+                      {appointment.concierge.phone}
+                    </a>
+                  </div>
+                )}
+                {appointment.concierge.email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-3 w-3 text-muted-foreground" />
+                    <a 
+                      href={`mailto:${appointment.concierge.email}`}
+                      className="text-primary hover:underline truncate"
+                      data-testid="link-concierge-email"
+                    >
+                      {appointment.concierge.email}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Información del Staff (para visitas que NO son de cliente) */}
         {!isClientVisit && appointment.staffMember && (
           <div className="border-t pt-4">
