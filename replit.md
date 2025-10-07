@@ -62,6 +62,14 @@ Administrative fees: $2,500 MXN for personal use contracts or $3,800 MXN for sub
 *   **Admin Panel Enhancements**: Includes full English translation, a dedicated admin profile management page with photo upload and password changes, and a streamlined user menu.
 *   **Role Request System**: Enhanced with mandatory email, WhatsApp, and structured years of experience fields for applications.
 *   **Property Import/Export System**: Admin-only feature for migrating property data between development and production environments. Supports JSON export with filters, validation pipeline with foreign key checking, and bulk import with duplicate handling options (skip or update existing). Includes dry-run mode to validate data before importing.
+*   **Property Owner Assignment System**: Admin-only feature for managing property ownership assignments and reassignments. Critical for ensuring all properties have valid owners. Features include:
+    - **Statistics Dashboard**: Visual overview of property distribution across owners
+    - **Owner Filtering**: Filter properties by current owner to manage large portfolios
+    - **Bulk Reassignment**: Select multiple properties and reassign them to a new owner in a single transaction
+    - **Validation**: Ensures target owners exist, have appropriate roles (owner/admin/master), and are approved
+    - **Transactional Safety**: Batch operations use database transactions to prevent partial updates
+    - **Audit Trail**: All reassignments are logged for compliance and tracking
+    - Accessible at `/admin/property-owners` for master and admin roles only
 
 ### System Design Choices
 
