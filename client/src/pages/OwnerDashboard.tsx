@@ -167,9 +167,9 @@ export default function OwnerDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             {pendingAppointments.length > 0 && (
-              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-muted rounded-md">
                 <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-primary" />
+                  <Clock className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
                     <p className="font-medium">Visitas pendientes de aprobación</p>
                     <p className="text-sm text-muted-foreground">
@@ -178,7 +178,7 @@ export default function OwnerDashboard() {
                   </div>
                 </div>
                 <Link href="/owner/appointments">
-                  <Button size="sm" data-testid="button-view-appointments">
+                  <Button size="sm" className="w-full md:w-auto" data-testid="button-view-appointments">
                     Ver visitas
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -187,9 +187,9 @@ export default function OwnerDashboard() {
             )}
 
             {pendingChangeRequests.length > 0 && (
-              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-muted rounded-md">
                 <div className="flex items-center gap-3">
-                  <FileEdit className="h-5 w-5 text-primary" />
+                  <FileEdit className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
                     <p className="font-medium">Solicitudes de cambio en revisión</p>
                     <p className="text-sm text-muted-foreground">
@@ -204,9 +204,9 @@ export default function OwnerDashboard() {
             )}
 
             {pendingProperties > 0 && (
-              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-muted rounded-md">
                 <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-primary" />
+                  <AlertCircle className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
                     <p className="font-medium">Propiedades en revisión</p>
                     <p className="text-sm text-muted-foreground">
@@ -215,7 +215,7 @@ export default function OwnerDashboard() {
                   </div>
                 </div>
                 <Link href="/mis-propiedades">
-                  <Button size="sm" variant="outline" data-testid="button-view-properties">
+                  <Button size="sm" variant="outline" className="w-full md:w-auto" data-testid="button-view-properties">
                     Ver propiedades
                   </Button>
                 </Link>
