@@ -429,7 +429,7 @@ export interface IStorage {
   
   // Task operations
   getTask(id: string): Promise<Task | undefined>;
-  getTasks(filters?: { propertyId?: string; assignedToId?: string; status?: string }): Promise<Task[]>;
+  getTasks(filters?: { propertyId?: string; assignedToId?: string; status?: string; priority?: string; search?: string }): Promise<Task[]>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: string): Promise<void>;
@@ -2416,7 +2416,7 @@ export class DatabaseStorage implements IStorage {
     return task;
   }
 
-  async getTasks(filters?: { propertyId?: string; assignedToId?: string; status?: string }): Promise<Task[]> {
+  async getTasks(filters?: { propertyId?: string; assignedToId?: string; status?: string; priority?: string; search?: string }): Promise<Task[]> {
     let query = db.select().from(tasks);
     const conditions = [];
 
@@ -2428,6 +2428,19 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.status) {
       conditions.push(eq(tasks.status, filters.status as any));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(tasks.priority, filters.priority));
+    }
+    if (filters?.search) {
+      const searchLower = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`LOWER(${tasks.title}) LIKE ${searchLower}`,
+          sql`LOWER(${tasks.description}) LIKE ${searchLower}`,
+          sql`LOWER(${tasks.notes}) LIKE ${searchLower}`
+        )
+      );
     }
 
     if (conditions.length > 0) {

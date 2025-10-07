@@ -7443,13 +7443,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Task routes
+  app.get("/api/tasks/stats", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const allTasks = await storage.getTasks({});
+      const now = new Date();
+      
+      const stats = {
+        total: allTasks.length,
+        pending: allTasks.filter(t => t.status === "pending").length,
+        inProgress: allTasks.filter(t => t.status === "in-progress").length,
+        completed: allTasks.filter(t => t.status === "completed").length,
+        overdue: allTasks.filter(t => {
+          if (!t.dueDate || t.status === "completed" || t.status === "cancelled") return false;
+          return new Date(t.dueDate) < now;
+        }).length,
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching task stats:", error);
+      res.status(500).json({ message: "Failed to fetch task stats" });
+    }
+  });
+
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
-      const { propertyId, assignedToId, status } = req.query;
+      const { propertyId, assignedToId, status, priority, search } = req.query;
       const filters: any = {};
       if (propertyId) filters.propertyId = propertyId;
       if (assignedToId) filters.assignedToId = assignedToId;
       if (status) filters.status = status;
+      if (priority) filters.priority = priority;
+      if (search) filters.search = search;
 
       const tasks = await storage.getTasks(filters);
       res.json(tasks);
