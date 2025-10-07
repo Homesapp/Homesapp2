@@ -397,13 +397,14 @@ export default function Profile() {
               {/* Appearance Settings */}
               <AppearanceSettings />
             </CardContent>
-            <CardFooter className="flex justify-between gap-4">
+            <CardFooter className="flex flex-col-reverse sm:flex-row justify-between gap-3">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     type="button"
                     variant="destructive"
                     disabled={deleteAccountMutation.isPending}
+                    className="w-full sm:w-auto"
                     data-testid="button-delete-account"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -434,6 +435,7 @@ export default function Profile() {
               <Button
                 type="submit"
                 disabled={updateProfileMutation.isPending}
+                className="w-full sm:w-auto"
                 data-testid="button-save-profile"
               >
                 <Save className="h-4 w-4 mr-2" />
