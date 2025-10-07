@@ -12,8 +12,10 @@ import { Separator } from "@/components/ui/separator";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { SuggestColonyDialog } from "@/components/SuggestColonyDialog";
 import { SuggestCondoDialog } from "@/components/SuggestCondoDialog";
+import { SuggestAmenityDialog } from "@/components/SuggestAmenityDialog";
 import { useLanguage } from "@/contexts/LanguageContext";
-import type { Colony, Condominium } from "@shared/schema";
+import type { Colony, Condominium, Amenity } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
 
 const step2Schema = z.object({
   // Ubicación
@@ -31,7 +33,8 @@ const step2Schema = z.object({
   bedrooms: z.coerce.number().int().min(0, "Las habitaciones deben ser un número positivo"),
   bathrooms: z.coerce.number().min(0, "Los baños deben ser un número positivo"),
   area: z.coerce.number().min(1, "El área debe ser mayor a 0"),
-  amenities: z.string().optional(),
+  propertyAmenities: z.array(z.string()).optional().default([]),
+  condoAmenities: z.array(z.string()).optional().default([]),
 });
 
 type Step2Form = z.infer<typeof step2Schema>;
@@ -47,6 +50,7 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
   const { t } = useLanguage();
   const [showColonyDialog, setShowColonyDialog] = useState(false);
   const [showCondoDialog, setShowCondoDialog] = useState(false);
+  const [showAmenityDialog, setShowAmenityDialog] = useState(false);
 
   // Fetch approved colonies
   const { data: colonies = [] } = useQuery<Colony[]>({
@@ -56,6 +60,25 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
   // Fetch approved condominiums
   const { data: condominiums = [] } = useQuery<Condominium[]>({
     queryKey: ["/api/condominiums/approved"],
+  });
+
+  // Fetch approved amenities by category
+  const { data: propertyAmenitiesList = [] } = useQuery<Amenity[]>({
+    queryKey: ["/api/amenities/approved", "property"],
+    queryFn: async () => {
+      const response = await fetch("/api/amenities/approved?category=property");
+      if (!response.ok) throw new Error("Failed to fetch property amenities");
+      return response.json();
+    },
+  });
+
+  const { data: condoAmenitiesList = [] } = useQuery<Amenity[]>({
+    queryKey: ["/api/amenities/approved", "condo"],
+    queryFn: async () => {
+      const response = await fetch("/api/amenities/approved?category=condo");
+      if (!response.ok) throw new Error("Failed to fetch condo amenities");
+      return response.json();
+    },
   });
 
   const form = useForm<Step2Form>({
@@ -76,7 +99,8 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
       bedrooms: data.details?.bedrooms || 0,
       bathrooms: data.details?.bathrooms || 0,
       area: data.details?.area || 0,
-      amenities: data.details?.amenities || "",
+      propertyAmenities: data.details?.propertyAmenities || [],
+      condoAmenities: data.details?.condoAmenities || [],
     },
   });
 
@@ -99,7 +123,8 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
         bedrooms: formData.bedrooms,
         bathrooms: formData.bathrooms,
         area: formData.area,
-        amenities: formData.amenities && formData.amenities.trim() !== "" ? formData.amenities : undefined,
+        propertyAmenities: formData.propertyAmenities || [],
+        condoAmenities: formData.condoAmenities || [],
       },
     };
     onNext(cleanedData);
@@ -397,23 +422,83 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
               />
             </div>
 
+            {/* Características de la Propiedad */}
             <FormField
               control={form.control}
-              name="amenities"
+              name="propertyAmenities"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amenidades (Opcional)</FormLabel>
+                  <div className="flex items-center justify-between mb-2">
+                    <FormLabel>Características de la Propiedad</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAmenityDialog(true)}
+                      data-testid="button-suggest-amenity"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Sugerir
+                    </Button>
+                  </div>
                   <FormControl>
-                    <Textarea
-                      placeholder="Ej: Piscina, Gimnasio, Estacionamiento techado, Jardín..."
-                      rows={3}
-                      {...field}
-                      data-testid="textarea-amenities"
-                    />
+                    <div className="flex flex-wrap gap-2" data-testid="container-property-amenities">
+                      {propertyAmenitiesList.map((amenity) => {
+                        const isSelected = field.value?.includes(amenity.id);
+                        return (
+                          <Badge
+                            key={amenity.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className="cursor-pointer hover-elevate active-elevate-2"
+                            onClick={() => {
+                              const newValue = isSelected
+                                ? field.value?.filter((id) => id !== amenity.id) || []
+                                : [...(field.value || []), amenity.id];
+                              field.onChange(newValue);
+                            }}
+                            data-testid={`badge-property-amenity-${amenity.id}`}
+                          >
+                            {amenity.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
                   </FormControl>
-                  <FormDescription data-testid="text-amenities-description">
-                    Separa las amenidades con comas
-                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Amenidades del Condominio */}
+            <FormField
+              control={form.control}
+              name="condoAmenities"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amenidades del Condominio (Si aplica)</FormLabel>
+                  <FormControl>
+                    <div className="flex flex-wrap gap-2" data-testid="container-condo-amenities">
+                      {condoAmenitiesList.map((amenity) => {
+                        const isSelected = field.value?.includes(amenity.id);
+                        return (
+                          <Badge
+                            key={amenity.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className="cursor-pointer hover-elevate active-elevate-2"
+                            onClick={() => {
+                              const newValue = isSelected
+                                ? field.value?.filter((id) => id !== amenity.id) || []
+                                : [...(field.value || []), amenity.id];
+                              field.onChange(newValue);
+                            }}
+                            data-testid={`badge-condo-amenity-${amenity.id}`}
+                          >
+                            {amenity.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -447,6 +532,11 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
       <SuggestCondoDialog
         open={showCondoDialog}
         onOpenChange={setShowCondoDialog}
+      />
+
+      <SuggestAmenityDialog
+        open={showAmenityDialog}
+        onOpenChange={setShowAmenityDialog}
       />
     </div>
   );
