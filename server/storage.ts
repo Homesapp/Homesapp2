@@ -23,7 +23,6 @@ import {
   auditLogs,
   adminUsers,
   emailVerificationTokens,
-  passwordResetTokens,
   roleRequests,
   favorites,
   leads,
@@ -105,7 +104,6 @@ import {
   type InsertAdminUser,
   type EmailVerificationToken,
   type InsertEmailVerificationToken,
-  type PasswordResetToken,
   type RoleRequest,
   type InsertRoleRequest,
   type Favorite,
@@ -215,7 +213,6 @@ export interface IStorage {
   verifyUserEmail(userId: string): Promise<User>;
   approveAllPendingUsers(): Promise<number>;
   updateUserProfile(id: string, updates: { firstName?: string; lastName?: string; bio?: string; profileImageUrl?: string; phone?: string; preferredLanguage?: string }): Promise<User>;
-  updateUserPassword(email: string, newPasswordHash: string): Promise<User>;
   deleteUser(id: string): Promise<void>;
   
   // Email verification token operations
@@ -224,12 +221,6 @@ export interface IStorage {
   getEmailVerificationTokenByUserId(userId: string): Promise<EmailVerificationToken | undefined>;
   deleteEmailVerificationToken(token: string): Promise<void>;
   deleteEmailVerificationTokenByUserId(userId: string): Promise<void>;
-
-  // Password reset token operations
-  createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
-  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
-  markPasswordResetTokenAsUsed(token: string): Promise<void>;
-  deleteExpiredPasswordResetTokens(): Promise<void>;
   
   // Role request operations
   createRoleRequest(request: InsertRoleRequest): Promise<RoleRequest>;
@@ -679,13 +670,6 @@ export interface IStorage {
   dismissSystemAlert(id: string): Promise<SystemAlert>;
   deleteSystemAlert(id: string): Promise<void>;
   cleanupExpiredAlerts(): Promise<number>;
-
-  // Property Owner Assignment operations
-  getUsersWithOwnerRole(): Promise<User[]>;
-  getPropertiesByOwner(ownerId: string): Promise<Property[]>;
-  reassignProperty(propertyId: string, newOwnerId: string): Promise<Property>;
-  reassignMultipleProperties(propertyIds: string[], newOwnerId: string): Promise<number>;
-  getPropertyOwnershipStats(): Promise<{ ownerId: string; ownerEmail: string; propertyCount: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -786,15 +770,6 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserPassword(email: string, newPasswordHash: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
-      .where(eq(users.email, email))
-      .returning();
-    return user;
-  }
-
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
   }
@@ -827,42 +802,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEmailVerificationTokenByUserId(userId: string): Promise<void> {
     await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
-  }
-
-  // Password reset token operations
-  async createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
-    const [resetToken] = await db
-      .insert(passwordResetTokens)
-      .values({ email, token, expiresAt })
-      .returning();
-    return resetToken;
-  }
-
-  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
-    const [resetToken] = await db
-      .select()
-      .from(passwordResetTokens)
-      .where(
-        and(
-          eq(passwordResetTokens.token, token),
-          eq(passwordResetTokens.used, false),
-          gte(passwordResetTokens.expiresAt, new Date())
-        )
-      );
-    return resetToken;
-  }
-
-  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
-    await db
-      .update(passwordResetTokens)
-      .set({ used: true })
-      .where(eq(passwordResetTokens.token, token));
-  }
-
-  async deleteExpiredPasswordResetTokens(): Promise<void> {
-    await db
-      .delete(passwordResetTokens)
-      .where(lte(passwordResetTokens.expiresAt, new Date()));
   }
 
   // Role request operations
@@ -4153,407 +4092,6 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: systemAlerts.id });
     
     return result.length;
-  }
-
-  // Property Import/Export functions
-  async exportProperties(filters?: {
-    approvalStatus?: string;
-    active?: boolean;
-    published?: boolean;
-    ownerId?: string;
-  }): Promise<any[]> {
-    // Build query conditions
-    const conditions = [];
-    if (filters?.approvalStatus) {
-      conditions.push(eq(properties.approvalStatus, filters.approvalStatus as any));
-    }
-    if (filters?.active !== undefined) {
-      conditions.push(eq(properties.active, filters.active));
-    }
-    if (filters?.published !== undefined) {
-      conditions.push(eq(properties.published, filters.published));
-    }
-    if (filters?.ownerId) {
-      conditions.push(eq(properties.ownerId, filters.ownerId));
-    }
-
-    // Query properties first
-    let propQuery = db.select().from(properties);
-    if (conditions.length > 0) {
-      propQuery = propQuery.where(and(...conditions)) as any;
-    }
-    
-    const props = await propQuery;
-
-    // Query related data separately to avoid null issues
-    const ownerIds = [...new Set(props.map(p => p.ownerId).filter(Boolean))];
-    const colonyIds = [...new Set(props.map(p => p.colonyId).filter(Boolean))];
-    const condoIds = [...new Set(props.map(p => p.condominiumId).filter(Boolean))];
-
-    const ownerMap = new Map();
-    const colonyMap = new Map();
-    const condoMap = new Map();
-
-    if (ownerIds.length > 0) {
-      const owners = await db.select().from(users).where(inArray(users.id, ownerIds));
-      owners.forEach(o => ownerMap.set(o.id, o));
-    }
-
-    if (colonyIds.length > 0) {
-      const cols = await db.select().from(colonies).where(inArray(colonies.id, colonyIds));
-      cols.forEach(c => colonyMap.set(c.id, c));
-    }
-
-    if (condoIds.length > 0) {
-      const condos = await db.select().from(condominiums).where(inArray(condominiums.id, condoIds));
-      condos.forEach(c => condoMap.set(c.id, c));
-    }
-
-    const results = props.map(property => {
-      const owner = ownerMap.get(property.ownerId);
-      const colony = colonyMap.get(property.colonyId);
-      const condo = condoMap.get(property.condominiumId);
-      
-      return { property, owner, colony, condominium: condo };
-    });
-
-    // Transform to export format
-    return results.map(r => ({
-      // Property data
-      externalId: r.property.id, // Original ID for reference
-      title: r.property.title,
-      description: r.property.description,
-      propertyType: r.property.propertyType,
-      price: r.property.price,
-      salePrice: r.property.salePrice,
-      currency: r.property.currency,
-      bedrooms: r.property.bedrooms,
-      bathrooms: r.property.bathrooms,
-      area: r.property.area,
-      location: r.property.location,
-      colonyName: r.colony?.name || r.property.colonyName,
-      unitType: r.property.unitType,
-      condoName: r.condominium?.name || r.property.condoName,
-      unitNumber: r.property.unitNumber,
-      showCondoInListing: r.property.showCondoInListing,
-      showUnitNumberInListing: r.property.showUnitNumberInListing,
-      images: r.property.images,
-      primaryImages: r.property.primaryImages,
-      coverImageIndex: r.property.coverImageIndex,
-      secondaryImages: r.property.secondaryImages,
-      videos: r.property.videos,
-      virtualTourUrl: r.property.virtualTourUrl,
-      googleMapsUrl: r.property.googleMapsUrl,
-      driveUrl: r.property.driveUrl,
-      latitude: r.property.latitude,
-      longitude: r.property.longitude,
-      amenities: r.property.amenities,
-      specifications: r.property.specifications,
-      status: r.property.status,
-      active: r.property.active,
-      published: r.property.published,
-      availableFrom: r.property.availableFrom,
-      availableTo: r.property.availableTo,
-      featured: r.property.featured,
-      allowsSubleasing: r.property.allowsSubleasing,
-      customListingTitle: r.property.customListingTitle,
-      // Owner information (for mapping)
-      ownerEmail: r.owner?.email,
-      ownerFirstName: r.owner?.firstName,
-      ownerLastName: r.owner?.lastName,
-    }));
-  }
-
-  async validatePropertyImport(importData: any[]): Promise<{
-    valid: boolean;
-    errors: string[];
-    warnings: string[];
-    mappings: {
-      owners: Record<string, string | null>; // email -> userId
-      colonies: Record<string, string | null>; // name -> colonyId
-      condominiums: Record<string, string | null>; // name -> condominiumId
-    };
-  }> {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    const ownerEmails = new Set<string>();
-    const colonyNames = new Set<string>();
-    const condoNames = new Set<string>();
-
-    // Collect unique identifiers
-    importData.forEach((prop, idx) => {
-      if (!prop.title) errors.push(`Row ${idx + 1}: Missing title`);
-      if (!prop.price) errors.push(`Row ${idx + 1}: Missing price`);
-      if (!prop.bedrooms) errors.push(`Row ${idx + 1}: Missing bedrooms`);
-      if (!prop.bathrooms) errors.push(`Row ${idx + 1}: Missing bathrooms`);
-      if (!prop.area) errors.push(`Row ${idx + 1}: Missing area`);
-      if (!prop.location) errors.push(`Row ${idx + 1}: Missing location`);
-      if (!prop.ownerEmail) errors.push(`Row ${idx + 1}: Missing ownerEmail`);
-
-      if (prop.ownerEmail) ownerEmails.add(prop.ownerEmail);
-      if (prop.colonyName) colonyNames.add(prop.colonyName);
-      if (prop.condoName) condoNames.add(prop.condoName);
-    });
-
-    // Validate owners exist
-    const ownerMapping: Record<string, string | null> = {};
-    for (const email of ownerEmails) {
-      const user = await this.getUserByEmail(email);
-      ownerMapping[email] = user?.id || null;
-      if (!user) {
-        errors.push(`Owner email not found: ${email}`);
-      }
-    }
-
-    // Validate colonies exist
-    const colonyMapping: Record<string, string | null> = {};
-    for (const name of colonyNames) {
-      const colony = await db.query.colonies.findFirst({
-        where: eq(colonies.name, name),
-      });
-      colonyMapping[name] = colony?.id || null;
-      if (!colony) {
-        warnings.push(`Colony not found (will be null): ${name}`);
-      }
-    }
-
-    // Validate condominiums exist
-    const condoMapping: Record<string, string | null> = {};
-    for (const name of condoNames) {
-      const condo = await db.query.condominiums.findFirst({
-        where: eq(condominiums.name, name),
-      });
-      condoMapping[name] = condo?.id || null;
-      if (!condo) {
-        warnings.push(`Condominium not found (will be null): ${name}`);
-      }
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors,
-      warnings,
-      mappings: {
-        owners: ownerMapping,
-        colonies: colonyMapping,
-        condominiums: condoMapping,
-      },
-    };
-  }
-
-  async bulkImportProperties(
-    importData: any[],
-    mappings: {
-      owners: Record<string, string | null>;
-      colonies: Record<string, string | null>;
-      condominiums: Record<string, string | null>;
-    },
-    options: {
-      skipDuplicates?: boolean;
-      updateExisting?: boolean;
-    } = {}
-  ): Promise<{
-    created: number;
-    updated: number;
-    skipped: number;
-    errors: string[];
-  }> {
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
-    const errors: string[] = [];
-
-    for (const prop of importData) {
-      try {
-        const ownerId = mappings.owners[prop.ownerEmail];
-        if (!ownerId) {
-          errors.push(`Skipping property "${prop.title}": owner not found`);
-          skipped++;
-          continue;
-        }
-
-        // Check for duplicates by title + owner
-        const existing = await db.query.properties.findFirst({
-          where: and(
-            eq(properties.title, prop.title),
-            eq(properties.ownerId, ownerId)
-          ),
-        });
-
-        if (existing) {
-          if (options.skipDuplicates) {
-            skipped++;
-            continue;
-          }
-          if (options.updateExisting) {
-            await db.update(properties)
-              .set({
-                description: prop.description,
-                propertyType: prop.propertyType,
-                price: prop.price,
-                salePrice: prop.salePrice,
-                currency: prop.currency || "MXN",
-                bedrooms: prop.bedrooms,
-                bathrooms: prop.bathrooms,
-                area: prop.area,
-                location: prop.location,
-                colonyId: prop.colonyName ? mappings.colonies[prop.colonyName] : null,
-                colonyName: prop.colonyName,
-                unitType: prop.unitType || "private",
-                condominiumId: prop.condoName ? mappings.condominiums[prop.condoName] : null,
-                condoName: prop.condoName,
-                unitNumber: prop.unitNumber,
-                showCondoInListing: prop.showCondoInListing ?? true,
-                showUnitNumberInListing: prop.showUnitNumberInListing ?? true,
-                images: prop.images || [],
-                primaryImages: prop.primaryImages || [],
-                coverImageIndex: prop.coverImageIndex || 0,
-                secondaryImages: prop.secondaryImages || [],
-                videos: prop.videos || [],
-                virtualTourUrl: prop.virtualTourUrl,
-                googleMapsUrl: prop.googleMapsUrl,
-                driveUrl: prop.driveUrl,
-                latitude: prop.latitude,
-                longitude: prop.longitude,
-                amenities: prop.amenities || [],
-                specifications: prop.specifications,
-                status: prop.status || "rent",
-                active: prop.active ?? true,
-                published: prop.published ?? false,
-                availableFrom: prop.availableFrom,
-                availableTo: prop.availableTo,
-                featured: prop.featured ?? false,
-                allowsSubleasing: prop.allowsSubleasing ?? false,
-                customListingTitle: prop.customListingTitle,
-                updatedAt: new Date(),
-              })
-              .where(eq(properties.id, existing.id));
-            updated++;
-          } else {
-            skipped++;
-          }
-          continue;
-        }
-
-        // Create new property
-        await db.insert(properties).values({
-          title: prop.title,
-          description: prop.description,
-          propertyType: prop.propertyType || "house",
-          price: prop.price,
-          salePrice: prop.salePrice,
-          currency: prop.currency || "MXN",
-          bedrooms: prop.bedrooms,
-          bathrooms: prop.bathrooms,
-          area: prop.area,
-          location: prop.location,
-          colonyId: prop.colonyName ? mappings.colonies[prop.colonyName] : null,
-          colonyName: prop.colonyName,
-          unitType: prop.unitType || "private",
-          condominiumId: prop.condoName ? mappings.condominiums[prop.condoName] : null,
-          condoName: prop.condoName,
-          unitNumber: prop.unitNumber,
-          showCondoInListing: prop.showCondoInListing ?? true,
-          showUnitNumberInListing: prop.showUnitNumberInListing ?? true,
-          images: prop.images || [],
-          primaryImages: prop.primaryImages || [],
-          coverImageIndex: prop.coverImageIndex || 0,
-          secondaryImages: prop.secondaryImages || [],
-          videos: prop.videos || [],
-          virtualTourUrl: prop.virtualTourUrl,
-          googleMapsUrl: prop.googleMapsUrl,
-          driveUrl: prop.driveUrl,
-          latitude: prop.latitude,
-          longitude: prop.longitude,
-          amenities: prop.amenities || [],
-          specifications: prop.specifications,
-          ownerId: ownerId,
-          status: prop.status || "rent",
-          approvalStatus: "approved",
-          active: prop.active ?? true,
-          published: prop.published ?? false,
-          availableFrom: prop.availableFrom,
-          availableTo: prop.availableTo,
-          featured: prop.featured ?? false,
-          allowsSubleasing: prop.allowsSubleasing ?? false,
-          customListingTitle: prop.customListingTitle,
-        });
-        created++;
-      } catch (error) {
-        errors.push(`Error importing "${prop.title}": ${error instanceof Error ? error.message : String(error)}`);
-        skipped++;
-      }
-    }
-
-    return { created, updated, skipped, errors };
-  }
-
-  // Property Owner Assignment operations
-  async getUsersWithOwnerRole(): Promise<User[]> {
-    return await db
-      .select()
-      .from(users)
-      .where(
-        or(
-          eq(users.role, "owner"),
-          eq(users.role, "admin"),
-          eq(users.role, "master")
-        )
-      )
-      .orderBy(users.email);
-  }
-
-  async getPropertiesByOwner(ownerId: string): Promise<Property[]> {
-    return await db
-      .select()
-      .from(properties)
-      .where(eq(properties.ownerId, ownerId))
-      .orderBy(properties.title);
-  }
-
-  async reassignProperty(propertyId: string, newOwnerId: string): Promise<Property> {
-    const [property] = await db
-      .update(properties)
-      .set({ 
-        ownerId: newOwnerId,
-        updatedAt: new Date()
-      })
-      .where(eq(properties.id, propertyId))
-      .returning();
-    
-    if (!property) {
-      throw new Error("Property not found");
-    }
-    
-    return property;
-  }
-
-  async reassignMultipleProperties(propertyIds: string[], newOwnerId: string): Promise<number> {
-    const result = await db
-      .update(properties)
-      .set({ 
-        ownerId: newOwnerId,
-        updatedAt: new Date()
-      })
-      .where(inArray(properties.id, propertyIds))
-      .returning({ id: properties.id });
-    
-    return result.length;
-  }
-
-  async getPropertyOwnershipStats(): Promise<{ ownerId: string; ownerEmail: string; propertyCount: number }[]> {
-    const results = await db
-      .select({
-        ownerId: properties.ownerId,
-        ownerEmail: users.email,
-        propertyCount: sql<number>`count(${properties.id})::int`,
-      })
-      .from(properties)
-      .innerJoin(users, eq(properties.ownerId, users.id))
-      .groupBy(properties.ownerId, users.email)
-      .orderBy(desc(sql`count(${properties.id})`));
-    
-    return results;
   }
 }
 

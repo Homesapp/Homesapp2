@@ -2,47 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Micro-animaciones para mejorar UX */
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -384,38 +343,5 @@
 
   .animate-pulse-color {
     animation: pulse-color 1.5s ease-in-out infinite;
-  }
-  
-  /* Clases de animación UX mejoradas */
-  .animate-slide-in-up {
-    animation: slideInUp 0.3s ease-out;
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-in;
-  }
-  
-  .animate-scale-in {
-    animation: scaleIn 0.2s ease-out;
-  }
-  
-  .animate-shimmer {
-    animation: shimmer 2s infinite linear;
-    background: linear-gradient(
-      to right,
-      transparent 0%,
-      rgba(255, 255, 255, 0.1) 50%,
-      transparent 100%
-    );
-    background-size: 2000px 100%;
-  }
-  
-  /* Transiciones suaves para mejor UX */
-  .transition-smooth {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .transition-bounce {
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
 }

@@ -61,7 +61,6 @@ Administrative fees: $2,500 MXN for personal use contracts or $3,800 MXN for sub
 *   **Application System**: A unified application flow at `/aplicar` for users to apply as sellers (via role-requests) or service providers (via providerApplications), accessible from the landing page.
 *   **Admin Panel Enhancements**: Includes full English translation, a dedicated admin profile management page with photo upload and password changes, and a streamlined user menu.
 *   **Role Request System**: Enhanced with mandatory email, WhatsApp, and structured years of experience fields for applications.
-*   **Property Import/Export System**: Admin-only feature for migrating property data between development and production environments. Supports JSON export with filters, validation pipeline with foreign key checking, and bulk import with duplicate handling options (skip or update existing). Includes dry-run mode to validate data before importing.
 
 ### System Design Choices
 
@@ -70,7 +69,6 @@ The platform uses unified middleware for consistent authentication handling, aut
 ## External Dependencies
 
 *   **Google Calendar API**: For event creation and management.
-*   **Google Gemini API**: For UX/UI decisions and design recommendations (dual-AI system).
 *   **Neon Database**: Serverless PostgreSQL.
 *   **Replit Auth**: OpenID Connect provider for user authentication.
 *   **Resend API**: For email notifications.
@@ -81,40 +79,4 @@ The platform uses unified middleware for consistent authentication handling, aut
 *   **Zod**: Runtime type validation.
 *   **WebSocket (ws)**: Server-side WebSocket implementation.
 *   **cookie**: Cookie parsing.
-*   **OpenAI GPT-5**: For the MARCO virtual assistant and logical/business decisions (dual-AI system).
-
-## Recent Updates
-
-### Sistema Dual-AI (Gemini + OpenAI)
-Se ha implementado un sistema de inteligencia artificial dual que utiliza:
-- **Google Gemini (gemini-2.5-flash)**: Especializado en análisis y recomendaciones de UX/UI, diseño de interfaces, y experiencia de usuario.
-- **OpenAI GPT-5**: Especializado en lógica de negocio, arquitectura técnica, procesamiento de datos y flujos operacionales.
-
-El sistema incluye:
-- Dispatcher inteligente que clasifica automáticamente las consultas según su naturaleza (UX/UI vs Lógica)
-- Modo de colaboración donde ambas IAs pueden opinar y generar una recomendación sintetizada
-- APIs expuestas en `/api/ai/analyze` y `/api/ai/collaborate`
-- Clasificador de intenciones basado en palabras clave
-
-Este sistema permite que la plataforma tome decisiones informadas tanto desde la perspectiva de experiencia de usuario como desde la lógica técnica y de negocio.
-
-### Mejoras de UX/UI y Dashboard (Octubre 2025)
-Siguiendo las recomendaciones del sistema Dual-AI, se implementaron mejoras significativas en la experiencia de usuario:
-
-#### Sistema de Onboarding Personalizado
-- Tours guiados interactivos usando react-joyride para cada rol (client, owner, seller, admin, concierge)
-- Pasos personalizados según las capacidades y necesidades de cada rol
-- Configuración de visibilidad y cierre de tours persistente por usuario
-
-#### Dashboard Orientado a Acciones
-- Componente `ActionsDashboard` que muestra acciones pendientes y métricas relevantes por rol
-- APIs en `/api/dashboard/pending-actions` y `/api/dashboard/metrics` con filtrado estricto por usuario autenticado
-- Diseño tipo card con prioridades visuales (high/medium/low) e íconos contextuales
-- Métricas con indicadores de tendencia (up/down/neutral)
-- **Seguridad**: Todos los datos se filtran por usuario autenticado y rol para prevenir exposición de datos entre usuarios
-
-#### Micro-animaciones CSS
-- Animaciones sutiles: `slideInUp`, `fadeIn`, `scaleIn`, `shimmer`
-- Transiciones suaves: `transition-smooth` (300ms cubic-bezier), `transition-bounce`
-- Clases de utilidad Tailwind para feedback visual mejorado
-- Todas las animaciones diseñadas para mejorar UX sin distraer
+*   **OpenAI GPT-5**: For the MARCO virtual assistant.

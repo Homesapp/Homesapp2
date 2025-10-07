@@ -20,6 +20,7 @@ import {
 import Autoplay from "embla-carousel-autoplay";
 import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import tulumProperty1 from "@assets/stock_images/professional_propert_60662322.jpg";
+import tulumBeach from "@assets/stock_images/tulum_mexico_beach_t_21c511ca.jpg";
 import serviceProvider from "@assets/stock_images/professional_service_1ed9483b.jpg";
 import affiliateImage from "@assets/stock_images/real_estate_agent_re_8e083057.jpg";
 
@@ -45,22 +46,8 @@ export default function PublicDashboard() {
     queryKey: ["/api/condominiums/approved"],
   });
 
-  const featuredProperties = properties
-    .filter(p => p.featured)
-    .sort((a, b) => {
-      const aHasImages = (a.images && a.images.length > 0) ? 1 : 0;
-      const bHasImages = (b.images && b.images.length > 0) ? 1 : 0;
-      return bHasImages - aHasImages;
-    });
-  
-  const allProperties = properties
-    .slice(0, 24)
-    .sort((a, b) => {
-      const aHasImages = (a.images && a.images.length > 0) ? 1 : 0;
-      const bHasImages = (b.images && b.images.length > 0) ? 1 : 0;
-      return bHasImages - aHasImages;
-    })
-    .slice(0, 12);
+  const featuredProperties = properties.filter(p => p.featured);
+  const allProperties = properties.slice(0, 12);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -115,64 +102,56 @@ export default function PublicDashboard() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-b from-primary/5 to-background py-16 sm:py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              {t("public.hero.title")}
-            </h1>
-            <p className="mb-8 text-lg text-muted-foreground sm:text-xl">
-              {t("public.hero.subtitle")}
-            </p>
-          </div>
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Hero Section */}
+        <div className="mb-8 sm:mb-10 text-center">
+          <h1 className="mb-3 sm:mb-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+            {t("public.hero.title")}
+          </h1>
+          <p className="mb-4 sm:mb-6 text-base sm:text-lg md:text-xl text-muted-foreground">
+            {t("public.hero.subtitle")}
+          </p>
           
           {/* Search Bar */}
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-card border rounded-lg p-3 shadow-sm">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={t("public.searchPlaceholder")}
-                    className="h-12 pl-11"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    data-testid="input-search"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-12 px-4"
-                    onClick={() => setShowFilters(!showFilters)}
-                    data-testid="button-toggle-filters"
-                    aria-label={t("public.toggleFilters") || "Toggle filters"}
-                  >
-                    <SlidersHorizontal className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    className="h-12 px-8"
-                    onClick={handleSearch}
-                    data-testid="button-search"
-                  >
-                    {t("public.searchButton")}
-                  </Button>
-                </div>
+          <div className="mx-auto max-w-4xl">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 sm:h-5 w-4 sm:w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t("public.searchPlaceholder")}
+                  className="h-12 sm:h-14 pl-10 sm:pl-11 text-sm sm:text-base"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  data-testid="input-search"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="h-12 sm:h-14 px-3 sm:px-4 flex-1 sm:flex-none"
+                  onClick={() => setShowFilters(!showFilters)}
+                  data-testid="button-toggle-filters"
+                  aria-label={t("public.toggleFilters") || "Toggle filters"}
+                >
+                  <SlidersHorizontal className="h-4 sm:h-5 w-4 sm:w-5" />
+                  <span className="ml-2 sm:hidden">Filtros</span>
+                </Button>
+                <Button
+                  className="h-12 sm:h-14 px-6 sm:px-8 flex-1 sm:flex-none"
+                  onClick={handleSearch}
+                  data-testid="button-search"
+                >
+                  {t("public.searchButton")}
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 sm:py-12">
-        {/* Advanced Filters */}
-        {showFilters && (
-          <div className="mb-8 p-6 bg-card border rounded-lg shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
+            {/* Advanced Filters */}
+            {showFilters && (
+              <div className="mt-4 p-6 bg-card border rounded-lg shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
                     <label className="text-sm font-medium">{t("public.filterPropertyType")}</label>
                     <Select value={propertyType} onValueChange={setPropertyType}>
                       <SelectTrigger data-testid="select-property-type">
@@ -256,42 +235,44 @@ export default function PublicDashboard() {
                   >
                     {t("public.clearFilters")}
                   </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Quick Filters */}
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-6 hover-elevate active-elevate-2"
+                onClick={() => setLocation("/buscar-propiedades?status=rent")}
+                data-testid="badge-rent"
+              >
+                <Home className="mr-2 h-5 w-5" />
+                {t("public.filter.rent")}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-6 hover-elevate active-elevate-2"
+                onClick={() => setLocation("/buscar-propiedades?status=sale")}
+                data-testid="badge-sale"
+              >
+                <TrendingUp className="mr-2 h-5 w-5" />
+                {t("public.filter.sale")}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-6 hover-elevate active-elevate-2"
+                onClick={() => setLocation("/buscar-propiedades?featured=true")}
+                data-testid="badge-featured"
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                {t("public.filter.featured")}
+              </Button>
             </div>
           </div>
-        )}
-        
-        {/* Quick Filters */}
-        <div className="mb-8 flex flex-wrap justify-center gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            className="px-6 hover-elevate active-elevate-2"
-            onClick={() => setLocation("/buscar-propiedades?status=rent")}
-            data-testid="badge-rent"
-          >
-            <Home className="mr-2 h-5 w-5" />
-            {t("public.filter.rent")}
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="px-6 hover-elevate active-elevate-2"
-            onClick={() => setLocation("/buscar-propiedades?status=sale")}
-            data-testid="badge-sale"
-          >
-            <TrendingUp className="mr-2 h-5 w-5" />
-            {t("public.filter.sale")}
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="px-6 hover-elevate active-elevate-2"
-            onClick={() => setLocation("/buscar-propiedades?featured=true")}
-            data-testid="badge-featured"
-          >
-            <Sparkles className="mr-2 h-5 w-5" />
-            {t("public.filter.featured")}
-          </Button>
         </div>
 
         {/* Featured Properties */}

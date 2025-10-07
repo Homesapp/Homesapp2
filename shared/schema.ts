@@ -518,27 +518,6 @@ export const updateAdminPasswordSchema = z.object({
 
 export type UpdateAdminPassword = z.infer<typeof updateAdminPasswordSchema>;
 
-// Password reset tokens table
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").notNull(),
-  token: varchar("token").notNull().unique(),
-  expiresAt: timestamp("expires_at").notNull(),
-  used: boolean("used").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
-
-export const requestPasswordResetSchema = z.object({
-  email: z.string().email("Email inválido"),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1, "Token es requerido"),
-  newPassword: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-});
-
 // Email verification tokens table
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -642,7 +621,6 @@ export const properties = pgTable("properties", {
   videos: text("videos").array().default(sql`ARRAY[]::text[]`), // URLs de videos
   virtualTourUrl: text("virtual_tour_url"), // Link de tour 360
   googleMapsUrl: text("google_maps_url"), // Link de Google Maps
-  driveUrl: text("drive_url"), // Link a carpeta de Google Drive con fotos
   latitude: decimal("latitude", { precision: 10, scale: 7 }), // Coordenada latitud
   longitude: decimal("longitude", { precision: 10, scale: 7 }), // Coordenada longitud
   amenities: text("amenities").array().default(sql`ARRAY[]::text[]`),
@@ -650,7 +628,7 @@ export const properties = pgTable("properties", {
   accessInfo: jsonb("access_info"), // lockboxCode, contactPerson, contactPhone
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   managementId: varchar("management_id").references(() => users.id),
-  approvalStatus: propertyApprovalStatusEnum("approval_status").notNull().default("approved"),
+  approvalStatus: propertyApprovalStatusEnum("approval_status").notNull().default("draft"),
   active: boolean("active").notNull().default(true),
   published: boolean("published").notNull().default(false), // Solo publicada si está aprobada
   availableFrom: timestamp("available_from"),
