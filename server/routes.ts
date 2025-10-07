@@ -2820,15 +2820,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/properties/by-owner/:ownerId", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
     try {
       const { ownerId } = req.params;
+      
+      // Validate ownerId format
+      if (!ownerId || typeof ownerId !== 'string' || ownerId.trim() === '') {
+        return res.status(400).json({ message: "ID de propietario inválido" });
+      }
+      
       const properties = await storage.getPropertiesByOwner(ownerId);
       
-      await createAuditLog(
-        req,
-        "view",
-        "properties_by_owner",
-        ownerId,
-        `Viewed properties for owner ${ownerId}`
-      );
+      try {
+        await createAuditLog(
+          req,
+          "view",
+          "properties_by_owner",
+          ownerId,
+          `Viewed properties for owner ${ownerId}`
+        );
+      } catch (auditError) {
+        console.error("Error creating audit log:", auditError);
+        // Continue even if audit log fails
+      }
 
       res.json(properties);
     } catch (error) {
@@ -2842,24 +2853,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { propertyId } = req.params;
       const { newOwnerId } = req.body;
 
-      if (!newOwnerId) {
+      // Validate inputs
+      if (!propertyId || typeof propertyId !== 'string' || propertyId.trim() === '') {
+        return res.status(400).json({ message: "ID de propiedad inválido" });
+      }
+
+      if (!newOwnerId || typeof newOwnerId !== 'string' || newOwnerId.trim() === '') {
         return res.status(400).json({ message: "Debe proporcionar el ID del nuevo propietario" });
       }
 
       const property = await storage.reassignProperty(propertyId, newOwnerId);
 
-      await createAuditLog(
-        req,
-        "update",
-        "property_reassignment",
-        propertyId,
-        `Reassigned property ${propertyId} to owner ${newOwnerId}`
-      );
+      try {
+        await createAuditLog(
+          req,
+          "update",
+          "property_reassignment",
+          propertyId,
+          `Reassigned property ${propertyId} to owner ${newOwnerId}`
+        );
+      } catch (auditError) {
+        console.error("Error creating audit log:", auditError);
+        // Continue even if audit log fails
+      }
 
       res.json(property);
     } catch (error: any) {
       console.error("Error reassigning property:", error);
-      res.status(500).json({ message: error.message || "Error al reasignar propiedad" });
+      const statusCode = error.message.includes("not found") ? 404 : 
+                        error.message.includes("not have") || error.message.includes("not approved") ? 400 : 
+                        500;
+      res.status(statusCode).json({ message: error.message || "Error al reasignar propiedad" });
     }
   });
 
@@ -2867,28 +2891,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { propertyIds, newOwnerId } = req.body;
 
+      // Validate inputs
       if (!Array.isArray(propertyIds) || propertyIds.length === 0) {
         return res.status(400).json({ message: "Debe proporcionar un array de IDs de propiedades" });
       }
 
-      if (!newOwnerId) {
+      // Validate each propertyId is a string
+      if (!propertyIds.every(id => typeof id === 'string' && id.trim() !== '')) {
+        return res.status(400).json({ message: "Todos los IDs de propiedades deben ser válidos" });
+      }
+
+      if (!newOwnerId || typeof newOwnerId !== 'string' || newOwnerId.trim() === '') {
         return res.status(400).json({ message: "Debe proporcionar el ID del nuevo propietario" });
+      }
+
+      // Limit batch size to prevent abuse
+      if (propertyIds.length > 1000) {
+        return res.status(400).json({ message: "No se pueden reasignar más de 1000 propiedades a la vez" });
       }
 
       const count = await storage.reassignMultipleProperties(propertyIds, newOwnerId);
 
-      await createAuditLog(
-        req,
-        "update",
-        "property_bulk_reassignment",
-        null,
-        `Reassigned ${count} properties to owner ${newOwnerId}`
-      );
+      try {
+        await createAuditLog(
+          req,
+          "update",
+          "property_bulk_reassignment",
+          null,
+          `Reassigned ${count} properties to owner ${newOwnerId}`
+        );
+      } catch (auditError) {
+        console.error("Error creating audit log:", auditError);
+        // Continue even if audit log fails
+      }
 
       res.json({ count, message: `${count} propiedades reasignadas exitosamente` });
     } catch (error: any) {
       console.error("Error reassigning multiple properties:", error);
-      res.status(500).json({ message: error.message || "Error al reasignar propiedades" });
+      const statusCode = error.message.includes("not found") ? 404 : 
+                        error.message.includes("not have") || error.message.includes("not approved") ? 400 : 
+                        500;
+      res.status(statusCode).json({ message: error.message || "Error al reasignar propiedades" });
     }
   });
 
