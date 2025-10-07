@@ -11,36 +11,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChevronLeft, ChevronRight, Lock, User, Key, Home, Shield } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
-const accessInfoSchema = z.discriminatedUnion("accessType", [
-  // Unattended access - with lockbox or smart lock
-  z.object({
-    accessType: z.literal("unattended"),
-    method: z.enum(["lockbox", "smart_lock"]),
-    lockboxCode: z.string().optional(),
-    lockboxLocation: z.string().optional(),
-    smartLockInstructions: z.string().optional(),
-    smartLockProvider: z.string().optional(),
-  }).refine(
-    (data) => {
-      // If lockbox, require lockboxCode
-      if (data.method === "lockbox" && !data.lockboxCode) {
-        return false;
+const accessInfoSchema = z.union([
+  z.discriminatedUnion("accessType", [
+    // Unattended access - with lockbox or smart lock
+    z.object({
+      accessType: z.literal("unattended"),
+      method: z.enum(["lockbox", "smart_lock"]),
+      lockboxCode: z.string().optional(),
+      lockboxLocation: z.string().optional(),
+      smartLockInstructions: z.string().optional(),
+      smartLockProvider: z.string().optional(),
+    }).refine(
+      (data) => {
+        // If lockbox, require lockboxCode
+        if (data.method === "lockbox" && !data.lockboxCode) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Código de lockbox requerido",
+        path: ["lockboxCode"],
       }
-      return true;
-    },
-    {
-      message: "Código de lockbox requerido",
-      path: ["lockboxCode"],
-    }
-  ),
-  // Attended access
-  z.object({
-    accessType: z.literal("attended"),
-    contactPerson: z.string().min(1, "Nombre de contacto requerido"),
-    contactPhone: z.string().min(1, "Teléfono de contacto requerido"),
-    contactNotes: z.string().optional(),
-  }),
-]).optional();
+    ),
+    // Attended access
+    z.object({
+      accessType: z.literal("attended"),
+      contactPerson: z.string().min(1, "Nombre de contacto requerido"),
+      contactPhone: z.string().min(1, "Teléfono de contacto requerido"),
+      contactNotes: z.string().optional(),
+    }),
+  ]),
+  z.undefined(),
+]);
 
 type AccessInfoForm = z.infer<typeof accessInfoSchema>;
 
@@ -51,15 +54,17 @@ type Step5Props = {
   onPrevious: () => void;
 };
 
-export default function Step5AccessInfo({ data, onUpdate, onNext, onPrevious }: Step5Props) {
+export default function Step5AccessInfo({ data = {}, onUpdate, onNext, onPrevious }: Step5Props) {
+  const initialValues = data.accessInfo ?? {
+    accessType: "unattended" as const,
+    method: "lockbox" as const,
+    lockboxCode: "",
+    lockboxLocation: "",
+  };
+
   const form = useForm<AccessInfoForm>({
     resolver: zodResolver(accessInfoSchema),
-    defaultValues: data?.accessInfo || {
-      accessType: "unattended" as const,
-      method: "lockbox" as const,
-      lockboxCode: "",
-      lockboxLocation: "",
-    },
+    defaultValues: initialValues,
   });
 
   const accessType = form.watch("accessType");
