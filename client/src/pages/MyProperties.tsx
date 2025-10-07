@@ -12,21 +12,27 @@ import type { Property } from "@shared/schema";
 const approvalStatusLabels: Record<string, string> = {
   draft: "Borrador",
   pending: "Pendiente",
+  pending_review: "En Revisión",
   approved: "Aprobado",
+  published: "Publicado",
   rejected: "Rechazado",
 };
 
 const approvalStatusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "secondary",
   pending: "outline",
+  pending_review: "outline",
   approved: "default",
+  published: "default",
   rejected: "destructive",
 };
 
 const approvalStatusIcons: Record<string, typeof Clock> = {
   draft: AlertCircle,
   pending: Clock,
+  pending_review: Clock,
   approved: CheckCircle,
+  published: CheckCircle,
   rejected: XCircle,
 };
 
@@ -93,7 +99,8 @@ export default function MyProperties() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {properties.map((property) => {
-            const StatusIcon = approvalStatusIcons[property.approvalStatus || "draft"];
+            const statusKey = property.approvalStatus || "draft";
+            const StatusIcon = approvalStatusIcons[statusKey] || AlertCircle;
             
             return (
               <Card
@@ -116,11 +123,11 @@ export default function MyProperties() {
                   )}
                   <div className="absolute top-2 right-2">
                     <Badge
-                      variant={approvalStatusColors[property.approvalStatus || "draft"]}
+                      variant={approvalStatusColors[statusKey] || "secondary"}
                       className="gap-1"
                     >
                       <StatusIcon className="h-3 w-3" />
-                      {approvalStatusLabels[property.approvalStatus || "draft"]}
+                      {approvalStatusLabels[statusKey] || statusKey}
                     </Badge>
                   </div>
                 </div>
