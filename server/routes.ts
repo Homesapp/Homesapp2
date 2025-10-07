@@ -2049,6 +2049,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Amenity routes
+  app.get("/api/amenities", async (req, res) => {
+    try {
+      const { category, approvalStatus } = req.query;
+      const filters: any = {};
+      if (category) filters.category = category;
+      if (approvalStatus) filters.approvalStatus = approvalStatus;
+      
+      const amenities = await storage.getAmenities(filters);
+      res.json(amenities);
+    } catch (error) {
+      console.error("Error fetching amenities:", error);
+      res.status(500).json({ message: "Failed to fetch amenities" });
+    }
+  });
+
+  app.get("/api/amenities/approved", async (req, res) => {
+    try {
+      const { category } = req.query;
+      const amenities = await storage.getApprovedAmenities(category as string | undefined);
+      res.json(amenities);
+    } catch (error) {
+      console.error("Error fetching approved amenities:", error);
+      res.status(500).json({ message: "Failed to fetch approved amenities" });
+    }
+  });
+
+  app.post("/api/amenities", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      // Only owners can suggest amenities
+      if (!user || user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios pueden sugerir amenidades" });
+      }
+      
+      // Validate request body with Zod
+      const amenitySchema = z.object({
+        name: z.string().min(1, "El nombre de la amenidad es requerido"),
+        category: z.enum(["property", "condo"], { errorMap: () => ({ message: "La categoría debe ser 'property' o 'condo'" }) }),
+      });
+      
+      const validationResult = amenitySchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { name, category } = validationResult.data;
+
+      // Create amenity with pending status, requires admin approval
+      const amenity = await storage.createAmenity({
+        name,
+        category,
+        approvalStatus: "pending",
+        requestedBy: userId,
+      });
+
+      await createAuditLog(
+        req,
+        "create",
+        "amenity",
+        amenity.id,
+        `Amenidad solicitada: ${name} (${category})`
+      );
+
+      res.json(amenity);
+    } catch (error) {
+      console.error("Error creating amenity:", error);
+      res.status(500).json({ message: "Failed to create amenity" });
+    }
+  });
+
+  app.patch("/api/admin/amenities/:id/approve", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingAmenity = await storage.getAmenity(id);
+      if (!existingAmenity) {
+        return res.status(404).json({ message: "Amenidad no encontrada" });
+      }
+
+      const amenity = await storage.updateAmenityStatus(id, "approved");
+      
+      await createAuditLog(
+        req,
+        "approve",
+        "amenity",
+        id,
+        `Amenidad aprobada: ${amenity.name}`
+      );
+
+      res.json(amenity);
+    } catch (error) {
+      console.error("Error approving amenity:", error);
+      res.status(500).json({ message: "Failed to approve amenity" });
+    }
+  });
+
+  app.patch("/api/admin/amenities/:id/reject", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingAmenity = await storage.getAmenity(id);
+      if (!existingAmenity) {
+        return res.status(404).json({ message: "Amenidad no encontrada" });
+      }
+
+      const amenity = await storage.updateAmenityStatus(id, "rejected");
+      
+      await createAuditLog(
+        req,
+        "reject",
+        "amenity",
+        id,
+        `Amenidad rechazada: ${amenity.name}`
+      );
+
+      res.json(amenity);
+    } catch (error) {
+      console.error("Error rejecting amenity:", error);
+      res.status(500).json({ message: "Failed to reject amenity" });
+    }
+  });
+
+  app.delete("/api/admin/amenities/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingAmenity = await storage.getAmenity(id);
+      if (!existingAmenity) {
+        return res.status(404).json({ message: "Amenidad no encontrada" });
+      }
+
+      await createAuditLog(
+        req,
+        "delete",
+        "amenity",
+        id,
+        `Amenidad eliminada: ${existingAmenity.name}`
+      );
+
+      await storage.deleteAmenity(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting amenity:", error);
+      res.status(500).json({ message: "Failed to delete amenity" });
+    }
+  });
+
   // Property routes
   app.get("/api/properties", async (req, res) => {
     try {
