@@ -398,7 +398,9 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
                     <FormLabel>Habitaciones *</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="Ej: 3"
                         {...field}
                         data-testid="input-bedrooms"
@@ -417,8 +419,9 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
                     <FormLabel>Baños *</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        step="0.5"
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*\.?[0-9]*"
                         placeholder="Ej: 2"
                         {...field}
                         data-testid="input-bathrooms"
@@ -437,7 +440,9 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
                     <FormLabel>Área (m²) *</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="Ej: 150"
                         {...field}
                         data-testid="input-area"
