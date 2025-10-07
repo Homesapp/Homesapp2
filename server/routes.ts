@@ -3396,6 +3396,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only: Approve property submission draft and create property
+  app.post("/api/property-submission-drafts/:id/approve", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      let adminId: string;
+
+      // Get adminId from session (admin_users) or from user claims (regular users with admin role)
+      if (req.session?.adminUser) {
+        adminId = req.session.adminUser.id;
+      } else {
+        adminId = req.user.claims.sub;
+      }
+      
+      // Approve the draft and create property
+      const property = await storage.approvePropertySubmissionDraft(id, adminId);
+      
+      await createAuditLog(
+        req,
+        "approve",
+        "property_submission_draft",
+        id,
+        `Borrador aprobado, propiedad creada: ${property.id}`
+      );
+
+      res.status(201).json({
+        message: "Propiedad aprobada y creada exitosamente",
+        property,
+      });
+    } catch (error: any) {
+      console.error("Error approving property submission draft:", error);
+      res.status(500).json({ message: error.message || "Error al aprobar borrador" });
+    }
+  });
+
   // Property Agreement routes
   app.get("/api/property-agreements/:id", isAuthenticated, async (req: any, res) => {
     try {
