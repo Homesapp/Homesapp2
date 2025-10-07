@@ -6861,6 +6861,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update custom referral percentages for a specific user
+  app.patch("/api/admin/users/:userId/referral-config", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const { userId } = req.params;
+      const { customClientReferralPercent, customOwnerReferralPercent } = req.body;
+
+      const updates: any = {};
+      if (customClientReferralPercent !== undefined) {
+        updates.customClientReferralPercent = customClientReferralPercent === null ? null : customClientReferralPercent;
+      }
+      if (customOwnerReferralPercent !== undefined) {
+        updates.customOwnerReferralPercent = customOwnerReferralPercent === null ? null : customOwnerReferralPercent;
+      }
+
+      const user = await storage.updateUser(userId, updates);
+
+      await createAuditLog(
+        req,
+        "update",
+        "user",
+        userId,
+        `Comisiones personalizadas actualizadas - Cliente: ${customClientReferralPercent ?? 'global'}%, Propietario: ${customOwnerReferralPercent ?? 'global'}%`
+      );
+
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error updating user referral config:", error);
+      res.status(500).json({ message: error.message || "Failed to update user referral configuration" });
+    }
+  });
+
   // Admin: Get all referrals with user information
   app.get("/api/admin/referrals/all", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
     try {

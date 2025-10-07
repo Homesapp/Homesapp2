@@ -476,6 +476,8 @@ export const users = pgTable("users", {
   bankClabe: varchar("bank_clabe"),
   bankEmail: varchar("bank_email"),
   bankAddress: text("bank_address"),
+  customClientReferralPercent: decimal("custom_client_referral_percent", { precision: 5, scale: 2 }), // Custom % for client referrals (overrides global)
+  customOwnerReferralPercent: decimal("custom_owner_referral_percent", { precision: 5, scale: 2 }), // Custom % for owner referrals (overrides global)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

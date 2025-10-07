@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Search, Users, Home, TrendingUp, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Search, Users, Home, TrendingUp, AlertCircle, ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ClientReferral, OwnerReferral, ReferralConfig } from "@shared/schema";
 
 interface ReferralUser {
@@ -56,6 +63,312 @@ const getStatusLabel = (status: string): string => {
   };
   return labels[status] || status;
 };
+
+const configSchema = z.object({
+  clientReferralCommissionPercent: z.coerce.number().min(0).max(100),
+  ownerReferralCommissionPercent: z.coerce.number().min(0).max(100),
+});
+
+type ConfigFormData = z.infer<typeof configSchema>;
+
+interface UserCustomConfigDialogProps {
+  user: ReferralUser;
+  globalConfig?: ReferralConfig;
+}
+
+function UserCustomConfigDialog({ user, globalConfig }: UserCustomConfigDialogProps) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<ConfigFormData>({
+    resolver: zodResolver(configSchema),
+    defaultValues: {
+      clientReferralCommissionPercent: parseFloat((user as any).customClientReferralPercent || globalConfig?.clientReferralCommissionPercent || "5"),
+      ownerReferralCommissionPercent: parseFloat((user as any).customOwnerReferralPercent || globalConfig?.ownerReferralCommissionPercent || "10"),
+    },
+  });
+
+  const updateUserConfigMutation = useMutation({
+    mutationFn: async (data: ConfigFormData) => {
+      return apiRequest("PATCH", `/api/admin/users/${user.id}/referral-config`, {
+        customClientReferralPercent: data.clientReferralCommissionPercent,
+        customOwnerReferralPercent: data.ownerReferralCommissionPercent,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals/all"] });
+      toast({
+        title: "Configuración personalizada actualizada",
+        description: `Los porcentajes de comisión para ${user.firstName} ${user.lastName} han sido actualizados`,
+      });
+      setOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la configuración",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetToGlobalMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/admin/users/${user.id}/referral-config`, {
+        customClientReferralPercent: null,
+        customOwnerReferralPercent: null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals/all"] });
+      toast({
+        title: "Configuración restablecida",
+        description: `${user.firstName} ${user.lastName} ahora usa los valores globales`,
+      });
+      setOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo restablecer la configuración",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ConfigFormData) => {
+    updateUserConfigMutation.mutate(data);
+  };
+
+  const hasCustomConfig = (user as any).customClientReferralPercent || (user as any).customOwnerReferralPercent;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" data-testid={`button-custom-config-${user.id}`}>
+          <Settings className="h-4 w-4 mr-2" />
+          {hasCustomConfig ? "Editar personalización" : "Personalizar"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent data-testid={`dialog-user-config-${user.id}`}>
+        <DialogHeader>
+          <DialogTitle>Configuración Personalizada de Comisiones</DialogTitle>
+          <DialogDescription>
+            Configura porcentajes específicos para {user.firstName} {user.lastName}
+            {hasCustomConfig ? " (actualmente personalizado)" : " (usa valores globales)"}
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="clientReferralCommissionPercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comisión por Referidos de Clientes (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      placeholder={globalConfig?.clientReferralCommissionPercent || "5.00"}
+                      {...field}
+                      data-testid="input-user-client-commission"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Global: {globalConfig?.clientReferralCommissionPercent}%
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ownerReferralCommissionPercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comisión por Referidos de Propietarios (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      placeholder={globalConfig?.ownerReferralCommissionPercent || "10.00"}
+                      {...field}
+                      data-testid="input-user-owner-commission"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Global: {globalConfig?.ownerReferralCommissionPercent}%
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              {hasCustomConfig && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => resetToGlobalMutation.mutate()}
+                  disabled={resetToGlobalMutation.isPending}
+                  data-testid="button-reset-to-global"
+                  className="w-full sm:w-auto"
+                >
+                  Usar Valores Globales
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                data-testid="button-cancel-user-config"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateUserConfigMutation.isPending}
+                data-testid="button-save-user-config"
+              >
+                {updateUserConfigMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReferralConfigDialog({ config }: { config?: ReferralConfig }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<ConfigFormData>({
+    resolver: zodResolver(configSchema),
+    defaultValues: {
+      clientReferralCommissionPercent: parseFloat(config?.clientReferralCommissionPercent || "5"),
+      ownerReferralCommissionPercent: parseFloat(config?.ownerReferralCommissionPercent || "10"),
+    },
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: async (data: ConfigFormData) => {
+      return apiRequest("PATCH", "/api/referrals/config", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referrals/config"] });
+      toast({
+        title: "Configuración actualizada",
+        description: "Los porcentajes de comisión han sido actualizados correctamente",
+      });
+      setOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la configuración",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ConfigFormData) => {
+    updateConfigMutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" data-testid="button-open-config">
+          <Settings className="h-4 w-4 mr-2" />
+          Configurar Comisiones
+        </Button>
+      </DialogTrigger>
+      <DialogContent data-testid="dialog-referral-config">
+        <DialogHeader>
+          <DialogTitle>Configuración de Comisiones de Referidos</DialogTitle>
+          <DialogDescription>
+            Establece los porcentajes de comisión para clientes y propietarios referidos
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="clientReferralCommissionPercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comisión por Referidos de Clientes (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      placeholder="5.00"
+                      {...field}
+                      data-testid="input-client-commission"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Porcentaje de comisión por cada cliente referido
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ownerReferralCommissionPercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comisión por Referidos de Propietarios (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      placeholder="10.00"
+                      {...field}
+                      data-testid="input-owner-commission"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Porcentaje de comisión por cada propietario referido
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                data-testid="button-cancel-config"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateConfigMutation.isPending}
+                data-testid="button-save-config"
+              >
+                {updateConfigMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function AdminReferrals() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,13 +486,16 @@ export default function AdminReferrals() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-admin-referrals-title">
-          Gestión de Referidos
-        </h1>
-        <p className="text-secondary-foreground mt-2">
-          Vista administrativa de todos los referidos del sistema
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-admin-referrals-title">
+            Gestión de Referidos
+          </h1>
+          <p className="text-secondary-foreground mt-2">
+            Vista administrativa de todos los referidos del sistema
+          </p>
+        </div>
+        <ReferralConfigDialog config={config} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -325,6 +641,9 @@ export default function AdminReferrals() {
                         <div className="text-xs text-secondary-foreground">
                           {item.clientReferrals.length} clientes · {item.ownerReferrals.length} propietarios
                         </div>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <UserCustomConfigDialog user={item.user} globalConfig={config} />
                       </div>
                       <Button variant="ghost" size="icon" data-testid={`button-toggle-${item.user.id}`}>
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
