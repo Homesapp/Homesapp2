@@ -73,6 +73,32 @@ export default function AdminPropertyManagement() {
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [detailProperty, setDetailProperty] = useState<Property | null>(null);
 
+  // Fetch appointments for selected property
+  const { data: propertyAppointments = [] } = useQuery({
+    queryKey: ["/api/appointments", detailProperty?.id],
+    queryFn: async () => {
+      if (!detailProperty?.id) return [];
+      const response = await fetch(`/api/appointments?propertyId=${detailProperty.id}`);
+      return response.json();
+    },
+    enabled: !!detailProperty?.id,
+  });
+
+  // Filter confirmed appointments with concierges
+  const authorizedConcierges = propertyAppointments
+    .filter((apt: any) => apt.status === "confirmed" && apt.concierge)
+    .map((apt: any) => apt.concierge)
+    .filter((concierge: any, index: number, self: any[]) => 
+      // Remove duplicates
+      self.findIndex((c: any) => c.id === concierge.id) === index
+    );
+
+  // Fetch all providers (maintenance/service personnel with general access)
+  const { data: allProviders = [] } = useQuery<any[]>({
+    queryKey: ["/api", "users", "role", "provider"],
+    enabled: !!detailProperty?.id,
+  });
+
   // Fetch stats
   const { data: stats, isLoading: statsLoading } = useQuery<PropertyStats>({
     queryKey: ["/api/admin/properties/stats"],
@@ -651,6 +677,82 @@ export default function AdminPropertyManagement() {
                                             )}
                                           </div>
                                         </>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                )}
+
+                                {/* Authorized Personnel Section */}
+                                {detailProperty.accessInfo && (authorizedConcierges.length > 0 || allProviders.length > 0) && (
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="flex items-center gap-2 text-base">
+                                        <User className="w-4 h-4" />
+                                        Personal Autorizado con Acceso
+                                      </CardTitle>
+                                      <CardDescription className="text-xs">
+                                        Personal que puede acceder a las credenciales de la propiedad
+                                      </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                      {/* Concierges Section */}
+                                      {authorizedConcierges.length > 0 && (
+                                        <div>
+                                          <h4 className="text-sm font-semibold mb-2">Conserjes (con citas confirmadas)</h4>
+                                          <div className="space-y-2">
+                                            {authorizedConcierges.map((concierge: any) => (
+                                              <div key={concierge.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                                                <div>
+                                                  <div className="text-sm font-semibold">
+                                                    {concierge.firstName} {concierge.lastName}
+                                                  </div>
+                                                  <div className="text-xs text-muted-foreground">{concierge.email}</div>
+                                                </div>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={() => {
+                                                    navigator.clipboard.writeText(concierge.email);
+                                                    toast({ title: "Copiado", description: "Email copiado al portapapeles" });
+                                                  }}
+                                                  data-testid={`button-copy-concierge-${concierge.id}`}
+                                                >
+                                                  <Copy className="w-4 h-4" />
+                                                </Button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Providers Section */}
+                                      {allProviders.length > 0 && (
+                                        <div>
+                                          <h4 className="text-sm font-semibold mb-2">Personal de Servicio / Mantenimiento (acceso general)</h4>
+                                          <div className="space-y-2">
+                                            {allProviders.map((provider: any) => (
+                                              <div key={provider.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                                                <div>
+                                                  <div className="text-sm font-semibold">
+                                                    {provider.firstName} {provider.lastName}
+                                                  </div>
+                                                  <div className="text-xs text-muted-foreground">{provider.email}</div>
+                                                </div>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={() => {
+                                                    navigator.clipboard.writeText(provider.email);
+                                                    toast({ title: "Copiado", description: "Email copiado al portapapeles" });
+                                                  }}
+                                                  data-testid={`button-copy-provider-${provider.id}`}
+                                                >
+                                                  <Copy className="w-4 h-4" />
+                                                </Button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
                                       )}
                                     </CardContent>
                                   </Card>

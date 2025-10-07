@@ -2714,6 +2714,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get property access information - only for authorized personnel with confirmed appointments
+  app.get("/api/properties/:id/access-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Check if user has an authorized role
+      const adminRoles = ["master", "admin", "admin_jr", "management"];
+      const providerRoles = ["provider"]; // maintenance/service personnel - no appointment check needed
+      const conciergeRole = "concierge";
+      
+      const isAdminRole = adminRoles.includes(user.role);
+      const isProviderRole = providerRoles.includes(user.role);
+      const isConcierge = user.role === conciergeRole;
+
+      if (!isAdminRole && !isProviderRole && !isConcierge) {
+        return res.status(403).json({ 
+          message: "No tienes permisos para acceder a esta información" 
+        });
+      }
+
+      // Only concierges need appointment verification
+      if (isConcierge) {
+        const appointments = await storage.getAppointments({
+          propertyId: id,
+        });
+
+        const hasConfirmedAppointment = appointments.some(
+          (apt: any) => 
+            apt.conciergeId === userId && 
+            apt.status === "confirmed"
+        );
+
+        if (!hasConfirmedAppointment) {
+          return res.status(403).json({ 
+            message: "Solo puedes acceder a la información de acceso si tienes una cita confirmada en esta propiedad" 
+          });
+        }
+      }
+
+      // Get property with access info
+      const property = await storage.getProperty(id);
+
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      if (!property.accessInfo) {
+        return res.status(404).json({ 
+          message: "Esta propiedad no tiene información de acceso configurada" 
+        });
+      }
+
+      // Return only the access info
+      res.json({ 
+        propertyId: property.id,
+        propertyTitle: property.title,
+        accessInfo: property.accessInfo 
+      });
+
+    } catch (error) {
+      console.error("Error fetching property access info:", error);
+      res.status(500).json({ message: "Failed to fetch property access info" });
+    }
+  });
+
   // Owner API routes - for property owners to manage their properties
   app.get("/api/owner/properties", isAuthenticated, async (req: any, res) => {
     try {
