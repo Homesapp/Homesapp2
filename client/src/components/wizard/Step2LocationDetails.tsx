@@ -54,7 +54,7 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
 
   // Determine if property type supports condo amenities
   // Houses and land don't have condo amenities
-  const propertyType = data.propertyType || "";
+  const propertyType = (data.propertyType || "").toLowerCase();
   const supportsCondoAmenities = !["house", "land"].includes(propertyType);
 
   // Fetch approved colonies
