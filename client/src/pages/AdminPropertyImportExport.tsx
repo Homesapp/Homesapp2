@@ -1,4 +1,4 @@
-import { useState, Component, type ReactNode } from "react";
+import { useState, useRef, useEffect, Component, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,21 @@ function AdminPropertyImportExportContent() {
     skipDuplicates: true,
     updateExisting: false,
   });
+
+  // Ref for auto-scroll to validation results
+  const validationResultsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to validation results when they appear
+  useEffect(() => {
+    if (validationResult && validationResultsRef.current) {
+      setTimeout(() => {
+        validationResultsRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 100);
+    }
+  }, [validationResult]);
 
   // Export mutation
   const exportMutation = useMutation({
@@ -201,6 +216,27 @@ function AdminPropertyImportExportContent() {
     },
   });
 
+  // Group errors by type for better UX
+  const groupErrors = (errors: string[]) => {
+    const grouped: Record<string, string[]> = {
+      missingFields: [],
+      invalidOwners: [],
+      other: []
+    };
+
+    errors.forEach(error => {
+      if (error.includes("Missing")) {
+        grouped.missingFields.push(error);
+      } else if (error.includes("not found") || error.includes("email")) {
+        grouped.invalidOwners.push(error);
+      } else {
+        grouped.other.push(error);
+      }
+    });
+
+    return grouped;
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -236,10 +272,55 @@ function AdminPropertyImportExportContent() {
 
   const handleValidate = () => {
     try {
+      // Parse JSON
       const properties = JSON.parse(importData);
+      
+      // Validate it's an array
       if (!Array.isArray(properties)) {
         throw new Error("El JSON debe ser un array de propiedades");
       }
+
+      // Validate it's not empty
+      if (properties.length === 0) {
+        throw new Error("El array de propiedades está vacío");
+      }
+
+      // Pre-validate each property has basic structure
+      const requiredFields = ['title', 'price', 'bedrooms', 'bathrooms', 'area', 'location', 'ownerEmail'];
+      let preValidationErrors: string[] = [];
+
+      properties.forEach((prop, idx) => {
+        if (typeof prop !== 'object' || prop === null) {
+          preValidationErrors.push(`Propiedad ${idx + 1}: No es un objeto válido`);
+          return;
+        }
+
+        requiredFields.forEach(field => {
+          const value = prop[field];
+          // Allow 0 as valid value, only reject undefined, null, or empty string
+          if (value === undefined || value === null || value === '') {
+            preValidationErrors.push(`Propiedad ${idx + 1}: Falta el campo '${field}'`);
+          }
+        });
+      });
+
+      // If there are too many pre-validation errors, show them immediately
+      if (preValidationErrors.length > 0) {
+        setValidationResult({
+          valid: false,
+          errors: preValidationErrors,
+          warnings: [],
+          mappings: { owners: {}, colonies: {}, condominiums: {} }
+        });
+        toast({
+          title: "Errores de formato detectados",
+          description: `Se encontraron ${preValidationErrors.length} errores en el formato del JSON`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // If basic validation passes, send to server for full validation
       validateMutation.mutate(properties);
     } catch (error: any) {
       toast({
@@ -446,7 +527,7 @@ function AdminPropertyImportExportContent() {
 
       {/* Validation Results */}
       {validationResult && (
-        <Card data-testid="card-validation-results">
+        <Card ref={validationResultsRef} data-testid="card-validation-results">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {validationResult.valid ? (
@@ -461,24 +542,96 @@ function AdminPropertyImportExportContent() {
             {/* Errors */}
             {!validationResult.valid && (
               validationResult.errors && Array.isArray(validationResult.errors) && validationResult.errors.length > 0 ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="font-semibold mb-2">
-                      Errores ({validationResult.errors.length}):
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      {validationResult.errors.slice(0, 10).map((error: string, idx: number) => (
-                        <li key={idx}>{error}</li>
-                      ))}
-                      {validationResult.errors.length > 10 && (
-                        <li className="text-muted-foreground">
-                          ... y {validationResult.errors.length - 10} más
-                        </li>
+                (() => {
+                  const grouped = groupErrors(validationResult.errors);
+                  return (
+                    <div className="space-y-3">
+                      {/* Summary */}
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="font-semibold mb-2">
+                            ❌ {validationResult.errors.length} errores encontrados
+                          </div>
+                          <div className="text-sm space-y-1">
+                            {grouped.missingFields.length > 0 && (
+                              <div>• {grouped.missingFields.length} campos requeridos faltantes</div>
+                            )}
+                            {grouped.invalidOwners.length > 0 && (
+                              <div>• {grouped.invalidOwners.length} emails de propietarios no encontrados</div>
+                            )}
+                            {grouped.other.length > 0 && (
+                              <div>• {grouped.other.length} otros errores</div>
+                            )}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+
+                      {/* Missing Fields */}
+                      {grouped.missingFields.length > 0 && (
+                        <Alert variant="destructive">
+                          <AlertDescription>
+                            <div className="font-semibold mb-2">
+                              Campos Requeridos Faltantes ({grouped.missingFields.length}):
+                            </div>
+                            <ul className="list-disc list-inside space-y-1 text-sm">
+                              {grouped.missingFields.slice(0, 5).map((error: string, idx: number) => (
+                                <li key={idx}>{error}</li>
+                              ))}
+                              {grouped.missingFields.length > 5 && (
+                                <li className="text-muted-foreground">
+                                  ... y {grouped.missingFields.length - 5} más
+                                </li>
+                              )}
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
                       )}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
+
+                      {/* Invalid Owners */}
+                      {grouped.invalidOwners.length > 0 && (
+                        <Alert variant="destructive">
+                          <AlertDescription>
+                            <div className="font-semibold mb-2">
+                              Propietarios No Encontrados ({grouped.invalidOwners.length}):
+                            </div>
+                            <ul className="list-disc list-inside space-y-1 text-sm">
+                              {grouped.invalidOwners.slice(0, 5).map((error: string, idx: number) => (
+                                <li key={idx}>{error}</li>
+                              ))}
+                              {grouped.invalidOwners.length > 5 && (
+                                <li className="text-muted-foreground">
+                                  ... y {grouped.invalidOwners.length - 5} más
+                                </li>
+                              )}
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Other Errors */}
+                      {grouped.other.length > 0 && (
+                        <Alert variant="destructive">
+                          <AlertDescription>
+                            <div className="font-semibold mb-2">
+                              Otros Errores ({grouped.other.length}):
+                            </div>
+                            <ul className="list-disc list-inside space-y-1 text-sm">
+                              {grouped.other.slice(0, 5).map((error: string, idx: number) => (
+                                <li key={idx}>{error}</li>
+                              ))}
+                              {grouped.other.length > 5 && (
+                                <li className="text-muted-foreground">
+                                  ... y {grouped.other.length - 5} más
+                                </li>
+                              )}
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
