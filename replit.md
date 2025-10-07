@@ -61,6 +61,7 @@ Administrative fees: $2,500 MXN for personal use contracts or $3,800 MXN for sub
 *   **Application System**: A unified application flow at `/aplicar` for users to apply as sellers (via role-requests) or service providers (via providerApplications), accessible from the landing page.
 *   **Admin Panel Enhancements**: Includes full English translation, a dedicated admin profile management page with photo upload and password changes, and a streamlined user menu.
 *   **Role Request System**: Enhanced with mandatory email, WhatsApp, and structured years of experience fields for applications.
+*   **Property Import/Export System**: Admin-only feature for migrating property data between development and production environments. Supports JSON export with filters, validation pipeline with foreign key checking, and bulk import with duplicate handling options (skip or update existing). Includes dry-run mode to validate data before importing.
 
 ### System Design Choices
 
