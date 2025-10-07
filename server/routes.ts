@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { parse as parseCookie } from "cookie";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
+import { requireResourceOwnership } from "./middleware/resourceOwnership";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification } from "./gmail";
@@ -5093,7 +5094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/appointments/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/appointments/:id", isAuthenticated, requireResourceOwnership('appointment'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const appointment = await storage.updateAppointment(id, req.body);
@@ -5114,7 +5115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/appointments/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/appointments/:id", isAuthenticated, requireResourceOwnership('appointment'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const appointment = await storage.getAppointment(id);
@@ -6529,7 +6530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/offers/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/offers/:id", isAuthenticated, requireResourceOwnership('offer'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const offer = await storage.updateOffer(id, req.body);
