@@ -323,38 +323,38 @@ export default function EditOwnerProperty() {
       const changedFields: Record<string, any> = {};
 
       // Basic fields
-      if (data.title !== property?.title) changedFields.title = data.title;
-      if (data.description !== property?.description) changedFields.description = data.description;
-      if (data.propertyType !== property?.propertyType) changedFields.propertyType = data.propertyType;
+      if (data.title !== property?.title) changedFields.title = { old: property?.title, new: data.title };
+      if (data.description !== property?.description) changedFields.description = { old: property?.description, new: data.description };
+      if (data.propertyType !== property?.propertyType) changedFields.propertyType = { old: property?.propertyType, new: data.propertyType };
       
       // Operation type
       const newPrice = data.isForRent ? parseFloat(data.price) : 0;
       const newSalePrice = data.isForSale ? parseFloat(data.salePrice || "0") : 0;
-      if (newPrice !== (property?.price || 0)) changedFields.price = newPrice;
-      if (newSalePrice !== (property?.salePrice || 0)) changedFields.salePrice = newSalePrice;
+      if (newPrice !== (property?.price || 0)) changedFields.price = { old: property?.price, new: newPrice };
+      if (newSalePrice !== (property?.salePrice || 0)) changedFields.salePrice = { old: property?.salePrice, new: newSalePrice };
       
       // Location
-      if (data.location !== property?.location) changedFields.location = data.location;
-      if (data.colonyId !== property?.colonyId) changedFields.colonyId = data.colonyId || null;
-      if (data.condominiumId !== property?.condominiumId) changedFields.condominiumId = data.condominiumId || null;
-      if (data.unitNumber !== property?.unitNumber) changedFields.unitNumber = data.unitNumber || null;
-      if (data.googleMapsUrl !== property?.googleMapsUrl) changedFields.googleMapsUrl = data.googleMapsUrl || null;
+      if (data.location !== property?.location) changedFields.location = { old: property?.location, new: data.location };
+      if (data.colonyId !== property?.colonyId) changedFields.colonyId = { old: property?.colonyId, new: data.colonyId || null };
+      if (data.condominiumId !== property?.condominiumId) changedFields.condominiumId = { old: property?.condominiumId, new: data.condominiumId || null };
+      if (data.unitNumber !== property?.unitNumber) changedFields.unitNumber = { old: property?.unitNumber, new: data.unitNumber || null };
+      if (data.googleMapsUrl !== property?.googleMapsUrl) changedFields.googleMapsUrl = { old: property?.googleMapsUrl, new: data.googleMapsUrl || null };
       
       // Details
-      if (data.bedrooms !== property?.bedrooms) changedFields.bedrooms = data.bedrooms;
+      if (data.bedrooms !== property?.bedrooms) changedFields.bedrooms = { old: property?.bedrooms, new: data.bedrooms };
       if (parseFloat(data.bathrooms) !== parseFloat(property?.bathrooms.toString() || "0")) {
-        changedFields.bathrooms = parseFloat(data.bathrooms);
+        changedFields.bathrooms = { old: property?.bathrooms, new: parseFloat(data.bathrooms) };
       }
       if (parseFloat(data.area) !== parseFloat(property?.area?.toString() || "0")) {
-        changedFields.area = parseFloat(data.area);
+        changedFields.area = { old: property?.area, new: parseFloat(data.area) };
       }
-      if (data.petFriendly !== property?.petFriendly) changedFields.petFriendly = data.petFriendly;
+      if (data.petFriendly !== property?.petFriendly) changedFields.petFriendly = { old: property?.petFriendly, new: data.petFriendly };
       
       // Amenities
       const newAmenities = data.amenities || [];
       const oldAmenities = property?.amenities || [];
       if (JSON.stringify(newAmenities.sort()) !== JSON.stringify(oldAmenities.sort())) {
-        changedFields.amenities = newAmenities;
+        changedFields.amenities = { old: oldAmenities, new: newAmenities };
       }
 
       // Services
@@ -384,14 +384,14 @@ export default function EditOwnerProperty() {
       const normalizedNewServices = normalizeForComparison(newIncludedServices);
       const normalizedOldServices = normalizeForComparison(oldIncludedServices);
       if (JSON.stringify(normalizedNewServices) !== JSON.stringify(normalizedOldServices)) {
-        changedFields.includedServices = newIncludedServices;
+        changedFields.includedServices = { old: oldIncludedServices, new: newIncludedServices };
       }
 
       // Accepted lease durations
       const newDurations = data.acceptedLeaseDurations || [];
       const oldDurations = property?.acceptedLeaseDurations || [];
       if (JSON.stringify(newDurations.sort()) !== JSON.stringify(oldDurations.sort())) {
-        changedFields.acceptedLeaseDurations = newDurations;
+        changedFields.acceptedLeaseDurations = { old: oldDurations, new: newDurations };
       }
 
       // Access info
@@ -420,7 +420,7 @@ export default function EditOwnerProperty() {
       const normalizedNewAccess = normalizeForComparison(newAccessInfo);
       const normalizedOldAccess = normalizeForComparison(oldAccessInfo);
       if (JSON.stringify(normalizedNewAccess) !== JSON.stringify(normalizedOldAccess)) {
-        changedFields.accessInfo = newAccessInfo;
+        changedFields.accessInfo = { old: oldAccessInfo, new: newAccessInfo };
       }
 
       if (Object.keys(changedFields).length === 0) {

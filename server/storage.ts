@@ -2992,8 +2992,19 @@ export class DatabaseStorage implements IStorage {
     if (status === 'approved' && updated) {
       const changedFields = updated.changedFields as any;
       if (changedFields && updated.propertyId) {
+        // Extract only the 'new' values from changedFields
+        const updates: any = {};
+        for (const [key, value] of Object.entries(changedFields)) {
+          if (value && typeof value === 'object' && 'new' in value) {
+            updates[key] = value.new;
+          } else {
+            // Fallback for old format (if any exist)
+            updates[key] = value;
+          }
+        }
+        
         await db.update(properties)
-          .set({ ...changedFields, updatedAt: new Date() })
+          .set({ ...updates, updatedAt: new Date() })
           .where(eq(properties.id, updated.propertyId));
       }
     }
