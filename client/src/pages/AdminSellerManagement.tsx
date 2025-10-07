@@ -24,6 +24,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SellerData {
   seller: {
@@ -85,6 +86,7 @@ interface SellerData {
 }
 
 export default function AdminSellerManagement() {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSeller, setSelectedSeller] = useState<SellerData | null>(null);
 
@@ -115,16 +117,7 @@ export default function AdminSellerManagement() {
   };
 
   const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      nuevo: "Nuevo",
-      contactado: "Contactado",
-      calificado: "Calificado",
-      propuesta: "Propuesta",
-      negociacion: "Negociación",
-      ganado: "Ganado",
-      perdido: "Perdido",
-    };
-    return labels[status] || status;
+    return t(`leadStatus.${status}` as any) || status;
   };
 
   if (isLoading) {
@@ -147,10 +140,10 @@ export default function AdminSellerManagement() {
     <div className="container mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold" data-testid="text-page-title">
-          Gestión de Vendedores
+          {t("adminSellers.title")}
         </h1>
         <p className="text-muted-foreground" data-testid="text-page-description">
-          Supervisa el desempeño y actividad de todos los vendedores
+          {t("adminSellers.description")}
         </p>
       </div>
 
@@ -158,7 +151,7 @@ export default function AdminSellerManagement() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar vendedor..."
+            placeholder={t("adminSellers.searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -166,7 +159,7 @@ export default function AdminSellerManagement() {
           />
         </div>
         <Badge variant="outline" data-testid="badge-seller-count">
-          {filteredSellers.length} vendedores
+          {filteredSellers.length} {t("adminSellers.sellersCount")}
         </Badge>
       </div>
 
@@ -205,19 +198,19 @@ export default function AdminSellerManagement() {
                       <div className="text-2xl font-bold" data-testid={`text-assigned-${seller.id}`}>
                         {stats.totalAssignedLeads}
                       </div>
-                      <div className="text-xs text-muted-foreground">Asignados</div>
+                      <div className="text-xs text-muted-foreground">{t("adminSellers.assigned")}</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold" data-testid={`text-registered-${seller.id}`}>
                         {stats.totalRegisteredLeads}
                       </div>
-                      <div className="text-xs text-muted-foreground">Registrados</div>
+                      <div className="text-xs text-muted-foreground">{t("adminSellers.registered")}</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold" data-testid={`text-recommendations-${seller.id}`}>
                         {stats.totalRecommendations}
                       </div>
-                      <div className="text-xs text-muted-foreground">Propiedades</div>
+                      <div className="text-xs text-muted-foreground">{t("adminSellers.properties")}</div>
                     </div>
                   </div>
 
@@ -249,7 +242,7 @@ export default function AdminSellerManagement() {
               className="text-sm text-muted-foreground hover:text-foreground"
               data-testid="button-back"
             >
-              ← Volver a lista
+              ← {t("adminSellers.backToList")}
             </button>
           </div>
 
@@ -287,7 +280,7 @@ export default function AdminSellerManagement() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Leads Asignados
+                  {t("adminSellers.assignedLeads")}
                 </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -301,7 +294,7 @@ export default function AdminSellerManagement() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Leads Registrados
+                  {t("adminSellers.registeredLeads")}
                 </CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -315,7 +308,7 @@ export default function AdminSellerManagement() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Recomendaciones
+                  {t("adminSellers.recommendations")}
                 </CardTitle>
                 <Home className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -329,7 +322,7 @@ export default function AdminSellerManagement() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Tasa de Éxito
+                  {t("adminSellers.successRate")}
                 </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -351,39 +344,39 @@ export default function AdminSellerManagement() {
           <Tabs defaultValue="assigned" className="space-y-4">
             <TabsList>
               <TabsTrigger value="assigned" data-testid="tab-assigned">
-                Leads Asignados ({selectedSeller.assignedLeads.length})
+                {t("adminSellers.assignedLeads")} ({selectedSeller.assignedLeads.length})
               </TabsTrigger>
               <TabsTrigger value="registered" data-testid="tab-registered">
-                Leads Registrados ({selectedSeller.registeredLeads.length})
+                {t("adminSellers.registeredLeads")} ({selectedSeller.registeredLeads.length})
               </TabsTrigger>
               <TabsTrigger value="recommendations" data-testid="tab-recommendations">
-                Recomendaciones ({selectedSeller.recentRecommendations.length})
+                {t("adminSellers.recommendations")} ({selectedSeller.recentRecommendations.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="assigned" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Leads Asignados</CardTitle>
+                  <CardTitle>{t("adminSellers.assignedLeads")}</CardTitle>
                   <CardDescription>
-                    Leads asignados a este vendedor para dar seguimiento
+                    {t("adminSellers.assignedLeadsDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {selectedSeller.assignedLeads.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No hay leads asignados
+                      {t("adminSellers.noAssignedLeads")}
                     </div>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Fuente</TableHead>
-                          <TableHead>Fecha</TableHead>
+                          <TableHead>{t("adminSellers.name")}</TableHead>
+                          <TableHead>{t("adminSellers.email")}</TableHead>
+                          <TableHead>{t("adminSellers.phone")}</TableHead>
+                          <TableHead>{t("adminSellers.status")}</TableHead>
+                          <TableHead>{t("adminSellers.source")}</TableHead>
+                          <TableHead>{t("adminSellers.date")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -415,26 +408,26 @@ export default function AdminSellerManagement() {
             <TabsContent value="registered" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Leads Registrados</CardTitle>
+                  <CardTitle>{t("adminSellers.registeredLeads")}</CardTitle>
                   <CardDescription>
-                    Leads registrados por este vendedor en el sistema
+                    {t("adminSellers.registeredLeadsDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {selectedSeller.registeredLeads.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No hay leads registrados
+                      {t("adminSellers.noRegisteredLeads")}
                     </div>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Fuente</TableHead>
-                          <TableHead>Fecha</TableHead>
+                          <TableHead>{t("adminSellers.name")}</TableHead>
+                          <TableHead>{t("adminSellers.email")}</TableHead>
+                          <TableHead>{t("adminSellers.phone")}</TableHead>
+                          <TableHead>{t("adminSellers.status")}</TableHead>
+                          <TableHead>{t("adminSellers.source")}</TableHead>
+                          <TableHead>{t("adminSellers.date")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -466,33 +459,33 @@ export default function AdminSellerManagement() {
             <TabsContent value="recommendations" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Propiedades Recomendadas</CardTitle>
+                  <CardTitle>{t("adminSellers.recommendedProperties")}</CardTitle>
                   <CardDescription>
-                    Propiedades que este vendedor ha ofrecido a sus clientes
+                    {t("adminSellers.recommendedPropertiesDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {selectedSeller.recentRecommendations.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No hay recomendaciones recientes
+                      {t("adminSellers.noRecommendations")}
                     </div>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Propiedad</TableHead>
-                          <TableHead>Ubicación</TableHead>
-                          <TableHead>Mensaje</TableHead>
-                          <TableHead>Leído</TableHead>
-                          <TableHead>Interés</TableHead>
-                          <TableHead>Fecha</TableHead>
+                          <TableHead>{t("adminSellers.property")}</TableHead>
+                          <TableHead>{t("adminSellers.location")}</TableHead>
+                          <TableHead>{t("adminSellers.message")}</TableHead>
+                          <TableHead>{t("adminSellers.read")}</TableHead>
+                          <TableHead>{t("adminSellers.interest")}</TableHead>
+                          <TableHead>{t("adminSellers.date")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {selectedSeller.recentRecommendations.map((rec) => (
                           <TableRow key={rec.id}>
                             <TableCell className="font-medium">
-                              {rec.property?.title || "Propiedad eliminada"}
+                              {rec.property?.title || t("adminSellers.deletedProperty")}
                             </TableCell>
                             <TableCell>
                               {rec.property?.location || "-"}
@@ -502,16 +495,16 @@ export default function AdminSellerManagement() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={rec.isRead ? "secondary" : "outline"}>
-                                {rec.isRead ? "Sí" : "No"}
+                                {rec.isRead ? t("adminSellers.yes") : t("adminSellers.no")}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               {rec.isInterested === null ? (
-                                <Badge variant="outline">Sin respuesta</Badge>
+                                <Badge variant="outline">{t("adminSellers.noResponse")}</Badge>
                               ) : rec.isInterested ? (
-                                <Badge variant="default">Interesado</Badge>
+                                <Badge variant="default">{t("adminSellers.interested")}</Badge>
                               ) : (
-                                <Badge variant="destructive">No interesado</Badge>
+                                <Badge variant="destructive">{t("adminSellers.notInterested")}</Badge>
                               )}
                             </TableCell>
                             <TableCell>
