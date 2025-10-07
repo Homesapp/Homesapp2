@@ -339,7 +339,7 @@ export default function AdminPropertyImportExport() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Errors */}
-            {validationResult.errors.length > 0 && (
+            {validationResult.errors && validationResult.errors.length > 0 && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -361,7 +361,7 @@ export default function AdminPropertyImportExport() {
             )}
 
             {/* Warnings */}
-            {validationResult.warnings.length > 0 && (
+            {validationResult.warnings && validationResult.warnings.length > 0 && (
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
@@ -383,49 +383,51 @@ export default function AdminPropertyImportExport() {
             )}
 
             {/* Mappings Summary */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Propietarios</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {Object.keys(validationResult.mappings.owners).length}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {Object.values(validationResult.mappings.owners).filter(Boolean).length} encontrados
-                  </p>
-                </CardContent>
-              </Card>
+            {validationResult.mappings && (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Propietarios</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {validationResult.mappings.owners ? Object.keys(validationResult.mappings.owners).length : 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {validationResult.mappings.owners ? Object.values(validationResult.mappings.owners).filter(Boolean).length : 0} encontrados
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Colonias</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {Object.keys(validationResult.mappings.colonies).length}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {Object.values(validationResult.mappings.colonies).filter(Boolean).length} encontradas
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Colonias</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {validationResult.mappings.colonies ? Object.keys(validationResult.mappings.colonies).length : 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {validationResult.mappings.colonies ? Object.values(validationResult.mappings.colonies).filter(Boolean).length : 0} encontradas
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Condominios</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {Object.keys(validationResult.mappings.condominiums).length}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {Object.values(validationResult.mappings.condominiums).filter(Boolean).length} encontrados
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Condominios</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {validationResult.mappings.condominiums ? Object.keys(validationResult.mappings.condominiums).length : 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {validationResult.mappings.condominiums ? Object.values(validationResult.mappings.condominiums).filter(Boolean).length : 0} encontrados
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
