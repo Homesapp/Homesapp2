@@ -3086,6 +3086,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin auto-approve appointments (bypass owner approval)
+  app.patch("/api/admin/appointments/:id/auto-approve", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Cita no encontrada" });
+      }
+
+      const updated = await storage.updateAppointment(id, {
+        ownerApprovalStatus: "approved",
+        ownerApprovedAt: new Date(),
+        status: "confirmed",
+      });
+
+      await createAuditLog(
+        req,
+        "approve",
+        "appointment",
+        id,
+        `Cita auto-aprobada por administrador`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error auto-approving appointment:", error);
+      res.status(500).json({ message: error.message || "Error al auto-aprobar cita" });
+    }
+  });
+
+  // Get appointment with filtered information based on visit type and user role
+  app.get("/api/appointments/:id/details", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Cita no encontrada" });
+      }
+
+      // Get property info
+      const property = await storage.getProperty(appointment.propertyId);
+      
+      // Filter information based on visit type and user role
+      let filteredAppointment: any = { ...appointment };
+      
+      if (appointment.visitType === "visita_cliente") {
+        // For client visits, owner gets limited info
+        if (user && ["owner", "seller"].includes(user.role)) {
+          const client = await storage.getUser(appointment.clientId);
+          const presentationCard = appointment.presentationCardId 
+            ? await storage.getPresentationCard(appointment.presentationCardId)
+            : null;
+
+          filteredAppointment.client = {
+            firstName: client?.firstName,
+            lastName: client?.lastName,
+            profileImageUrl: client?.profileImageUrl,
+            presentationCard: presentationCard ? {
+              name: presentationCard.name,
+              jobTitle: presentationCard.jobTitle,
+              company: presentationCard.company,
+              bio: presentationCard.bio,
+              profileImageUrl: presentationCard.profileImageUrl,
+            } : null,
+          };
+          
+          // Remove sensitive client info
+          delete filteredAppointment.client?.email;
+          delete filteredAppointment.client?.phone;
+        }
+      } else {
+        // For other visit types (maintenance, cleaning, etc.), show full staff info
+        if (appointment.staffMemberId) {
+          const staffMember = await storage.getUser(appointment.staffMemberId);
+          filteredAppointment.staffMember = {
+            id: staffMember?.id,
+            name: appointment.staffMemberName,
+            position: appointment.staffMemberPosition,
+            company: appointment.staffMemberCompany,
+            whatsapp: appointment.staffMemberWhatsapp,
+            email: staffMember?.email,
+          };
+        }
+      }
+
+      // Add property info with condominium and unit details
+      if (property) {
+        let condoInfo = null;
+        if (property.condominiumId) {
+          const condo = await storage.getCondominium(property.condominiumId);
+          condoInfo = condo;
+        }
+
+        filteredAppointment.property = {
+          ...property,
+          condominium: condoInfo,
+        };
+      }
+
+      res.json(filteredAppointment);
+    } catch (error: any) {
+      console.error("Error fetching appointment details:", error);
+      res.status(500).json({ message: error.message || "Error al obtener detalles de cita" });
+    }
+  });
+
+  // Submit feedback for appointment
+  app.patch("/api/appointments/:id/feedback", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { feedbackType, feedback } = req.body;
+      const userId = req.user.claims.sub;
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Cita no encontrada" });
+      }
+
+      // Validate feedback type
+      if (!["client", "staff"].includes(feedbackType)) {
+        return res.status(400).json({ message: "Tipo de feedback inválido" });
+      }
+
+      let updates: any = {};
+
+      if (feedbackType === "client") {
+        // Client feedback - must be the client for this appointment
+        if (appointment.clientId !== userId) {
+          return res.status(403).json({ message: "No tienes permisos para dejar feedback en esta cita" });
+        }
+        
+        // Validate feedback structure for client (predefined options only)
+        if (!feedback || typeof feedback !== "object") {
+          return res.status(400).json({ message: "Feedback de cliente debe ser un objeto con opciones predefinidas" });
+        }
+
+        updates.clientFeedback = feedback;
+      } else if (feedbackType === "staff") {
+        // Staff feedback - must be the staff member or concierge
+        if (appointment.staffMemberId !== userId && appointment.conciergeId !== userId) {
+          return res.status(403).json({ message: "No tienes permisos para dejar feedback en esta cita" });
+        }
+
+        updates.staffFeedback = feedback;
+      }
+
+      const updated = await storage.updateAppointment(id, updates);
+
+      await createAuditLog(
+        req,
+        "update",
+        "appointment",
+        id,
+        `Feedback ${feedbackType} agregado a la cita`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error submitting feedback:", error);
+      res.status(500).json({ message: error.message || "Error al enviar feedback" });
+    }
+  });
+
+  // Send access credentials for appointment
+  app.patch("/api/appointments/:id/send-credentials", isAuthenticated, requireRole(["master", "admin", "admin_jr", "management"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Cita no encontrada" });
+      }
+
+      const updated = await storage.updateAppointment(id, {
+        accessCredentialsSent: true,
+      });
+
+      await createAuditLog(
+        req,
+        "update",
+        "appointment",
+        id,
+        `Credenciales de acceso enviadas para la cita`
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error sending credentials:", error);
+      res.status(500).json({ message: error.message || "Error al enviar credenciales" });
+    }
+  });
+
   // Admin API routes - for admins to manage property approvals and inspections
   app.get("/api/admin/change-requests", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
     try {

@@ -100,3 +100,67 @@ export function useUpdateAppointmentReport() {
     },
   });
 }
+
+export function useAppointmentDetails(id: string) {
+  return useQuery<any>({
+    queryKey: ["/api/appointments", id, "details"],
+    enabled: !!id,
+    queryFn: async () => {
+      const res = await fetch(`/api/appointments/${id}/details`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch appointment details");
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useAutoApproveAppointment() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/appointments/${id}/auto-approve`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/pending-appointments"] });
+    },
+  });
+}
+
+export function useSubmitAppointmentFeedback() {
+  return useMutation({
+    mutationFn: async ({ 
+      id, 
+      feedbackType, 
+      feedback 
+    }: { 
+      id: string; 
+      feedbackType: "client" | "staff"; 
+      feedback: any; 
+    }) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${id}/feedback`, {
+        feedbackType,
+        feedback,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+    },
+  });
+}
+
+export function useSendAccessCredentials() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${id}/send-credentials`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+    },
+  });
+}

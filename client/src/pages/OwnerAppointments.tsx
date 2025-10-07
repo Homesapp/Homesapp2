@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, MapPin, User, Settings } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, MapPin, User, Settings, Filter } from "lucide-react";
 import type { Appointment, Property, OwnerSettings } from "@shared/schema";
 
 type OwnerApprovalStatus = "pending" | "approved" | "rejected";
@@ -25,6 +26,7 @@ export default function OwnerAppointments() {
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [statusFilter, setStatusFilter] = useState<OwnerApprovalStatus | "all">("pending");
+  const [visitTypeFilter, setVisitTypeFilter] = useState<string>("all");
   const { toast } = useToast();
 
   const { data: allAppointments = [], isLoading } = useQuery<AppointmentWithDetails[]>({
@@ -35,10 +37,52 @@ export default function OwnerAppointments() {
     queryKey: ["/api/owner/settings"],
   });
 
-  // Filter by ownerApprovalStatus
-  const filteredAppointments = statusFilter === "all"
-    ? allAppointments
-    : allAppointments.filter(apt => apt.ownerApprovalStatus === statusFilter);
+  // Filter by ownerApprovalStatus and visit type
+  const filteredAppointments = useMemo(() => {
+    let filtered = allAppointments;
+    
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(apt => apt.ownerApprovalStatus === statusFilter);
+    }
+    
+    // Filter by visit type
+    if (visitTypeFilter !== "all") {
+      filtered = filtered.filter(apt => apt.visitType === visitTypeFilter);
+    }
+    
+    return filtered;
+  }, [allAppointments, statusFilter, visitTypeFilter]);
+
+  // Get visit type options with counts
+  const visitTypeOptions = useMemo(() => {
+    const types = [
+      { value: "all", label: "Todas las visitas", count: allAppointments.length },
+      { value: "visita_cliente", label: "Visitas de clientes", count: allAppointments.filter(a => a.visitType === "visita_cliente").length },
+      { value: "visita_mantenimiento", label: "Visitas de mantenimiento", count: allAppointments.filter(a => a.visitType === "visita_mantenimiento").length },
+      { value: "visita_limpieza", label: "Visitas de limpieza", count: allAppointments.filter(a => a.visitType === "visita_limpieza").length },
+      { value: "visita_reconocimiento", label: "Visitas de reconocimiento", count: allAppointments.filter(a => a.visitType === "visita_reconocimiento").length },
+      { value: "material_multimedia", label: "Material multimedia", count: allAppointments.filter(a => a.visitType === "material_multimedia").length },
+      { value: "visita_inspeccion", label: "Visitas de inspección", count: allAppointments.filter(a => a.visitType === "visita_inspeccion").length },
+      { value: "otra", label: "Otras visitas", count: allAppointments.filter(a => a.visitType === "otra").length },
+    ];
+    return types;
+  }, [allAppointments]);
+
+  // Build property display name
+  const getPropertyDisplay = (property?: Property): string => {
+    if (!property) return "Propiedad";
+    
+    if (property.condoName && property.unitNumber) {
+      return `${property.condoName} - Unidad ${property.unitNumber}`;
+    } else if (property.condoName) {
+      return property.condoName;
+    } else if (property.unitNumber) {
+      return `${property.title} - Unidad ${property.unitNumber}`;
+    }
+    
+    return property.title || "Propiedad";
+  };
 
   const approveMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: string; notes?: string }) => {
@@ -158,6 +202,19 @@ export default function OwnerAppointments() {
     return types[type] || type;
   };
 
+  const formatVisitType = (visitType?: string): string => {
+    const types: Record<string, string> = {
+      visita_cliente: "Visita de cliente",
+      visita_mantenimiento: "Visita de mantenimiento",
+      visita_limpieza: "Visita de limpieza",
+      visita_reconocimiento: "Visita de reconocimiento",
+      material_multimedia: "Material multimedia",
+      visita_inspeccion: "Visita de inspección",
+      otra: "Otra visita",
+    };
+    return visitType ? types[visitType] || visitType : "Sin especificar";
+  };
+
   const getClientName = (client?: { firstName?: string; lastName?: string; email: string }): string => {
     if (client?.firstName && client?.lastName) {
       return `${client.firstName} ${client.lastName}`;
@@ -183,6 +240,29 @@ export default function OwnerAppointments() {
           Administra las solicitudes de visita a tus propiedades
         </p>
       </div>
+
+      <Card data-testid="card-visit-type-filter">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            <CardTitle>Filtrar por tipo de visita</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Select value={visitTypeFilter} onValueChange={setVisitTypeFilter}>
+            <SelectTrigger data-testid="select-visit-type">
+              <SelectValue placeholder="Selecciona un tipo de visita" />
+            </SelectTrigger>
+            <SelectContent>
+              {visitTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label} ({option.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
       <Card data-testid="card-settings">
         <CardHeader>
@@ -245,11 +325,16 @@ export default function OwnerAppointments() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <CardTitle className="text-lg">
-                          {appointment.property?.title || "Propiedad"}
+                          {getPropertyDisplay(appointment.property)}
                         </CardTitle>
                         {getStatusBadge(appointment.ownerApprovalStatus)}
+                        {appointment.visitType && (
+                          <Badge variant="outline" data-testid={`badge-visit-type-${appointment.id}`}>
+                            {formatVisitType(appointment.visitType)}
+                          </Badge>
+                        )}
                       </div>
                       <CardDescription className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -358,7 +443,7 @@ export default function OwnerAppointments() {
               <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
                 <div>
                   <span className="font-medium">Propiedad:</span>{" "}
-                  {selectedAppointment.property?.title}
+                  {getPropertyDisplay(selectedAppointment.property)}
                 </div>
                 <div>
                   <span className="font-medium">Cliente:</span>{" "}
@@ -368,6 +453,12 @@ export default function OwnerAppointments() {
                   <span className="font-medium">Fecha:</span>{" "}
                   {new Date(selectedAppointment.date).toLocaleString()}
                 </div>
+                {selectedAppointment.visitType && (
+                  <div>
+                    <span className="font-medium">Tipo de visita:</span>{" "}
+                    {formatVisitType(selectedAppointment.visitType)}
+                  </div>
+                )}
               </div>
             )}
 

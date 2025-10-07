@@ -32,9 +32,19 @@ export default function Appointments() {
     return appointments.map(appointment => {
       const property = properties.find(p => p.id === appointment.propertyId);
       
+      // Build property title with condominium and unit info
+      let propertyTitle = property?.title || "Propiedad";
+      if (property?.condoName && property?.unitNumber) {
+        propertyTitle = `${property.condoName} - Unidad ${property.unitNumber}`;
+      } else if (property?.condoName) {
+        propertyTitle = property.condoName;
+      } else if (property?.unitNumber) {
+        propertyTitle = `${property.title} - Unidad ${property.unitNumber}`;
+      }
+      
       return {
         id: appointment.id,
-        propertyTitle: property?.title || "Propiedad",
+        propertyTitle,
         clientName: "Cliente",
         date: format(new Date(appointment.date), "dd MMM yyyy"),
         time: format(new Date(appointment.date), "h:mm a"),

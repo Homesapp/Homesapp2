@@ -72,6 +72,16 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
   "cancelled",
 ]);
 
+export const visitTypeEnum = pgEnum("visit_type", [
+  "visita_cliente",
+  "visita_mantenimiento",
+  "visita_limpieza",
+  "visita_reconocimiento",
+  "material_multimedia",
+  "visita_inspeccion",
+  "otra",
+]);
+
 export const offerStatusEnum = pgEnum("offer_status", [
   "pending",
   "accepted",
@@ -1058,6 +1068,18 @@ export const appointments = pgTable("appointments", {
   notes: text("notes"),
   conciergeReport: text("concierge_report"), // Report after appointment
   accessIssues: text("access_issues"), // Access problems reported
+  
+  // Campos para tipos de visitas
+  visitType: visitTypeEnum("visit_type").notNull().default("visita_cliente"),
+  staffMemberId: varchar("staff_member_id").references(() => users.id), // ID del staff (no cliente)
+  staffMemberName: text("staff_member_name"), // Nombre del staff
+  staffMemberPosition: text("staff_member_position"), // Cargo/posición
+  staffMemberCompany: text("staff_member_company"), // Empresa
+  staffMemberWhatsapp: varchar("staff_member_whatsapp"), // WhatsApp del staff
+  accessCredentialsSent: boolean("access_credentials_sent").default(false), // Si se enviaron credenciales
+  clientFeedback: jsonb("client_feedback"), // Feedback del cliente (opciones predefinidas)
+  staffFeedback: text("staff_feedback"), // Feedback del staff (texto libre)
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
