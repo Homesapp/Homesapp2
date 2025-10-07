@@ -3109,7 +3109,13 @@ export class DatabaseStorage implements IStorage {
   async getChatConversations(filters?: { type?: string; userId?: string }): Promise<ChatConversation[]> {
     if (filters?.userId) {
       // If userId is provided, join with participants table to filter
-      let query = db
+      const whereConditions = [eq(chatParticipants.userId, filters.userId)];
+      
+      if (filters?.type) {
+        whereConditions.push(eq(chatConversations.type, filters.type as any));
+      }
+      
+      const query = db
         .select({
           id: chatConversations.id,
           type: chatConversations.type,
@@ -3125,16 +3131,7 @@ export class DatabaseStorage implements IStorage {
           chatParticipants,
           eq(chatConversations.id, chatParticipants.conversationId)
         )
-        .where(eq(chatParticipants.userId, filters.userId));
-      
-      if (filters?.type) {
-        query = query.where(
-          and(
-            eq(chatParticipants.userId, filters.userId),
-            eq(chatConversations.type, filters.type as any)
-          )
-        ) as any;
-      }
+        .where(and(...whereConditions));
       
       return await query.orderBy(desc(chatConversations.createdAt));
     } else {
