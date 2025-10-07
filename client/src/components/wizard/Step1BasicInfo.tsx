@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,9 +32,6 @@ type Step1Props = {
 };
 
 export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
-  const [localRent, setLocalRent] = useState(data.isForRent || false);
-  const [localSale, setLocalSale] = useState(data.isForSale || false);
-
   const form = useForm<Step1Form>({
     resolver: zodResolver(step1Schema),
     defaultValues: {
@@ -47,18 +43,6 @@ export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
       price: data.basicInfo?.price || "",
     },
   });
-
-  const handleToggle = (type: "rent" | "sale") => {
-    if (type === "rent") {
-      const newValue = !localRent;
-      setLocalRent(newValue);
-      form.setValue("isForRent", newValue);
-    } else {
-      const newValue = !localSale;
-      setLocalSale(newValue);
-      form.setValue("isForSale", newValue);
-    }
-  };
 
   const onSubmit = (formData: Step1Form) => {
     onNext({
@@ -96,56 +80,82 @@ export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card
-                className={`cursor-pointer transition-all hover-elevate ${
-                  localRent ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => handleToggle("rent")}
-                data-testid="card-rent-option"
-              >
-                <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-                  <Home className="w-12 h-12 text-primary" />
-                  <div className="text-center space-y-1">
-                    <h4 className="font-semibold" data-testid="text-rent-title">
-                      Renta
-                    </h4>
-                    <p className="text-xs text-muted-foreground" data-testid="text-rent-description">
-                      Ofrecer en renta
-                    </p>
-                  </div>
-                  <Checkbox
-                    checked={localRent}
-                    onCheckedChange={() => handleToggle("rent")}
-                    data-testid="checkbox-rent"
-                  />
-                </CardContent>
-              </Card>
+              <FormField
+                control={form.control}
+                name="isForRent"
+                render={({ field }) => (
+                  <FormItem>
+                    <Card 
+                      className={`cursor-pointer transition-all hover-elevate ${
+                        field.value ? "ring-2 ring-primary" : ""
+                      }`}
+                      onClick={() => field.onChange(!field.value)}
+                      data-testid="card-rent-option"
+                    >
+                      <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+                        <Home className="w-12 h-12 text-primary" />
+                        <div className="text-center space-y-1">
+                          <h4 className="font-semibold" data-testid="text-rent-title">
+                            Renta
+                          </h4>
+                          <p className="text-xs text-muted-foreground" data-testid="text-rent-description">
+                            Ofrecer en renta
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-rent"
+                          />
+                        </FormControl>
+                      </CardContent>
+                    </Card>
+                  </FormItem>
+                )}
+              />
 
-              <Card
-                className={`cursor-pointer transition-all hover-elevate ${
-                  localSale ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => handleToggle("sale")}
-                data-testid="card-sale-option"
-              >
-                <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
-                  <Building2 className="w-12 h-12 text-primary" />
-                  <div className="text-center space-y-1">
-                    <h4 className="font-semibold" data-testid="text-sale-title">
-                      Venta
-                    </h4>
-                    <p className="text-xs text-muted-foreground" data-testid="text-sale-description">
-                      Ofrecer en venta
-                    </p>
-                  </div>
-                  <Checkbox
-                    checked={localSale}
-                    onCheckedChange={() => handleToggle("sale")}
-                    data-testid="checkbox-sale"
-                  />
-                </CardContent>
-              </Card>
+              <FormField
+                control={form.control}
+                name="isForSale"
+                render={({ field }) => (
+                  <FormItem>
+                    <Card
+                      className={`cursor-pointer transition-all hover-elevate ${
+                        field.value ? "ring-2 ring-primary" : ""
+                      }`}
+                      onClick={() => field.onChange(!field.value)}
+                      data-testid="card-sale-option"
+                    >
+                      <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
+                        <Building2 className="w-12 h-12 text-primary" />
+                        <div className="text-center space-y-1">
+                          <h4 className="font-semibold" data-testid="text-sale-title">
+                            Venta
+                          </h4>
+                          <p className="text-xs text-muted-foreground" data-testid="text-sale-description">
+                            Ofrecer en venta
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-sale"
+                          />
+                        </FormControl>
+                      </CardContent>
+                    </Card>
+                  </FormItem>
+                )}
+              />
             </div>
+
+            {(form.formState.errors.isForRent || form.formState.errors.isForSale) && (
+              <p className="text-sm text-destructive" data-testid="error-operation-type">
+                {form.formState.errors.isForRent?.message || form.formState.errors.isForSale?.message}
+              </p>
+            )}
           </div>
 
           <Separator />
