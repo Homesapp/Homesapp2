@@ -1823,6 +1823,7 @@ export const propertySubmissionDrafts = pgTable("property_submission_drafts", {
   media: jsonb("media"), // images, videos, virtualTourUrl
   servicesInfo: jsonb("services_info"), // servicios incluidos y duraciones de contrato
   commercialTerms: jsonb("commercial_terms"), // rental/sale specific terms
+  termsAcceptance: jsonb("terms_acceptance"), // acceptance flags and timestamp
   // Property type selection
   isForRent: boolean("is_for_rent").notNull().default(false),
   isForSale: boolean("is_for_sale").notNull().default(false),
