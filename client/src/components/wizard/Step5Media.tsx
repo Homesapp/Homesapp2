@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Upload, X, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, Star, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 const mediaSchema = z.object({
   primaryImages: z.array(z.string()).min(1, "Debes agregar al menos 1 imagen principal").max(5, "Máximo 5 imágenes principales"),
@@ -63,6 +64,10 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
   const [coverImageIndex, setCoverImageIndex] = useState<number>(initializeCoverIndex());
   const [currentPrimaryUrl, setCurrentPrimaryUrl] = useState("");
   const [currentSecondaryUrl, setCurrentSecondaryUrl] = useState("");
+  
+  const primaryFileInputRef = useRef<HTMLInputElement>(null);
+  const secondaryFileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const form = useForm<MediaForm>({
     resolver: zodResolver(mediaSchema),
@@ -131,6 +136,82 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
     form.setValue("secondaryImages", newImages);
   };
 
+  const handlePrimaryFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Error",
+        description: "Solo se permiten archivos de imagen",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "La imagen no debe superar los 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      if (primaryImages.length < 5) {
+        const newImages = [...primaryImages, base64String];
+        setPrimaryImages(newImages);
+        form.setValue("primaryImages", newImages);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    if (primaryFileInputRef.current) {
+      primaryFileInputRef.current.value = "";
+    }
+  };
+
+  const handleSecondaryFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Error",
+        description: "Solo se permiten archivos de imagen",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "La imagen no debe superar los 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      if (secondaryImages.length < 20) {
+        const newImages = [...secondaryImages, base64String];
+        setSecondaryImages(newImages);
+        form.setValue("secondaryImages", newImages);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    if (secondaryFileInputRef.current) {
+      secondaryFileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -172,6 +253,29 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Agregar
+                </Button>
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <p className="text-sm text-muted-foreground">o</p>
+                <input
+                  ref={primaryFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+                  onChange={handlePrimaryFileUpload}
+                  className="hidden"
+                  data-testid="input-primary-file"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => primaryFileInputRef.current?.click()}
+                  disabled={primaryImages.length >= 5}
+                  className="flex-1"
+                  data-testid="button-upload-primary-file"
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Subir desde dispositivo
                 </Button>
               </div>
 
@@ -257,6 +361,29 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Agregar
+                </Button>
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <p className="text-sm text-muted-foreground">o</p>
+                <input
+                  ref={secondaryFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+                  onChange={handleSecondaryFileUpload}
+                  className="hidden"
+                  data-testid="input-secondary-file"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => secondaryFileInputRef.current?.click()}
+                  disabled={secondaryImages.length >= 20}
+                  className="flex-1"
+                  data-testid="button-upload-secondary-file"
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Subir desde dispositivo
                 </Button>
               </div>
 
