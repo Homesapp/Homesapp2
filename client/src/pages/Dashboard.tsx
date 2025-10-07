@@ -127,7 +127,7 @@ export default function Dashboard() {
         <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-50">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src={logoIcon} alt="HomesApp" className="h-10 w-10" data-testid="img-header-logo" />
+              <img src={logoIcon} alt="HomesApp" className="h-12 md:h-16 w-auto" data-testid="img-header-logo" />
               <h1 className="text-xl font-bold">HomesApp</h1>
             </div>
             <div className="flex items-center gap-2">
