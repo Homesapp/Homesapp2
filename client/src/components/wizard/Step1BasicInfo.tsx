@@ -248,7 +248,9 @@ export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
                     <FormLabel>Precio (MXN) *</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="Ej: 5000000"
                         {...field}
                         data-testid="input-price"
