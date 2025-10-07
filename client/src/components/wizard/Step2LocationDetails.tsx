@@ -52,6 +52,11 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
   const [showCondoDialog, setShowCondoDialog] = useState(false);
   const [showAmenityDialog, setShowAmenityDialog] = useState(false);
 
+  // Determine if property type supports condo amenities
+  // Houses and land don't have condo amenities
+  const propertyType = data.propertyType || "";
+  const supportsCondoAmenities = !["house", "land"].includes(propertyType);
+
   // Fetch approved colonies
   const { data: colonies = [] } = useQuery<Colony[]>({
     queryKey: ["/api/colonies/approved"],
@@ -469,40 +474,42 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
               )}
             />
 
-            {/* Amenidades del Condominio */}
-            <FormField
-              control={form.control}
-              name="condoAmenities"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amenidades del Condominio (Si aplica)</FormLabel>
-                  <FormControl>
-                    <div className="flex flex-wrap gap-2" data-testid="container-condo-amenities">
-                      {condoAmenitiesList.map((amenity) => {
-                        const isSelected = field.value?.includes(amenity.id);
-                        return (
-                          <Badge
-                            key={amenity.id}
-                            variant={isSelected ? "default" : "outline"}
-                            className="cursor-pointer hover-elevate active-elevate-2"
-                            onClick={() => {
-                              const newValue = isSelected
-                                ? field.value?.filter((id) => id !== amenity.id) || []
-                                : [...(field.value || []), amenity.id];
-                              field.onChange(newValue);
-                            }}
-                            data-testid={`badge-condo-amenity-${amenity.id}`}
-                          >
-                            {amenity.name}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Amenidades del Condominio - Solo para apartamentos, condos, oficinas, y comerciales */}
+            {supportsCondoAmenities && (
+              <FormField
+                control={form.control}
+                name="condoAmenities"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amenidades del Condominio (Si aplica)</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2" data-testid="container-condo-amenities">
+                        {condoAmenitiesList.map((amenity) => {
+                          const isSelected = field.value?.includes(amenity.id);
+                          return (
+                            <Badge
+                              key={amenity.id}
+                              variant={isSelected ? "default" : "outline"}
+                              className="cursor-pointer hover-elevate active-elevate-2"
+                              onClick={() => {
+                                const newValue = isSelected
+                                  ? field.value?.filter((id) => id !== amenity.id) || []
+                                  : [...(field.value || []), amenity.id];
+                                field.onChange(newValue);
+                              }}
+                              data-testid={`badge-condo-amenity-${amenity.id}`}
+                            >
+                              {amenity.name}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
