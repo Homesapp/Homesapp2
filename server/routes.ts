@@ -2729,23 +2729,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { properties: importData } = req.body;
 
       if (!Array.isArray(importData) || importData.length === 0) {
-        return res.status(400).json({ message: "Debe proporcionar un array de propiedades" });
+        return res.status(400).json({ 
+          valid: false,
+          errors: ["Debe proporcionar un array de propiedades válido"],
+          warnings: [],
+          mappings: { owners: {}, colonies: {}, condominiums: {} }
+        });
       }
 
+      console.log(`Validating ${importData.length} properties for import`);
       const validation = await storage.validatePropertyImport(importData);
+      console.log(`Validation result: valid=${validation.valid}, errors=${validation.errors.length}, warnings=${validation.warnings.length}`);
 
-      await createAuditLog(
-        req,
-        "view",
-        "property_import_validation",
-        null,
-        `Validated ${importData.length} properties for import`
-      );
+      try {
+        await createAuditLog(
+          req,
+          "view",
+          "property_import_validation",
+          null,
+          `Validated ${importData.length} properties for import`
+        );
+      } catch (auditError) {
+        console.error("Error creating audit log:", auditError);
+        // Continue even if audit log fails
+      }
 
       res.json(validation);
     } catch (error) {
       console.error("Error validating import:", error);
-      res.status(500).json({ message: "Error al validar importación" });
+      res.status(500).json({ 
+        valid: false,
+        errors: ["Error al validar importación: " + (error as Error).message],
+        warnings: [],
+        mappings: { owners: {}, colonies: {}, condominiums: {} }
+      });
     }
   });
 
