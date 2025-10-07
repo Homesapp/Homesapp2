@@ -9648,6 +9648,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Rental Contracts with relations
+  app.get("/api/admin/rental-contracts", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
+    try {
+      const { status } = req.query;
+      const filters: any = {};
+      if (status && status !== "all") filters.status = status;
+
+      const contracts = await storage.getRentalContracts(filters);
+      
+      // Fetch related data for each contract
+      const enrichedContracts = await Promise.all(
+        contracts.map(async (contract) => {
+          const [property, tenant, owner, seller] = await Promise.all([
+            storage.getProperty(contract.propertyId),
+            storage.getUser(contract.tenantId),
+            storage.getUser(contract.ownerId),
+            contract.sellerId ? storage.getUser(contract.sellerId) : null,
+          ]);
+
+          return {
+            ...contract,
+            property: property ? { title: property.title, address: property.address } : null,
+            tenant: tenant ? { fullName: tenant.fullName, email: tenant.email } : null,
+            owner: owner ? { fullName: owner.fullName, email: owner.email } : null,
+            seller: seller ? { fullName: seller.fullName, email: seller.email } : null,
+          };
+        })
+      );
+
+      res.json(enrichedContracts);
+    } catch (error: any) {
+      console.error("Error fetching admin rental contracts:", error);
+      res.status(500).json({ message: "Failed to fetch rental contracts" });
+    }
+  });
+
   // Admin Integrations Status endpoint
   app.get("/api/admin/integrations/status", isAuthenticated, requireRole(["master", "admin"]), async (req, res) => {
     try {
