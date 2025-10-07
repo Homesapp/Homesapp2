@@ -137,7 +137,65 @@
 - ✅ Solo el creador del budget (staffId) puede modificarlo
 - ✅ Solo el asignado (assignedToId) puede modificar tasks
 - ✅ Solo participantes pueden marcar conversations como leídas
-- ✅ **Total: 17 rutas adicionales protegidas en Fase 3**
+- ✅ **Total: 17 rutas adicionales protegidas en Fase 3 (Iteraciones 1-2)**
+
+### Fase 3 - Iteración 3 (Octubre 7, 2025) ✅
+
+**Middleware Extendido para 7 Nuevos Tipos de Recursos:**
+1. **property-draft** - Verificación por userId
+2. **blocked-slot** - Verificación por conciergeId
+3. **property-recommendation** - Dual access: clientId O sellerId
+4. **auto-suggestion** - Verificación por clientId
+5. **checklist-item** - Delegación a verificación de stakeholders del contrato
+6. **alert** - Verificación por userId
+7. **presentation-card toggle-active** - Nueva ruta para recurso existente
+
+**Storage Methods Añadidos:**
+- `getContractChecklistItem(id)` - Recuperar item individual de checklist
+- `getPropertyRecommendation(id)` - Recuperar recomendación de propiedad
+- `getAutoSuggestion(id)` - Recuperar auto sugerencia
+
+**14 Rutas Adicionales Protegidas:**
+
+**Property Submission Drafts** (2 rutas):
+- `PATCH /api/property-submission-drafts/:id` - Reemplazó verificación inline con middleware
+- `DELETE /api/property-submission-drafts/:id` - Reemplazó verificación inline con middleware
+
+**Concierge Blocked Slots** (1 ruta):
+- `DELETE /api/concierge-blocked-slots/:id` - Solo el concierge dueño puede eliminar
+
+**Presentation Cards** (1 ruta):
+- `PATCH /api/presentation-cards/:id/toggle-active` - Solo el cliente dueño puede activar/desactivar
+
+**Property Recommendations** (3 rutas - Dual Access):
+- `PATCH /api/property-recommendations/:id/mark-read` (2 endpoints)
+- `PATCH /api/property-recommendations/:id/set-interest`
+- Cliente (recipient) Y seller (creador) pueden modificar
+
+**Auto Suggestions** (3 rutas):
+- `PATCH /api/auto-suggestions/:id/mark-read` (2 endpoints)
+- `PATCH /api/auto-suggestions/:id/set-interest`
+
+**Contract Checklist Items** (1 ruta):
+- `PATCH /api/contract-checklist-items/:id`
+- Delegación a stakeholders del contrato (owner, tenant, seller)
+
+**System Alerts** (4 rutas):
+- `PATCH /api/alerts/:id/acknowledge`
+- `PATCH /api/alerts/:id/resolve`
+- `PATCH /api/alerts/:id/dismiss`
+- `DELETE /api/alerts/:id`
+
+**Mejoras en esta Iteración:**
+- Reemplazo de verificaciones inline en property-drafts por middleware consistente
+- Patrón de acceso dual para property-recommendations (similar a service-bookings)
+- Delegación de autorización para checklist-items basada en stakeholders del contrato
+
+**Impacto de Seguridad:**
+- **Antes**: 14 rutas permitían a cualquier usuario autenticado modificar recursos ajenos
+- **Después**: Solo los propietarios legítimos o stakeholders tienen acceso
+- **Total Fase 3**: 17 (Iter 1-2) + 14 (Iter 3) = **31 rutas protegidas**
+- **Progreso General**: 36 rutas con verificación de ownership (11.4% de 315 rutas totales)
 
 ## 🚨 Problemas Críticos Identificados
 
@@ -313,17 +371,18 @@ export const requireResourceOwnership = (
 - **Total de rutas**: 315
 - **Rutas con requireRole**: ~45 (14%)
 - **Rutas con validación Zod**: ~124 (39%) - ↑4 en Fase 1
-- **Rutas con ownership verification**: ~22 (7%) - ↑17 en Fase 3
+- **Rutas con ownership verification**: ~36 (11.4%) - ↑31 en Fase 3
 - **Rutas críticas sin protección**: ~10 - ↓15 después de Fases 1-3
 - **Rutas admin sin RBAC**: ~12 - ↓3 después de Fase 1
 
 ### Progreso de Fases
 - ✅ **Fase 1**: Validación Zod y RBAC en rutas críticas (4 rutas)
 - ✅ **Fase 2**: Ownership verification base (3 rutas: appointments, offers)
-- 🔄 **Fase 3**: Extensión de ownership (17 rutas adicionales protegidas en 2 iteraciones)
+- 🔄 **Fase 3**: Extensión de ownership (31 rutas adicionales protegidas en 3 iteraciones)
   - Iteración 1: 12 rutas (rentals, services, providers, cards, notifications)
   - Iteración 2: 5 rutas (budgets, tasks, conversations)
-- ⏳ **Fase 3 pendiente**: ~293 rutas restantes por auditar
+  - Iteración 3: 14 rutas (drafts, alerts, recommendations, suggestions, checklist, slots)
+- ⏳ **Fase 3 pendiente**: ~279 rutas restantes por auditar (88.6%)
 
 ## 🎯 Próximos Pasos Recomendados
 
