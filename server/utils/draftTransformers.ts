@@ -6,47 +6,54 @@
 import type { PropertySubmissionDraft } from "@shared/schema";
 
 type DraftServicesInfo = {
-  wizardMode?: "simple" | "extended";
-  waterIncluded?: boolean;
-  waterType?: "capa" | "well";
-  waterProvider?: string;
-  waterAccountNumber?: string;
-  waterEstimatedCost?: string;
-  electricityIncluded?: boolean;
-  electricityType?: "cfe" | "solar";
-  electricityPaymentFrequency?: "monthly" | "bimonthly";
-  electricityProvider?: string;
-  electricityAccountNumber?: string;
-  electricityEstimatedCost?: string;
-  internetIncluded?: boolean;
-  internetProvider?: string;
-  internetAccountNumber?: string;
-  internetEstimatedCost?: string;
+  basicServices?: {
+    water?: {
+      included: boolean;
+      provider?: string;
+      cost?: string;
+    };
+    electricity?: {
+      included: boolean;
+      provider?: string;
+      cost?: string;
+    };
+    internet?: {
+      included: boolean;
+      provider?: string;
+      cost?: string;
+    };
+  };
+  additionalServices?: Array<{
+    type: "pool_cleaning" | "garden" | "gas";
+    provider?: string;
+    cost?: string;
+  }>;
   acceptedLeaseDurations?: string[];
 };
 
 type PropertyIncludedServices = {
-  water?: {
-    included: boolean;
-    type?: "capa" | "well";
-    provider?: string;
-    accountNumber?: string;
-    estimatedCost?: string;
+  basicServices?: {
+    water?: {
+      included: boolean;
+      provider?: string;
+      cost?: string;
+    };
+    electricity?: {
+      included: boolean;
+      provider?: string;
+      cost?: string;
+    };
+    internet?: {
+      included: boolean;
+      provider?: string;
+      cost?: string;
+    };
   };
-  electricity?: {
-    included: boolean;
-    type?: "cfe" | "solar";
-    paymentFrequency?: "monthly" | "bimonthly";
+  additionalServices?: Array<{
+    type: "pool_cleaning" | "garden" | "gas";
     provider?: string;
-    accountNumber?: string;
-    estimatedCost?: string;
-  };
-  internet?: {
-    included: boolean;
-    provider?: string;
-    accountNumber?: string;
-    estimatedCost?: string;
-  };
+    cost?: string;
+  }>;
 };
 
 /**
@@ -58,40 +65,17 @@ export function transformServicesInfo(servicesInfo?: any): PropertyIncludedServi
   const draftServices = servicesInfo as DraftServicesInfo;
   const includedServices: PropertyIncludedServices = {};
 
-  // Transform water service
-  if (draftServices.waterIncluded) {
-    includedServices.water = {
-      included: true,
-      type: draftServices.waterType,
-      provider: draftServices.waterProvider,
-      accountNumber: draftServices.waterAccountNumber,
-      estimatedCost: draftServices.waterEstimatedCost,
-    };
+  // Copy basic services
+  if (draftServices.basicServices) {
+    includedServices.basicServices = draftServices.basicServices;
   }
 
-  // Transform electricity service
-  if (draftServices.electricityIncluded) {
-    includedServices.electricity = {
-      included: true,
-      type: draftServices.electricityType,
-      paymentFrequency: draftServices.electricityPaymentFrequency,
-      provider: draftServices.electricityProvider,
-      accountNumber: draftServices.electricityAccountNumber,
-      estimatedCost: draftServices.electricityEstimatedCost,
-    };
+  // Copy additional services
+  if (draftServices.additionalServices && draftServices.additionalServices.length > 0) {
+    includedServices.additionalServices = draftServices.additionalServices;
   }
 
-  // Transform internet service
-  if (draftServices.internetIncluded) {
-    includedServices.internet = {
-      included: true,
-      provider: draftServices.internetProvider,
-      accountNumber: draftServices.internetAccountNumber,
-      estimatedCost: draftServices.internetEstimatedCost,
-    };
-  }
-
-  // Return null if no services are included
+  // Return null if no services are configured
   return Object.keys(includedServices).length > 0 ? includedServices : null;
 }
 
@@ -158,7 +142,6 @@ export function draftToPropertyData(draft: PropertySubmissionDraft, adminId: str
     virtualTourUrl: media.virtualTourUrl,
     
     // Services and lease info
-    wizardMode: servicesInfo.wizardMode || "simple",
     includedServices: includedServices,
     acceptedLeaseDurations: servicesInfo.acceptedLeaseDurations || [],
     
