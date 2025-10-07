@@ -174,6 +174,7 @@ export default function PropertySubmissionWizard() {
             data={wizardData}
             onUpdate={updateWizardData}
             onNext={(stepData) => handleNext(stepData)}
+            onPrevious={() => setLocation("/owner/properties")}
           />
         );
       case 2:

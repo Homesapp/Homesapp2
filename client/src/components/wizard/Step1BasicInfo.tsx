@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronRight, Home, Building2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, Home, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
@@ -30,9 +30,10 @@ type Step1Props = {
   data: any;
   onUpdate: (data: any) => void;
   onNext: (stepData?: any) => void;
+  onPrevious?: () => void;
 };
 
-export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
+export default function Step1BasicInfo({ data, onUpdate, onNext, onPrevious }: Step1Props) {
   const [localRent, setLocalRent] = useState(data.isForRent || false);
   const [localSale, setLocalSale] = useState(data.isForSale || false);
 
@@ -253,8 +254,19 @@ export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
             </div>
           </div>
 
-          <div className="flex justify-end pt-4">
-            <Button type="submit" data-testid="button-next-step1">
+          <div className="flex justify-between pt-4">
+            {onPrevious && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onPrevious}
+                data-testid="button-previous-step1"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2" />
+                Volver
+              </Button>
+            )}
+            <Button type="submit" data-testid="button-next-step1" className={!onPrevious ? "ml-auto" : ""}>
               Continuar
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>

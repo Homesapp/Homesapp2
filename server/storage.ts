@@ -23,6 +23,7 @@ import {
   auditLogs,
   adminUsers,
   emailVerificationTokens,
+  passwordResetTokens,
   roleRequests,
   favorites,
   leads,
@@ -104,6 +105,7 @@ import {
   type InsertAdminUser,
   type EmailVerificationToken,
   type InsertEmailVerificationToken,
+  type PasswordResetToken,
   type RoleRequest,
   type InsertRoleRequest,
   type Favorite,
@@ -213,6 +215,7 @@ export interface IStorage {
   verifyUserEmail(userId: string): Promise<User>;
   approveAllPendingUsers(): Promise<number>;
   updateUserProfile(id: string, updates: { firstName?: string; lastName?: string; bio?: string; profileImageUrl?: string; phone?: string; preferredLanguage?: string }): Promise<User>;
+  updateUserPassword(email: string, newPasswordHash: string): Promise<User>;
   deleteUser(id: string): Promise<void>;
   
   // Email verification token operations
@@ -221,6 +224,12 @@ export interface IStorage {
   getEmailVerificationTokenByUserId(userId: string): Promise<EmailVerificationToken | undefined>;
   deleteEmailVerificationToken(token: string): Promise<void>;
   deleteEmailVerificationTokenByUserId(userId: string): Promise<void>;
+
+  // Password reset token operations
+  createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
   
   // Role request operations
   createRoleRequest(request: InsertRoleRequest): Promise<RoleRequest>;
@@ -770,6 +779,15 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUserPassword(email: string, newPasswordHash: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
+      .where(eq(users.email, email))
+      .returning();
+    return user;
+  }
+
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
   }
@@ -802,6 +820,42 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEmailVerificationTokenByUserId(userId: string): Promise<void> {
     await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
+  }
+
+  // Password reset token operations
+  async createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const [resetToken] = await db
+      .insert(passwordResetTokens)
+      .values({ email, token, expiresAt })
+      .returning();
+    return resetToken;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false),
+          gte(passwordResetTokens.expiresAt, new Date())
+        )
+      );
+    return resetToken;
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.token, token));
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(lte(passwordResetTokens.expiresAt, new Date()));
   }
 
   // Role request operations

@@ -286,3 +286,53 @@ export async function sendOwnerReferralApprovedNotification(
     throw error;
   }
 }
+
+export async function sendPasswordResetEmail(to: string, resetToken: string) {
+  try {
+    console.log(`Attempting to send password reset email via Gmail to ${to}`);
+    const gmail = await getUncachableGmailClient();
+    
+    const resetUrl = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1e293b;">Restablecer Contraseña - HomesApp</h2>
+        <p style="color: #475569; line-height: 1.6;">
+          Recibimos una solicitud para restablecer tu contraseña.
+        </p>
+        <p style="color: #475569; line-height: 1.6;">
+          Haz clic en el siguiente botón para crear una nueva contraseña:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #0ea5e9; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 500;">
+            Restablecer Contraseña
+          </a>
+        </div>
+        <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+          Este enlace expirará en 1 hora.
+        </p>
+        <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+          Si no solicitaste restablecer tu contraseña, puedes ignorar este correo de forma segura.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+        <p style="color: #94a3b8; font-size: 12px; line-height: 1.6;">
+          Este es un correo automático, por favor no respondas a este mensaje.
+        </p>
+      </div>
+    `;
+
+    const encodedMessage = createEmailMessage(to, 'Restablecer Contraseña - HomesApp', htmlContent);
+    
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    console.log(`Password reset email sent successfully to ${to}`);
+  } catch (error) {
+    console.error('Failed to send password reset email', error);
+    throw error;
+  }
+}

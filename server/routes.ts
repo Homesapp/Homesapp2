@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { calculateRentalCommissions } from "./commissionCalculator";
-import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification } from "./gmail";
+import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendPasswordResetEmail } from "./gmail";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
 import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter } from "./rateLimiters";
 import { sanitizeText, sanitizeHtml, sanitizeObject } from "./sanitize";
@@ -80,6 +80,8 @@ import {
   insertContractCycleMetricSchema,
   insertWorkflowEventSchema,
   insertSystemAlertSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -391,6 +393,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating admin password:", error);
       res.status(500).json({ message: "Failed to update admin password" });
+    }
+  });
+
+  // Forgot password route
+  app.post("/api/auth/forgot-password", authLimiter, async (req: any, res) => {
+    try {
+      const validationResult = requestPasswordResetSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Email inválido",
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { email } = validationResult.data;
+
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal that the user doesn't exist for security
+        return res.json({ message: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña" });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save token to database
+      await storage.createPasswordResetToken(email, resetToken, expiresAt);
+
+      // Send reset email
+      await sendPasswordResetEmail(email, resetToken);
+
+      res.json({ message: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña" });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Error al procesar solicitud" });
+    }
+  });
+
+  // Reset password route
+  app.post("/api/auth/reset-password", async (req: any, res) => {
+    try {
+      const validationResult = resetPasswordSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos",
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { token, newPassword } = validationResult.data;
+
+      // Get token from database
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Token inválido o expirado" });
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+
+      // Update user password
+      await storage.updateUserPassword(resetToken.email, passwordHash);
+
+      // Mark token as used
+      await storage.markPasswordResetTokenAsUsed(token);
+
+      res.json({ message: "Contraseña restablecida exitosamente" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Error al restablecer contraseña" });
     }
   });
 

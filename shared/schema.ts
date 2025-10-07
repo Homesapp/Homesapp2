@@ -518,6 +518,27 @@ export const updateAdminPasswordSchema = z.object({
 
 export type UpdateAdminPassword = z.infer<typeof updateAdminPasswordSchema>;
 
+// Password reset tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().email("Email inválido"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token es requerido"),
+  newPassword: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+});
+
 // Email verification tokens table
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
