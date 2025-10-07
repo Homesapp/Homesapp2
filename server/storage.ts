@@ -445,6 +445,7 @@ export interface IStorage {
   getUserAuditHistory(userId: string, limit?: number): Promise<AuditLog[]>;
   
   // Admin user operations
+  getAdminById(id: string): Promise<AdminUser | undefined>;
   getAdminByUsername(username: string): Promise<AdminUser | undefined>;
   createAdmin(admin: InsertAdminUser): Promise<AdminUser>;
   getAllAdmins(): Promise<AdminUser[]>;
@@ -2565,6 +2566,14 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Admin user operations
+  async getAdminById(id: string): Promise<AdminUser | undefined> {
+    const [admin] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.id, id));
+    return admin;
+  }
+
   async getAdminByUsername(username: string): Promise<AdminUser | undefined> {
     const [admin] = await db
       .select()
