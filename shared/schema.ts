@@ -755,8 +755,11 @@ const accessInfoSchema = z.discriminatedUnion("accessType", [
     lockboxCode: z.string().optional(),
     lockboxLocation: z.string().optional(),
     // Smart lock fields
+    smartLockCode: z.string().optional(), // Código de la cerradura
     smartLockInstructions: z.string().optional(),
     smartLockProvider: z.string().optional(),
+    smartLockExpirationDuration: z.enum(["same_day", "ongoing"]).optional(), // "same_day" = vence el día de la cita, "ongoing" = válido indefinidamente
+    smartLockExpirationNotes: z.string().optional(), // Notas sobre la vigencia del código
   }),
   // Attended access - someone will open
   z.object({

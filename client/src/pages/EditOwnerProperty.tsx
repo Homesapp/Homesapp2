@@ -98,8 +98,11 @@ const editPropertySchema = z.object({
   accessMethod: z.enum(["lockbox", "smart_lock"]).optional(),
   lockboxCode: z.string().optional(),
   lockboxLocation: z.string().optional(),
+  smartLockCode: z.string().optional(),
   smartLockInstructions: z.string().optional(),
   smartLockProvider: z.string().optional(),
+  smartLockExpirationDuration: z.enum(["same_day", "ongoing"]).optional(),
+  smartLockExpirationNotes: z.string().optional(),
   contactPerson: z.string().optional(),
   contactPhone: z.string().optional(),
   contactNotes: z.string().optional(),
@@ -238,8 +241,11 @@ export default function EditOwnerProperty() {
         accessMethod: accessInfo?.method,
         lockboxCode: accessInfo?.lockboxCode || "",
         lockboxLocation: accessInfo?.lockboxLocation || "",
+        smartLockCode: accessInfo?.smartLockCode || "",
         smartLockInstructions: accessInfo?.smartLockInstructions || "",
         smartLockProvider: accessInfo?.smartLockProvider || "",
+        smartLockExpirationDuration: accessInfo?.smartLockExpirationDuration,
+        smartLockExpirationNotes: accessInfo?.smartLockExpirationNotes || "",
         contactPerson: accessInfo?.contactPerson || "",
         contactPhone: accessInfo?.contactPhone || "",
         contactNotes: accessInfo?.contactNotes || "",
@@ -395,8 +401,11 @@ export default function EditOwnerProperty() {
             method: data.accessMethod,
             lockboxCode: data.accessMethod === "lockbox" ? data.lockboxCode : undefined,
             lockboxLocation: data.accessMethod === "lockbox" ? data.lockboxLocation : undefined,
+            smartLockCode: data.accessMethod === "smart_lock" ? data.smartLockCode : undefined,
             smartLockInstructions: data.accessMethod === "smart_lock" ? data.smartLockInstructions : undefined,
             smartLockProvider: data.accessMethod === "smart_lock" ? data.smartLockProvider : undefined,
+            smartLockExpirationDuration: data.accessMethod === "smart_lock" ? data.smartLockExpirationDuration : undefined,
+            smartLockExpirationNotes: data.accessMethod === "smart_lock" ? data.smartLockExpirationNotes : undefined,
           }
         : data.accessType === "attended"
         ? {
@@ -1422,6 +1431,27 @@ export default function EditOwnerProperty() {
                     <>
                       <FormField
                         control={form.control}
+                        name="smartLockCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Código de Cerradura (opcional)</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Ej: 123456"
+                                data-testid="input-smart-lock-code"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              El código que el personal usará para abrir la cerradura
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
                         name="smartLockProvider"
                         render={({ field }) => (
                           <FormItem>
@@ -1431,6 +1461,50 @@ export default function EditOwnerProperty() {
                                 {...field}
                                 placeholder="Ej: August, Yale, Schlage"
                                 data-testid="input-smart-lock-provider"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="smartLockExpirationDuration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Vigencia del Código</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-smart-lock-expiration">
+                                  <SelectValue placeholder="Selecciona vigencia del código" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="ongoing">Válido indefinidamente</SelectItem>
+                                <SelectItem value="same_day">Vence el día de la cita</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Indica si el código tiene vigencia permanente o vence el día de cada cita
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="smartLockExpirationNotes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Notas sobre Vigencia (opcional)</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                {...field}
+                                placeholder="Notas adicionales sobre la vigencia del código..."
+                                rows={2}
+                                data-testid="textarea-smart-lock-expiration-notes"
                               />
                             </FormControl>
                             <FormMessage />

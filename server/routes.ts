@@ -3027,6 +3027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await storage.updateAppointment(id, {
         ownerApprovalStatus: "approved",
         ownerApprovedAt: new Date(),
+        ownerApprovalNotes: req.body.notes,
       });
 
       await createAuditLog(
@@ -3036,6 +3037,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         `Cita aprobada por propietario`
       );
+
+      // Create notifications for concierge, client, and admin
+      const notifications = [];
+      
+      // Notify concierge if assigned
+      if (appointment.conciergeId) {
+        notifications.push(
+          storage.createNotification({
+            userId: appointment.conciergeId,
+            type: "appointment",
+            title: "Cita Aprobada",
+            message: `La cita para ${property.title} el ${new Date(appointment.date).toLocaleDateString()} ha sido aprobada por el propietario`,
+            relatedEntityType: "appointment",
+            relatedEntityId: appointment.id,
+            priority: "medium",
+          })
+        );
+      }
+      
+      // Notify client
+      notifications.push(
+        storage.createNotification({
+          userId: appointment.clientId,
+          type: "appointment",
+          title: "Cita Aprobada",
+          message: `Tu cita para ${property.title} el ${new Date(appointment.date).toLocaleDateString()} ha sido aprobada`,
+          relatedEntityType: "appointment",
+          relatedEntityId: appointment.id,
+          priority: "high",
+        })
+      );
+      
+      // Notify admins
+      const admins = await storage.getUsers({ role: "admin" });
+      for (const admin of admins) {
+        notifications.push(
+          storage.createNotification({
+            userId: admin.id,
+            type: "appointment",
+            title: "Cita Aprobada",
+            message: `Cita para ${property.title} aprobada por propietario el ${new Date(appointment.date).toLocaleDateString()}`,
+            relatedEntityType: "appointment",
+            relatedEntityId: appointment.id,
+            priority: "low",
+          })
+        );
+      }
+      
+      // Create all notifications
+      await Promise.all(notifications);
 
       res.json(updated);
     } catch (error: any) {
@@ -3069,6 +3120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await storage.updateAppointment(id, {
         ownerApprovalStatus: "rejected",
         ownerApprovedAt: new Date(),
+        ownerApprovalNotes: req.body.notes,
       });
 
       await createAuditLog(
@@ -3078,6 +3130,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         `Cita rechazada por propietario`
       );
+
+      // Create notifications
+      const notifications = [];
+      
+      // Notify client
+      notifications.push(
+        storage.createNotification({
+          userId: appointment.clientId,
+          type: "appointment",
+          title: "Cita Rechazada",
+          message: `Tu cita para ${property.title} el ${new Date(appointment.date).toLocaleDateString()} ha sido rechazada`,
+          relatedEntityType: "appointment",
+          relatedEntityId: appointment.id,
+          priority: "high",
+        })
+      );
+      
+      // Notify admins
+      const admins = await storage.getUsers({ role: "admin" });
+      for (const admin of admins) {
+        notifications.push(
+          storage.createNotification({
+            userId: admin.id,
+            type: "appointment",
+            title: "Cita Rechazada",
+            message: `Cita para ${property.title} rechazada por propietario el ${new Date(appointment.date).toLocaleDateString()}`,
+            relatedEntityType: "appointment",
+            relatedEntityId: appointment.id,
+            priority: "low",
+          })
+        );
+      }
+      
+      // Create all notifications
+      await Promise.all(notifications);
 
       res.json(updated);
     } catch (error: any) {
@@ -5705,6 +5792,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
           appointment.id,
           `Cita creada para ${property?.title || "propiedad"} - ${new Date(appointment.date).toLocaleDateString()}`
         );
+
+        // Auto-approval logic
+        if (property && property.ownerId) {
+          const ownerSettings = await storage.getOwnerSettings(property.ownerId);
+          
+          // Check if auto-approval is enabled and property has valid access
+          if (ownerSettings?.autoApproveAppointments) {
+            const accessInfo = property.accessInfo as any;
+            let shouldAutoApprove = false;
+            
+            // Check if has lockbox OR smart lock with ongoing validity
+            if (accessInfo?.accessType === "unattended") {
+              if (accessInfo.method === "lockbox" && accessInfo.lockboxCode) {
+                shouldAutoApprove = true;
+              } else if (accessInfo.method === "smart_lock" && accessInfo.smartLockCode) {
+                // Only auto-approve if smart lock doesn't expire same day or has ongoing validity
+                if (accessInfo.smartLockExpirationDuration === "ongoing") {
+                  shouldAutoApprove = true;
+                }
+              }
+            }
+            
+            if (shouldAutoApprove) {
+              // Auto-approve the appointment
+              const approvedAppointment = await storage.updateAppointment(appointment.id, {
+                ownerApprovalStatus: "approved",
+                ownerApprovedAt: new Date(),
+                ownerApprovalNotes: "Aprobada automáticamente por configuración del propietario",
+              });
+              
+              // Create notifications for concierge, client, and admin
+              const notifications = [];
+              
+              // Notify concierge if assigned
+              if (appointment.conciergeId) {
+                notifications.push(
+                  storage.createNotification({
+                    userId: appointment.conciergeId,
+                    type: "appointment",
+                    title: "Cita Aprobada Automáticamente",
+                    message: `La cita para ${property.title} el ${new Date(appointment.date).toLocaleDateString()} ha sido aprobada automáticamente`,
+                    relatedEntityType: "appointment",
+                    relatedEntityId: appointment.id,
+                    priority: "medium",
+                  })
+                );
+              }
+              
+              // Notify client
+              notifications.push(
+                storage.createNotification({
+                  userId: appointment.clientId,
+                  type: "appointment",
+                  title: "Cita Aprobada",
+                  message: `Tu cita para ${property.title} el ${new Date(appointment.date).toLocaleDateString()} ha sido aprobada`,
+                  relatedEntityType: "appointment",
+                  relatedEntityId: appointment.id,
+                  priority: "high",
+                })
+              );
+              
+              // Notify admins
+              const admins = await storage.getUsers({ role: "admin" });
+              for (const admin of admins) {
+                notifications.push(
+                  storage.createNotification({
+                    userId: admin.id,
+                    type: "appointment",
+                    title: "Cita Aprobada Automáticamente",
+                    message: `Cita para ${property.title} aprobada automáticamente el ${new Date(appointment.date).toLocaleDateString()}`,
+                    relatedEntityType: "appointment",
+                    relatedEntityId: appointment.id,
+                    priority: "low",
+                  })
+                );
+              }
+              
+              // Create all notifications
+              await Promise.all(notifications);
+              
+              // Log auto-approval
+              await createAuditLog(
+                req,
+                "update",
+                "appointment",
+                appointment.id,
+                `Cita auto-aprobada para ${property.title}`
+              );
+              
+              res.status(201).json(approvedAppointment);
+              return;
+            }
+          }
+        }
 
         res.status(201).json(appointment);
       } catch (dbError) {
