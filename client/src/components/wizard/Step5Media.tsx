@@ -62,8 +62,6 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
   const [primaryImages, setPrimaryImages] = useState<string[]>(initializePrimaryImages());
   const [secondaryImages, setSecondaryImages] = useState<string[]>(initializeSecondaryImages());
   const [coverImageIndex, setCoverImageIndex] = useState<number>(initializeCoverIndex());
-  const [currentPrimaryUrl, setCurrentPrimaryUrl] = useState("");
-  const [currentSecondaryUrl, setCurrentSecondaryUrl] = useState("");
   
   const primaryFileInputRef = useRef<HTMLInputElement>(null);
   const secondaryFileInputRef = useRef<HTMLInputElement>(null);
@@ -93,14 +91,7 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
   };
 
   const handleAddPrimaryImage = () => {
-    if (currentPrimaryUrl && currentPrimaryUrl.trim() && primaryImages.length < 5) {
-      const newImages = [...primaryImages, currentPrimaryUrl.trim()];
-      setPrimaryImages(newImages);
-      form.setValue("primaryImages", newImages);
-      setCurrentPrimaryUrl("");
-    } else if (!currentPrimaryUrl.trim()) {
-      primaryFileInputRef.current?.click();
-    }
+    primaryFileInputRef.current?.click();
   };
 
   const handleRemovePrimaryImage = (index: number) => {
@@ -124,14 +115,7 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
   };
 
   const handleAddSecondaryImage = () => {
-    if (currentSecondaryUrl && currentSecondaryUrl.trim() && secondaryImages.length < 20) {
-      const newImages = [...secondaryImages, currentSecondaryUrl.trim()];
-      setSecondaryImages(newImages);
-      form.setValue("secondaryImages", newImages);
-      setCurrentSecondaryUrl("");
-    } else if (!currentSecondaryUrl.trim()) {
-      secondaryFileInputRef.current?.click();
-    }
+    secondaryFileInputRef.current?.click();
   };
 
   const handleRemoveSecondaryImage = (index: number) => {
@@ -296,25 +280,17 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                 data-testid="input-primary-file"
               />
               
-              <div className="flex gap-2">
-                <Input
-                  placeholder="URL de la imagen principal"
-                  value={currentPrimaryUrl}
-                  onChange={(e) => setCurrentPrimaryUrl(e.target.value)}
-                  disabled={primaryImages.length >= 5}
-                  data-testid="input-primary-image-url"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddPrimaryImage}
-                  disabled={primaryImages.length >= 5}
-                  data-testid="button-add-primary-image"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Agregar
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddPrimaryImage}
+                disabled={primaryImages.length >= 5}
+                data-testid="button-add-primary-image"
+                className="w-full"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Agregar Imágenes
+              </Button>
 
               {form.formState.errors.primaryImages && (
                 <p className="text-sm text-destructive">
@@ -338,24 +314,24 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                             type="button"
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-6 w-6"
+                            className="absolute top-2 right-2 h-7 w-7"
                             onClick={() => handleRemovePrimaryImage(index)}
                             data-testid={`button-remove-primary-image-${index}`}
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-4 h-4" />
                           </Button>
                           <Button
                             type="button"
                             variant={coverImageIndex === index ? "default" : "secondary"}
                             size="icon"
-                            className="absolute bottom-1 right-1 h-6 w-6"
+                            className="absolute bottom-2 right-2 h-7 w-7"
                             onClick={() => handleSetCoverImage(index)}
                             data-testid={`button-set-cover-${index}`}
                           >
-                            <Star className={`w-3 h-3 ${coverImageIndex === index ? 'fill-current' : ''}`} />
+                            <Star className={`w-4 h-4 ${coverImageIndex === index ? 'fill-current' : ''}`} />
                           </Button>
                           {coverImageIndex === index && (
-                            <Badge className="absolute top-1 left-1" data-testid={`badge-cover-${index}`}>
+                            <Badge className="absolute top-2 left-2" data-testid={`badge-cover-${index}`}>
                               Portada
                             </Badge>
                           )}
@@ -391,25 +367,17 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                 data-testid="input-secondary-file"
               />
               
-              <div className="flex gap-2">
-                <Input
-                  placeholder="URL de la imagen secundaria"
-                  value={currentSecondaryUrl}
-                  onChange={(e) => setCurrentSecondaryUrl(e.target.value)}
-                  disabled={secondaryImages.length >= 20}
-                  data-testid="input-secondary-image-url"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddSecondaryImage}
-                  disabled={secondaryImages.length >= 20}
-                  data-testid="button-add-secondary-image"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Agregar
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddSecondaryImage}
+                disabled={secondaryImages.length >= 20}
+                data-testid="button-add-secondary-image"
+                className="w-full"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Agregar Imágenes
+              </Button>
 
               {secondaryImages.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -427,11 +395,11 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious }: Step5
                             type="button"
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-6 w-6"
+                            className="absolute top-2 right-2 h-7 w-7"
                             onClick={() => handleRemoveSecondaryImage(index)}
                             data-testid={`button-remove-secondary-image-${index}`}
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
                       </CardContent>
