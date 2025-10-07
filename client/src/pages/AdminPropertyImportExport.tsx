@@ -142,6 +142,7 @@ function AdminPropertyImportExportContent() {
       return apiRequest("POST", "/api/admin/properties/validate-import", { properties });
     },
     onSuccess: (data) => {
+      console.log("Validation result:", data);
       setValidationResult(data);
       if (data.valid) {
         toast({
@@ -150,6 +151,8 @@ function AdminPropertyImportExportContent() {
         });
       } else {
         const errorCount = data.errors?.length || 0;
+        console.error("Validation errors:", data.errors);
+        console.warn("Validation warnings:", data.warnings);
         toast({
           title: "Errores de validación",
           description: errorCount > 0 ? `Se encontraron ${errorCount} errores` : "Se encontraron errores en la validación",
