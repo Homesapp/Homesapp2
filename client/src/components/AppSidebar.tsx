@@ -227,7 +227,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <div className="flex items-center justify-center px-4 py-3">
+          <div className={state === "expanded" ? "flex items-center justify-center px-4 py-3" : "flex items-center justify-center p-2"}>
             {state === "expanded" ? (
               <img 
                 src={logoUrl} 
@@ -239,7 +239,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
               <img 
                 src={logoIconUrl} 
                 alt="HomesApp" 
-                className="h-8 w-8 object-contain"
+                className="h-10 w-10 object-contain"
                 data-testid="img-sidebar-logo-icon"
               />
             )}
