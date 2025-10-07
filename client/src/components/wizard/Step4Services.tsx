@@ -33,6 +33,60 @@ const servicesSchema = z.object({
   
   // Accepted lease durations
   acceptedLeaseDurations: z.array(z.string()).min(1, "Selecciona al menos una duración"),
+}).superRefine((data, ctx) => {
+  // Validate water service
+  if (!data.waterIncluded) {
+    if (!data.waterProvider || data.waterProvider.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El proveedor es requerido si el agua no está incluida",
+        path: ["waterProvider"],
+      });
+    }
+    if (!data.waterCost || data.waterCost.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El costo es requerido si el agua no está incluida",
+        path: ["waterCost"],
+      });
+    }
+  }
+  
+  // Validate electricity service
+  if (!data.electricityIncluded) {
+    if (!data.electricityProvider || data.electricityProvider.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El proveedor es requerido si la electricidad no está incluida",
+        path: ["electricityProvider"],
+      });
+    }
+    if (!data.electricityCost || data.electricityCost.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El costo es requerido si la electricidad no está incluida",
+        path: ["electricityCost"],
+      });
+    }
+  }
+  
+  // Validate internet service
+  if (!data.internetIncluded) {
+    if (!data.internetProvider || data.internetProvider.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El proveedor es requerido si el internet no está incluido",
+        path: ["internetProvider"],
+      });
+    }
+    if (!data.internetCost || data.internetCost.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El costo es requerido si el internet no está incluido",
+        path: ["internetCost"],
+      });
+    }
+  }
 });
 
 type ServicesForm = z.infer<typeof servicesSchema>;
@@ -197,10 +251,11 @@ export default function Step4Services({ data, onUpdate, onNext, onPrevious }: St
                       name="waterProvider"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Proveedor</FormLabel>
+                          <FormLabel>Proveedor *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="CAPA, Pozo, etc" data-testid="input-water-provider" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -209,10 +264,11 @@ export default function Step4Services({ data, onUpdate, onNext, onPrevious }: St
                       name="waterCost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Costo Estimado</FormLabel>
+                          <FormLabel>Costo Estimado *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="$500 MXN/mes" data-testid="input-water-cost" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -256,10 +312,11 @@ export default function Step4Services({ data, onUpdate, onNext, onPrevious }: St
                       name="electricityProvider"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Proveedor</FormLabel>
+                          <FormLabel>Proveedor *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="CFE, Solar, etc" data-testid="input-electricity-provider" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -268,10 +325,11 @@ export default function Step4Services({ data, onUpdate, onNext, onPrevious }: St
                       name="electricityCost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Costo Estimado</FormLabel>
+                          <FormLabel>Costo Estimado *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="$800 MXN/mes" data-testid="input-electricity-cost" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -315,10 +373,11 @@ export default function Step4Services({ data, onUpdate, onNext, onPrevious }: St
                       name="internetProvider"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Proveedor</FormLabel>
+                          <FormLabel>Proveedor *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Telmex, Abix, etc" data-testid="input-internet-provider" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -327,10 +386,11 @@ export default function Step4Services({ data, onUpdate, onNext, onPrevious }: St
                       name="internetCost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Costo Estimado</FormLabel>
+                          <FormLabel>Costo Estimado *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="$600 MXN/mes" data-testid="input-internet-cost" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
