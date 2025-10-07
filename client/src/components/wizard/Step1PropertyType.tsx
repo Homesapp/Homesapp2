@@ -55,12 +55,12 @@ export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props
                 Ofrecer la propiedad en renta
               </p>
             </div>
-            <Checkbox
-              checked={data.isForRent}
-              onClick={(e) => e.stopPropagation()}
-              onCheckedChange={() => handleToggle("rent")}
-              data-testid="checkbox-rent"
-            />
+            <div className="pointer-events-none">
+              <Checkbox
+                checked={data.isForRent}
+                data-testid="checkbox-rent"
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -79,12 +79,12 @@ export default function Step1PropertyType({ data, onUpdate, onNext }: Step1Props
                 Ofrecer la propiedad en venta
               </p>
             </div>
-            <Checkbox
-              checked={data.isForSale}
-              onClick={(e) => e.stopPropagation()}
-              onCheckedChange={() => handleToggle("sale")}
-              data-testid="checkbox-sale"
-            />
+            <div className="pointer-events-none">
+              <Checkbox
+                checked={data.isForSale}
+                data-testid="checkbox-sale"
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
