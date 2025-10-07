@@ -26,7 +26,7 @@ A comprehensive bidirectional review system enables feedback between users for p
 
 A financial tracking and payout management system handles commissions, referrals, and rental income. This includes `rentalCommissionConfigs`, `accountantAssignments`, `payoutBatches`, and `incomeTransactions` tables, with a workflow for accountants to create transactions and batches, and admins to approve them. Access control is role-based, ensuring data isolation for accountants.
 
-A comprehensive rental contract and commission management system tracks the complete rental lifecycle from reservation (apartado) to check-in and payment release. The `rentalContracts` table stores contract details, commission calculations, lifecycle timestamps, and digital signature tracking for owner and tenant terms. 
+A comprehensive rental contract and commission management system tracks the complete rental lifecycle from reservation (apartado) to check-in and payment release. The `rentalContracts` table stores contract details, commission calculations, lifecycle timestamps, and digital signature tracking for owner and tenant terms. **Terms Acceptance Integration**: Owner terms acceptance from property submission wizard (`propertySubmissionDrafts.termsAcceptance`) automatically flows into rental contracts. When a draft is approved, it's linked to the created property via `propertyId`, and `termsAcceptance` is normalized with `acceptedAt` timestamp. During rental contract creation, `ownerTermsSignedAt` is auto-filled from the draft's acceptance data, streamlining the contract lifecycle and ensuring compliance tracking. 
 
 Commission calculations are automated based on lease duration following the official rental terms:
 - 5+ years = 3 months rent

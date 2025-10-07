@@ -3330,6 +3330,20 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Solo se pueden aprobar borradores enviados");
     }
     
+    // Normalize termsAcceptance for rental lifecycle integration
+    let normalizedTermsAcceptance = draft.termsAcceptance;
+    if (draft.termsAcceptance) {
+      const terms = draft.termsAcceptance as any;
+      
+      // Ensure acceptedAt field exists for rental contract integration
+      if (!terms.acceptedAt && terms.acceptedTerms && terms.confirmedAccuracy && terms.acceptedCommission) {
+        normalizedTermsAcceptance = {
+          ...terms,
+          acceptedAt: draft.updatedAt?.toISOString() || new Date().toISOString(), // Use draft update time as fallback
+        };
+      }
+    }
+    
     // Transform draft to property data
     const propertyData = draftToPropertyData(draft, adminId);
     
@@ -3340,6 +3354,7 @@ export class DatabaseStorage implements IStorage {
     await this.updatePropertySubmissionDraft(id, { 
       status: "approved",
       propertyId: property.id, // Link draft to created property
+      termsAcceptance: normalizedTermsAcceptance as any, // Normalize terms acceptance
       reviewedBy: adminId,
       reviewedAt: new Date()
     });
