@@ -11,39 +11,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChevronLeft, ChevronRight, Lock, User, Key, Home, Shield } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
-const accessInfoSchema = z.union([
-  z.discriminatedUnion("accessType", [
-    // Unattended access - with lockbox or smart lock
-    z.object({
-      accessType: z.literal("unattended"),
-      method: z.enum(["lockbox", "smart_lock"]),
-      lockboxCode: z.string().optional(),
-      lockboxLocation: z.string().optional(),
-      smartLockInstructions: z.string().optional(),
-      smartLockProvider: z.string().optional(),
-    }).refine(
-      (data) => {
-        // If lockbox, require lockboxCode
-        if (data.method === "lockbox" && !data.lockboxCode) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "Código de lockbox requerido",
-        path: ["lockboxCode"],
-      }
-    ),
-    // Attended access
-    z.object({
-      accessType: z.literal("attended"),
-      contactPerson: z.string().min(1, "Nombre de contacto requerido"),
-      contactPhone: z.string().min(1, "Teléfono de contacto requerido"),
-      contactNotes: z.string().optional(),
-    }),
-  ]),
-  z.undefined(),
-]);
+const accessInfoSchema = z.object({
+  accessType: z.enum(["unattended", "attended"]),
+  method: z.enum(["lockbox", "smart_lock"]).optional(),
+  lockboxCode: z.string().optional(),
+  lockboxLocation: z.string().optional(),
+  smartLockInstructions: z.string().optional(),
+  smartLockProvider: z.string().optional(),
+  contactPerson: z.string().optional(),
+  contactPhone: z.string().optional(),
+  contactNotes: z.string().optional(),
+}).refine(
+  (data) => {
+    if (data.accessType === "unattended" && data.method === "lockbox" && !data.lockboxCode) {
+      return false;
+    }
+    if (data.accessType === "attended" && !data.contactPerson) {
+      return false;
+    }
+    if (data.accessType === "attended" && !data.contactPhone) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "Campos requeridos faltantes",
+  }
+);
 
 type AccessInfoForm = z.infer<typeof accessInfoSchema>;
 
