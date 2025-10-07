@@ -1775,6 +1775,7 @@ export const propertySubmissionDrafts = pgTable("property_submission_drafts", {
   locationInfo: jsonb("location_info"), // location, address details
   details: jsonb("details"), // bedrooms, bathrooms, area, amenities
   media: jsonb("media"), // images, videos, virtualTourUrl
+  servicesInfo: jsonb("services_info"), // servicios incluidos y duraciones de contrato
   commercialTerms: jsonb("commercial_terms"), // rental/sale specific terms
   // Property type selection
   isForRent: boolean("is_for_rent").notNull().default(false),
