@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { SuggestColonyDialog } from "@/components/SuggestColonyDialog";
 import { SuggestCondoDialog } from "@/components/SuggestCondoDialog";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useToast } from "@/hooks/use-toast";
 import type { Colony, Condominium } from "@shared/schema";
 
 const step2Schema = z.object({
@@ -46,7 +45,6 @@ type Step2Props = {
 
 export default function Step2LocationDetails({ data, onUpdate, onNext, onPrevious }: Step2Props) {
   const { t } = useLanguage();
-  const { toast } = useToast();
   const [showColonyDialog, setShowColonyDialog] = useState(false);
   const [showCondoDialog, setShowCondoDialog] = useState(false);
 
@@ -83,33 +81,6 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
   });
 
   const onSubmit = async (formData: Step2Form) => {
-    let pendingCondoName: string | undefined = undefined;
-    let finalCondoId: string | undefined = formData.condominiumId;
-    
-    // Si seleccionaron "nuevo" y escribieron un nombre, crear sugerencia
-    if (formData.condominiumId === "NEW_CONDO" && newCondoName.trim() !== "") {
-      pendingCondoName = newCondoName.trim();
-      
-      try {
-        await createCondoSuggestion.mutateAsync(newCondoName.trim());
-        toast({
-          title: "Sugerencia enviada",
-          description: `El condominio "${newCondoName}" ha sido enviado para aprobación.`,
-        });
-        finalCondoId = undefined;
-      } catch (error: any) {
-        console.error("Error creating condo suggestion:", error);
-        toast({
-          title: "No se pudo enviar la sugerencia",
-          description: `El condominio "${newCondoName}" no pudo ser sugerido.`,
-          variant: "destructive",
-        });
-        finalCondoId = undefined;
-      }
-    } else if (formData.condominiumId === "NEW_CONDO") {
-      finalCondoId = undefined;
-    }
-
     // Transform empty strings to undefined for optional fields
     const cleanedData = {
       locationInfo: {
@@ -118,12 +89,11 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
         state: formData.state,
         zipCode: formData.zipCode,
         colonyId: formData.colonyId && formData.colonyId.trim() !== "" ? formData.colonyId : undefined,
-        condominiumId: finalCondoId && finalCondoId.trim() !== "" && finalCondoId !== "NEW_CONDO" ? finalCondoId : undefined,
+        condominiumId: formData.condominiumId && formData.condominiumId.trim() !== "" ? formData.condominiumId : undefined,
         unitNumber: formData.unitNumber && formData.unitNumber.trim() !== "" ? formData.unitNumber : undefined,
         googleMapsUrl: formData.googleMapsUrl && formData.googleMapsUrl.trim() !== "" ? formData.googleMapsUrl : undefined,
         latitude: formData.latitude && formData.latitude.trim() !== "" ? formData.latitude : undefined,
         longitude: formData.longitude && formData.longitude.trim() !== "" ? formData.longitude : undefined,
-        pendingCondoName,
       },
       details: {
         bedrooms: formData.bedrooms,
