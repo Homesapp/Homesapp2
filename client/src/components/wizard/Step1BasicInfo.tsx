@@ -89,7 +89,6 @@ export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
                       className={`cursor-pointer transition-all hover-elevate ${
                         field.value ? "ring-2 ring-primary" : ""
                       }`}
-                      onClick={() => field.onChange(!field.value)}
                       data-testid="card-rent-option"
                     >
                       <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
@@ -124,7 +123,6 @@ export default function Step1BasicInfo({ data, onUpdate, onNext }: Step1Props) {
                       className={`cursor-pointer transition-all hover-elevate ${
                         field.value ? "ring-2 ring-primary" : ""
                       }`}
-                      onClick={() => field.onChange(!field.value)}
                       data-testid="card-sale-option"
                     >
                       <CardContent className="flex flex-col items-center justify-center p-6 space-y-3">
