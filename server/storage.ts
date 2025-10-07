@@ -546,6 +546,7 @@ export interface IStorage {
   createPropertySubmissionDraft(draft: InsertPropertySubmissionDraft): Promise<PropertySubmissionDraft>;
   updatePropertySubmissionDraft(id: string, updates: Partial<InsertPropertySubmissionDraft>): Promise<PropertySubmissionDraft>;
   deletePropertySubmissionDraft(id: string): Promise<void>;
+  approvePropertySubmissionDraft(id: string, adminId: string): Promise<Property>;
   
   // Property Agreement operations
   getPropertyAgreement(id: string): Promise<PropertyAgreement | undefined>;
@@ -3153,6 +3154,36 @@ export class DatabaseStorage implements IStorage {
 
   async deletePropertySubmissionDraft(id: string): Promise<void> {
     await db.delete(propertySubmissionDrafts).where(eq(propertySubmissionDrafts.id, id));
+  }
+
+  async approvePropertySubmissionDraft(id: string, adminId: string): Promise<Property> {
+    // Import transformer
+    const { draftToPropertyData } = await import("./utils/draftTransformers.js");
+    
+    // Get the draft
+    const draft = await this.getPropertySubmissionDraft(id);
+    if (!draft) {
+      throw new Error("Borrador no encontrado");
+    }
+    
+    if (draft.status !== "submitted") {
+      throw new Error("Solo se pueden aprobar borradores enviados");
+    }
+    
+    // Transform draft to property data
+    const propertyData = draftToPropertyData(draft, adminId);
+    
+    // Create the property
+    const [property] = await db.insert(properties).values(propertyData as any).returning();
+    
+    // Update draft status to approved
+    await this.updatePropertySubmissionDraft(id, { 
+      status: "approved",
+      reviewedBy: adminId,
+      reviewedAt: new Date()
+    });
+    
+    return property;
   }
 
   // Property Agreement operations
