@@ -149,9 +149,10 @@ function AdminPropertyImportExportContent() {
           description: "Los datos están listos para importar",
         });
       } else {
+        const errorCount = data.errors?.length || 0;
         toast({
           title: "Errores de validación",
-          description: `Se encontraron ${data.errors.length} errores`,
+          description: errorCount > 0 ? `Se encontraron ${errorCount} errores` : "Se encontraron errores en la validación",
           variant: "destructive",
         });
       }
@@ -404,7 +405,7 @@ function AdminPropertyImportExportContent() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Errors */}
-            {validationResult.errors && validationResult.errors.length > 0 && (
+            {validationResult.errors && Array.isArray(validationResult.errors) && validationResult.errors.length > 0 && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -426,7 +427,7 @@ function AdminPropertyImportExportContent() {
             )}
 
             {/* Warnings */}
-            {validationResult.warnings && validationResult.warnings.length > 0 && (
+            {validationResult.warnings && Array.isArray(validationResult.warnings) && validationResult.warnings.length > 0 && (
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
