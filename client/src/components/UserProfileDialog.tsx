@@ -12,8 +12,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { User } from "@shared/schema";
-import { useUserAuditHistory } from "@/hooks/useUsers";
+import { useUserAuditHistory, useUpdateUserRole } from "@/hooks/useUsers";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -27,7 +48,8 @@ import {
   Edit,
   Trash2,
   Plus,
-  Eye
+  Eye,
+  Shield
 } from "lucide-react";
 
 const roleLabels: Record<string, string> = {
@@ -74,15 +96,71 @@ interface UserProfileDialogProps {
 }
 
 export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialogProps) {
+  const [newRole, setNewRole] = useState<string>("");
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
+  
+  const { user: currentUser } = useAuth();
   const { data: auditHistory, isLoading: isLoadingHistory } = useUserAuditHistory(
     user?.id || null,
     100
   );
+  const updateUserRole = useUpdateUserRole();
+  const { toast } = useToast();
 
   if (!user) return null;
 
   const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Usuario";
   const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "U";
+
+  const canChangeRole = currentUser?.role === "master";
+
+  const availableRoles = [
+    { value: "admin", label: "Administrador" },
+    { value: "admin_jr", label: "Administrador Jr" },
+    { value: "seller", label: "Vendedor" },
+    { value: "owner", label: "Propietario" },
+    { value: "management", label: "Management" },
+    { value: "concierge", label: "Conserje" },
+    { value: "provider", label: "Proveedor" },
+  ];
+
+  const handleChangeRole = () => {
+    if (!newRole || newRole === user.role) {
+      toast({
+        title: "Error",
+        description: "Selecciona un rol diferente al actual",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowRoleDialog(true);
+  };
+
+  const handleConfirmChangeRole = async () => {
+    if (!user || !newRole) return;
+
+    try {
+      await updateUserRole.mutateAsync({
+        userId: user.id,
+        role: newRole,
+      });
+      
+      toast({
+        title: "Rol actualizado",
+        description: `El rol de ${fullName} ha sido cambiado a ${roleLabels[newRole] || newRole}`,
+      });
+      
+      setShowRoleDialog(false);
+      setNewRole("");
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cambiar el rol del usuario",
+        variant: "destructive",
+      });
+    }
+  };
 
   const formatDetails = (details: unknown): string => {
     if (!details) return "";
@@ -222,6 +300,51 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
               </TabsContent>
 
               <TabsContent value="details" className="space-y-4">
+                {canChangeRole && user.status === "approved" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Gestión de Roles
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="new-role">Cambiar Rol de Usuario</Label>
+                        <div className="flex gap-2">
+                          <Select value={newRole} onValueChange={setNewRole}>
+                            <SelectTrigger id="new-role" data-testid="select-new-role">
+                              <SelectValue placeholder="Seleccionar nuevo rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableRoles.map((role) => (
+                                <SelectItem 
+                                  key={role.value} 
+                                  value={role.value}
+                                  disabled={role.value === user.role}
+                                >
+                                  {role.label}
+                                  {role.value === user.role && " (Actual)"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            onClick={handleChangeRole} 
+                            disabled={!newRole || newRole === user.role || updateUserRole.isPending}
+                            data-testid="button-change-role"
+                          >
+                            Cambiar
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          El rol actual es: <span className="font-semibold">{roleLabels[user.role] || user.role}</span>
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm">Información Personal</CardTitle>
@@ -280,6 +403,32 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <AlertDialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+        <AlertDialogContent data-testid="dialog-confirm-role-change">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar cambio de rol?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estás a punto de cambiar el rol de <span className="font-semibold">{fullName}</span> de{" "}
+              <span className="font-semibold">{roleLabels[user.role] || user.role}</span> a{" "}
+              <span className="font-semibold">{roleLabels[newRole] || newRole}</span>.
+              Esta acción actualizará los permisos y acceso del usuario inmediatamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-role-change">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmChangeRole}
+              disabled={updateUserRole.isPending}
+              data-testid="button-confirm-role-change"
+            >
+              {updateUserRole.isPending ? "Cambiando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
