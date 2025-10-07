@@ -1,18 +1,20 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint } from "lucide-react";
+import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Property } from "@shared/schema";
 
 const approvalStatusLabels: Record<string, string> = {
@@ -42,12 +44,41 @@ const approvalStatusIcons: Record<string, typeof Clock> = {
   rejected: XCircle,
 };
 
+const ownerStatusLabels: Record<string, string> = {
+  active: "Activa",
+  suspended: "Suspendida",
+  rented: "Rentada",
+};
+
 export default function MyProperties() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/owner/properties"],
+  });
+
+  const changeStatusMutation = useMutation({
+    mutationFn: async ({ propertyId, newStatus }: { propertyId: string; newStatus: string }) => {
+      return await apiRequest(`/api/properties/${propertyId}/owner-status`, {
+        method: "PATCH",
+        body: JSON.stringify({ ownerStatus: newStatus }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/properties"] });
+      toast({
+        title: "Estado actualizado",
+        description: "El estado de la propiedad ha sido actualizado exitosamente",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo actualizar el estado de la propiedad",
+      });
+    },
   });
 
   if (isLoading) {
@@ -138,6 +169,14 @@ export default function MyProperties() {
                         {property.title}
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {property.ownerStatus && property.ownerStatus !== "active" && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 text-xs"
+                          >
+                            {ownerStatusLabels[property.ownerStatus] || property.ownerStatus}
+                          </Badge>
+                        )}
                         <Badge
                           variant={approvalStatusColors[statusKey] || "secondary"}
                           className="gap-1 text-xs"
@@ -179,6 +218,37 @@ export default function MyProperties() {
                               <Calendar className="h-4 w-4 mr-2" />
                               Ver Citas
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {property.ownerStatus === "active" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => changeStatusMutation.mutate({ propertyId: property.id, newStatus: "suspended" })}
+                                  data-testid={`menu-suspend-${property.id}`}
+                                  disabled={changeStatusMutation.isPending}
+                                >
+                                  <Pause className="h-4 w-4 mr-2" />
+                                  Suspender
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => changeStatusMutation.mutate({ propertyId: property.id, newStatus: "rented" })}
+                                  data-testid={`menu-rent-${property.id}`}
+                                  disabled={changeStatusMutation.isPending}
+                                >
+                                  <Lock className="h-4 w-4 mr-2" />
+                                  Marcar como Rentada
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {(property.ownerStatus === "suspended" || property.ownerStatus === "rented") && (
+                              <DropdownMenuItem
+                                onClick={() => changeStatusMutation.mutate({ propertyId: property.id, newStatus: "active" })}
+                                data-testid={`menu-activate-${property.id}`}
+                                disabled={changeStatusMutation.isPending}
+                              >
+                                <Home className="h-4 w-4 mr-2" />
+                                Activar (requiere aprobación)
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

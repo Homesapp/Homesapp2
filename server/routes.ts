@@ -2675,6 +2675,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Owner route to change property status (suspend, rent, activate)
+  app.patch("/api/properties/:id/owner-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { ownerStatus } = req.body;
+      const userId = req.user.claims.sub;
+
+      if (!ownerStatus || !["active", "suspended", "rented"].includes(ownerStatus)) {
+        return res.status(400).json({ message: "Invalid ownerStatus. Must be: active, suspended, or rented" });
+      }
+
+      const property = await storage.getProperty(id);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      if (property.ownerId !== userId) {
+        return res.status(403).json({ message: "Only the owner can change the property status" });
+      }
+
+      const updateData: any = { ownerStatus };
+
+      // If changing from suspended/rented to active, require admin approval again
+      if ((property.ownerStatus === "suspended" || property.ownerStatus === "rented") && 
+          ownerStatus === "active" && 
+          property.approvalStatus === "published") {
+        updateData.approvalStatus = "pending_review";
+        updateData.published = false;
+      }
+
+      const updatedProperty = await storage.updateProperty(id, updateData);
+
+      // Log status change
+      await createAuditLog(
+        req,
+        "update",
+        "property",
+        id,
+        `Estado de propiedad cambiado a ${ownerStatus} - ${property.title}`
+      );
+
+      res.json(updatedProperty);
+    } catch (error: any) {
+      return handleGenericError(res, error, "al cambiar el estado de la propiedad");
+    }
+  });
+
   // Property staff routes
   app.post("/api/properties/:id/staff", isAuthenticated, async (req: any, res) => {
     try {

@@ -207,6 +207,12 @@ export const propertyApprovalStatusEnum = pgEnum("property_approval_status", [
   "rejected",           // Rechazada
 ]);
 
+export const ownerPropertyStatusEnum = pgEnum("owner_property_status", [
+  "active",             // Activa y disponible
+  "suspended",          // Suspendida por propietario
+  "rented",             // Rentada (no disponible)
+]);
+
 export const changeRequestStatusEnum = pgEnum("change_request_status", [
   "pending",   // Pendiente de revisión
   "approved",  // Aprobado
@@ -727,6 +733,7 @@ export const properties = pgTable("properties", {
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   managementId: varchar("management_id").references(() => users.id),
   approvalStatus: propertyApprovalStatusEnum("approval_status").notNull().default("draft"),
+  ownerStatus: ownerPropertyStatusEnum("owner_status").notNull().default("active"),
   active: boolean("active").notNull().default(true),
   published: boolean("published").notNull().default(false), // Solo publicada si está aprobada
   availableFrom: timestamp("available_from"),
