@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Calendar, FileEdit, CheckCircle2, AlertCircle, Clock, ArrowRight, Users } from "lucide-react";
 import type { Property, PropertyChangeRequest, Appointment } from "@shared/schema";
-import { WelcomeModal } from "@/components/WelcomeModal";
 import { useAuth } from "@/hooks/useAuth";
 
 type InterestedClient = {
@@ -72,14 +71,6 @@ export default function OwnerDashboard() {
   }
 
   return (
-    <>
-      {!isAuthLoading && user && (
-        <WelcomeModal 
-          userRole="owner" 
-          hasSeenWelcome={user.hasSeenWelcome || false}
-          lastWelcomeShown={user.lastWelcomeShown}
-        />
-      )}
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold" data-testid="heading-owner-dashboard">Dashboard Propietario</h1>
@@ -386,6 +377,5 @@ export default function OwnerDashboard() {
         </CardContent>
       </Card>
       </div>
-    </>
   );
 }

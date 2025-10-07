@@ -778,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/user/complete-onboarding", async (req: any, res) => {
+  app.patch("/api/user/complete-onboarding", isAuthenticated, async (req: any, res) => {
     try {
       // Support both regular auth (req.user) and admin auth (req.session.adminUser)
       const isAdmin = !!req.session?.adminUser;
@@ -815,7 +815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/user/skip-onboarding", async (req: any, res) => {
+  app.patch("/api/user/skip-onboarding", isAuthenticated, async (req: any, res) => {
     try {
       // Support both regular auth (req.user) and admin auth (req.session.adminUser)
       const isAdmin = !!req.session?.adminUser;

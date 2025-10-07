@@ -43,6 +43,7 @@ export default function Register() {
       lastName: "",
       phone: "",
       preferredLanguage: language,
+      nationality: "",
     },
   });
 
@@ -171,6 +172,21 @@ export default function Register() {
               {form.formState.errors.preferredLanguage && (
                 <p className="text-sm text-destructive">
                   {form.formState.errors.preferredLanguage.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nationality">{t("register.nationality")}</Label>
+              <Input
+                id="nationality"
+                placeholder={language === "es" ? "México" : "Mexico"}
+                {...form.register("nationality")}
+                data-testid="input-nationality"
+              />
+              {form.formState.errors.nationality && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.nationality.message}
                 </p>
               )}
             </div>

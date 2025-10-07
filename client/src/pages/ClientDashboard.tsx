@@ -20,7 +20,6 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import type { Appointment, Property, User as UserType, Lead } from "@shared/schema";
-import { WelcomeModal } from "@/components/WelcomeModal";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -92,14 +91,6 @@ export default function ClientDashboard() {
   }
 
   return (
-    <>
-      {!isAuthLoading && user && (
-        <WelcomeModal 
-          userRole="cliente" 
-          hasSeenWelcome={user.hasSeenWelcome || false}
-          lastWelcomeShown={user.lastWelcomeShown}
-        />
-      )}
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -407,6 +398,5 @@ export default function ClientDashboard() {
           </Card>
         )}
       </div>
-    </>
   );
 }

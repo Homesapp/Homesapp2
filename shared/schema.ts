@@ -664,6 +664,7 @@ export const userRegistrationSchema = z.object({
   lastName: z.string().min(1, "Apellido es requerido"),
   phone: z.string().optional(),
   preferredLanguage: z.enum(["es", "en"]).default("es"),
+  nationality: z.string().min(1, "Nacionalidad es requerida"),
 });
 
 export type UserRegistration = z.infer<typeof userRegistrationSchema>;

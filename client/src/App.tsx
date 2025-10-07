@@ -274,8 +274,8 @@ function AuthenticatedApp() {
           </main>
         </div>
       </div>
-      {/* Onboarding Tour - shows for authenticated users who haven't completed it */}
-      {currentUser && (
+      {/* Onboarding Tour - shows for authenticated users who haven't completed it (except admin and master roles) */}
+      {currentUser && currentUser.role !== "admin" && currentUser.role !== "master" && (
         <OnboardingTour
           userRole={currentUser.role || "cliente"}
           onboardingCompleted={currentUser.onboardingCompleted || false}
