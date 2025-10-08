@@ -18,7 +18,7 @@ import {
   ChevronLeft, ChevronRight, X
 } from "lucide-react";
 import { type Property } from "@shared/schema";
-import { RentalOpportunityRequestDialog } from "@/components/RentalOpportunityRequestDialog";
+import { AppointmentSchedulingDialog } from "@/components/AppointmentSchedulingDialog";
 import { AuthRequiredDialog } from "@/components/AuthRequiredDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,10 +28,12 @@ export default function PropertyFullDetails() {
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [showSORDialog, setShowSORDialog] = useState(false);
+  const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [showGallery, setShowGallery] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showAllPhotosDialog, setShowAllPhotosDialog] = useState(false);
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+  const [thumbnailStartIndex, setThumbnailStartIndex] = useState(0);
+  const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ["/api/properties", params?.id],
@@ -105,18 +107,26 @@ export default function PropertyFullDetails() {
     : [];
 
   const allImages = property.primaryImages || [];
+  const VISIBLE_THUMBNAILS = 4;
 
-  const openGallery = (index: number = 0) => {
-    setCurrentImageIndex(index);
-    setShowGallery(true);
+  const handleThumbnailClick = (index: number) => {
+    setMainImageIndex(index);
   };
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+  const handlePrevThumbnails = () => {
+    if (thumbnailStartIndex > 0) {
+      setThumbnailStartIndex(thumbnailStartIndex - 1);
+    }
   };
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  const handleNextThumbnails = () => {
+    if (thumbnailStartIndex < allImages.length - VISIBLE_THUMBNAILS) {
+      setThumbnailStartIndex(thumbnailStartIndex + 1);
+    }
+  };
+
+  const toggleImageExpansion = (index: number) => {
+    setExpandedImageIndex(expandedImageIndex === index ? null : index);
   };
 
   return (
@@ -145,12 +155,11 @@ export default function PropertyFullDetails() {
                 {allImages.length > 0 ? (
                   <div className="space-y-4">
                     <div 
-                      className="h-[500px] bg-muted relative overflow-hidden rounded-t-lg cursor-pointer"
-                      onClick={() => openGallery(0)}
+                      className="h-[500px] bg-muted relative overflow-hidden rounded-t-lg"
                       data-testid="div-main-image"
                     >
                       <img
-                        src={allImages[0]}
+                        src={allImages[mainImageIndex]}
                         alt={property.title}
                         className="w-full h-full object-cover"
                         data-testid="img-main-property"
@@ -160,22 +169,53 @@ export default function PropertyFullDetails() {
                       )}
                     </div>
                     {allImages.length > 1 && (
-                      <div className="grid grid-cols-4 gap-3 px-6 pb-6">
-                        {allImages.slice(1, 5).map((img, idx) => (
-                          <div 
-                            key={idx} 
-                            className="h-28 bg-muted rounded-lg overflow-hidden cursor-pointer hover-elevate active-elevate-2"
-                            onClick={() => openGallery(idx + 1)}
-                            data-testid={`div-gallery-thumb-${idx}`}
+                      <div className="px-6 pb-6">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={handlePrevThumbnails}
+                            disabled={thumbnailStartIndex === 0}
+                            className="flex-shrink-0"
+                            data-testid="button-prev-thumbnails"
                           >
-                            <img 
-                              src={img} 
-                              alt={`Vista ${idx + 2}`} 
-                              className="w-full h-full object-cover" 
-                              data-testid={`img-gallery-${idx}`}
-                            />
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <div className="grid grid-cols-4 gap-3 flex-1">
+                            {allImages.slice(thumbnailStartIndex, thumbnailStartIndex + VISIBLE_THUMBNAILS).map((img, idx) => {
+                              const actualIndex = thumbnailStartIndex + idx;
+                              return (
+                                <div 
+                                  key={actualIndex} 
+                                  className={`h-28 bg-muted rounded-lg overflow-hidden cursor-pointer transition-all ${
+                                    actualIndex === mainImageIndex 
+                                      ? 'ring-2 ring-primary ring-offset-2' 
+                                      : 'hover-elevate active-elevate-2'
+                                  }`}
+                                  onClick={() => handleThumbnailClick(actualIndex)}
+                                  data-testid={`div-gallery-thumb-${actualIndex}`}
+                                >
+                                  <img 
+                                    src={img} 
+                                    alt={`Vista ${actualIndex + 1}`} 
+                                    className="w-full h-full object-cover" 
+                                    data-testid={`img-gallery-${actualIndex}`}
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
-                        ))}
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={handleNextThumbnails}
+                            disabled={thumbnailStartIndex >= allImages.length - VISIBLE_THUMBNAILS}
+                            className="flex-shrink-0"
+                            data-testid="button-next-thumbnails"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -191,7 +231,7 @@ export default function PropertyFullDetails() {
                 <Button
                   variant="outline"
                   className="flex flex-col items-center gap-2 h-auto py-3"
-                  onClick={() => allImages.length > 0 && openGallery(0)}
+                  onClick={() => allImages.length > 0 && setShowAllPhotosDialog(true)}
                   disabled={allImages.length === 0}
                   data-testid="button-view-images"
                 >
@@ -492,7 +532,7 @@ export default function PropertyFullDetails() {
                         setShowAuthDialog(true);
                         return;
                       }
-                      setShowSORDialog(true);
+                      setShowAppointmentDialog(true);
                     }}
                     data-testid="button-request-opportunity"
                   >
@@ -547,81 +587,51 @@ export default function PropertyFullDetails() {
         </div>
       </div>
 
-      {/* Image Gallery Dialog */}
-      <Dialog open={showGallery} onOpenChange={setShowGallery}>
-        <DialogContent className="max-w-7xl h-[90vh] p-0" data-testid="dialog-gallery">
-          <div className="relative h-full flex flex-col">
-            <DialogHeader className="px-6 py-4 border-b">
-              <DialogTitle>Galería de Imágenes ({currentImageIndex + 1} de {allImages.length})</DialogTitle>
-            </DialogHeader>
-            
-            <div className="flex-1 relative bg-black/90 flex items-center justify-center">
-              {allImages.length > 0 && (
-                <>
+      {/* All Photos Dialog (Grid View) */}
+      <Dialog open={showAllPhotosDialog} onOpenChange={setShowAllPhotosDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-all-photos">
+          <DialogHeader>
+            <DialogTitle>Todas las Imágenes ({allImages.length})</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+              {allImages.map((img, index) => (
+                <div
+                  key={index}
+                  className={`relative cursor-pointer transition-all ${
+                    expandedImageIndex === index 
+                      ? 'col-span-2 row-span-2' 
+                      : 'aspect-square'
+                  }`}
+                  onClick={() => toggleImageExpansion(index)}
+                  data-testid={`photo-grid-item-${index}`}
+                >
                   <img
-                    src={allImages[currentImageIndex]}
-                    alt={`Imagen ${currentImageIndex + 1}`}
-                    className="max-h-full max-w-full object-contain"
-                    data-testid={`img-gallery-current-${currentImageIndex}`}
+                    src={img}
+                    alt={`Imagen ${index + 1}`}
+                    className={`w-full h-full object-cover rounded-lg ${
+                      expandedImageIndex === index 
+                        ? 'ring-2 ring-primary' 
+                        : 'hover-elevate'
+                    }`}
                   />
-                  
-                  {allImages.length > 1 && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                        onClick={prevImage}
-                        data-testid="button-prev-image"
-                      >
-                        <ChevronLeft className="h-8 w-8" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                        onClick={nextImage}
-                        data-testid="button-next-image"
-                      >
-                        <ChevronRight className="h-8 w-8" />
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Thumbnails */}
-            {allImages.length > 1 && (
-              <div className="px-6 py-4 border-t bg-card">
-                <div className="flex gap-2 overflow-x-auto">
-                  {allImages.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden cursor-pointer border-2 transition-all ${
-                        idx === currentImageIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
-                      }`}
-                      onClick={() => setCurrentImageIndex(idx)}
-                      data-testid={`thumb-gallery-${idx}`}
-                    >
-                      <img
-                        src={img}
-                        alt={`Miniatura ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                  {expandedImageIndex === index && (
+                    <div className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1">
+                      <X className="h-4 w-4" />
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {property && (
-        <RentalOpportunityRequestDialog
-          open={showSORDialog}
-          onOpenChange={setShowSORDialog}
+        <AppointmentSchedulingDialog
+          open={showAppointmentDialog}
+          onOpenChange={setShowAppointmentDialog}
           property={property}
         />
       )}
