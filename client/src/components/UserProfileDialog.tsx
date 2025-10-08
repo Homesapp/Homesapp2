@@ -114,7 +114,7 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
   
   const sendResetLink = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest('POST', `/api/admin/users/${userId}/send-reset-link`);
+      return await apiRequest('POST', `/api/admin/users/${userId}/send-reset-link`);
     },
     onSuccess: () => {
       toast({
@@ -133,7 +133,7 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
   
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest('DELETE', `/api/admin/users/${userId}`);
+      return await apiRequest('DELETE', `/api/admin/users/${userId}`);
     },
     onSuccess: () => {
       toast({
