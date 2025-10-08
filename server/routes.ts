@@ -3733,7 +3733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If changing from suspended/rented to active, require admin approval again
       if ((property.ownerStatus === "suspended" || property.ownerStatus === "rented") && 
           ownerStatus === "active" && 
-          property.approvalStatus === "published") {
+          (property.approvalStatus === "published" || property.approvalStatus === "approved")) {
         updateData.approvalStatus = "pending_review";
         updateData.published = false;
       }
