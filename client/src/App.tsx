@@ -269,6 +269,7 @@ function AuthenticatedApp() {
               <Route path="/concierge/horarios" component={ConciergeSchedule} />
               <Route path="/directory" component={Directory} />
               <Route path="/presentation-cards" component={PresentationCards} />
+              <Route path="/cards" component={PresentationCards} />
               <Route path="/presupuestos" component={Budgets} />
               <Route path="/tareas" component={Tasks} />
               <Route path="/backoffice" component={Backoffice} />
