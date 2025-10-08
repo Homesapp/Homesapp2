@@ -1,6 +1,7 @@
 import {
   users,
   properties,
+  propertyDocuments,
   colonies,
   condominiums,
   amenities,
@@ -78,6 +79,8 @@ import {
   type InsertUser,
   type Property,
   type InsertProperty,
+  type PropertyDocument,
+  type InsertPropertyDocument,
   type Appointment,
   type InsertAppointment,
   type BusinessHours,
@@ -1301,6 +1304,111 @@ export class DatabaseStorage implements IStorage {
     await db.delete(properties).where(eq(properties.id, id));
   }
 
+  // Property Documents operations
+  async getPropertyDocument(id: string): Promise<PropertyDocument | undefined> {
+    const [document] = await db.select().from(propertyDocuments).where(eq(propertyDocuments.id, id));
+    return document;
+  }
+
+  async getPropertyDocuments(propertyId: string, category?: string): Promise<PropertyDocument[]> {
+    let query = db.select().from(propertyDocuments).where(eq(propertyDocuments.propertyId, propertyId));
+    
+    if (category) {
+      query = query.where(and(
+        eq(propertyDocuments.propertyId, propertyId),
+        eq(propertyDocuments.category, category as any)
+      )) as any;
+    }
+    
+    return await query.orderBy(propertyDocuments.uploadedAt);
+  }
+
+  async createPropertyDocument(documentData: InsertPropertyDocument): Promise<PropertyDocument> {
+    const [document] = await db.insert(propertyDocuments).values(documentData).returning();
+    return document;
+  }
+
+  async updatePropertyDocument(id: string, updates: Partial<InsertPropertyDocument>): Promise<PropertyDocument> {
+    const [document] = await db
+      .update(propertyDocuments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(propertyDocuments.id, id))
+      .returning();
+    return document;
+  }
+
+  async deletePropertyDocument(id: string): Promise<void> {
+    await db.delete(propertyDocuments).where(eq(propertyDocuments.id, id));
+  }
+
+  async validatePropertyDocument(id: string, validatedBy: string, validationNotes?: string): Promise<PropertyDocument> {
+    const [document] = await db
+      .update(propertyDocuments)
+      .set({
+        isValidated: true,
+        validatedAt: new Date(),
+        validatedBy,
+        validationNotes,
+        updatedAt: new Date(),
+      })
+      .where(eq(propertyDocuments.id, id))
+      .returning();
+    return document;
+  }
+
+  async checkPropertyDocumentsComplete(propertyId: string): Promise<{
+    complete: boolean;
+    missing: string[];
+    validated: boolean;
+    unvalidated: string[];
+    category?: 'persona_fisica' | 'persona_moral';
+  }> {
+    const documents = await this.getPropertyDocuments(propertyId);
+    const requiredDocs = documents.filter(doc => doc.isRequired);
+    const missingTypes: string[] = [];
+    const unvalidatedTypes: string[] = [];
+
+    // If no documents uploaded yet, cannot determine category
+    if (documents.length === 0) {
+      return {
+        complete: false,
+        missing: ['No se han subido documentos'],
+        validated: false,
+        unvalidated: [],
+      };
+    }
+
+    // Check required documents
+    const requiredTypes = {
+      persona_fisica: ['ife_ine_frente', 'ife_ine_reverso', 'escrituras', 'recibo_agua', 'recibo_luz', 'comprobante_no_adeudo'],
+      persona_moral: ['acta_constitutiva', 'ife_ine_frente', 'ife_ine_reverso', 'escrituras', 'recibo_agua', 'recibo_luz', 'comprobante_no_adeudo'],
+    };
+
+    // Determine category based on documents uploaded
+    // If acta_constitutiva is present OR any document has category persona_moral, it's persona_moral
+    const hasActaConstitutiva = documents.some(doc => doc.documentType === 'acta_constitutiva');
+    const hasPersonaMoralDocs = documents.some(doc => doc.category === 'persona_moral');
+    const category = (hasActaConstitutiva || hasPersonaMoralDocs) ? 'persona_moral' : 'persona_fisica';
+    const required = requiredTypes[category];
+
+    for (const type of required) {
+      const doc = documents.find(d => d.documentType === type);
+      if (!doc) {
+        missingTypes.push(type);
+      } else if (!doc.isValidated) {
+        unvalidatedTypes.push(type);
+      }
+    }
+
+    return {
+      complete: missingTypes.length === 0,
+      missing: missingTypes,
+      validated: unvalidatedTypes.length === 0,
+      unvalidated: unvalidatedTypes,
+      category,
+    };
+  }
+
   async searchProperties(query: string): Promise<Property[]> {
     return await db
       .select()
@@ -1462,6 +1570,18 @@ export class DatabaseStorage implements IStorage {
 
   async getPropertyStaff(propertyId: string): Promise<PropertyStaff[]> {
     return await db.select().from(propertyStaff).where(eq(propertyStaff.propertyId, propertyId));
+  }
+
+  async isStaffAssignedToProperty(propertyId: string, staffId: string): Promise<boolean> {
+    const [assignment] = await db
+      .select()
+      .from(propertyStaff)
+      .where(and(
+        eq(propertyStaff.propertyId, propertyId),
+        eq(propertyStaff.staffId, staffId)
+      ))
+      .limit(1);
+    return !!assignment;
   }
 
   async removeStaff(propertyId: string, staffId: string, role: string): Promise<void> {

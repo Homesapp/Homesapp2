@@ -3109,6 +3109,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Property Documents endpoints
+  
+  // Get documents for a property
+  app.get("/api/properties/:propertyId/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId } = req.params;
+      const { category } = req.query;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const property = await storage.getProperty(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+      
+      // Only owner, assigned staff, or admin can view documents
+      const isOwner = property.ownerId === userId;
+      const isAdmin = user && ["master", "admin", "admin_jr"].includes(user.role);
+      const isAssignedStaff = user && await storage.isStaffAssignedToProperty(propertyId, userId);
+      
+      if (!isOwner && !isAdmin && !isAssignedStaff) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+      
+      const documents = await storage.getPropertyDocuments(propertyId, category);
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching property documents:", error);
+      res.status(500).json({ message: "Error al obtener documentos" });
+    }
+  });
+
+  // Upload document for a property
+  app.post("/api/properties/:propertyId/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const property = await storage.getProperty(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+      
+      // Only owner or admin can upload documents
+      if (property.ownerId !== userId && !["master", "admin", "admin_jr"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const { documentType, category } = req.body;
+
+      // Validate that documentType matches category
+      const personaMoralOnlyTypes = ['acta_constitutiva'];
+      const personaFisicaTypes = ['ife_ine_frente', 'ife_ine_reverso', 'pasaporte', 'legal_estancia', 'escrituras', 
+                                    'contrato_compraventa', 'fideicomiso', 'recibo_agua', 'recibo_luz', 
+                                    'recibo_internet', 'comprobante_no_adeudo'];
+      const optionalTypes = ['reglas_internas', 'reglamento_condominio'];
+
+      if (personaMoralOnlyTypes.includes(documentType) && category !== 'persona_moral') {
+        return res.status(400).json({ 
+          message: `El documento ${documentType} solo puede ser de categoría persona_moral` 
+        });
+      }
+
+      if (optionalTypes.includes(documentType) && category !== 'optional') {
+        return res.status(400).json({ 
+          message: `El documento ${documentType} debe ser de categoría optional` 
+        });
+      }
+
+      // If category is persona_moral but documentType is not acta_constitutiva, it's still valid
+      // (persona_moral needs same docs as persona_fisica PLUS acta_constitutiva)
+
+      const documentData = {
+        ...req.body,
+        propertyId,
+      };
+
+      const document = await storage.createPropertyDocument(documentData);
+      
+      await createAuditLog(
+        req,
+        "create",
+        "property_document",
+        document.id,
+        `Documento subido: ${document.documentType} para propiedad ${propertyId}`
+      );
+      
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: "Error al subir documento" });
+    }
+  });
+
+  // Validate document (admin only)
+  app.patch("/api/property-documents/:id/validate", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { validationNotes } = req.body;
+      const userId = req.user.claims.sub;
+
+      const document = await storage.validatePropertyDocument(id, userId, validationNotes);
+      
+      await createAuditLog(
+        req,
+        "update",
+        "property_document",
+        id,
+        `Documento validado: ${document.documentType}`
+      );
+      
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error validating document:", error);
+      res.status(500).json({ message: "Error al validar documento" });
+    }
+  });
+
+  // Delete document
+  app.delete("/api/property-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const document = await storage.getPropertyDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Documento no encontrado" });
+      }
+      
+      const property = await storage.getProperty(document.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+      
+      // Only owner or admin can delete documents
+      if (property.ownerId !== userId && !["master", "admin", "admin_jr"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      await createAuditLog(
+        req,
+        "delete",
+        "property_document",
+        id,
+        `Documento eliminado: ${document.documentType}`
+      );
+
+      await storage.deletePropertyDocument(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Error al eliminar documento" });
+    }
+  });
+
+  // Check if property documents are complete
+  app.get("/api/properties/:propertyId/documents/check", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId } = req.params;
+      
+      const status = await storage.checkPropertyDocumentsComplete(propertyId);
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error checking documents:", error);
+      res.status(500).json({ message: "Error al verificar documentos" });
+    }
+  });
+
   // Admin route to reassign property owner
   app.patch("/api/properties/:id/reassign-owner", isAuthenticated, requireFullAdmin, async (req: any, res) => {
     try {
@@ -4846,6 +5016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/property-submission-drafts/:id/approve", isAuthenticated, requireFullAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const { skipDocumentCheck } = req.body; // Allow admin to force approve without documents
       let adminId: string;
 
       // Get adminId from session (admin_users) or from user claims (regular users with admin role)
@@ -4857,6 +5028,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Approve the draft and create property
       const property = await storage.approvePropertySubmissionDraft(id, adminId);
+      
+      // Check if documents are complete and validated (unless skipped)
+      if (!skipDocumentCheck) {
+        const documentStatus = await storage.checkPropertyDocumentsComplete(property.id);
+        
+        if (!documentStatus.complete) {
+          await createAuditLog(
+            req,
+            "approve",
+            "property_submission_draft",
+            id,
+            `Propiedad creada pero documentos incompletos. Faltantes: ${documentStatus.missing.join(', ')}`
+          );
+          
+          return res.status(201).json({
+            message: "Propiedad creada pero faltan documentos requeridos",
+            property,
+            warning: true,
+            documentStatus,
+          });
+        }
+        
+        if (!documentStatus.validated) {
+          await createAuditLog(
+            req,
+            "approve",
+            "property_submission_draft",
+            id,
+            `Propiedad creada pero documentos sin validar. Sin validar: ${documentStatus.unvalidated.join(', ')}`
+          );
+          
+          return res.status(201).json({
+            message: "Propiedad creada pero documentos pendientes de validación",
+            property,
+            warning: true,
+            documentStatus,
+          });
+        }
+      }
       
       await createAuditLog(
         req,
