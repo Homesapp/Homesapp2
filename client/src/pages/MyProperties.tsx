@@ -53,6 +53,18 @@ const ownerStatusLabels: Record<string, string> = {
   rented: "Rentada",
 };
 
+const ownerStatusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  active: "default",
+  suspended: "secondary",
+  rented: "outline",
+};
+
+const ownerStatusIcons: Record<string, typeof Home> = {
+  active: Home,
+  suspended: Pause,
+  rented: Lock,
+};
+
 export default function MyProperties() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
@@ -213,14 +225,20 @@ export default function MyProperties() {
                         {property.title}
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Show ownerStatus badge if not active */}
                         {property.ownerStatus && property.ownerStatus !== "active" && (
                           <Badge
-                            variant="secondary"
+                            variant={ownerStatusColors[property.ownerStatus] || "secondary"}
                             className="gap-1 text-xs"
                           >
+                            {(() => {
+                              const OwnerIcon = ownerStatusIcons[property.ownerStatus];
+                              return OwnerIcon ? <OwnerIcon className="h-2.5 w-2.5" /> : null;
+                            })()}
                             {ownerStatusLabels[property.ownerStatus] || property.ownerStatus}
                           </Badge>
                         )}
+                        {/* Show approvalStatus badge */}
                         <Badge
                           variant={approvalStatusColors[statusKey] || "secondary"}
                           className="gap-1 text-xs"
@@ -324,7 +342,7 @@ export default function MyProperties() {
                           <Square className="h-3 w-3" />
                           {property.area}m²
                           {property.petFriendly && (
-                            <PawPrint className="h-3 w-3 ml-0.5" title="Pet Friendly" />
+                            <PawPrint className="h-3 w-3 ml-0.5" />
                           )}
                         </span>
                       </div>
