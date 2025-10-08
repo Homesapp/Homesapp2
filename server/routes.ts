@@ -1830,25 +1830,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
 
-      // Only owners can suggest colonies
-      if (!user || user.role !== "owner") {
-        return res.status(403).json({ message: "Solo los propietarios pueden sugerir colonias" });
+      if (!user) {
+        return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
-      // Check suggestion limits (3 per day, 15 total)
-      const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
-      const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
-
-      if (todaySuggestions >= 3) {
-        return res.status(429).json({ 
-          message: "Has alcanzado el límite de 3 sugerencias por día" 
-        });
+      const isAdmin = user.role === "master" || user.role === "admin" || user.additionalRole === "admin";
+      
+      // Admins can create directly, owners need to suggest with limits
+      if (!isAdmin && user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios y administradores pueden crear colonias" });
       }
 
-      if (totalSuggestions >= 15) {
-        return res.status(429).json({ 
-          message: "Has alcanzado el límite de 15 sugerencias totales" 
-        });
+      // Check suggestion limits only for non-admin owners
+      if (!isAdmin && user.role === "owner") {
+        const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
+        const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
+
+        if (todaySuggestions >= 3) {
+          return res.status(429).json({ 
+            message: "Has alcanzado el límite de 3 sugerencias por día" 
+          });
+        }
+
+        if (totalSuggestions >= 15) {
+          return res.status(429).json({ 
+            message: "Has alcanzado el límite de 15 sugerencias totales" 
+          });
+        }
       }
       
       // Validate request body with Zod
@@ -1872,12 +1880,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
         .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 
-      // Create colony with pending status, requires admin approval
+      // Admins create directly as approved, owners create as pending
+      const approvalStatus = isAdmin ? "approved" : "pending";
+
+      // Create colony
       const colony = await storage.createColony({
         name,
         slug,
         active: true,
-        approvalStatus: "pending",
+        approvalStatus,
         requestedBy: userId,
       });
 
@@ -1886,7 +1897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "create",
         "colony",
         colony.id,
-        `Colonia solicitada: ${name}`
+        isAdmin ? `Colonia creada: ${name}` : `Colonia solicitada: ${name}`
       );
 
       res.json(colony);
@@ -2075,31 +2086,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-
-      // Only owners can suggest condominiums
-      if (!user || user.role !== "owner") {
-        return res.status(403).json({ message: "Solo los propietarios pueden sugerir condominios" });
+      
+      if (!user) {
+        return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
-      // Check suggestion limits (3 per day, 15 total)
-      const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
-      const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
-
-      if (todaySuggestions >= 3) {
-        return res.status(429).json({ 
-          message: "Has alcanzado el límite de 3 sugerencias por día" 
-        });
+      const isAdmin = user.role === "master" || user.role === "admin" || user.additionalRole === "admin";
+      
+      // Admins can create directly, owners need to suggest with limits
+      if (!isAdmin && user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios y administradores pueden crear condominios" });
       }
 
-      if (totalSuggestions >= 15) {
-        return res.status(429).json({ 
-          message: "Has alcanzado el límite de 15 sugerencias totales" 
-        });
+      // Check suggestion limits only for non-admin owners
+      if (!isAdmin && user.role === "owner") {
+        const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
+        const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
+
+        if (todaySuggestions >= 3) {
+          return res.status(429).json({ 
+            message: "Has alcanzado el límite de 3 sugerencias por día" 
+          });
+        }
+
+        if (totalSuggestions >= 15) {
+          return res.status(429).json({ 
+            message: "Has alcanzado el límite de 15 sugerencias totales" 
+          });
+        }
       }
       
       // Validate request body with Zod
       const condominiumSchema = z.object({
         name: z.string().min(1, "El nombre del condominio es requerido"),
+        colonyId: z.string().optional(),
+        zone: z.string().optional(),
+        address: z.string().optional(),
       });
       
       const validationResult = condominiumSchema.safeParse(req.body);
@@ -2110,12 +2132,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { name } = validationResult.data;
+      const { name, colonyId, zone, address } = validationResult.data;
 
-      // Create condominium with pending status, requires admin approval
+      // Admins create directly as approved, owners create as pending
+      const approvalStatus = isAdmin ? "approved" : "pending";
+
+      // Create condominium
       const condominium = await storage.createCondominium({
         name,
-        approvalStatus: "pending",
+        colonyId,
+        zone,
+        address,
+        approvalStatus,
         requestedBy: userId,
       });
 
@@ -2124,7 +2152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "create",
         "condominium",
         condominium.id,
-        `Condominio solicitado: ${name}`
+        isAdmin ? `Condominio creado: ${name}` : `Condominio solicitado: ${name}`
       );
 
       res.json(condominium);
@@ -2538,25 +2566,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
 
-      // Only owners can suggest amenities
-      if (!user || user.role !== "owner") {
-        return res.status(403).json({ message: "Solo los propietarios pueden sugerir amenidades" });
+      if (!user) {
+        return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
-      // Check suggestion limits (3 per day, 15 total)
-      const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
-      const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
-
-      if (todaySuggestions >= 3) {
-        return res.status(429).json({ 
-          message: "Has alcanzado el límite de 3 sugerencias por día" 
-        });
+      const isAdmin = user.role === "master" || user.role === "admin" || user.additionalRole === "admin";
+      
+      // Admins can create directly, owners need to suggest with limits
+      if (!isAdmin && user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios y administradores pueden crear amenidades" });
       }
 
-      if (totalSuggestions >= 15) {
-        return res.status(429).json({ 
-          message: "Has alcanzado el límite de 15 sugerencias totales" 
-        });
+      // Check suggestion limits only for non-admin owners
+      if (!isAdmin && user.role === "owner") {
+        const todaySuggestions = await storage.getUserSuggestionsCount(userId, 'today');
+        const totalSuggestions = await storage.getUserSuggestionsCount(userId, 'total');
+
+        if (todaySuggestions >= 3) {
+          return res.status(429).json({ 
+            message: "Has alcanzado el límite de 3 sugerencias por día" 
+          });
+        }
+
+        if (totalSuggestions >= 15) {
+          return res.status(429).json({ 
+            message: "Has alcanzado el límite de 15 sugerencias totales" 
+          });
+        }
       }
       
       // Validate request body with Zod
@@ -2575,11 +2611,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { name, category } = validationResult.data;
 
-      // Create amenity with pending status, requires admin approval
+      // Admins create directly as approved, owners create as pending
+      const approvalStatus = isAdmin ? "approved" : "pending";
+
+      // Create amenity
       const amenity = await storage.createAmenity({
         name,
         category,
-        approvalStatus: "pending",
+        approvalStatus,
         requestedBy: userId,
       });
 
@@ -2588,7 +2627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "create",
         "amenity",
         amenity.id,
-        `Amenidad solicitada: ${name} (${category})`
+        isAdmin ? `Amenidad creada: ${name} (${category})` : `Amenidad solicitada: ${name} (${category})`
       );
 
       res.json(amenity);

@@ -904,6 +904,7 @@ export type Colony = typeof colonies.$inferSelect;
 export const condominiums = pgTable("condominiums", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
+  colonyId: varchar("colony_id").references(() => colonies.id),
   zone: text("zone"),
   address: text("address"),
   active: boolean("active").notNull().default(true),
@@ -943,6 +944,25 @@ export const insertAmenitySchema = createInsertSchema(amenities).omit({
 
 export type InsertAmenity = z.infer<typeof insertAmenitySchema>;
 export type Amenity = typeof amenities.$inferSelect;
+
+// Property features table (características de propiedades)
+export const propertyFeatures = pgTable("property_features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  icon: text("icon"), // Optional icon name from lucide-react
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertyFeatureSchema = createInsertSchema(propertyFeatures).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPropertyFeature = z.infer<typeof insertPropertyFeatureSchema>;
+export type PropertyFeature = typeof propertyFeatures.$inferSelect;
 
 // Property staff assignment table
 export const propertyStaff = pgTable(
