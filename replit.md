@@ -11,6 +11,12 @@ Preferred communication style: Simple, everyday language.
 ### Frontend
 The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query for server state. UI components are built with Radix UI and Shadcn/ui, styled with Tailwind CSS, and support light/dark themes and i18n (Spanish/English). The design emphasizes professionalism and role-switching.
 
+**Modern React Patterns Implemented (2025-10-08)**:
+- **Progressive Web App (PWA)**: Full offline support with Service Worker, cache strategies (CacheFirst for static assets, NetworkFirst for API, StaleWhileRevalidate for reference data), install prompts with 7-day dismiss cooldown, and update notifications
+- **Context API**: Centralized state management for theme (ThemeProvider), language (LanguageProvider), and PWA (PWAProvider) using singleton pattern to prevent duplicate registrations in Strict Mode
+- **Custom Hooks**: Extensive use of domain-specific hooks (useAuth with role-switching, useAppointments, useProperties, etc.) with useMemo/useCallback for performance optimization
+- **Server State**: TanStack Query v5 for all API data fetching with proper invalidation patterns and hierarchical cache keys
+
 ### Backend
 The backend is built with Node.js, Express.js, and TypeScript (ESM), providing a RESTful API. It features role-based middleware, JSON error handling, and dual authentication: Replit Auth (OpenID Connect) for regular users and local username/password for administrators, including session management and user approval workflows.
 
