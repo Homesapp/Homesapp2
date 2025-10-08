@@ -18,7 +18,7 @@ const MAX_CARDS = 3;
 
 export default function PresentationCards() {
   const { user } = useAuth();
-  const { data: cards, isLoading, error } = usePresentationCards();
+  const { data: cards, isLoading, error } = usePresentationCards(user?.id);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [matchesDialogOpen, setMatchesDialogOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);

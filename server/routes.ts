@@ -8360,10 +8360,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Presentation card routes
-  app.get("/api/presentation-cards", isAuthenticated, async (req, res) => {
+  app.get("/api/presentation-cards", isAuthenticated, async (req: any, res) => {
     try {
-      const { clientId } = req.query;
-      const cards = await storage.getPresentationCards(clientId as string);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Admin and master can see all cards if they pass a clientId
+      // Regular users can only see their own cards
+      let clientId: string | undefined;
+      
+      if (user && ["admin", "master"].includes(user.role)) {
+        clientId = req.query.clientId as string;
+      } else {
+        // Force regular users to only see their own cards
+        clientId = userId;
+      }
+      
+      const cards = await storage.getPresentationCards(clientId);
       res.json(cards);
     } catch (error) {
       console.error("Error fetching presentation cards:", error);
