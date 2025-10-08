@@ -50,6 +50,7 @@ import AdminTaskManagement from "@/pages/AdminTaskManagement";
 import AdminIntegrationsControl from "@/pages/AdminIntegrationsControl";
 import AdminContractManagement from "@/pages/AdminContractManagement";
 import ConciergeSchedule from "@/pages/ConciergeSchedule";
+import ConciergeInspections from "@/pages/ConciergeInspections";
 import Directory from "@/pages/Directory";
 import PresentationCards from "@/pages/PresentationCards";
 import Backoffice from "@/pages/Backoffice";
@@ -260,6 +261,7 @@ function AuthenticatedApp() {
               <Route path="/admin/horarios" component={AdminBusinessHours} />
               <Route path="/admin/asignar-propiedades" component={AdminPropertyAssignment} />
               <Route path="/concierge/horarios" component={ConciergeSchedule} />
+              <Route path="/concierge/inspecciones" component={ConciergeInspections} />
               <Route path="/directory" component={Directory} />
               <Route path="/presentation-cards" component={PresentationCards} />
               <Route path="/presupuestos" component={Budgets} />

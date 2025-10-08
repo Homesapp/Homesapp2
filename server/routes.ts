@@ -5010,6 +5010,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Concierge Inspection Reports routes
+  app.get("/api/inspection-reports/concierge/:conciergeId", isAuthenticated, requireRole(["concierge", "master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { conciergeId } = req.params;
+      const userId = req.user?.claims?.sub || req.session?.adminUser?.id;
+      
+      // Get user role from storage to ensure accurate role verification
+      const currentUser = await storage.getUserById(userId);
+      const userRole = currentUser?.role;
+      
+      // Security: Non-admin concierges can only view their own inspections
+      if (userRole === "concierge" && userId !== conciergeId) {
+        return res.status(403).json({ 
+          message: "No tienes permiso para ver las inspecciones de otro conserje" 
+        });
+      }
+      
+      // Get all inspection reports for this concierge
+      const reports = await storage.getInspectionReports({ inspectorId: conciergeId });
+      
+      // Fetch property details for each report
+      const reportsWithProperties = await Promise.all(
+        reports.map(async (report) => {
+          const property = await storage.getProperty(report.propertyId);
+          return {
+            ...report,
+            property,
+          };
+        })
+      );
+      
+      res.json(reportsWithProperties);
+    } catch (error) {
+      console.error("Error fetching concierge inspection reports:", error);
+      res.status(500).json({ message: "Error al obtener inspecciones" });
+    }
+  });
+
   // Admin Property Management routes
   app.get("/api/admin/properties", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
     try {
