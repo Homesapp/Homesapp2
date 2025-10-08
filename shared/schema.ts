@@ -2791,6 +2791,241 @@ export const insertErrorLogSchema = createInsertSchema(errorLogs).omit({
 export type InsertErrorLog = z.infer<typeof insertErrorLogSchema>;
 export type ErrorLog = typeof errorLogs.$inferSelect;
 
+// Commission Advances (Sistema de Adelantos de Comisión)
+export const commissionAdvanceStatusEnum = pgEnum("commission_advance_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "paid",
+]);
+
+export const commissionAdvances = pgTable("commission_advances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sellerId: varchar("seller_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  status: commissionAdvanceStatusEnum("status").notNull().default("pending"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCommissionAdvanceSchema = createInsertSchema(commissionAdvances).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommissionAdvance = z.infer<typeof insertCommissionAdvanceSchema>;
+export type CommissionAdvance = typeof commissionAdvances.$inferSelect;
+
+// Service Favorites (Favoritos de Proveedores de Servicios)
+export const serviceFavorites = pgTable("service_favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  providerId: varchar("provider_id").notNull().references(() => serviceProviders.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  unique("unique_user_provider").on(table.userId, table.providerId),
+]);
+
+export const insertServiceFavoriteSchema = createInsertSchema(serviceFavorites).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertServiceFavorite = z.infer<typeof insertServiceFavoriteSchema>;
+export type ServiceFavorite = typeof serviceFavorites.$inferSelect;
+
+// Predictive Analytics (Análisis Predictivo con OpenAI)
+export const predictiveAnalyticTypeEnum = pgEnum("predictive_analytic_type", [
+  "rental_probability", // Probabilidad de rentarse
+  "price_recommendation", // Recomendación de precio
+  "market_trend", // Tendencia de mercado
+  "churn_risk", // Riesgo de abandono
+]);
+
+export const predictiveAnalytics = pgTable("predictive_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").references(() => properties.id),
+  type: predictiveAnalyticTypeEnum("type").notNull(),
+  prediction: jsonb("prediction").notNull(), // Datos de predicción de OpenAI
+  confidence: decimal("confidence", { precision: 5, scale: 2 }), // 0-100%
+  recommendedAction: text("recommended_action"),
+  factors: jsonb("factors"), // Factores que influyen en la predicción
+  validUntil: timestamp("valid_until"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPredictiveAnalyticSchema = createInsertSchema(predictiveAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPredictiveAnalytic = z.infer<typeof insertPredictiveAnalyticSchema>;
+export type PredictiveAnalytic = typeof predictiveAnalytics.$inferSelect;
+
+// Marketing Campaigns (Campañas de Marketing Automatizadas)
+export const campaignStatusEnum = pgEnum("campaign_status", [
+  "draft",
+  "active",
+  "paused",
+  "completed",
+]);
+
+export const campaignTypeEnum = pgEnum("campaign_type", [
+  "email", // Email marketing
+  "push", // Notificaciones push
+  "social", // Redes sociales
+]);
+
+export const marketingCampaigns = pgTable("marketing_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: campaignTypeEnum("type").notNull(),
+  status: campaignStatusEnum("status").notNull().default("draft"),
+  targetAudience: jsonb("target_audience").notNull(), // Criterios de segmentación
+  content: jsonb("content").notNull(), // Contenido de la campaña
+  schedule: jsonb("schedule"), // Programación automática
+  sentCount: integer("sent_count").notNull().default(0),
+  openCount: integer("open_count").notNull().default(0),
+  clickCount: integer("click_count").notNull().default(0),
+  conversionCount: integer("conversion_count").notNull().default(0),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaigns).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMarketingCampaign = z.infer<typeof insertMarketingCampaignSchema>;
+export type MarketingCampaign = typeof marketingCampaigns.$inferSelect;
+
+// Maintenance Schedules (Calendario de Mantenimiento Preventivo)
+export const maintenanceFrequencyEnum = pgEnum("maintenance_frequency", [
+  "weekly",
+  "biweekly",
+  "monthly",
+  "quarterly",
+  "semiannual",
+  "annual",
+]);
+
+export const maintenanceSchedules = pgTable("maintenance_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  frequency: maintenanceFrequencyEnum("frequency").notNull(),
+  lastCompleted: timestamp("last_completed"),
+  nextDue: timestamp("next_due").notNull(),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMaintenanceScheduleSchema = createInsertSchema(maintenanceSchedules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMaintenanceSchedule = z.infer<typeof insertMaintenanceScheduleSchema>;
+export type MaintenanceSchedule = typeof maintenanceSchedules.$inferSelect;
+
+// Legal Documents (Documentos Legales Auto-generados con OpenAI)
+export const legalDocumentTypeEnum = pgEnum("legal_document_type", [
+  "rental_contract", // Contrato de renta
+  "sale_contract", // Contrato de venta
+  "service_agreement", // Acuerdo de servicio
+  "lease_renewal", // Renovación de contrato
+  "termination_notice", // Aviso de terminación
+]);
+
+export const legalDocumentStatusEnum = pgEnum("legal_document_status", [
+  "draft",
+  "pending_review",
+  "approved",
+  "signed",
+  "active",
+  "expired",
+]);
+
+export const legalDocuments = pgTable("legal_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: legalDocumentTypeEnum("type").notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
+  parties: jsonb("parties").notNull(), // Partes involucradas
+  content: text("content").notNull(), // Contenido generado por OpenAI
+  metadata: jsonb("metadata"), // Términos clave extraídos
+  status: legalDocumentStatusEnum("status").notNull().default("draft"),
+  generatedBy: varchar("generated_by").notNull().references(() => users.id),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  signedBy: jsonb("signed_by"), // Array de firmas digitales
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertLegalDocumentSchema = createInsertSchema(legalDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLegalDocument = z.infer<typeof insertLegalDocumentSchema>;
+export type LegalDocument = typeof legalDocuments.$inferSelect;
+
+// Tenant Screenings (Screening Automático de Inquilinos con OpenAI)
+export const screeningStatusEnum = pgEnum("screening_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "approved",
+  "rejected",
+]);
+
+export const riskLevelEnum = pgEnum("risk_level", [
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
+
+export const tenantScreenings = pgTable("tenant_screenings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").notNull().references(() => rentalApplications.id),
+  applicantId: varchar("applicant_id").notNull().references(() => users.id),
+  propertyId: varchar("property_id").notNull().references(() => properties.id),
+  status: screeningStatusEnum("status").notNull().default("pending"),
+  riskScore: decimal("risk_score", { precision: 5, scale: 2 }), // 0-100
+  riskLevel: riskLevelEnum("risk_level"),
+  aiAnalysis: jsonb("ai_analysis"), // Análisis completo de OpenAI
+  fraudDetection: jsonb("fraud_detection"), // Detección de fraude
+  incomeVerification: jsonb("income_verification"),
+  creditAnalysis: jsonb("credit_analysis"),
+  rentalHistory: jsonb("rental_history"),
+  recommendations: text("recommendations"),
+  flags: jsonb("flags"), // Banderas rojas detectadas
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertTenantScreeningSchema = createInsertSchema(tenantScreenings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTenantScreening = z.infer<typeof insertTenantScreeningSchema>;
+export type TenantScreening = typeof tenantScreenings.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   properties: many(properties, { relationName: "owner" }),

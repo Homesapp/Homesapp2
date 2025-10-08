@@ -212,6 +212,27 @@ import {
   passwordResetTokens,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  commissionAdvances,
+  type CommissionAdvance,
+  type InsertCommissionAdvance,
+  serviceFavorites,
+  type ServiceFavorite,
+  type InsertServiceFavorite,
+  predictiveAnalytics,
+  type PredictiveAnalytic,
+  type InsertPredictiveAnalytic,
+  marketingCampaigns,
+  type MarketingCampaign,
+  type InsertMarketingCampaign,
+  maintenanceSchedules,
+  type MaintenanceSchedule,
+  type InsertMaintenanceSchedule,
+  legalDocuments,
+  type LegalDocument,
+  type InsertLegalDocument,
+  tenantScreenings,
+  type TenantScreening,
+  type InsertTenantScreening,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -734,6 +755,52 @@ export interface IStorage {
   createPropertyLimitRequest(request: InsertPropertyLimitRequest): Promise<PropertyLimitRequest>;
   updatePropertyLimitRequestStatus(id: string, status: string, reviewedBy: string, reviewNotes?: string): Promise<PropertyLimitRequest>;
   getUserPropertyCount(ownerId: string): Promise<number>;
+
+  // Commission Advance operations
+  getCommissionAdvance(id: string): Promise<CommissionAdvance | undefined>;
+  getCommissionAdvances(filters?: { sellerId?: string; status?: string }): Promise<CommissionAdvance[]>;
+  createCommissionAdvance(advance: InsertCommissionAdvance): Promise<CommissionAdvance>;
+  updateCommissionAdvanceStatus(id: string, status: string, approvedBy?: string, notes?: string): Promise<CommissionAdvance>;
+
+  // Service Favorite operations
+  addServiceFavorite(favorite: InsertServiceFavorite): Promise<ServiceFavorite>;
+  removeServiceFavorite(userId: string, providerId: string): Promise<void>;
+  getUserServiceFavorites(userId: string): Promise<ServiceFavorite[]>;
+  isServiceFavorite(userId: string, providerId: string): Promise<boolean>;
+
+  // Predictive Analytics operations
+  getPredictiveAnalytic(id: string): Promise<PredictiveAnalytic | undefined>;
+  getPredictiveAnalytics(filters?: { propertyId?: string; type?: string }): Promise<PredictiveAnalytic[]>;
+  createPredictiveAnalytic(analytic: InsertPredictiveAnalytic): Promise<PredictiveAnalytic>;
+  updatePredictiveAnalytic(id: string, updates: Partial<InsertPredictiveAnalytic>): Promise<PredictiveAnalytic>;
+  deletePredictiveAnalytic(id: string): Promise<void>;
+
+  // Marketing Campaign operations
+  getMarketingCampaign(id: string): Promise<MarketingCampaign | undefined>;
+  getMarketingCampaigns(filters?: { status?: string; type?: string; createdBy?: string }): Promise<MarketingCampaign[]>;
+  createMarketingCampaign(campaign: InsertMarketingCampaign): Promise<MarketingCampaign>;
+  updateMarketingCampaign(id: string, updates: Partial<InsertMarketingCampaign>): Promise<MarketingCampaign>;
+  updateMarketingCampaignStatus(id: string, status: string): Promise<MarketingCampaign>;
+
+  // Maintenance Schedule operations
+  getMaintenanceSchedule(id: string): Promise<MaintenanceSchedule | undefined>;
+  getMaintenanceSchedules(filters?: { propertyId?: string; active?: boolean }): Promise<MaintenanceSchedule[]>;
+  createMaintenanceSchedule(schedule: InsertMaintenanceSchedule): Promise<MaintenanceSchedule>;
+  updateMaintenanceSchedule(id: string, updates: Partial<InsertMaintenanceSchedule>): Promise<MaintenanceSchedule>;
+
+  // Legal Document operations
+  getLegalDocument(id: string): Promise<LegalDocument | undefined>;
+  getLegalDocuments(filters?: { propertyId?: string; type?: string; status?: string }): Promise<LegalDocument[]>;
+  createLegalDocument(document: InsertLegalDocument): Promise<LegalDocument>;
+  updateLegalDocument(id: string, updates: Partial<InsertLegalDocument>): Promise<LegalDocument>;
+  updateLegalDocumentStatus(id: string, status: string): Promise<LegalDocument>;
+
+  // Tenant Screening operations
+  getTenantScreening(id: string): Promise<TenantScreening | undefined>;
+  getTenantScreenings(filters?: { applicationId?: string; applicantId?: string; propertyId?: string; status?: string }): Promise<TenantScreening[]>;
+  createTenantScreening(screening: InsertTenantScreening): Promise<TenantScreening>;
+  updateTenantScreening(id: string, updates: Partial<InsertTenantScreening>): Promise<TenantScreening>;
+  updateTenantScreeningStatus(id: string, status: string, reviewedBy?: string, reviewNotes?: string): Promise<TenantScreening>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4848,6 +4915,229 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return result[0]?.count || 0;
+  }
+
+  // Commission Advance operations
+  async getCommissionAdvance(id: string): Promise<CommissionAdvance | undefined> {
+    const result = await db.select().from(commissionAdvances).where(eq(commissionAdvances.id, id));
+    return result[0];
+  }
+
+  async getCommissionAdvances(filters?: { sellerId?: string; status?: string }): Promise<CommissionAdvance[]> {
+    const conditions = [];
+    if (filters?.sellerId) conditions.push(eq(commissionAdvances.sellerId, filters.sellerId));
+    if (filters?.status) conditions.push(eq(commissionAdvances.status, filters.status as any));
+    
+    return await db.select().from(commissionAdvances).where(conditions.length ? and(...conditions) : undefined);
+  }
+
+  async createCommissionAdvance(advance: InsertCommissionAdvance): Promise<CommissionAdvance> {
+    const result = await db.insert(commissionAdvances).values(advance).returning();
+    return result[0];
+  }
+
+  async updateCommissionAdvanceStatus(id: string, status: string, approvedBy?: string, notes?: string): Promise<CommissionAdvance> {
+    const updates: any = { status };
+    if (approvedBy) updates.approvedBy = approvedBy;
+    if (notes) updates.notes = notes;
+    if (status === 'approved') updates.approvedAt = new Date();
+    if (status === 'paid') updates.paidAt = new Date();
+    
+    const result = await db.update(commissionAdvances).set(updates).where(eq(commissionAdvances.id, id)).returning();
+    return result[0];
+  }
+
+  // Service Favorite operations
+  async addServiceFavorite(favorite: InsertServiceFavorite): Promise<ServiceFavorite> {
+    const result = await db.insert(serviceFavorites).values(favorite).returning();
+    return result[0];
+  }
+
+  async removeServiceFavorite(userId: string, providerId: string): Promise<void> {
+    await db.delete(serviceFavorites).where(
+      and(
+        eq(serviceFavorites.userId, userId),
+        eq(serviceFavorites.providerId, providerId)
+      )
+    );
+  }
+
+  async getUserServiceFavorites(userId: string): Promise<ServiceFavorite[]> {
+    return await db.select().from(serviceFavorites).where(eq(serviceFavorites.userId, userId));
+  }
+
+  async isServiceFavorite(userId: string, providerId: string): Promise<boolean> {
+    const result = await db.select().from(serviceFavorites).where(
+      and(
+        eq(serviceFavorites.userId, userId),
+        eq(serviceFavorites.providerId, providerId)
+      )
+    );
+    return result.length > 0;
+  }
+
+  // Predictive Analytics operations
+  async getPredictiveAnalytic(id: string): Promise<PredictiveAnalytic | undefined> {
+    const result = await db.select().from(predictiveAnalytics).where(eq(predictiveAnalytics.id, id));
+    return result[0];
+  }
+
+  async getPredictiveAnalytics(filters?: { propertyId?: string; type?: string }): Promise<PredictiveAnalytic[]> {
+    const conditions = [];
+    if (filters?.propertyId) conditions.push(eq(predictiveAnalytics.propertyId, filters.propertyId));
+    if (filters?.type) conditions.push(eq(predictiveAnalytics.type, filters.type as any));
+    
+    return await db.select().from(predictiveAnalytics)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(predictiveAnalytics.createdAt));
+  }
+
+  async createPredictiveAnalytic(analytic: InsertPredictiveAnalytic): Promise<PredictiveAnalytic> {
+    const result = await db.insert(predictiveAnalytics).values(analytic).returning();
+    return result[0];
+  }
+
+  async updatePredictiveAnalytic(id: string, updates: Partial<InsertPredictiveAnalytic>): Promise<PredictiveAnalytic> {
+    const result = await db.update(predictiveAnalytics).set(updates).where(eq(predictiveAnalytics.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePredictiveAnalytic(id: string): Promise<void> {
+    await db.delete(predictiveAnalytics).where(eq(predictiveAnalytics.id, id));
+  }
+
+  // Marketing Campaign operations
+  async getMarketingCampaign(id: string): Promise<MarketingCampaign | undefined> {
+    const result = await db.select().from(marketingCampaigns).where(eq(marketingCampaigns.id, id));
+    return result[0];
+  }
+
+  async getMarketingCampaigns(filters?: { status?: string; type?: string; createdBy?: string }): Promise<MarketingCampaign[]> {
+    const conditions = [];
+    if (filters?.status) conditions.push(eq(marketingCampaigns.status, filters.status as any));
+    if (filters?.type) conditions.push(eq(marketingCampaigns.type, filters.type as any));
+    if (filters?.createdBy) conditions.push(eq(marketingCampaigns.createdBy, filters.createdBy));
+    
+    return await db.select().from(marketingCampaigns)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(marketingCampaigns.createdAt));
+  }
+
+  async createMarketingCampaign(campaign: InsertMarketingCampaign): Promise<MarketingCampaign> {
+    const result = await db.insert(marketingCampaigns).values(campaign).returning();
+    return result[0];
+  }
+
+  async updateMarketingCampaign(id: string, updates: Partial<InsertMarketingCampaign>): Promise<MarketingCampaign> {
+    const result = await db.update(marketingCampaigns).set(updates).where(eq(marketingCampaigns.id, id)).returning();
+    return result[0];
+  }
+
+  async updateMarketingCampaignStatus(id: string, status: string): Promise<MarketingCampaign> {
+    const updates: any = { status };
+    if (status === 'active') updates.startedAt = new Date();
+    if (status === 'completed') updates.completedAt = new Date();
+    
+    const result = await db.update(marketingCampaigns).set(updates).where(eq(marketingCampaigns.id, id)).returning();
+    return result[0];
+  }
+
+  // Maintenance Schedule operations
+  async getMaintenanceSchedule(id: string): Promise<MaintenanceSchedule | undefined> {
+    const result = await db.select().from(maintenanceSchedules).where(eq(maintenanceSchedules.id, id));
+    return result[0];
+  }
+
+  async getMaintenanceSchedules(filters?: { propertyId?: string; active?: boolean }): Promise<MaintenanceSchedule[]> {
+    const conditions = [];
+    if (filters?.propertyId) conditions.push(eq(maintenanceSchedules.propertyId, filters.propertyId));
+    if (filters?.active !== undefined) conditions.push(eq(maintenanceSchedules.active, filters.active));
+    
+    return await db.select().from(maintenanceSchedules)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(maintenanceSchedules.nextDue);
+  }
+
+  async createMaintenanceSchedule(schedule: InsertMaintenanceSchedule): Promise<MaintenanceSchedule> {
+    const result = await db.insert(maintenanceSchedules).values(schedule).returning();
+    return result[0];
+  }
+
+  async updateMaintenanceSchedule(id: string, updates: Partial<InsertMaintenanceSchedule>): Promise<MaintenanceSchedule> {
+    const result = await db.update(maintenanceSchedules).set(updates).where(eq(maintenanceSchedules.id, id)).returning();
+    return result[0];
+  }
+
+  // Legal Document operations
+  async getLegalDocument(id: string): Promise<LegalDocument | undefined> {
+    const result = await db.select().from(legalDocuments).where(eq(legalDocuments.id, id));
+    return result[0];
+  }
+
+  async getLegalDocuments(filters?: { propertyId?: string; type?: string; status?: string }): Promise<LegalDocument[]> {
+    const conditions = [];
+    if (filters?.propertyId) conditions.push(eq(legalDocuments.propertyId, filters.propertyId));
+    if (filters?.type) conditions.push(eq(legalDocuments.type, filters.type as any));
+    if (filters?.status) conditions.push(eq(legalDocuments.status, filters.status as any));
+    
+    return await db.select().from(legalDocuments)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(legalDocuments.createdAt));
+  }
+
+  async createLegalDocument(document: InsertLegalDocument): Promise<LegalDocument> {
+    const result = await db.insert(legalDocuments).values(document).returning();
+    return result[0];
+  }
+
+  async updateLegalDocument(id: string, updates: Partial<InsertLegalDocument>): Promise<LegalDocument> {
+    const result = await db.update(legalDocuments).set({ ...updates, updatedAt: new Date() }).where(eq(legalDocuments.id, id)).returning();
+    return result[0];
+  }
+
+  async updateLegalDocumentStatus(id: string, status: string): Promise<LegalDocument> {
+    const result = await db.update(legalDocuments).set({ status: status as any, updatedAt: new Date() }).where(eq(legalDocuments.id, id)).returning();
+    return result[0];
+  }
+
+  // Tenant Screening operations
+  async getTenantScreening(id: string): Promise<TenantScreening | undefined> {
+    const result = await db.select().from(tenantScreenings).where(eq(tenantScreenings.id, id));
+    return result[0];
+  }
+
+  async getTenantScreenings(filters?: { applicationId?: string; applicantId?: string; propertyId?: string; status?: string }): Promise<TenantScreening[]> {
+    const conditions = [];
+    if (filters?.applicationId) conditions.push(eq(tenantScreenings.applicationId, filters.applicationId));
+    if (filters?.applicantId) conditions.push(eq(tenantScreenings.applicantId, filters.applicantId));
+    if (filters?.propertyId) conditions.push(eq(tenantScreenings.propertyId, filters.propertyId));
+    if (filters?.status) conditions.push(eq(tenantScreenings.status, filters.status as any));
+    
+    return await db.select().from(tenantScreenings)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(tenantScreenings.createdAt));
+  }
+
+  async createTenantScreening(screening: InsertTenantScreening): Promise<TenantScreening> {
+    const result = await db.insert(tenantScreenings).values(screening).returning();
+    return result[0];
+  }
+
+  async updateTenantScreening(id: string, updates: Partial<InsertTenantScreening>): Promise<TenantScreening> {
+    const result = await db.update(tenantScreenings).set(updates).where(eq(tenantScreenings.id, id)).returning();
+    return result[0];
+  }
+
+  async updateTenantScreeningStatus(id: string, status: string, reviewedBy?: string, reviewNotes?: string): Promise<TenantScreening> {
+    const updates: any = { status };
+    if (reviewedBy) updates.reviewedBy = reviewedBy;
+    if (reviewNotes) updates.reviewNotes = reviewNotes;
+    if (['completed', 'approved', 'rejected'].includes(status)) {
+      updates.completedAt = new Date();
+    }
+    
+    const result = await db.update(tenantScreenings).set(updates).where(eq(tenantScreenings.id, id)).returning();
+    return result[0];
   }
 }
 
