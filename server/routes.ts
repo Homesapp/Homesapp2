@@ -4931,19 +4931,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
+      console.log("[DRAFT-CREATE] User:", userId, "Step:", req.body.currentStep);
+      
+      // CRITICAL: Always inject authenticated userId, never trust client
       const validationResult = insertPropertySubmissionDraftSchema.safeParse({
         ...req.body,
-        userId
+        userId // Enforce server-side userId
       });
       
       if (!validationResult.success) {
+        console.error("[DRAFT-CREATE] Validation failed:", validationResult.error.errors);
         return res.status(400).json({ 
           message: "Datos inválidos", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.errors,
+          code: "VALIDATION_ERROR"
         });
       }
 
       const draft = await storage.createPropertySubmissionDraft(validationResult.data);
+      console.log("[DRAFT-CREATE] Success, ID:", draft.id);
       
       await createAuditLog(
         req,
@@ -4951,12 +4957,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "property_submission_draft",
         draft.id,
         "Borrador de propiedad creado"
-      );
+      ).catch(err => console.error("[DRAFT-CREATE] Audit log failed:", err));
 
-      res.status(201).json(draft);
+      return res.status(201).json(draft);
     } catch (error: any) {
-      console.error("Error creating property submission draft:", error);
-      res.status(500).json({ message: error.message || "Error al crear borrador" });
+      console.error("[DRAFT-CREATE] Error:", error);
+      return res.status(500).json({ 
+        message: error.message || "Error al crear borrador",
+        code: "INTERNAL_ERROR"
+      });
     }
   });
 
@@ -4965,35 +4974,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.claims.sub;
 
+      console.log("[DRAFT-UPDATE] User:", userId, "Draft:", id, "Step:", req.body.currentStep);
+
+      // Validate input but DO NOT include userId from request body
       const validationResult = insertPropertySubmissionDraftSchema.partial().safeParse(req.body);
       if (!validationResult.success) {
+        console.error("[DRAFT-UPDATE] Validation failed:", validationResult.error.errors);
         return res.status(400).json({ 
           message: "Datos inválidos", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.errors,
+          code: "VALIDATION_ERROR"
         });
       }
 
-      // Remove server-controlled fields to prevent unauthorized mutation
+      // Remove ALL server-controlled fields to prevent unauthorized mutation
       const sanitizedData = { ...validationResult.data };
-      delete sanitizedData.userId;
+      delete sanitizedData.userId; // Remove client-provided userId first
       delete (sanitizedData as any).id;
       delete (sanitizedData as any).createdAt;
       delete (sanitizedData as any).updatedAt;
+      delete (sanitizedData as any).propertyId;
+      delete (sanitizedData as any).reviewedBy;
+      delete (sanitizedData as any).reviewedAt;
 
+      // CRITICAL: Re-inject authenticated userId to ensure ownership validation succeeds
+      sanitizedData.userId = userId;
+
+      // Attempt update with authenticated userId
       const updated = await storage.updatePropertySubmissionDraft(id, sanitizedData);
+      
+      if (!updated) {
+        console.error("[DRAFT-UPDATE] Draft not found or storage returned null");
+        return res.status(404).json({ 
+          message: "Borrador no encontrado",
+          code: "DRAFT_NOT_FOUND"
+        });
+      }
+
+      console.log("[DRAFT-UPDATE] Success, updated step:", updated.currentStep);
       
       await createAuditLog(
         req,
         "update",
         "property_submission_draft",
         id,
-        "Borrador de propiedad actualizado"
-      );
+        `Borrador actualizado - Paso ${updated.currentStep}`
+      ).catch(err => console.error("[DRAFT-UPDATE] Audit log failed:", err));
 
-      res.json(updated);
+      return res.json(updated);
     } catch (error: any) {
-      console.error("Error updating property submission draft:", error);
-      res.status(500).json({ message: error.message || "Error al actualizar borrador" });
+      console.error("[DRAFT-UPDATE] Storage error:", error);
+      // Provide structured error responses
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ 
+          message: "Borrador no encontrado",
+          code: "DRAFT_NOT_FOUND"
+        });
+      }
+      if (error.message?.includes("permission")) {
+        return res.status(403).json({ 
+          message: "No tienes permiso para modificar este borrador",
+          code: "PERMISSION_DENIED"
+        });
+      }
+      return res.status(500).json({ 
+        message: error.message || "Error al actualizar borrador",
+        code: "INTERNAL_ERROR"
+      });
     }
   });
 

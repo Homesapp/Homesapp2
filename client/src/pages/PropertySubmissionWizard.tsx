@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, CheckCircle } from "lucide-react";
 import type { PropertySubmissionDraft } from "@shared/schema";
 
 import Step1BasicInfo from "@/components/wizard/Step1BasicInfo";
@@ -78,16 +78,21 @@ export default function PropertySubmissionWizard() {
     },
     onSuccess: (data: PropertySubmissionDraft) => {
       setDraftId(data.id);
+      setLastSaved(new Date());
+      setIsSaving(false);
       queryClient.invalidateQueries({ queryKey: ["/api/property-submission-drafts"] });
     },
     onError: (error: Error) => {
       console.error("Error creating draft:", error);
+      setIsSaving(false);
       toast({
         title: "Error al guardar borrador",
         description: error.message || "No se pudo crear el borrador de la propiedad",
         variant: "destructive",
       });
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Update draft mutation
@@ -97,17 +102,22 @@ export default function PropertySubmissionWizard() {
       const json = await response.json();
       return json;
     },
-    onSuccess: () => {
+    onSuccess: (data: PropertySubmissionDraft) => {
+      setLastSaved(new Date());
+      setIsSaving(false);
       queryClient.invalidateQueries({ queryKey: ["/api/property-submission-drafts"] });
     },
     onError: (error: Error) => {
       console.error("Error updating draft:", error);
+      setIsSaving(false);
       toast({
         title: "Error al guardar progreso",
         description: error.message || "No se pudo actualizar el borrador de la propiedad",
         variant: "destructive",
       });
     },
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Save function - accepts optional step number to save
@@ -273,16 +283,17 @@ export default function PropertySubmissionWizard() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              {lastSaved && (
-                <span className="text-sm text-muted-foreground" data-testid="text-last-saved">
-                  Guardado {new Date(lastSaved).toLocaleTimeString()}
-                </span>
-              )}
-              {isSaving && (
-                <span className="text-sm text-muted-foreground" data-testid="text-saving">
-                  Guardando...
-                </span>
-              )}
+              {isSaving ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-saving">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  <span>Guardando...</span>
+                </div>
+              ) : lastSaved ? (
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400" data-testid="text-last-saved">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>Guardado {new Date(lastSaved).toLocaleTimeString()}</span>
+                </div>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"
