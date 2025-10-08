@@ -554,6 +554,39 @@ export const uploadSellerDocumentSchema = z.object({
 
 export type UploadSellerDocument = z.infer<typeof uploadSellerDocumentSchema>;
 
+// Password Reset Tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Password reset request schema
+export const requestPasswordResetSchema = z.object({
+  email: z.string().email("Email inválido"),
+});
+
+export type RequestPasswordReset = z.infer<typeof requestPasswordResetSchema>;
+
+// Reset password with token schema
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token es requerido"),
+  newPassword: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+});
+
+export type ResetPassword = z.infer<typeof resetPasswordSchema>;
+
 export const acceptCommissionTermsSchema = z.object({
   accepted: z.boolean().refine((val) => val === true, {
     message: "Debes aceptar los términos y condiciones",
