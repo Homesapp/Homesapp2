@@ -86,9 +86,10 @@ export default function OwnerAppointments() {
   });
 
   // Fetch concierge reviews when modal is open
+  const conciergeId = selectedConciergeAppointment?.concierge?.id;
   const { data: conciergeReviews = [] } = useQuery<any[]>({
-    queryKey: ["/api/concierge-reviews", selectedConciergeAppointment?.concierge?.id],
-    enabled: !!selectedConciergeAppointment?.concierge?.id && conciergeProfileOpen,
+    queryKey: [`/api/reviews/concierges?conciergeId=${conciergeId}`],
+    enabled: !!conciergeId && conciergeProfileOpen,
   });
 
   // Calculate date range for calendar
@@ -130,6 +131,21 @@ export default function OwnerAppointments() {
     
     return filtered;
   }, [allAppointments, statusFilter, visitTypeFilter]);
+
+  // Filter "visitas en curso" - appointments within 1 hour before to 1 hour after
+  const ongoingAppointments = useMemo(() => {
+    const now = new Date();
+    const oneHourBefore = new Date(now.getTime() - 60 * 60 * 1000);
+    const oneHourAfter = new Date(now.getTime() + 60 * 60 * 1000);
+
+    return allAppointments.filter((appointment) => {
+      if (appointment.ownerApprovalStatus !== "approved") return false;
+      if (appointment.status === "completed" || appointment.status === "cancelled") return false;
+      
+      const appointmentDate = new Date(appointment.date);
+      return appointmentDate >= oneHourBefore && appointmentDate <= oneHourAfter;
+    });
+  }, [allAppointments]);
 
   // Get visit type options with counts
   const visitTypeOptions = useMemo(() => {
@@ -258,6 +274,23 @@ export default function OwnerAppointments() {
       toast({
         title: "Error",
         description: error.message || "No se pudo solicitar la reprogramación",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openAppointmentChatMutation = useMutation({
+    mutationFn: async (appointmentId: string) => {
+      return apiRequest("POST", `/api/chat/appointment/${appointmentId}`, {});
+    },
+    onSuccess: (conversation: any) => {
+      // Navigate to chat page with the conversation selected
+      window.location.href = `/chat?conversation=${conversation.id}`;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo abrir el chat de la cita",
         variant: "destructive",
       });
     },
@@ -605,6 +638,83 @@ export default function OwnerAppointments() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Ongoing Visits Section */}
+      {ongoingAppointments.length > 0 && (
+        <div className="mb-6">
+          <Card className="border-primary/50 bg-primary/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
+                  <CardTitle className="text-lg">Visitas en Curso</CardTitle>
+                </div>
+                <Badge variant="secondary" data-testid="badge-ongoing-count">
+                  {ongoingAppointments.length}
+                </Badge>
+              </div>
+              <CardDescription>
+                Visitas programadas desde 1 hora antes hasta 1 hora después
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {ongoingAppointments.map((appointment) => (
+                <Card
+                  key={appointment.id}
+                  className="hover-elevate cursor-pointer"
+                  onClick={() => setSelectedAppointment(appointment)}
+                  data-testid={`card-ongoing-${appointment.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {format(new Date(appointment.date), "HH:mm")}
+                          </span>
+                          <Badge variant="outline" className="ml-2">
+                            {appointment.visitType === "visita_cliente" ? "Cliente" : 
+                             appointment.visitType === "visita_mantenimiento" ? "Mantenimiento" :
+                             appointment.visitType === "visita_limpieza" ? "Limpieza" : 
+                             "Otra"}
+                          </Badge>
+                        </div>
+                        <div className="font-semibold">{getPropertyDisplay(appointment.property)}</div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {getClientName(appointment.client)}
+                          </div>
+                          {appointment.concierge && (
+                            <div className="flex items-center gap-1">
+                              <UserCircle className="h-3 w-3" />
+                              {getConciergeName(appointment.concierge)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAppointmentChatMutation.mutate(appointment.id);
+                        }}
+                        disabled={openAppointmentChatMutation.isPending}
+                        data-testid={`button-chat-${appointment.id}`}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Chat
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       )}
 

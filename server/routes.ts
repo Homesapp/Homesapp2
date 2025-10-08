@@ -9700,6 +9700,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Appointment chat routes
+  app.post("/api/chat/appointment/:appointmentId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { appointmentId } = req.params;
+
+      // Get the appointment with all details
+      const appointment = await storage.getAppointment(appointmentId);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Get the property to check ownership
+      const property = await storage.getProperty(appointment.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      // Security: User must be the property owner OR the assigned concierge
+      const isOwner = property.ownerId === userId;
+      const isConcierge = appointment.conciergeId === userId;
+      
+      if (!isOwner && !isConcierge) {
+        return res.status(403).json({ message: "You do not have access to this appointment chat" });
+      }
+
+      // Check if conversation already exists for this appointment
+      const existingConversation = await storage.getChatConversationByAppointmentId(appointmentId);
+      
+      if (existingConversation) {
+        // Return existing conversation
+        return res.json(existingConversation);
+      }
+
+      // Create new appointment chat conversation
+      const propertyDisplay = property.customListingTitle || 
+        (property.condoId ? `${property.condoName || 'Propiedad'} ${property.unitNumber || ''}` : property.title || 'Propiedad');
+      
+      const appointmentDate = format(new Date(appointment.date), "dd MMM yyyy HH:mm", { locale: es });
+      
+      const conversation = await storage.createChatConversation({
+        type: "appointment",
+        title: `Visita: ${propertyDisplay} - ${appointmentDate}`,
+        createdById: userId,
+        isBot: false,
+        appointmentId: appointmentId,
+      });
+
+      // Add both property owner and concierge as participants
+      await storage.addChatParticipant({
+        conversationId: conversation.id,
+        userId: property.ownerId,
+      });
+
+      if (appointment.conciergeId) {
+        await storage.addChatParticipant({
+          conversationId: conversation.id,
+          userId: appointment.conciergeId,
+        });
+      }
+
+      // Create initial system message
+      const initialMessage = await storage.createChatMessage({
+        conversationId: conversation.id,
+        senderId: userId,
+        message: `Chat de visita creado. Propiedad: ${propertyDisplay}. Fecha: ${appointmentDate}.`,
+        isBot: false,
+      });
+
+      res.status(201).json({
+        ...conversation,
+        initialMessage
+      });
+    } catch (error: any) {
+      console.error("Error creating/getting appointment chat:", error);
+      res.status(500).json({ message: error.message || "Failed to create appointment chat" });
+    }
+  });
+
   // Chatbot routes
   app.post("/api/chat/chatbot/start", isAuthenticated, async (req: any, res) => {
     try {
