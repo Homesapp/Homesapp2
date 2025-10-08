@@ -379,9 +379,13 @@ export default function MyProperties() {
                       }
                     }}
                   >
-                    {property.images && property.images.length > 0 ? (
+                    {(property.primaryImages && property.primaryImages.length > 0) || (property.images && property.images.length > 0) ? (
                       <img
-                        src={property.images[0]}
+                        src={
+                          property.primaryImages && property.primaryImages.length > 0
+                            ? property.primaryImages[property.coverImageIndex || 0]
+                            : property.images[0]
+                        }
                         alt={property.title}
                         className="w-full h-full object-cover"
                       />
