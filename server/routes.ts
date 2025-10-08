@@ -2,6 +2,8 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { parse as parseCookie } from "cookie";
+import multer from "multer";
+import path from "path";
 import { storage } from "./storage";
 import { openAIService } from "./services/openai";
 import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
@@ -398,6 +400,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error during admin logout:", error);
       res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  // Configure multer for property photo uploads
+  const photoStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'attached_assets/stock_images/');
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = crypto.randomBytes(4).toString('hex');
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext).toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20);
+      cb(null, `${baseName}_${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const upload = multer({
+    storage: photoStorage,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Tipo de archivo no permitido. Solo JPG, PNG y WEBP.'));
+      }
+    }
+  });
+
+  // Upload property photo endpoint
+  app.post("/api/upload/property-photo", isAuthenticated, requireRole(["owner", "admin", "master"]), upload.single('photo'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No se proporcionó ninguna foto" });
+      }
+
+      const photoUrl = `/attached_assets/stock_images/${req.file.filename}`;
+      res.json({ url: photoUrl });
+    } catch (error: any) {
+      console.error("Error uploading photo:", error);
+      res.status(500).json({ message: error.message || "Error al subir la foto" });
     }
   });
 
