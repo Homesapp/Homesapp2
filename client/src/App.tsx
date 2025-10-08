@@ -57,6 +57,7 @@ import MyOpportunities from "@/pages/MyOpportunities";
 import MyProperties from "@/pages/MyProperties";
 import OwnerPropertyDetails from "@/pages/OwnerPropertyDetails";
 import EditOwnerProperty from "@/pages/EditOwnerProperty";
+import PropertyDocuments from "@/pages/PropertyDocuments";
 import AdminChangeRequests from "@/pages/AdminChangeRequests";
 import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import AdminAgreementTemplates from "@/pages/AdminAgreementTemplates";
@@ -222,6 +223,7 @@ function AuthenticatedApp() {
               <Route path="/mis-propiedades" component={MyProperties} />
               <Route path="/owner/property/new" component={PropertySubmissionWizard} />
               <Route path="/owner/property/:id/edit" component={EditOwnerProperty} />
+              <Route path="/owner/property/:id/documents" component={PropertyDocuments} />
               <Route path="/owner/property/:id" component={OwnerPropertyDetails} />
               <Route path="/owner/appointments" component={OwnerAppointments} />
               <Route path="/admin/appointments" component={AdminAppointmentManagement} />

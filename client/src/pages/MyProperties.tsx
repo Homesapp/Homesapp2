@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock } from "lucide-react";
+import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -217,6 +217,13 @@ export default function MyProperties() {
                             >
                               <Calendar className="h-4 w-4 mr-2" />
                               Ver Citas
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setLocation(`/owner/property/${property.id}/documents`)}
+                              data-testid={`menu-documents-${property.id}`}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              Gestionar Documentos
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {property.ownerStatus === "active" && (
