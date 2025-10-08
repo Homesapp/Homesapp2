@@ -2162,6 +2162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
+      const userId = user.id;
       const isAdmin = user.role === "master" || user.role === "admin" || user.additionalRole === "admin";
       
       // Admins can create directly, owners need to suggest with limits
@@ -2448,6 +2449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
+      const userId = user.id;
       const isAdmin = user.role === "master" || user.role === "admin" || user.additionalRole === "admin";
       
       // Admins can create directly, owners need to suggest with limits
@@ -2962,6 +2964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
+      const userId = user.id;
       const isAdmin = user.role === "master" || user.role === "admin" || user.additionalRole === "admin";
       
       // Admins can create directly, owners need to suggest with limits
