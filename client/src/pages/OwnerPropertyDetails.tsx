@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/dialog";
 import { PropertyStaffManagement } from "@/components/PropertyStaffManagement";
 import { PropertyVisits } from "@/components/PropertyVisits";
+import { useAuth } from "@/hooks/useAuth";
 import type { Property } from "@shared/schema";
 
 const approvalStatusLabels: Record<string, string> = {
@@ -118,6 +119,7 @@ export default function OwnerPropertyDetails() {
   const { id } = useParams<{ id: string }>();
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
@@ -669,8 +671,8 @@ export default function OwnerPropertyDetails() {
               <ServicesSection services={property.includedServices as any} />
             )}
 
-            {/* Access Information */}
-            {property.accessInfo && (
+            {/* Access Information - Only for owners and admins */}
+            {property.accessInfo && (user?.role === 'owner' || user?.role === 'admin' || user?.role === 'master') && (
               <AccessInfoSection accessInfo={property.accessInfo as any} />
             )}
 
