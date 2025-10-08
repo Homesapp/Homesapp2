@@ -529,6 +529,7 @@ export const users = pgTable("users", {
   suspensionEndDate: timestamp("suspension_end_date"),
   suspendedAt: timestamp("suspended_at"),
   suspendedById: varchar("suspended_by_id").references((): any => users.id),
+  propertyLimit: integer("property_limit").notNull().default(3), // Maximum number of properties an owner can upload
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1715,6 +1716,39 @@ export const createPropertyChangeRequestSchema = z.object({
 
 export type InsertPropertyChangeRequest = z.infer<typeof insertPropertyChangeRequestSchema>;
 export type PropertyChangeRequest = typeof propertyChangeRequests.$inferSelect;
+
+// Property Limit Requests table (solicitudes de aumento de límite de propiedades)
+export const propertyLimitRequests = pgTable("property_limit_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestedLimit: integer("requested_limit").notNull(), // New limit requested
+  currentLimit: integer("current_limit").notNull(), // Current limit at time of request
+  reason: text("reason").notNull(), // Why they need more properties
+  status: changeRequestStatusEnum("status").notNull().default("pending"),
+  reviewedById: varchar("reviewed_by_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertyLimitRequestSchema = createInsertSchema(propertyLimitRequests).omit({
+  id: true,
+  status: true,
+  reviewedById: true,
+  reviewedAt: true,
+  reviewNotes: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const createPropertyLimitRequestSchema = z.object({
+  requestedLimit: z.number().int().min(4, "El límite solicitado debe ser mayor que 3"),
+  reason: z.string().min(20, "Por favor proporciona una razón detallada (mínimo 20 caracteres)").max(500),
+});
+
+export type InsertPropertyLimitRequest = z.infer<typeof insertPropertyLimitRequestSchema>;
+export type PropertyLimitRequest = typeof propertyLimitRequests.$inferSelect;
 
 // Inspection Reports table (reportes de inspección de propiedades)
 export const inspectionReports = pgTable("inspection_reports", {
