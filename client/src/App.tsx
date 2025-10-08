@@ -14,6 +14,8 @@ import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { PWAUpdateNotification } from "@/components/PWAUpdateNotification";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useGlobalErrorHandler } from "@/hooks/useGlobalErrorHandler";
@@ -306,6 +308,8 @@ function App() {
             <TooltipProvider>
               <AuthenticatedApp />
               <Toaster />
+              <PWAInstallPrompt />
+              <PWAUpdateNotification />
             </TooltipProvider>
           </LanguageProvider>
         </ThemeProvider>
