@@ -183,37 +183,36 @@ export default function MyProperties() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">Mis Propiedades</h1>
-            <p className="text-muted-foreground mt-1">
-              Gestiona y administra tus propiedades ({propertyCount}/{propertyLimit})
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">Mis Propiedades</h1>
+          <p className="text-muted-foreground mt-1">
+            Gestiona y administra tus propiedades ({propertyCount}/{propertyLimit})
+          </p>
+        </div>
+        <div className="flex gap-2">
           <Dialog>
             <DialogTrigger asChild>
               <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8 shrink-0"
+                variant="outline"
                 data-testid="button-help-states"
               >
-                <HelpCircle className="h-4 w-4" />
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Ayuda
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{t("propertyStates.helpTitle")}</DialogTitle>
                 <DialogDescription>
                   {t("propertyStates.helpDescription")}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm">{t("propertyStates.availabilityTitle")}</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      <Badge variant="secondary" className="gap-1 shrink-0">
+              <div className="space-y-6 mt-4">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-base border-b pb-2">{t("propertyStates.availabilityTitle")}</h4>
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="secondary" className="gap-1 justify-start">
                         <Pause className="h-3 w-3" />
                         {t("propertyStates.suspendedLabel")}
                       </Badge>
@@ -221,8 +220,8 @@ export default function MyProperties() {
                         {t("propertyStates.suspendedDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="outline" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="outline" className="gap-1 justify-start">
                         <Lock className="h-3 w-3" />
                         {t("propertyStates.rentedLabel")}
                       </Badge>
@@ -233,11 +232,11 @@ export default function MyProperties() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm">{t("propertyStates.approvalTitle")}</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      <Badge variant="outline" className="gap-1 shrink-0">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-base border-b pb-2">{t("propertyStates.approvalTitle")}</h4>
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="outline" className="gap-1 justify-start">
                         <FileEdit className="h-3 w-3" />
                         {t("propertyStates.changesRequestedLabel")}
                       </Badge>
@@ -245,8 +244,8 @@ export default function MyProperties() {
                         {t("propertyStates.changesRequestedDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="destructive" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="destructive" className="gap-1 justify-start">
                         <XCircle className="h-3 w-3" />
                         {t("propertyStates.rejectedLabel")}
                       </Badge>
@@ -254,8 +253,8 @@ export default function MyProperties() {
                         {t("propertyStates.rejectedDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="outline" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="outline" className="gap-1 justify-start">
                         <Clock className="h-3 w-3" />
                         {t("propertyStates.pendingReviewLabel")}
                       </Badge>
@@ -263,8 +262,8 @@ export default function MyProperties() {
                         {t("propertyStates.pendingReviewDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="outline" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="outline" className="gap-1 justify-start">
                         <Clock className="h-3 w-3" />
                         {t("propertyStates.pendingLabel")}
                       </Badge>
@@ -272,8 +271,8 @@ export default function MyProperties() {
                         {t("propertyStates.pendingDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="secondary" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="secondary" className="gap-1 justify-start">
                         <AlertCircle className="h-3 w-3" />
                         {t("propertyStates.draftLabel")}
                       </Badge>
@@ -281,8 +280,8 @@ export default function MyProperties() {
                         {t("propertyStates.draftDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="default" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="default" className="gap-1 justify-start">
                         <CheckCircle className="h-3 w-3" />
                         {t("propertyStates.approvedLabel")}
                       </Badge>
@@ -290,8 +289,8 @@ export default function MyProperties() {
                         {t("propertyStates.approvedDesc")}
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Badge variant="default" className="gap-1 shrink-0">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                      <Badge variant="default" className="gap-1 justify-start">
                         <CheckCircle className="h-3 w-3" />
                         {t("propertyStates.publishedLabel")}
                       </Badge>
@@ -304,8 +303,6 @@ export default function MyProperties() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
-        <div className="flex gap-2">
           {isAtLimit ? (
             <Button 
               onClick={() => setShowLimitRequestDialog(true)}
