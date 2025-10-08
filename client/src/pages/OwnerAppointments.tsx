@@ -1305,20 +1305,6 @@ export default function OwnerAppointments() {
                   <h3 className="font-semibold text-xl" data-testid="text-client-profile-name">
                     {getClientName(selectedClientAppointment.client)}
                   </h3>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    {selectedClientAppointment.client.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        <span>{selectedClientAppointment.client.email}</span>
-                      </div>
-                    )}
-                    {selectedClientAppointment.client.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        <span>{selectedClientAppointment.client.phone}</span>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
 
