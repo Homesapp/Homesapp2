@@ -45,6 +45,25 @@ The schema includes:
 - **Query Performance**: Post-index baselines show 50-90% improvements on critical queries (property search, appointments, financial reports)
 - **Scalability Documentation**: Complete analysis documented in SCALABILITY_ANALYSIS.md with prioritized optimization roadmap
 
+**Redis Cache Implementation (2025-10-08)**:
+- **Tier 1 Static Data Caching**: Implemented Redis cache for 4 high-frequency reference data endpoints with 24h TTL
+  - /api/condominiums/approved - Approved condominium listings
+  - /api/colonies/approved - Approved colony listings
+  - /api/amenities - All amenities (property & condominium)
+  - /api/property-features - All property features with icons
+- **Cache Infrastructure**: Created cache module (server/cache.ts) with ioredis client supporting Upstash and local Redis
+- **Graceful Degradation**: System works without Redis configured - cache operations fail silently, app continues normally
+- **Complete Cache Invalidation**: 17 admin mutation endpoints automatically invalidate cache on data modifications:
+  - Condominiums: create (admin), approve, reject, update, toggle active, delete
+  - Colonies: create (admin), approve, reject, update, delete
+  - Amenities: create (admin), approve, reject, update, delete
+  - Property Features: create
+- **Smart Invalidation**: Only admin-approved data is cached; user suggestions (pending status) don't trigger invalidation
+- **Expected Impact**: 50-90% reduction in database queries for reference data, improved response times for property search/filtering
+- **Cache Helpers**: Centralized invalidation functions (server/cacheInvalidation.ts) for maintainability and consistency
+- **Type Safety**: Generic cache.get<T>() with TypeScript support for type-safe cache retrieval
+- **Cost**: $0-8/month for Upstash Redis (free tier: 10K requests/day, paid tier: $0.20/100K requests)
+
 ### Key Features and Workflows
 *   **Dual-Type Appointment Scheduling**: Supports individual and tour slots with admin-configurable business hours.
 *   **Appointment Reschedule Workflow**: Owner-initiated reschedule requests with client approval/rejection flow. When owner requests reschedule, client can approve (appointment date changes) or reject (appointment auto-cancels). Calendar uses color coding: green (approved), red (cancelled), yellow (rescheduled). Archiving system keeps approved appointments visible; only completed/cancelled appointments are archived.
