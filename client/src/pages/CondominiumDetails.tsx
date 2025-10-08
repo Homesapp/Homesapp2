@@ -180,7 +180,7 @@ export default function CondominiumDetails() {
                   {condominium.approvalStatus === "approved" && (
                     <Badge variant="default">Aprobado</Badge>
                   )}
-                  {condominium.approvalStatus === "pending" && (
+                  {condominium.approvalStatus === "pending_review" && (
                     <Badge variant="default">Pendiente</Badge>
                   )}
                   {condominium.approvalStatus === "rejected" && (

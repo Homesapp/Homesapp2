@@ -109,9 +109,9 @@ export default function AdminCondominiums() {
     queryKey: ["/api/property-features"],
   });
 
-  const pendingColonies = colonies.filter((c) => c.approvalStatus === "pending");
-  const pendingCondos = allCondominiums.filter((c) => c.approvalStatus === "pending");
-  const pendingAmenities = amenities.filter((a) => a.approvalStatus === "pending");
+  const pendingColonies = colonies.filter((c) => c.approvalStatus === "pending_review");
+  const pendingCondos = allCondominiums.filter((c) => c.approvalStatus === "pending_review");
+  const pendingAmenities = amenities.filter((a) => a.approvalStatus === "pending_review");
 
   const zones = Array.from(new Set(allCondominiums.map(c => c.zone).filter(Boolean))) as string[];
 
@@ -752,7 +752,7 @@ export default function AdminCondominiums() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {colony.approvalStatus === "pending" && (
+                    {colony.approvalStatus === "pending_review" && (
                       <div className="flex gap-2">
                         <Button
                           variant="default"
@@ -870,8 +870,8 @@ export default function AdminCondominiums() {
               <TabsTrigger value="all" data-testid="tab-all">
                 Todos ({allCondominiums.length})
               </TabsTrigger>
-              <TabsTrigger value="pending" data-testid="tab-pending">
-                Pendientes ({allCondominiums.filter(c => c.approvalStatus === "pending").length})
+              <TabsTrigger value="pending_review" data-testid="tab-pending">
+                Pendientes ({allCondominiums.filter(c => c.approvalStatus === "pending_review").length})
               </TabsTrigger>
               <TabsTrigger value="approved" data-testid="tab-approved">
                 Aprobados ({allCondominiums.filter(c => c.approvalStatus === "approved").length})
@@ -934,7 +934,7 @@ export default function AdminCondominiums() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-2">
-                        {condominium.approvalStatus === "pending" && (
+                        {condominium.approvalStatus === "pending_review" && (
                           <div className="flex gap-2">
                             <Button
                               variant="default"
@@ -1060,7 +1060,7 @@ export default function AdminCondominiums() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {amenity.approvalStatus === "pending" && (
+                    {amenity.approvalStatus === "pending_review" && (
                       <div className="flex gap-2">
                         <Button
                           variant="default"

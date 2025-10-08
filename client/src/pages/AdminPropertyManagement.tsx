@@ -107,12 +107,18 @@ export default function AdminPropertyManagement() {
   // Fetch properties
   const { data: properties = [], isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ["/api/admin/properties", selectedStatus, selectedType, searchQuery],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedStatus !== "all") params.append("approvalStatus", selectedStatus);
       if (selectedType !== "all") params.append("propertyType", selectedType);
       if (searchQuery) params.append("q", searchQuery);
-      return fetch(`/api/admin/properties?${params}`).then(r => r.json());
+      const response = await fetch(`/api/admin/properties?${params}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      const data = await response.json();
+      // Defensive check: ensure we always return an array
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -318,7 +324,7 @@ export default function AdminPropertyManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="pending_review">Pendiente</SelectItem>
                   <SelectItem value="approved">Aprobada</SelectItem>
                   <SelectItem value="rejected">Rechazada</SelectItem>
                   <SelectItem value="draft">Borrador</SelectItem>
@@ -762,7 +768,7 @@ export default function AdminPropertyManagement() {
                           </DialogContent>
                         </Dialog>
 
-                        {property.approvalStatus === "pending" && (
+                        {property.approvalStatus === "pending_review" && (
                           <>
                             <Button
                               data-testid={`button-approve-${property.id}`}

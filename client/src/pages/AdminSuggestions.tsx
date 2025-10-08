@@ -32,9 +32,9 @@ export default function AdminSuggestions() {
     queryKey: ["/api/amenities"],
   });
 
-  const pendingColonies = colonies.filter((c) => c.approvalStatus === "pending");
-  const pendingCondos = condominiums.filter((c) => c.approvalStatus === "pending");
-  const pendingAmenities = amenities.filter((a) => a.approvalStatus === "pending");
+  const pendingColonies = colonies.filter((c) => c.approvalStatus === "pending_review");
+  const pendingCondos = condominiums.filter((c) => c.approvalStatus === "pending_review");
+  const pendingAmenities = amenities.filter((a) => a.approvalStatus === "pending_review");
 
   // Colony approval/rejection mutations
   const approveColonyMutation = useMutation({

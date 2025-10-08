@@ -2172,7 +2172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 
       // Admins create directly as approved, owners create as pending
-      const approvalStatus = isAdmin ? "approved" : "pending";
+      const approvalStatus = isAdmin ? "approved" : "pending_review";
 
       // Create colony
       const colony = await storage.createColony({
@@ -2456,7 +2456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { name, colonyId, zone, address } = validationResult.data;
 
       // Admins create directly as approved, owners create as pending
-      const approvalStatus = isAdmin ? "approved" : "pending";
+      const approvalStatus = isAdmin ? "approved" : "pending_review";
 
       // Create condominium
       const condominium = await storage.createCondominium({
@@ -2969,7 +2969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { name, category } = validationResult.data;
 
       // Admins create directly as approved, owners create as pending
-      const approvalStatus = isAdmin ? "approved" : "pending";
+      const approvalStatus = isAdmin ? "approved" : "pending_review";
 
       // Create amenity
       const amenity = await storage.createAmenity({
@@ -3936,7 +3936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         images: draft.media?.images || [],
         primaryImages: draft.media?.primaryImages || [],
         ownerId: draft.userId,
-        approvalStatus: "pending", // Drafts submitted are pending approval
+        approvalStatus: "pending_review", // Drafts submitted are pending approval
         ownerStatus: "active",
         published: false,
         active: false,
@@ -5017,10 +5017,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to filter drafts with all applicable query params
+  // Note: Drafts have these fields from basicInfo/locationInfo/media:
+  // - title, description, propertyType, price (rentPrice), salePrice, currency
+  // - bedrooms, bathrooms, area, location, images, ownerId, approvalStatus
+  // Fields NOT in drafts: status (property status), featured, active, published, zones, specific condominium IDs
+  const filterDrafts = (drafts: any[], queryParams: any) => {
+    let filtered = drafts;
+    
+    // Text search (applies to: title, description, location)
+    if (queryParams.q && typeof queryParams.q === "string") {
+      const query = queryParams.q.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.title?.toLowerCase().includes(query) || 
+        p.description?.toLowerCase().includes(query) ||
+        p.location?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Property type filter
+    if (queryParams.propertyType) {
+      filtered = filtered.filter(p => p.propertyType === queryParams.propertyType);
+    }
+    
+    // Owner ID filter
+    if (queryParams.ownerId) {
+      filtered = filtered.filter(p => p.ownerId === queryParams.ownerId);
+    }
+    
+    // Price range filters (check both price and salePrice)
+    if (queryParams.minPrice) {
+      const minPrice = parseFloat(queryParams.minPrice as string);
+      filtered = filtered.filter(p => {
+        const rentPrice = parseFloat(p.price || "0");
+        const salePrice = parseFloat(p.salePrice || "0");
+        // Draft matches if either price meets the minimum
+        return rentPrice >= minPrice || salePrice >= minPrice;
+      });
+    }
+    if (queryParams.maxPrice) {
+      const maxPrice = parseFloat(queryParams.maxPrice as string);
+      filtered = filtered.filter(p => {
+        const rentPrice = parseFloat(p.price || "0");
+        const salePrice = parseFloat(p.salePrice || "0");
+        // If both are 0, filter out. Otherwise check the active price
+        if (rentPrice === 0 && salePrice === 0) return false;
+        const activePrice = rentPrice > 0 ? rentPrice : salePrice;
+        return activePrice <= maxPrice;
+      });
+    }
+    
+    // Bedroom/bathroom filters (drafts have these from basicInfo)
+    if (queryParams.minBedrooms) {
+      const minBed = parseInt(queryParams.minBedrooms as string);
+      filtered = filtered.filter(p => (p.bedrooms || 0) >= minBed);
+    }
+    if (queryParams.maxBedrooms) {
+      const maxBed = parseInt(queryParams.maxBedrooms as string);
+      filtered = filtered.filter(p => (p.bedrooms || 0) <= maxBed);
+    }
+    if (queryParams.minBathrooms) {
+      const minBath = parseInt(queryParams.minBathrooms as string);
+      filtered = filtered.filter(p => (p.bathrooms || 0) >= minBath);
+    }
+    if (queryParams.maxBathrooms) {
+      const maxBath = parseInt(queryParams.maxBathrooms as string);
+      filtered = filtered.filter(p => (p.bathrooms || 0) <= maxBath);
+    }
+    
+    // Status filter - drafts don't have property "status" field
+    // If status filter is present, exclude ALL drafts (they can never match it)
+    if (queryParams.status) {
+      filtered = [];
+    }
+    
+    // Note: approvalStatus filtering is handled upstream (not in filterDrafts)
+    // Drafts have approvalStatus "pending_review" when submitted
+    
+    return filtered;
+  };
+
   // Admin Property Management routes
   app.get("/api/admin/properties", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req, res) => {
     try {
-      const { approvalStatus, propertyType, status, featured, q } = req.query;
+      const { approvalStatus, propertyType, status, featured, q, ownerId } = req.query;
+      
+      // Get all other query params to detect complex filters
+      const allQueryKeys = Object.keys(req.query);
       
       const filters: any = {};
       
@@ -5040,8 +5123,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.query = q;
       }
       
+      // Get real properties
       const properties = await storage.searchPropertiesAdvanced(filters);
-      res.json(properties);
+      
+      // Only include drafts when appropriate based on filters
+      let allProperties = [...properties];
+      
+      // Check if drafts should be included based on approvalStatus
+      const shouldIncludeDraftsByApprovalStatus = (
+        !approvalStatus ||              // No filter = show all
+        approvalStatus === "pending_review" ||  // Pending review includes submitted drafts
+        approvalStatus === "draft"       // Drafts
+      );
+      
+      // Detect filters that drafts cannot satisfy
+      // Drafts DON'T have: zones, specific condominium IDs, published/active states
+      // Drafts DO have: price, bedrooms, bathrooms, propertyType, ownerId, location, etc.
+      const hasUnsatisfiableFilters = (
+        featured === "true" ||  // Drafts are never featured=true
+        allQueryKeys.some(key => [
+          'zone', 'zones', 'condominium', 'condominiumId',
+          'published', 'active'
+        ].includes(key))
+      );
+      
+      // Only include drafts if:
+      // 1. Approval status allows it AND
+      // 2. No unsatisfiable filters AND
+      // 3. Not explicitly filtering by status (unless looking for pending_review/draft approvals)
+      const canIncludeDrafts = (
+        shouldIncludeDraftsByApprovalStatus &&
+        !hasUnsatisfiableFilters &&
+        (!status || approvalStatus === "pending_review" || approvalStatus === "draft")
+      );
+      
+      if (canIncludeDrafts) {
+        // Get submitted drafts (pending approval) only if showing pending_review or all
+        const submittedDrafts = (approvalStatus === "pending_review" || !approvalStatus)
+          ? await storage.getPropertySubmissionDrafts({ status: "submitted" })
+          : [];
+        
+        // Get draft status drafts only if showing drafts or all
+        const draftStatusDrafts = (approvalStatus === "draft" || !approvalStatus)
+          ? await storage.getPropertySubmissionDrafts({ status: "draft" })
+          : [];
+        
+        // Transform drafts to property-like objects
+        const transformDraft = (draft: any) => ({
+          id: `draft-${draft.id}`,
+          isDraft: true,
+          draftId: draft.id,
+          title: draft.basicInfo?.title || draft.basicInfo?.customListingTitle || "Propiedad sin título",
+          description: draft.basicInfo?.description || "",
+          propertyType: draft.basicInfo?.propertyType || "house",
+          price: draft.basicInfo?.rentPrice || "0",
+          salePrice: draft.basicInfo?.salePrice || "0",
+          currency: draft.basicInfo?.currency || "MXN",
+          bedrooms: draft.basicInfo?.bedrooms || 0,
+          bathrooms: draft.basicInfo?.bathrooms || 0,
+          area: draft.basicInfo?.area || 0,
+          location: draft.locationInfo?.location || "",
+          images: draft.media?.images || [],
+          primaryImages: draft.media?.primaryImages || [],
+          ownerId: draft.userId,
+          approvalStatus: draft.status === "submitted" ? "pending_review" : "draft",
+          ownerStatus: "active",
+          published: false,
+          active: false,
+          featured: false,
+          createdAt: draft.createdAt,
+          updatedAt: draft.updatedAt,
+        });
+        
+        let submittedDraftProperties = submittedDrafts.map(transformDraft);
+        let draftProperties = draftStatusDrafts.map(transformDraft);
+        
+        // Apply all filters to drafts using the helper
+        submittedDraftProperties = filterDrafts(submittedDraftProperties, req.query);
+        draftProperties = filterDrafts(draftProperties, req.query);
+        
+        // Add filtered drafts to the result
+        allProperties = [...properties, ...submittedDraftProperties, ...draftProperties];
+      }
+      
+      res.json(allProperties);
     } catch (error) {
       console.error("Error fetching admin properties:", error);
       res.status(500).json({ message: "Error al obtener propiedades" });
@@ -5052,12 +5217,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allProperties = await storage.searchPropertiesAdvanced({});
       
+      // Get submitted drafts (pending approval)
+      const submittedDrafts = await storage.getPropertySubmissionDrafts({ status: "submitted" });
+      
+      // Get draft status drafts (work in progress)
+      const draftStatusDrafts = await storage.getPropertySubmissionDrafts({ status: "draft" });
+      
       const stats = {
-        total: allProperties.length,
-        pending: allProperties.filter(p => p.approvalStatus === "pending").length,
+        total: allProperties.length + submittedDrafts.length + draftStatusDrafts.length,
+        pending: allProperties.filter(p => p.approvalStatus === "pending_review").length + submittedDrafts.length,
         approved: allProperties.filter(p => p.approvalStatus === "approved").length,
         rejected: allProperties.filter(p => p.approvalStatus === "rejected").length,
-        draft: allProperties.filter(p => p.approvalStatus === "draft").length,
+        draft: allProperties.filter(p => p.approvalStatus === "draft").length + draftStatusDrafts.length,
         inspectionScheduled: allProperties.filter(p => p.approvalStatus === "inspection_scheduled").length,
         inspectionCompleted: allProperties.filter(p => p.approvalStatus === "inspection_completed").length,
         published: allProperties.filter(p => p.published).length,
@@ -5075,7 +5246,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { notes, publish } = req.body;
+      const adminId = req.user.claims.sub;
       
+      // Check if this is a draft
+      if (id.startsWith("draft-")) {
+        const draftId = id.replace("draft-", "");
+        const draft = await storage.getPropertySubmissionDraft(draftId);
+        
+        if (!draft) {
+          return res.status(404).json({ message: "Draft no encontrado" });
+        }
+        
+        // Approve draft (this creates the real property)
+        const newProperty = await storage.approvePropertySubmissionDraft(draftId, adminId);
+        
+        // Update property if publish flag is provided
+        if (publish !== undefined) {
+          await storage.updateProperty(newProperty.id, { published: publish });
+        }
+        
+        await createAuditLog(
+          req,
+          "approve",
+          "property_draft",
+          draftId,
+          `Draft aprobado y convertido a propiedad: ${draft.basicInfo?.title || 'Sin título'}${notes ? ` - ${notes}` : ""}`
+        );
+        
+        return res.json(newProperty);
+      }
+      
+      // Handle regular property approval
       const property = await storage.getProperty(id);
       if (!property) {
         return res.status(404).json({ message: "Propiedad no encontrada" });
@@ -5105,7 +5306,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { notes } = req.body;
+      const adminId = req.user.claims.sub;
       
+      // Check if this is a draft
+      if (id.startsWith("draft-")) {
+        const draftId = id.replace("draft-", "");
+        const draft = await storage.getPropertySubmissionDraft(draftId);
+        
+        if (!draft) {
+          return res.status(404).json({ message: "Draft no encontrado" });
+        }
+        
+        // Update draft status to rejected
+        const updated = await storage.updatePropertySubmissionDraft(draftId, {
+          status: "rejected",
+          reviewedBy: adminId,
+          reviewedAt: new Date(),
+        });
+        
+        await createAuditLog(
+          req,
+          "reject",
+          "property_draft",
+          draftId,
+          `Draft rechazado: ${draft.basicInfo?.title || 'Sin título'}${notes ? ` - ${notes}` : ""}`
+        );
+        
+        return res.json(updated);
+      }
+      
+      // Handle regular property rejection
       const property = await storage.getProperty(id);
       if (!property) {
         return res.status(404).json({ message: "Propiedad no encontrada" });

@@ -151,7 +151,7 @@ export default function AdminPropertyAssignment() {
                   {property.approvalStatus && (
                     <Badge variant={property.approvalStatus === "approved" ? "default" : "secondary"} data-testid={`badge-status-${property.id}`}>
                       {property.approvalStatus === "approved" ? t("approved") : 
-                       property.approvalStatus === "pending" ? t("pending") :
+                       property.approvalStatus === "pending_review" ? t("pending") :
                        t("draft")}
                     </Badge>
                   )}
