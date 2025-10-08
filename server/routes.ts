@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { parse as parseCookie } from "cookie";
 import { storage } from "./storage";
+import { openAIService } from "./services/openai";
 import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
 import { requireResourceOwnership } from "./middleware/resourceOwnership";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
@@ -12517,6 +12518,343 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching integrations status:", error);
       res.status(500).json({ message: "Failed to fetch integrations status" });
+    }
+  });
+
+  // ============================================================================
+  // NEW BUSINESS MODEL IMPROVEMENTS & AI FEATURES
+  // ============================================================================
+
+  // Commission Advance endpoints
+  app.get("/api/seller/commission-advances", isAuthenticated, requireRole(["seller", "admin", "master"]), async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const advances = await storage.getCommissionAdvances({ sellerId: userId });
+      res.json(advances);
+    } catch (error: any) {
+      console.error("Error fetching commission advances:", error);
+      res.status(500).json({ message: "Failed to fetch commission advances" });
+    }
+  });
+
+  app.post("/api/seller/commission-advances", isAuthenticated, requireRole(["seller"]), async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const advance = await storage.createCommissionAdvance({
+        sellerId: userId,
+        amount: req.body.amount,
+        reason: sanitizeText(req.body.reason),
+        status: "pending"
+      });
+      res.json(advance);
+    } catch (error: any) {
+      console.error("Error creating commission advance:", error);
+      res.status(500).json({ message: "Failed to create commission advance" });
+    }
+  });
+
+  app.patch("/api/admin/commission-advances/:id/status", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const advance = await storage.updateCommissionAdvanceStatus(
+        req.params.id,
+        req.body.status,
+        userId,
+        req.body.notes
+      );
+      res.json(advance);
+    } catch (error: any) {
+      console.error("Error updating commission advance:", error);
+      res.status(500).json({ message: "Failed to update commission advance" });
+    }
+  });
+
+  // Service Favorites endpoints
+  app.post("/api/service-favorites", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const favorite = await storage.addServiceFavorite({
+        userId,
+        providerId: req.body.providerId
+      });
+      res.json(favorite);
+    } catch (error: any) {
+      console.error("Error adding service favorite:", error);
+      res.status(500).json({ message: "Failed to add favorite" });
+    }
+  });
+
+  app.delete("/api/service-favorites/:providerId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      await storage.removeServiceFavorite(userId, req.params.providerId);
+      res.json({ message: "Favorite removed" });
+    } catch (error: any) {
+      console.error("Error removing service favorite:", error);
+      res.status(500).json({ message: "Failed to remove favorite" });
+    }
+  });
+
+  app.get("/api/service-favorites", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const favorites = await storage.getUserServiceFavorites(userId);
+      res.json(favorites);
+    } catch (error: any) {
+      console.error("Error fetching service favorites:", error);
+      res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
+  // Predictive Analytics endpoints (OpenAI powered)
+  app.post("/api/admin/predictive-analytics/rental-probability", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const property = await storage.getProperty(req.body.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const analysis = await openAIService.analyzeRentalProbability(property);
+      
+      const analytic = await storage.createPredictiveAnalytic({
+        propertyId: property.id,
+        type: "rental_probability",
+        prediction: analysis.prediction,
+        confidence: analysis.confidence.toString(),
+        recommendedAction: analysis.recommendedAction,
+        factors: analysis.factors,
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      });
+      
+      res.json(analytic);
+    } catch (error: any) {
+      console.error("Error analyzing rental probability:", error);
+      res.status(500).json({ message: "Failed to analyze rental probability" });
+    }
+  });
+
+  app.post("/api/admin/predictive-analytics/price-recommendation", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const property = await storage.getProperty(req.body.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const analysis = await openAIService.analyzePriceRecommendation(property);
+      
+      const analytic = await storage.createPredictiveAnalytic({
+        propertyId: property.id,
+        type: "price_recommendation",
+        prediction: analysis.prediction,
+        confidence: analysis.confidence.toString(),
+        recommendedAction: analysis.recommendedAction,
+        factors: analysis.factors,
+        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      });
+      
+      res.json(analytic);
+    } catch (error: any) {
+      console.error("Error analyzing price recommendation:", error);
+      res.status(500).json({ message: "Failed to analyze price recommendation" });
+    }
+  });
+
+  app.get("/api/admin/predictive-analytics", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const analytics = await storage.getPredictiveAnalytics({
+        propertyId: req.query.propertyId as string,
+        type: req.query.type as string
+      });
+      res.json(analytics);
+    } catch (error: any) {
+      console.error("Error fetching predictive analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Legal Documents endpoints (OpenAI powered)
+  app.post("/api/admin/legal-documents/generate-contract", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const property = await storage.getProperty(req.body.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const result = await openAIService.generateRentalContract(req.body.parties, {
+        address: property.address,
+        monthlyRent: req.body.monthlyRent,
+        deposit: req.body.deposit
+      });
+      
+      const document = await storage.createLegalDocument({
+        type: "rental_contract",
+        propertyId: property.id,
+        parties: req.body.parties,
+        content: result.content,
+        metadata: result.metadata,
+        generatedBy: userId,
+        status: "draft"
+      });
+      
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error generating legal document:", error);
+      res.status(500).json({ message: "Failed to generate legal document" });
+    }
+  });
+
+  app.get("/api/legal-documents", isAuthenticated, async (req, res) => {
+    try {
+      const documents = await storage.getLegalDocuments({
+        propertyId: req.query.propertyId as string,
+        type: req.query.type as string,
+        status: req.query.status as string
+      });
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching legal documents:", error);
+      res.status(500).json({ message: "Failed to fetch legal documents" });
+    }
+  });
+
+  app.patch("/api/admin/legal-documents/:id/status", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const document = await storage.updateLegalDocumentStatus(req.params.id, req.body.status);
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error updating legal document:", error);
+      res.status(500).json({ message: "Failed to update legal document" });
+    }
+  });
+
+  // Tenant Screening endpoints (OpenAI powered)
+  app.post("/api/admin/tenant-screening", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      
+      const screening = await openAIService.screenTenant(req.body.applicationData);
+      
+      const result = await storage.createTenantScreening({
+        applicationId: req.body.applicationId,
+        applicantId: req.body.applicantId,
+        propertyId: req.body.propertyId,
+        status: "completed",
+        riskScore: screening.riskScore.toString(),
+        riskLevel: screening.riskLevel,
+        aiAnalysis: screening.aiAnalysis,
+        fraudDetection: screening.fraudDetection,
+        incomeVerification: screening.incomeVerification,
+        creditAnalysis: screening.creditAnalysis,
+        rentalHistory: screening.rentalHistory,
+        recommendations: screening.recommendations,
+        flags: screening.flags,
+        completedAt: new Date()
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error screening tenant:", error);
+      res.status(500).json({ message: "Failed to screen tenant" });
+    }
+  });
+
+  app.get("/api/admin/tenant-screenings", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const screenings = await storage.getTenantScreenings({
+        applicationId: req.query.applicationId as string,
+        applicantId: req.query.applicantId as string,
+        propertyId: req.query.propertyId as string,
+        status: req.query.status as string
+      });
+      res.json(screenings);
+    } catch (error: any) {
+      console.error("Error fetching tenant screenings:", error);
+      res.status(500).json({ message: "Failed to fetch tenant screenings" });
+    }
+  });
+
+  // Marketing Campaigns endpoints
+  app.get("/api/admin/marketing-campaigns", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const campaigns = await storage.getMarketingCampaigns({
+        status: req.query.status as string,
+        type: req.query.type as string
+      });
+      res.json(campaigns);
+    } catch (error: any) {
+      console.error("Error fetching marketing campaigns:", error);
+      res.status(500).json({ message: "Failed to fetch campaigns" });
+    }
+  });
+
+  app.post("/api/admin/marketing-campaigns", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const campaign = await storage.createMarketingCampaign({
+        name: sanitizeText(req.body.name),
+        type: req.body.type,
+        targetAudience: req.body.targetAudience,
+        content: req.body.content,
+        schedule: req.body.schedule,
+        createdBy: userId
+      });
+      res.json(campaign);
+    } catch (error: any) {
+      console.error("Error creating marketing campaign:", error);
+      res.status(500).json({ message: "Failed to create campaign" });
+    }
+  });
+
+  app.patch("/api/admin/marketing-campaigns/:id/status", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const campaign = await storage.updateMarketingCampaignStatus(req.params.id, req.body.status);
+      res.json(campaign);
+    } catch (error: any) {
+      console.error("Error updating campaign status:", error);
+      res.status(500).json({ message: "Failed to update campaign" });
+    }
+  });
+
+  // Maintenance Schedules endpoints
+  app.get("/api/owner/maintenance-schedules", isAuthenticated, requireRole(["owner", "admin", "master"]), async (req, res) => {
+    try {
+      const schedules = await storage.getMaintenanceSchedules({
+        propertyId: req.query.propertyId as string,
+        active: req.query.active === "true"
+      });
+      res.json(schedules);
+    } catch (error: any) {
+      console.error("Error fetching maintenance schedules:", error);
+      res.status(500).json({ message: "Failed to fetch schedules" });
+    }
+  });
+
+  app.post("/api/owner/maintenance-schedules", isAuthenticated, requireRole(["owner", "admin", "master"]), async (req, res) => {
+    try {
+      const schedule = await storage.createMaintenanceSchedule({
+        propertyId: req.body.propertyId,
+        title: sanitizeText(req.body.title),
+        description: sanitizeText(req.body.description),
+        frequency: req.body.frequency,
+        nextDue: new Date(req.body.nextDue),
+        estimatedCost: req.body.estimatedCost,
+        assignedTo: req.body.assignedTo
+      });
+      res.json(schedule);
+    } catch (error: any) {
+      console.error("Error creating maintenance schedule:", error);
+      res.status(500).json({ message: "Failed to create schedule" });
+    }
+  });
+
+  app.patch("/api/owner/maintenance-schedules/:id", isAuthenticated, requireRole(["owner", "admin", "master"]), async (req, res) => {
+    try {
+      const schedule = await storage.updateMaintenanceSchedule(req.params.id, req.body);
+      res.json(schedule);
+    } catch (error: any) {
+      console.error("Error updating maintenance schedule:", error);
+      res.status(500).json({ message: "Failed to update schedule" });
     }
   });
 
