@@ -5,10 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Heart, MapPin, Bed, Bath, Square, Star, ArrowLeft, Calendar, 
   User, Phone, Mail, Building, Image, Video, Map, Scan,
-  CheckCircle2, XCircle, Home, Wifi, Droplets, Zap, Flame, Wrench
+  CheckCircle2, XCircle, Home, Wifi, Droplets, Zap, Flame, Wrench,
+  ChevronLeft, ChevronRight, X
 } from "lucide-react";
 import { type Property } from "@shared/schema";
 import { RentalOpportunityRequestDialog } from "@/components/RentalOpportunityRequestDialog";
@@ -23,6 +30,8 @@ export default function PropertyFullDetails() {
   const { toast } = useToast();
   const [showSORDialog, setShowSORDialog] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ["/api/properties", params?.id],
@@ -69,18 +78,6 @@ export default function PropertyFullDetails() {
     return <Icon className="h-4 w-4" />;
   };
 
-  const includedServices = property?.includedServices 
-    ? Object.entries(property.includedServices as Record<string, boolean>)
-        .filter(([_, value]) => value === true)
-        .map(([key]) => key)
-    : [];
-
-  const notIncludedServices = property?.includedServices 
-    ? Object.entries(property.includedServices as Record<string, boolean>)
-        .filter(([_, value]) => value === false)
-        .map(([key]) => key)
-    : [];
-
   if (isLoading || !property) {
     return (
       <div className="container mx-auto py-6">
@@ -94,6 +91,33 @@ export default function PropertyFullDetails() {
       </div>
     );
   }
+
+  const includedServices = property.includedServices 
+    ? Object.entries(property.includedServices as Record<string, boolean>)
+        .filter(([_, value]) => value === true)
+        .map(([key]) => key)
+    : [];
+
+  const notIncludedServices = property.includedServices 
+    ? Object.entries(property.includedServices as Record<string, boolean>)
+        .filter(([_, value]) => value === false)
+        .map(([key]) => key)
+    : [];
+
+  const allImages = property.primaryImages || [];
+
+  const openGallery = (index: number = 0) => {
+    setCurrentImageIndex(index);
+    setShowGallery(true);
+  };
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,11 +142,15 @@ export default function PropertyFullDetails() {
             {/* Photo Gallery */}
             <Card>
               <div className="relative">
-                {property.primaryImages && property.primaryImages.length > 0 ? (
+                {allImages.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="h-[500px] bg-muted relative overflow-hidden rounded-t-lg">
+                    <div 
+                      className="h-[500px] bg-muted relative overflow-hidden rounded-t-lg cursor-pointer"
+                      onClick={() => openGallery(0)}
+                      data-testid="div-main-image"
+                    >
                       <img
-                        src={property.primaryImages[0]}
+                        src={allImages[0]}
                         alt={property.title}
                         className="w-full h-full object-cover"
                         data-testid="img-main-property"
@@ -131,10 +159,15 @@ export default function PropertyFullDetails() {
                         <Badge className="absolute top-4 right-4 bg-primary">Destacada</Badge>
                       )}
                     </div>
-                    {property.primaryImages.length > 1 && (
+                    {allImages.length > 1 && (
                       <div className="grid grid-cols-4 gap-3 px-6 pb-6">
-                        {property.primaryImages.slice(1, 5).map((img, idx) => (
-                          <div key={idx} className="h-28 bg-muted rounded-lg overflow-hidden cursor-pointer hover-elevate active-elevate-2">
+                        {allImages.slice(1, 5).map((img, idx) => (
+                          <div 
+                            key={idx} 
+                            className="h-28 bg-muted rounded-lg overflow-hidden cursor-pointer hover-elevate active-elevate-2"
+                            onClick={() => openGallery(idx + 1)}
+                            data-testid={`div-gallery-thumb-${idx}`}
+                          >
                             <img 
                               src={img} 
                               alt={`Vista ${idx + 2}`} 
@@ -158,10 +191,12 @@ export default function PropertyFullDetails() {
                 <Button
                   variant="outline"
                   className="flex flex-col items-center gap-2 h-auto py-3"
+                  onClick={() => allImages.length > 0 && openGallery(0)}
+                  disabled={allImages.length === 0}
                   data-testid="button-view-images"
                 >
                   <Image className="h-5 w-5" />
-                  <span className="text-xs">Imágenes</span>
+                  <span className="text-xs">Imágenes ({allImages.length})</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -511,6 +546,77 @@ export default function PropertyFullDetails() {
           </div>
         </div>
       </div>
+
+      {/* Image Gallery Dialog */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-7xl h-[90vh] p-0" data-testid="dialog-gallery">
+          <div className="relative h-full flex flex-col">
+            <DialogHeader className="px-6 py-4 border-b">
+              <DialogTitle>Galería de Imágenes ({currentImageIndex + 1} de {allImages.length})</DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 relative bg-black/90 flex items-center justify-center">
+              {allImages.length > 0 && (
+                <>
+                  <img
+                    src={allImages[currentImageIndex]}
+                    alt={`Imagen ${currentImageIndex + 1}`}
+                    className="max-h-full max-w-full object-contain"
+                    data-testid={`img-gallery-current-${currentImageIndex}`}
+                  />
+                  
+                  {allImages.length > 1 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                        onClick={prevImage}
+                        data-testid="button-prev-image"
+                      >
+                        <ChevronLeft className="h-8 w-8" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                        onClick={nextImage}
+                        data-testid="button-next-image"
+                      >
+                        <ChevronRight className="h-8 w-8" />
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {allImages.length > 1 && (
+              <div className="px-6 py-4 border-t bg-card">
+                <div className="flex gap-2 overflow-x-auto">
+                  {allImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden cursor-pointer border-2 transition-all ${
+                        idx === currentImageIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                      onClick={() => setCurrentImageIndex(idx)}
+                      data-testid={`thumb-gallery-${idx}`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Miniatura ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {property && (
         <RentalOpportunityRequestDialog
