@@ -72,6 +72,13 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
   "cancelled",
 ]);
 
+export const rescheduleStatusEnum = pgEnum("reschedule_status", [
+  "none", // No hay solicitud de reprogramación
+  "requested", // El owner solicitó reprogramación
+  "approved", // El cliente aprobó la reprogramación
+  "rejected", // El cliente rechazó la reprogramación (cita se cancela)
+]);
+
 export const visitTypeEnum = pgEnum("visit_type", [
   "visita_cliente",
   "visita_mantenimiento",
@@ -1178,6 +1185,11 @@ export const appointments = pgTable("appointments", {
   accessCredentialsSent: boolean("access_credentials_sent").default(false), // Si se enviaron credenciales
   clientFeedback: jsonb("client_feedback"), // Feedback del cliente (opciones predefinidas)
   staffFeedback: text("staff_feedback"), // Feedback del staff (texto libre)
+  
+  // Campos de reprogramación
+  rescheduleStatus: rescheduleStatusEnum("reschedule_status").notNull().default("none"),
+  rescheduleRequestedDate: timestamp("reschedule_requested_date"), // Nueva fecha propuesta
+  rescheduleNotes: text("reschedule_notes"), // Motivo de reprogramación
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
