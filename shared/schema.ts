@@ -1957,8 +1957,11 @@ export const chatConversations = pgTable("chat_conversations", {
   title: text("title").notNull(),
   propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Para chats de rentas
   rentalApplicationId: varchar("rental_application_id").references(() => rentalApplications.id, { onDelete: "cascade" }), // Para chats de rentas en curso
+  appointmentId: varchar("appointment_id").references(() => appointments.id, { onDelete: "cascade" }), // Para chats de citas
   createdById: varchar("created_by_id").notNull().references(() => users.id),
   isBot: boolean("is_bot").notNull().default(false), // Indicates if this is a chatbot conversation
+  closedAt: timestamp("closed_at"), // When chat is locked (1 hour after appointment for appointment chats)
+  archivedAt: timestamp("archived_at"), // When chat is archived (7 days after closedAt for appointment chats)
   lastMessageAt: timestamp("last_message_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

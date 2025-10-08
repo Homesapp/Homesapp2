@@ -61,7 +61,7 @@ export default function OwnerAppointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OwnerApprovalStatus | "all" | "archived">("pending");
+  const [statusFilter, setStatusFilter] = useState<OwnerApprovalStatus | "all" | "archived">("all");
   const [visitTypeFilter, setVisitTypeFilter] = useState<string>("all");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
