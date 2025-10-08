@@ -235,10 +235,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Otherwise, get regular user from Replit Auth
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const claims = req.user.claims;
+      
+      // Try to get user from database
+      let user = await storage.getUser(userId);
+      
+      // If user doesn't exist but we have valid claims, create them automatically
+      if (!user && claims) {
+        console.log("[AUTO-CREATE-USER] Creating user from session claims:", claims.sub, claims.email);
+        user = await storage.upsertUser({
+          id: claims.sub,
+          email: claims.email,
+          firstName: claims.first_name || '',
+          lastName: claims.last_name || '',
+          profileImageUrl: claims.profile_image_url,
+        });
+      }
+      
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
