@@ -102,6 +102,7 @@ import {
   resetPasswordSchema,
   suspendUserSchema,
   unsuspendUserSchema,
+  createPropertyLimitRequestSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -1839,6 +1840,207 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Property Limit Request routes
+  app.post("/api/property-limit-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "owner") {
+        return res.status(403).json({ message: "Solo los propietarios pueden solicitar aumento de límite" });
+      }
+
+      // Validate request data
+      const validationResult = createPropertyLimitRequestSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Datos inválidos",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      // Check if user already has a pending request
+      const existingRequest = await storage.getUserActivePropertyLimitRequest(userId);
+      if (existingRequest) {
+        return res.status(409).json({
+          message: "Ya tienes una solicitud pendiente",
+        });
+      }
+
+      const currentLimit = user.propertyLimit || 3;
+      const requestedLimit = validationResult.data.requestedLimit;
+
+      if (requestedLimit <= currentLimit) {
+        return res.status(400).json({
+          message: `El límite solicitado debe ser mayor que tu límite actual (${currentLimit})`,
+        });
+      }
+
+      const request = await storage.createPropertyLimitRequest({
+        ownerId: userId,
+        currentLimit,
+        requestedLimit,
+        reason: validationResult.data.reason,
+      });
+
+      // Log the request creation
+      await createAuditLog(
+        req,
+        "create",
+        "property_limit_request",
+        request.id,
+        `Solicitud de aumento de límite de propiedades: ${currentLimit} → ${requestedLimit}`
+      );
+
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating property limit request:", error);
+      res.status(500).json({ message: "Error al crear solicitud de aumento de límite" });
+    }
+  });
+
+  app.get("/api/property-limit-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.session?.adminUser?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      const isAdmin = user && ["master", "admin", "admin_jr"].includes(user.role);
+
+      const { status, ownerId } = req.query;
+      const filters: any = {};
+      
+      if (isAdmin) {
+        // Admins can see all requests or filter by ownerId/status
+        if (status) filters.status = status;
+        if (ownerId) filters.ownerId = ownerId;
+      } else {
+        // Regular users can only see their own requests
+        filters.ownerId = userId;
+        if (status) filters.status = status;
+      }
+
+      const requests = await storage.getPropertyLimitRequests(filters);
+      
+      // Enrich requests with user data
+      const requestsWithUsers = await Promise.all(
+        requests.map(async (request) => {
+          const owner = await storage.getUser(request.ownerId);
+          return {
+            ...request,
+            owner: owner ? {
+              id: owner.id,
+              firstName: owner.firstName,
+              lastName: owner.lastName,
+              email: owner.email,
+              profileImageUrl: owner.profileImageUrl,
+            } : undefined,
+          };
+        })
+      );
+      
+      res.json(requestsWithUsers);
+    } catch (error) {
+      console.error("Error fetching property limit requests:", error);
+      res.status(500).json({ message: "Error al obtener solicitudes" });
+    }
+  });
+
+  app.patch("/api/property-limit-requests/:id/approve", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reviewNotes } = req.body;
+      const reviewerId = req.user?.claims?.sub || req.session?.adminUser?.id;
+
+      const request = await storage.getPropertyLimitRequest(id);
+      if (!request) {
+        return res.status(404).json({ message: "Solicitud no encontrada" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({
+          message: `Esta solicitud ya fue ${request.status === "approved" ? "aprobada" : "rechazada"}`,
+        });
+      }
+
+      // Update property limit request status
+      const reviewerIdToSave = (!req.user?.adminAuth && !req.user?.localAuth) ? req.user?.claims?.sub : null;
+      const updatedRequest = await storage.updatePropertyLimitRequestStatus(
+        id,
+        "approved",
+        reviewerIdToSave,
+        reviewNotes
+      );
+
+      // Update user's property limit
+      await db
+        .update(users)
+        .set({ propertyLimit: request.requestedLimit })
+        .where(eq(users.id, request.ownerId));
+
+      // Log the approval
+      await createAuditLog(
+        req,
+        "approve",
+        "property_limit_request",
+        id,
+        `Aprobada solicitud de aumento de límite: ${request.currentLimit} → ${request.requestedLimit}`
+      );
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error approving property limit request:", error);
+      res.status(500).json({ message: "Error al aprobar solicitud" });
+    }
+  });
+
+  app.patch("/api/property-limit-requests/:id/reject", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reviewNotes } = req.body;
+      const reviewerId = req.user?.claims?.sub || req.session?.adminUser?.id;
+
+      const request = await storage.getPropertyLimitRequest(id);
+      if (!request) {
+        return res.status(404).json({ message: "Solicitud no encontrada" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({
+          message: `Esta solicitud ya fue ${request.status === "approved" ? "aprobada" : "rechazada"}`,
+        });
+      }
+
+      // Update property limit request status
+      const reviewerIdToSave = (!req.user?.adminAuth && !req.user?.localAuth) ? req.user?.claims?.sub : null;
+      const updatedRequest = await storage.updatePropertyLimitRequestStatus(
+        id,
+        "rejected",
+        reviewerIdToSave,
+        reviewNotes
+      );
+
+      // Log the rejection
+      await createAuditLog(
+        req,
+        "reject",
+        "property_limit_request",
+        id,
+        `Rechazada solicitud de aumento de límite: ${request.currentLimit} → ${request.requestedLimit}`
+      );
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error rejecting property limit request:", error);
+      res.status(500).json({ message: "Error al rechazar solicitud" });
+    }
+  });
+
   // Colony routes
   app.get("/api/colonies", async (req, res) => {
     try {
@@ -3187,6 +3389,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...sanitizedBody,
         ownerId: sanitizedBody.ownerId || userId,
       });
+
+      // Check property limit for owners (admins bypass this check)
+      const isAdmin = ["master", "admin", "admin_jr"].includes(user.role);
+      const targetOwnerId = propertyData.ownerId;
+      const targetOwner = await storage.getUser(targetOwnerId);
+      
+      if (targetOwner && targetOwner.role === "owner" && !isAdmin) {
+        const currentPropertyCount = await storage.getUserPropertyCount(targetOwnerId);
+        const propertyLimit = targetOwner.propertyLimit || 3;
+        
+        if (currentPropertyCount >= propertyLimit) {
+          return res.status(403).json({
+            message: "Has alcanzado tu límite de propiedades",
+            currentCount: currentPropertyCount,
+            limit: propertyLimit,
+            canRequestIncrease: true,
+          });
+        }
+      }
       
       const property = await storage.createProperty(propertyData);
       

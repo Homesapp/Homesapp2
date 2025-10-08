@@ -61,6 +61,7 @@ import OwnerPropertyDetails from "@/pages/OwnerPropertyDetails";
 import EditOwnerProperty from "@/pages/EditOwnerProperty";
 import PropertyDocuments from "@/pages/PropertyDocuments";
 import AdminChangeRequests from "@/pages/AdminChangeRequests";
+import AdminPropertyLimitRequests from "@/pages/AdminPropertyLimitRequests";
 import AdminInspectionReports from "@/pages/AdminInspectionReports";
 import AdminAgreementTemplates from "@/pages/AdminAgreementTemplates";
 import AdminCondominiums from "@/pages/AdminCondominiums";
@@ -238,6 +239,7 @@ function AuthenticatedApp() {
               <Route path="/admin/integrations" component={AdminIntegrationsControl} />
               <Route path="/admin/contracts" component={AdminContractManagement} />
               <Route path="/admin/change-requests" component={AdminChangeRequests} />
+              <Route path="/admin/property-limit-requests" component={AdminPropertyLimitRequests} />
               <Route path="/admin/inspection-reports" component={AdminInspectionReports} />
               <Route path="/admin/agreement-templates" component={AdminAgreementTemplates} />
               <Route path="/admin/condominiums/:id" component={CondominiumDetails} />

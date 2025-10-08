@@ -49,6 +49,7 @@ import {
   Cog,
   MessagesSquare,
   Plug,
+  TrendingUp,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import logoIconUrl from "@assets/Sin título (6 x 6 cm)_1759706217639.png";
@@ -143,6 +144,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
   const propertiesGroup = [
     { titleKey: "sidebar.adminProperties", url: "/admin/properties", icon: Building2, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.changeRequests", url: "/admin/change-requests", icon: FileEdit, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.propertyLimitRequests", url: "/admin/property-limit-requests", icon: TrendingUp, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.inspectionReports", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.condominiums", url: "/admin/condominiums", icon: Building2, roles: ["master", "admin", "admin_jr"] },
   ];

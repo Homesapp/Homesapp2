@@ -80,6 +80,15 @@ The schema includes:
     - All errors sent to backend with Zod validation and automatic admin notifications
     - High-priority notifications sent to admin, master, and admin_jr roles
     - Error logs stored with full context: error type, message, stack trace, URL, user info, browser details
+*   **Property Limit System**: Owner property count control with request/approval workflow:
+    - Each owner has a configurable property limit (default 3 properties)
+    - Backend validation prevents property creation when limit is reached
+    - Admin roles (master, admin, admin_jr) bypass limit validation
+    - Owners can request limit increases through dedicated UI dialog
+    - Request workflow includes: submission with reason → admin review → approve/reject
+    - Admin panel for managing all limit increase requests with filtering by status
+    - Successful approval automatically updates owner's propertyLimit field
+    - Full audit logging of all limit changes and request actions
 
 ### System Design Choices
 The platform employs unified middleware for consistent authentication and automatic logging for auditing. The public dashboard adapts based on user authentication. WebSocket security for real-time chat ensures session-based authentication and per-conversation authorization.

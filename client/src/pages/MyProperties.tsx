@@ -5,8 +5,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock, FileText } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock, FileText, TrendingUp } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { PropertyLimitRequestDialog } from "@/components/PropertyLimitRequestDialog";
 import type { Property } from "@shared/schema";
 
 const approvalStatusLabels: Record<string, string> = {
@@ -53,10 +56,17 @@ const ownerStatusLabels: Record<string, string> = {
 export default function MyProperties() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [showLimitRequestDialog, setShowLimitRequestDialog] = useState(false);
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/owner/properties"],
   });
+
+  const propertyLimit = user?.propertyLimit || 3;
+  const propertyCount = properties.length;
+  const isAtLimit = propertyCount >= propertyLimit;
+  const isNearLimit = propertyCount >= propertyLimit - 1;
 
   const changeStatusMutation = useMutation({
     mutationFn: async ({ propertyId, newStatus }: { propertyId: string; newStatus: string }) => {
@@ -103,17 +113,50 @@ export default function MyProperties() {
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Mis Propiedades</h1>
           <p className="text-muted-foreground mt-1">
-            Gestiona y administra tus propiedades
+            Gestiona y administra tus propiedades ({propertyCount}/{propertyLimit})
           </p>
         </div>
-        <Button 
-          onClick={() => setLocation("/owner/property/new")}
-          data-testid="button-add-property"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Propiedad
-        </Button>
+        <div className="flex gap-2">
+          {isAtLimit ? (
+            <Button 
+              onClick={() => setShowLimitRequestDialog(true)}
+              variant="outline"
+              data-testid="button-request-limit-increase"
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Solicitar Más Cupo
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => setLocation("/owner/property/new")}
+              data-testid="button-add-property"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Propiedad
+            </Button>
+          )}
+        </div>
       </div>
+
+      {isAtLimit && (
+        <Alert variant="destructive" data-testid="alert-property-limit">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Límite de Propiedades Alcanzado</AlertTitle>
+          <AlertDescription>
+            Has alcanzado tu límite de {propertyLimit} propiedades. Solicita un aumento de límite para agregar más propiedades.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!isAtLimit && isNearLimit && (
+        <Alert data-testid="alert-near-limit">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Cerca del Límite</AlertTitle>
+          <AlertDescription>
+            Tienes {propertyCount} de {propertyLimit} propiedades. Puedes solicitar un aumento de límite si necesitas agregar más.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {properties.length === 0 ? (
         <Card className="p-6">
@@ -314,6 +357,13 @@ export default function MyProperties() {
           })}
         </div>
       )}
+
+      <PropertyLimitRequestDialog
+        open={showLimitRequestDialog}
+        onOpenChange={setShowLimitRequestDialog}
+        currentLimit={propertyLimit}
+        currentCount={propertyCount}
+      />
     </div>
   );
 }

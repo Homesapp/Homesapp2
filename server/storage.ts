@@ -34,6 +34,7 @@ import {
   rentalApplications,
   rentalContracts,
   propertyChangeRequests,
+  propertyLimitRequests,
   inspectionReports,
   ownerSettings,
   notifications,
@@ -130,6 +131,8 @@ import {
   type InsertRentalContract,
   type PropertyChangeRequest,
   type InsertPropertyChangeRequest,
+  type PropertyLimitRequest,
+  type InsertPropertyLimitRequest,
   type InspectionReport,
   type InsertInspectionReport,
   type OwnerSettings,
@@ -723,6 +726,14 @@ export interface IStorage {
   dismissSystemAlert(id: string): Promise<SystemAlert>;
   deleteSystemAlert(id: string): Promise<void>;
   cleanupExpiredAlerts(): Promise<number>;
+
+  // Property Limit Request operations
+  getPropertyLimitRequest(id: string): Promise<PropertyLimitRequest | undefined>;
+  getPropertyLimitRequests(filters?: { ownerId?: string; status?: string }): Promise<PropertyLimitRequest[]>;
+  getUserActivePropertyLimitRequest(ownerId: string): Promise<PropertyLimitRequest | undefined>;
+  createPropertyLimitRequest(request: InsertPropertyLimitRequest): Promise<PropertyLimitRequest>;
+  updatePropertyLimitRequestStatus(id: string, status: string, reviewedBy: string, reviewNotes?: string): Promise<PropertyLimitRequest>;
+  getUserPropertyCount(ownerId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4756,6 +4767,87 @@ export class DatabaseStorage implements IStorage {
   async getAutoSuggestion(id: string): Promise<AutoSuggestion | undefined> {
     const [suggestion] = await db.select().from(autoSuggestions).where(eq(autoSuggestions.id, id));
     return suggestion;
+  }
+
+  // Property Limit Request operations
+  async getPropertyLimitRequest(id: string): Promise<PropertyLimitRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(propertyLimitRequests)
+      .where(eq(propertyLimitRequests.id, id));
+    return request;
+  }
+
+  async getPropertyLimitRequests(filters?: { ownerId?: string; status?: string }): Promise<PropertyLimitRequest[]> {
+    const conditions: any[] = [];
+    
+    if (filters?.ownerId) {
+      conditions.push(eq(propertyLimitRequests.ownerId, filters.ownerId));
+    }
+    
+    if (filters?.status) {
+      conditions.push(eq(propertyLimitRequests.status, filters.status));
+    }
+    
+    return await db
+      .select()
+      .from(propertyLimitRequests)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(propertyLimitRequests.createdAt));
+  }
+
+  async getUserActivePropertyLimitRequest(ownerId: string): Promise<PropertyLimitRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(propertyLimitRequests)
+      .where(
+        and(
+          eq(propertyLimitRequests.ownerId, ownerId),
+          eq(propertyLimitRequests.status, "pending")
+        )
+      );
+    return request;
+  }
+
+  async createPropertyLimitRequest(request: InsertPropertyLimitRequest): Promise<PropertyLimitRequest> {
+    const [created] = await db
+      .insert(propertyLimitRequests)
+      .values(request)
+      .returning();
+    return created;
+  }
+
+  async updatePropertyLimitRequestStatus(
+    id: string,
+    status: string,
+    reviewedBy: string,
+    reviewNotes?: string
+  ): Promise<PropertyLimitRequest> {
+    const [updated] = await db
+      .update(propertyLimitRequests)
+      .set({
+        status,
+        reviewedById: reviewedBy,
+        reviewedAt: new Date(),
+        reviewNotes,
+        updatedAt: new Date(),
+      })
+      .where(eq(propertyLimitRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getUserPropertyCount(ownerId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.ownerId, ownerId),
+          eq(properties.active, true)
+        )
+      );
+    return result[0]?.count || 0;
   }
 }
 
