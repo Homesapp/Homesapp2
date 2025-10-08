@@ -3730,12 +3730,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updateData: any = { ownerStatus };
 
-      // If changing from suspended/rented to active, require admin approval again
+      // If changing from suspended/rented to active, ALWAYS require admin approval again
+      // This ensures security and quality control when properties come back online
       if ((property.ownerStatus === "suspended" || property.ownerStatus === "rented") && 
-          ownerStatus === "active" && 
-          (property.approvalStatus === "published" || property.approvalStatus === "approved")) {
-        updateData.approvalStatus = "pending_review";
-        updateData.published = false;
+          ownerStatus === "active") {
+        // Always downgrade to pending_review when reactivating, EXCEPT for:
+        // - draft: still being worked on by owner
+        // - pending: waiting for first review
+        // - rejected: permanently rejected
+        // - changes_requested: owner needs to make changes first
+        const statusesToDowngrade = ["published", "approved", "pending_review"];
+        if (statusesToDowngrade.includes(property.approvalStatus || "")) {
+          updateData.approvalStatus = "pending_review";
+          updateData.published = false;
+        }
       }
 
       const updatedProperty = await storage.updateProperty(id, updateData);

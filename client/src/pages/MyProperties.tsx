@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock, FileText, TrendingUp } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Building2, MapPin, Bed, Bath, Square, Clock, CheckCircle, XCircle, AlertCircle, Plus, MoreVertical, Edit, Eye, Calendar, PawPrint, Pause, Home, Lock, FileText, TrendingUp, HelpCircle, FileEdit } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,19 +17,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PropertyLimitRequestDialog } from "@/components/PropertyLimitRequestDialog";
 import type { Property } from "@shared/schema";
 
-const approvalStatusLabels: Record<string, string> = {
-  draft: "Borrador",
-  pending: "Pendiente",
-  pending_review: "En Revisión",
-  approved: "Aprobado",
-  published: "Publicado",
-  rejected: "Rechazado",
-};
-
+// Badge configuration (colors and icons only - labels come from translations)
 const approvalStatusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "secondary",
   pending: "outline",
@@ -36,6 +37,7 @@ const approvalStatusColors: Record<string, "default" | "secondary" | "destructiv
   approved: "default",
   published: "default",
   rejected: "destructive",
+  changes_requested: "outline",
 };
 
 const approvalStatusIcons: Record<string, typeof Clock> = {
@@ -45,12 +47,7 @@ const approvalStatusIcons: Record<string, typeof Clock> = {
   approved: CheckCircle,
   published: CheckCircle,
   rejected: XCircle,
-};
-
-const ownerStatusLabels: Record<string, string> = {
-  active: "Activa",
-  suspended: "Suspendida",
-  rented: "Rentada",
+  changes_requested: FileEdit,
 };
 
 const ownerStatusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -65,10 +62,73 @@ const ownerStatusIcons: Record<string, typeof Home> = {
   rented: Lock,
 };
 
+// Translation key mapping for status labels
+const approvalStatusTranslationKeys: Record<string, string> = {
+  draft: "propertyStatus.draft",
+  pending: "propertyStatus.pending",
+  pending_review: "propertyStatus.pendingReview",
+  approved: "propertyStatus.approved",
+  published: "propertyStatus.published",
+  rejected: "propertyStatus.rejected",
+  changes_requested: "propertyStatus.changesRequested",
+};
+
+const ownerStatusTranslationKeys: Record<string, string> = {
+  active: "propertyStatus.active",
+  suspended: "propertyStatus.suspended",
+  rented: "propertyStatus.rented",
+};
+
+// Priority-based badge determination
+// Priority order: suspended/rented (highest) > changes_requested > rejected > pending_review > pending > draft > approved > published (lowest)
+function getPrimaryBadge(property: Property, t: (key: string) => string) {
+  // Priority 1: ownerStatus (suspended/rented) - highest priority
+  if (property.ownerStatus === "suspended") {
+    return {
+      type: "owner" as const,
+      label: t(ownerStatusTranslationKeys.suspended),
+      color: ownerStatusColors.suspended,
+      icon: ownerStatusIcons.suspended,
+    };
+  }
+  if (property.ownerStatus === "rented") {
+    return {
+      type: "owner" as const,
+      label: t(ownerStatusTranslationKeys.rented),
+      color: ownerStatusColors.rented,
+      icon: ownerStatusIcons.rented,
+    };
+  }
+
+  // Priority 2-8: approvalStatus based on explicit priority order
+  // Lower index = higher priority (more important to show)
+  const approvalPriorityOrder: Array<string> = [
+    "changes_requested",  // Requires owner action
+    "rejected",           // Terminal negative state
+    "pending_review",     // Waiting for admin
+    "pending",            // Waiting for first review
+    "draft",              // Not submitted yet
+    "approved",           // Approved but not visible yet
+    "published"           // Everything OK
+  ];
+
+  const currentStatus = property.approvalStatus || "draft";
+  const translationKey = approvalStatusTranslationKeys[currentStatus] || "propertyStatus.draft";
+  const Icon = approvalStatusIcons[currentStatus] || AlertCircle;
+  
+  return {
+    type: "approval" as const,
+    label: t(translationKey),
+    color: approvalStatusColors[currentStatus] || "secondary",
+    icon: Icon,
+  };
+}
+
 export default function MyProperties() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [showLimitRequestDialog, setShowLimitRequestDialog] = useState(false);
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
@@ -123,11 +183,127 @@ export default function MyProperties() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">Mis Propiedades</h1>
-          <p className="text-muted-foreground mt-1">
-            Gestiona y administra tus propiedades ({propertyCount}/{propertyLimit})
-          </p>
+        <div className="flex items-center gap-2">
+          <div>
+            <h1 className="text-3xl font-bold" data-testid="text-page-title">Mis Propiedades</h1>
+            <p className="text-muted-foreground mt-1">
+              Gestiona y administra tus propiedades ({propertyCount}/{propertyLimit})
+            </p>
+          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                data-testid="button-help-states"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{t("propertyStates.helpTitle")}</DialogTitle>
+                <DialogDescription>
+                  {t("propertyStates.helpDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm">{t("propertyStates.availabilityTitle")}</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-3">
+                      <Badge variant="secondary" className="gap-1 shrink-0">
+                        <Pause className="h-3 w-3" />
+                        {t("propertyStates.suspendedLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.suspendedDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="outline" className="gap-1 shrink-0">
+                        <Lock className="h-3 w-3" />
+                        {t("propertyStates.rentedLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.rentedDesc")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm">{t("propertyStates.approvalTitle")}</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-3">
+                      <Badge variant="outline" className="gap-1 shrink-0">
+                        <FileEdit className="h-3 w-3" />
+                        {t("propertyStates.changesRequestedLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.changesRequestedDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="destructive" className="gap-1 shrink-0">
+                        <XCircle className="h-3 w-3" />
+                        {t("propertyStates.rejectedLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.rejectedDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="outline" className="gap-1 shrink-0">
+                        <Clock className="h-3 w-3" />
+                        {t("propertyStates.pendingReviewLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.pendingReviewDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="outline" className="gap-1 shrink-0">
+                        <Clock className="h-3 w-3" />
+                        {t("propertyStates.pendingLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.pendingDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="secondary" className="gap-1 shrink-0">
+                        <AlertCircle className="h-3 w-3" />
+                        {t("propertyStates.draftLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.draftDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="default" className="gap-1 shrink-0">
+                        <CheckCircle className="h-3 w-3" />
+                        {t("propertyStates.approvedLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.approvedDesc")}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="default" className="gap-1 shrink-0">
+                        <CheckCircle className="h-3 w-3" />
+                        {t("propertyStates.publishedLabel")}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        {t("propertyStates.publishedDesc")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="flex gap-2">
           {isAtLimit ? (
@@ -188,8 +364,8 @@ export default function MyProperties() {
       ) : (
         <div className="space-y-2">
           {properties.map((property) => {
-            const statusKey = property.approvalStatus || "draft";
-            const StatusIcon = approvalStatusIcons[statusKey] || AlertCircle;
+            const primaryBadge = getPrimaryBadge(property, t);
+            const BadgeIcon = primaryBadge.icon;
             
             return (
               <Card
@@ -225,26 +401,14 @@ export default function MyProperties() {
                         {property.title}
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* Show ownerStatus badge if not active */}
-                        {property.ownerStatus && property.ownerStatus !== "active" && (
-                          <Badge
-                            variant={ownerStatusColors[property.ownerStatus] || "secondary"}
-                            className="gap-1 text-xs"
-                          >
-                            {(() => {
-                              const OwnerIcon = ownerStatusIcons[property.ownerStatus];
-                              return OwnerIcon ? <OwnerIcon className="h-2.5 w-2.5" /> : null;
-                            })()}
-                            {ownerStatusLabels[property.ownerStatus] || property.ownerStatus}
-                          </Badge>
-                        )}
-                        {/* Show approvalStatus badge */}
+                        {/* Show only primary badge based on priority */}
                         <Badge
-                          variant={approvalStatusColors[statusKey] || "secondary"}
+                          variant={primaryBadge.color}
                           className="gap-1 text-xs"
+                          data-testid={`badge-status-${property.id}`}
                         >
-                          <StatusIcon className="h-2.5 w-2.5" />
-                          {approvalStatusLabels[statusKey] || statusKey}
+                          <BadgeIcon className="h-2.5 w-2.5" />
+                          {primaryBadge.label}
                         </Badge>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
