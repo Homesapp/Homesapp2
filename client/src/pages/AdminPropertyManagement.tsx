@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield, Calendar } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 type AccessInfo = 
   | {
@@ -64,6 +68,11 @@ type PropertyStats = {
   featured: number;
 };
 
+const scheduleInspectionSchema = z.object({
+  inspectorId: z.string().min(1, "Debes seleccionar un conserje"),
+  inspectionDate: z.string().min(1, "Debes seleccionar una fecha"),
+});
+
 export default function AdminPropertyManagement() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -72,6 +81,36 @@ export default function AdminPropertyManagement() {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [detailProperty, setDetailProperty] = useState<Property | null>(null);
+  const [scheduleInspectionProperty, setScheduleInspectionProperty] = useState<Property | null>(null);
+
+  // Schedule inspection form
+  const scheduleForm = useForm<z.infer<typeof scheduleInspectionSchema>>({
+    resolver: zodResolver(scheduleInspectionSchema),
+    defaultValues: {
+      inspectorId: "",
+      inspectionDate: "",
+    },
+  });
+
+  const handleScheduleInspection = (values: z.infer<typeof scheduleInspectionSchema>) => {
+    if (!scheduleInspectionProperty) return;
+    
+    scheduleInspectionMutation.mutate({
+      propertyId: scheduleInspectionProperty.id,
+      inspectorId: values.inspectorId,
+      inspectionDate: values.inspectionDate,
+    });
+  };
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (scheduleInspectionProperty) {
+      scheduleForm.reset({
+        inspectorId: "",
+        inspectionDate: "",
+      });
+    }
+  }, [scheduleInspectionProperty]);
 
   // Fetch appointments for selected property
   const { data: propertyAppointments = [] } = useQuery({
@@ -97,6 +136,12 @@ export default function AdminPropertyManagement() {
   const { data: allProviders = [] } = useQuery<any[]>({
     queryKey: ["/api", "users", "role", "provider"],
     enabled: !!detailProperty?.id,
+  });
+
+  // Fetch all concierges for inspection scheduling
+  const { data: allConcierges = [] } = useQuery<any[]>({
+    queryKey: ["/api", "users", "role", "concierge"],
+    enabled: !!scheduleInspectionProperty,
   });
 
   // Fetch stats
@@ -183,6 +228,24 @@ export default function AdminPropertyManagement() {
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo publicar la propiedad", variant: "destructive" });
+    },
+  });
+
+  // Schedule inspection mutation (documents_validated → inspection_scheduled)
+  const scheduleInspectionMutation = useMutation({
+    mutationFn: (data: { propertyId: string; inspectorId: string; inspectionDate: string }) =>
+      apiRequest("POST", `/api/properties/${data.propertyId}/schedule-inspection`, { 
+        inspectorId: data.inspectorId, 
+        inspectionDate: data.inspectionDate 
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      setScheduleInspectionProperty(null);
+      toast({ title: "Inspección programada", description: "La inspección ha sido programada exitosamente" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo programar la inspección", variant: "destructive" });
     },
   });
 
@@ -860,8 +923,8 @@ export default function AdminPropertyManagement() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                // TODO: Open schedule inspection dialog
-                                toast({ title: "Próximamente", description: "Funcionalidad de programar inspección en desarrollo" });
+                                setScheduleInspectionProperty(property);
+                                scheduleForm.reset();
                               }}
                               className="gap-2"
                             >
@@ -930,6 +993,84 @@ export default function AdminPropertyManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Schedule Inspection Dialog */}
+      <Dialog open={!!scheduleInspectionProperty} onOpenChange={(open) => !open && setScheduleInspectionProperty(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Programar Inspección</DialogTitle>
+            <DialogDescription>
+              {scheduleInspectionProperty?.title}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...scheduleForm}>
+            <form onSubmit={scheduleForm.handleSubmit(handleScheduleInspection)} className="space-y-4">
+              <FormField
+                control={scheduleForm.control}
+                name="inspectorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Conserje Inspector</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-inspector">
+                          <SelectValue placeholder="Selecciona un conserje" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {allConcierges.map((concierge: any) => (
+                          <SelectItem key={concierge.id} value={concierge.id}>
+                            {concierge.firstName} {concierge.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={scheduleForm.control}
+                name="inspectionDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha y Hora de Inspección</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="datetime-local"
+                        data-testid="input-inspection-date"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setScheduleInspectionProperty(null)}
+                  data-testid="button-cancel-schedule"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={scheduleInspectionMutation.isPending}
+                  data-testid="button-confirm-schedule"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Programar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
