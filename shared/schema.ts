@@ -123,6 +123,32 @@ export const auditActionEnum = pgEnum("audit_action", [
   "assign",
 ]);
 
+export const propertyDocumentCategoryEnum = pgEnum("property_document_category", [
+  "persona_fisica",
+  "persona_moral",
+  "optional",
+]);
+
+export const propertyDocumentTypeEnum = pgEnum("property_document_type", [
+  // Persona Física
+  "ife_ine_frente",
+  "ife_ine_reverso",
+  "pasaporte",
+  "legal_estancia",
+  "escrituras",
+  "contrato_compraventa",
+  "fideicomiso",
+  "recibo_agua",
+  "recibo_luz",
+  "recibo_internet",
+  "comprobante_no_adeudo",
+  // Persona Moral
+  "acta_constitutiva",
+  // Opcionales
+  "reglas_internas",
+  "reglamento_condominio",
+]);
+
 export const roleRequestStatusEnum = pgEnum("role_request_status", [
   "pending",
   "approved",
@@ -885,6 +911,36 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
 
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
+
+// Property Documents table
+export const propertyDocuments = pgTable("property_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  documentType: propertyDocumentTypeEnum("document_type").notNull(),
+  category: propertyDocumentCategoryEnum("category").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"), // en bytes
+  mimeType: text("mime_type"),
+  isRequired: boolean("is_required").notNull().default(true),
+  isValidated: boolean("is_validated").notNull().default(false),
+  validatedAt: timestamp("validated_at"),
+  validatedBy: varchar("validated_by").references(() => users.id),
+  validationNotes: text("validation_notes"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertyDocumentSchema = createInsertSchema(propertyDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  uploadedAt: true,
+});
+
+export type InsertPropertyDocument = z.infer<typeof insertPropertyDocumentSchema>;
+export type PropertyDocument = typeof propertyDocuments.$inferSelect;
 
 // Colonies table
 export const colonies = pgTable("colonies", {
@@ -2655,6 +2711,18 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   staff: many(propertyStaff),
   budgets: many(budgets),
   tasks: many(tasks),
+  documents: many(propertyDocuments),
+}));
+
+export const propertyDocumentsRelations = relations(propertyDocuments, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyDocuments.propertyId],
+    references: [properties.id],
+  }),
+  validator: one(users, {
+    fields: [propertyDocuments.validatedBy],
+    references: [users.id],
+  }),
 }));
 
 export const propertyStaffRelations = relations(propertyStaff, ({ one }) => ({
