@@ -63,22 +63,34 @@ import type { Property } from "@shared/schema";
 
 const approvalStatusLabels: Record<string, string> = {
   draft: "Borrador",
-  pending: "Pendiente",
+  pending_review: "En Revisión",
+  inspection_scheduled: "Inspección Programada",
+  inspection_completed: "Inspección Completada",
   approved: "Aprobado",
+  published: "Publicada",
+  changes_requested: "Cambios Solicitados",
   rejected: "Rechazado",
 };
 
 const approvalStatusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "secondary",
-  pending: "outline",
+  pending_review: "outline",
+  inspection_scheduled: "outline",
+  inspection_completed: "outline",
   approved: "default",
+  published: "default",
+  changes_requested: "outline",
   rejected: "destructive",
 };
 
 const approvalStatusIcons: Record<string, typeof Clock> = {
   draft: AlertCircle,
-  pending: Clock,
+  pending_review: Clock,
+  inspection_scheduled: Calendar,
+  inspection_completed: CheckCircle,
   approved: CheckCircle,
+  published: CheckCircle,
+  changes_requested: AlertCircle,
   rejected: XCircle,
 };
 
