@@ -84,9 +84,9 @@ export function AppointmentSchedulingDialog({
     enabled: open,
   });
 
-  // Fetch available properties for tour
+  // Fetch available properties for tour (approved/published properties)
   const { data: availableProperties } = useQuery<Property[]>({
-    queryKey: ["/api/properties/search"],
+    queryKey: ["/api/properties", { status: "approved" }],
     enabled: open && showPropertySearch,
   });
 
@@ -520,6 +520,55 @@ export function AppointmentSchedulingDialog({
           </Form>
         </div>
       </DialogContent>
+
+      {/* Property Search Dialog */}
+      <Dialog open={showPropertySearch} onOpenChange={setShowPropertySearch}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-add-property">
+          <DialogHeader>
+            <DialogTitle>Agregar propiedad al tour</DialogTitle>
+            <DialogDescription>
+              Selecciona propiedades adicionales para incluir en el tour
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {availableProperties && availableProperties.length > 0 ? (
+              availableProperties
+                .filter(prop => !selectedProperties.find(p => p.id === prop.id))
+                .map((prop) => (
+                  <div
+                    key={prop.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
+                    onClick={() => {
+                      addPropertyToTour(prop);
+                      setShowPropertySearch(false);
+                    }}
+                    data-testid={`available-property-${prop.id}`}
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{prop.title}</div>
+                      <div className="text-sm text-muted-foreground">{prop.location}</div>
+                      <div className="text-sm font-semibold text-primary mt-1">
+                        ${prop.pricePerMonth?.toLocaleString()}/mes
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      data-testid={`button-select-property-${prop.id}`}
+                    >
+                      Seleccionar
+                    </Button>
+                  </div>
+                ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay propiedades disponibles
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
