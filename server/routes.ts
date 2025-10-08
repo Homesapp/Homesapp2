@@ -642,6 +642,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { role } = validationResult.data;
 
+      // SECURITY: Define admin-level roles that can NEVER be switched to via this endpoint
+      // These roles require explicit assignment by master users only
+      const ADMIN_ROLES = ["master", "admin", "admin_jr"];
+      
+      // SECURITY: Define roles that are safe for user-initiated switching
+      const SWITCHABLE_ROLES = ["cliente", "owner", "seller", "accountant", "management", "concierge", "provider", "abogado", "contador", "agente_servicios_especiales"];
+
+      // CRITICAL SECURITY CHECK: Prevent privilege escalation to admin roles
+      if (ADMIN_ROLES.includes(role)) {
+        return res.status(403).json({ 
+          message: "Los roles administrativos solo pueden ser asignados por un administrador master" 
+        });
+      }
+
+      // Validate role is in switchable set
+      if (!SWITCHABLE_ROLES.includes(role)) {
+        return res.status(400).json({ 
+          message: "Rol inválido" 
+        });
+      }
+
       // Get current user data to check their approved roles
       const currentUser = await storage.getUser(userId);
       if (!currentUser) {
@@ -651,20 +672,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // User can always switch between owner and cliente (base roles)
       const isBaseRole = role === "owner" || role === "cliente";
       
-      // User can switch to their approved additional role
-      const isApprovedAdditionalRole = role === currentUser.additionalRole;
+      // User can switch to their approved additional role (only if it's switchable)
+      const isApprovedAdditionalRole = 
+        role === currentUser.additionalRole && 
+        SWITCHABLE_ROLES.includes(role);
 
       if (!isBaseRole && !isApprovedAdditionalRole) {
         return res.status(400).json({ 
           message: "Solo puedes cambiar a roles que tienes aprobados" 
-        });
-      }
-      
-      // Additional validation: ensure role is in valid set
-      const validRoles = ["cliente", "owner", "seller", "admin", "admin_jr", "master", "accountant"];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({ 
-          message: "Rol inválido" 
         });
       }
 
