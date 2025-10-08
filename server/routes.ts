@@ -109,19 +109,36 @@ import { eq, and, inArray, desc } from "drizzle-orm";
 
 // Helper function to create audit logs
 async function createAuditLog(
-  req: Request & { user?: any },
+  req: Request & { user?: any; session?: any },
   action: "create" | "update" | "delete" | "view" | "approve" | "reject" | "assign",
   entityType: string,
   entityId: string | null,
   details?: string
 ) {
   try {
-    const userId = req.user?.claims?.sub;
+    // Get userId from either admin session or regular auth
+    let userId: string | null = null;
+    
+    if (req.session?.adminUser) {
+      // Admin session - use admin user ID
+      userId = req.session.adminUser.id;
+    } else if (req.user?.claims?.sub) {
+      // Regular Replit Auth - use claims sub
+      userId = req.user.claims.sub;
+    }
+    
     if (!userId) return;
 
     const ipAddress = req.ip || req.socket.remoteAddress || null;
     const userAgent = req.get("user-agent") || null;
 
+    // Only create audit log if userId exists in users table
+    // For admin users, we skip audit logging since they're in admin_users table
+    if (req.session?.adminUser) {
+      // Skip audit logging for admin sessions as admin IDs don't exist in users table
+      return;
+    }
+    
     await storage.createAuditLog({
       userId,
       action,
