@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type Property } from "@shared/schema";
 import { RentalOpportunityRequestDialog } from "@/components/RentalOpportunityRequestDialog";
+import { AuthRequiredDialog } from "@/components/AuthRequiredDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +22,7 @@ export default function PropertyFullDetails() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [showSORDialog, setShowSORDialog] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ["/api/properties", params?.id],
@@ -275,11 +277,7 @@ export default function PropertyFullDetails() {
                   size="lg" 
                   onClick={() => {
                     if (!isAuthenticated) {
-                      toast({
-                        title: "Inicia sesión para solicitar",
-                        description: "Debes iniciar sesión para solicitar una oportunidad de renta",
-                        variant: "destructive",
-                      });
+                      setShowAuthDialog(true);
                       return;
                     }
                     setShowSORDialog(true);
@@ -331,6 +329,11 @@ export default function PropertyFullDetails() {
           property={property}
         />
       )}
+
+      <AuthRequiredDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+      />
     </div>
   );
 }

@@ -3491,13 +3491,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.allowsSubleasing = allowsSubleasing === "true";
       }
 
-      // Only show approved or published properties to non-authenticated users
-      // This is a security-critical check - always override approvalStatus for non-authenticated users
+      // Only show published properties in public search (home and search pages) for non-authenticated users
+      // Authenticated users (especially admin) can see all properties
       const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
       if (!isUserAuthenticated) {
-        // Defensively delete any approvalStatus that might have been set and force the correct values
+        // Defensively delete any approvalStatus that might have been set and force published only
         delete filters.approvalStatus;
-        filters.approvalStatus = ["approved", "published"];
+        filters.approvalStatus = ["published"];
       }
 
       const properties = await storage.searchPropertiesAdvanced(filters);

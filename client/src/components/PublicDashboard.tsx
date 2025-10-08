@@ -300,9 +300,9 @@ export default function PublicDashboard() {
               ]}
               className="w-full"
             >
-              <CarouselContent className="-ml-2 md:-ml-4">
+              <CarouselContent className="-ml-2 md:-ml-3">
                 {featuredProperties.map((property) => (
-                  <CarouselItem key={property.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
+                  <CarouselItem key={property.id} className="pl-2 md:pl-3 sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <div
                       className="group cursor-pointer overflow-hidden rounded-lg border bg-card hover-elevate active-elevate-2"
                       onClick={() => setLocation(`/propiedad/${property.id}/completo`)}
@@ -321,6 +321,9 @@ export default function PublicDashboard() {
                             <Home className="h-16 w-16 text-muted-foreground" />
                           </div>
                         )}
+                        <Badge className="absolute left-3 top-3 bg-secondary" data-testid={`badge-status-${property.id}`}>
+                          {property.status === "rent" ? "Renta" : property.status === "sale" ? "Venta" : "Renta/Venta"}
+                        </Badge>
                         <Badge className="absolute right-3 top-3 bg-primary text-primary-foreground" data-testid={`badge-price-${property.id}`}>
                           ${property.price.toLocaleString()}
                         </Badge>
@@ -624,7 +627,10 @@ export default function PublicDashboard() {
                       <Home className="h-12 w-12 text-muted-foreground" />
                     </div>
                   )}
-                  <Badge className="absolute right-2 top-2" data-testid={`badge-all-price-${property.id}`}>
+                  <Badge className="absolute left-2 top-2 bg-secondary text-xs" data-testid={`badge-all-status-${property.id}`}>
+                    {property.status === "rent" ? "Renta" : property.status === "sale" ? "Venta" : "Renta/Venta"}
+                  </Badge>
+                  <Badge className="absolute right-2 top-2 text-xs" data-testid={`badge-all-price-${property.id}`}>
                     ${property.price.toLocaleString()}
                   </Badge>
                 </div>

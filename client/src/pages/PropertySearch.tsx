@@ -184,9 +184,9 @@ export default function PropertySearch() {
       {/* Public Header - Only show when not authenticated */}
       {!isAuthenticated && (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4 gap-2">
+          <div className="container mx-auto flex h-16 items-center justify-between px-4 gap-2">
             <div className="flex items-center cursor-pointer" onClick={() => setLocation("/")}>
-              <img src={logoIcon} alt="HomesApp" className="h-12 md:h-16 w-auto" />
+              <img src={logoIcon} alt="HomesApp" className="h-8 sm:h-10 md:h-12 w-auto" />
             </div>
             <div className="flex items-center gap-1 md:gap-2">
               <LanguageToggle />
@@ -476,7 +476,7 @@ export default function PropertySearch() {
                 <div className="mb-4 text-sm text-muted-foreground">
                   {properties.length} {properties.length === 1 ? "propiedad encontrada" : "propiedades encontradas"}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {properties.map((property) => (
                     <Card 
                       key={property.id} 
@@ -505,6 +505,9 @@ export default function PropertySearch() {
                             alt={property.title}
                             className="w-full h-full object-cover"
                           />
+                          <Badge className="absolute top-2 left-2 bg-secondary" data-testid={`badge-status-${property.id}`}>
+                            {property.status === "rent" ? "Renta" : property.status === "sale" ? "Venta" : "Renta/Venta"}
+                          </Badge>
                           {property.featured && (
                             <Badge className="absolute top-2 right-2">
                               Destacada
