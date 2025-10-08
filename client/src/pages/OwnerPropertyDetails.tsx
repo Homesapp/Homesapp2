@@ -211,59 +211,95 @@ export default function OwnerPropertyDetails() {
       {property && (
         <>
           {/* Photo Gallery */}
-          {property.images && property.images.length > 0 && (
+          {((property.primaryImages && property.primaryImages.length > 0) || (property.images && property.images.length > 0)) && (
           <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-lg">Galería de Fotos</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(`/owner/property/${id}/edit`)}
+                data-testid="button-edit-photos"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Editar Fotos
+              </Button>
+            </CardHeader>
             <div className="relative h-72">
-              <img
-                src={property.images[currentImageIndex]}
-                alt={`${property.title} - imagen ${currentImageIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
-              {property.images.length > 1 && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
-                    onClick={() =>
-                      setCurrentImageIndex((prev) =>
-                        prev === 0 ? property.images!.length - 1 : prev - 1
-                      )
-                    }
-                    data-testid="button-prev-image"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
-                    onClick={() =>
-                      setCurrentImageIndex((prev) =>
-                        prev === property.images!.length - 1 ? 0 : prev + 1
-                      )
-                    }
-                    data-testid="button-next-image"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                    {property.images.map((_, index) => (
-                      <button
-                        key={index}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          index === currentImageIndex
-                            ? "bg-white w-6"
-                            : "bg-white/50"
-                        }`}
-                        onClick={() => setCurrentImageIndex(index)}
-                        data-testid={`button-image-indicator-${index}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
+              {(() => {
+                const allImages = [
+                  ...(property.primaryImages || []),
+                  ...(property.secondaryImages || []),
+                  ...(property.images || [])
+                ].filter((img, index, self) => img && self.indexOf(img) === index); // Remove duplicates
+                const currentImage = allImages[currentImageIndex] || (property.images && property.images[0]);
+                
+                return (
+                  <>
+                    <img
+                      src={currentImage}
+                      alt={`${property.title} - imagen ${currentImageIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {allImages.length > 1 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
+                          onClick={() =>
+                            setCurrentImageIndex((prev) =>
+                              prev === 0 ? allImages.length - 1 : prev - 1
+                            )
+                          }
+                          data-testid="button-prev-image"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
+                          onClick={() =>
+                            setCurrentImageIndex((prev) =>
+                              prev === allImages.length - 1 ? 0 : prev + 1
+                            )
+                          }
+                          data-testid="button-next-image"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                          {allImages.map((_, index) => (
+                            <button
+                              key={index}
+                              className={`w-2 h-2 rounded-full transition-all ${
+                                index === currentImageIndex
+                                  ? "bg-white w-6"
+                                  : "bg-white/50"
+                              }`}
+                              onClick={() => setCurrentImageIndex(index)}
+                              data-testid={`button-image-indicator-${index}`}
+                            />
+                          ))}
+                        </div>
+                        <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                          {currentImageIndex + 1} / {allImages.length}
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
+            {property.primaryImages && property.primaryImages.length > 0 && (
+              <CardFooter className="flex flex-col items-start gap-2 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  {property.primaryImages.length} foto{property.primaryImages.length > 1 ? 's' : ''} principal{property.primaryImages.length > 1 ? 'es' : ''}
+                  {property.secondaryImages && property.secondaryImages.length > 0 && ` • ${property.secondaryImages.length} foto${property.secondaryImages.length > 1 ? 's' : ''} secundaria${property.secondaryImages.length > 1 ? 's' : ''}`}
+                </p>
+              </CardFooter>
+            )}
           </Card>
           )}
 
@@ -522,6 +558,104 @@ export default function OwnerPropertyDetails() {
             {/* Access Information */}
             {property.accessInfo && (
               <AccessInfoSection accessInfo={property.accessInfo as any} />
+            )}
+
+            {/* Videos and Virtual Tour */}
+            {((property.videos && property.videos.length > 0) || property.virtualTourUrl) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Multimedia</CardTitle>
+                  <CardDescription>Videos y tours virtuales de la propiedad</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {property.virtualTourUrl && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Tour Virtual 360°</label>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full gap-2 mt-2"
+                        onClick={() => window.open(property.virtualTourUrl!, "_blank")}
+                        data-testid="button-virtual-tour"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Abrir Tour Virtual
+                      </Button>
+                    </div>
+                  )}
+                  {property.videos && property.videos.length > 0 && (
+                    <>
+                      {property.virtualTourUrl && <Separator />}
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Videos ({property.videos.length})
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                          {property.videos.map((video, index) => (
+                            <Button
+                              key={index}
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => window.open(video, "_blank")}
+                              data-testid={`button-video-${index}`}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Video {index + 1}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Specifications */}
+            {property.specifications && Object.keys(property.specifications).length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Especificaciones Adicionales</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Object.entries(property.specifications as Record<string, any>).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground capitalize">
+                          {key.replace(/_/g, " ")}
+                        </label>
+                        <p className="text-sm" data-testid={`spec-${key}`}>
+                          {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* GPS Coordinates */}
+            {(property.latitude || property.longitude) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Coordenadas GPS</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {property.latitude && (
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-muted-foreground">Latitud</label>
+                      <p className="text-sm font-mono" data-testid="text-latitude">{property.latitude}</p>
+                    </div>
+                  )}
+                  {property.longitude && (
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-muted-foreground">Longitud</label>
+                      <p className="text-sm font-mono" data-testid="text-longitude">{property.longitude}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
