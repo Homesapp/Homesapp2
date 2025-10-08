@@ -3696,6 +3696,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Request reschedule for appointment (owner requests new date)
+  app.patch("/api/owner/appointments/:id/request-reschedule", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { rescheduleRequestedDate, rescheduleNotes } = req.body;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !["owner", "seller", "admin", "admin_jr", "master"].includes(user.role)) {
+        return res.status(403).json({ message: "Acceso denegado" });
+      }
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Cita no encontrada" });
+      }
+
+      const property = await storage.getProperty(appointment.propertyId);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+
+      // Verify owner
+      if (property.ownerId !== userId && !["admin", "admin_jr", "master"].includes(user.role)) {
+        return res.status(403).json({ message: "No eres el propietario de esta propiedad" });
+      }
+
+      // Update appointment with reschedule request
+      const updated = await storage.updateAppointment(id, {
+        rescheduleStatus: "requested",
+        rescheduleRequestedDate: new Date(rescheduleRequestedDate),
+        rescheduleNotes: rescheduleNotes || null,
+      });
+
+      await createAuditLog(
+        req,
+        "update",
+        "appointment",
+        id,
+        `Solicitud de reprogramación enviada`
+      );
+
+      // Notify client about reschedule request
+      const notifications: Promise<any>[] = [];
+      
+      notifications.push(
+        storage.createNotification({
+          userId: appointment.clientId,
+          type: "appointment",
+          title: "Solicitud de Reprogramación",
+          message: `El propietario solicita reprogramar la cita del ${new Date(appointment.date).toLocaleDateString()} al ${new Date(rescheduleRequestedDate).toLocaleDateString()}`,
+          relatedEntityType: "appointment",
+          relatedEntityId: appointment.id,
+          priority: "high",
+        })
+      );
+
+      // Notify concierge if assigned
+      if (appointment.conciergeId) {
+        notifications.push(
+          storage.createNotification({
+            userId: appointment.conciergeId,
+            type: "appointment",
+            title: "Cita - Solicitud de Reprogramación",
+            message: `Solicitud de reprogramación para ${property.title} del ${new Date(appointment.date).toLocaleDateString()} al ${new Date(rescheduleRequestedDate).toLocaleDateString()}`,
+            relatedEntityType: "appointment",
+            relatedEntityId: appointment.id,
+            priority: "medium",
+          })
+        );
+      }
+      
+      // Create all notifications
+      await Promise.all(notifications);
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error requesting reschedule:", error);
+      res.status(500).json({ message: error.message || "Error al solicitar reprogramación" });
+    }
+  });
+
   // Admin auto-approve appointments (bypass owner approval)
   app.patch("/api/admin/appointments/:id/auto-approve", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
     try {

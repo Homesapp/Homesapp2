@@ -7,13 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, MapPin, User, Settings, Filter, ChevronDown, ChevronRight, Phone, Mail, Globe, CreditCard, MessageCircle, Star, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, MapPin, User, Settings, Filter, ChevronDown, ChevronRight, Phone, Mail, Globe, CreditCard, MessageCircle, Star, Eye, CalendarClock } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval, startOfDay, endOfDay, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Appointment, Property, OwnerSettings } from "@shared/schema";
@@ -60,13 +61,16 @@ export default function OwnerAppointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OwnerApprovalStatus | "all">("pending");
+  const [statusFilter, setStatusFilter] = useState<OwnerApprovalStatus | "all" | "archived">("pending");
   const [visitTypeFilter, setVisitTypeFilter] = useState<string>("all");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [petPhotoDialogOpen, setPetPhotoDialogOpen] = useState(false);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>();
+  const [rescheduleNotes, setRescheduleNotes] = useState("");
   const { toast } = useToast();
 
   const { data: allAppointments = [], isLoading } = useQuery<AppointmentWithDetails[]>({
@@ -94,9 +98,19 @@ export default function OwnerAppointments() {
   const filteredAppointments = useMemo(() => {
     let filtered = allAppointments;
     
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(apt => apt.ownerApprovalStatus === statusFilter);
+    // Filter by status - solo oculta completed y cancelled
+    if (statusFilter === "archived") {
+      filtered = filtered.filter(apt => apt.status === "completed" || apt.status === "cancelled");
+    } else if (statusFilter !== "all") {
+      // Para pending, approved, rejected - mostrar solo esas y excluir archived
+      filtered = filtered.filter(apt => 
+        apt.ownerApprovalStatus === statusFilter && 
+        apt.status !== "completed" && 
+        apt.status !== "cancelled"
+      );
+    } else {
+      // "all" muestra todas excepto archived
+      filtered = filtered.filter(apt => apt.status !== "completed" && apt.status !== "cancelled");
     }
     
     // Filter by visit type
@@ -201,6 +215,33 @@ export default function OwnerAppointments() {
     },
   });
 
+  const requestRescheduleMutation = useMutation({
+    mutationFn: async ({ id, newDate, notes }: { id: string; newDate: Date; notes?: string }) => {
+      return apiRequest("PATCH", `/api/owner/appointments/${id}/request-reschedule`, { 
+        rescheduleRequestedDate: newDate.toISOString(),
+        rescheduleNotes: notes 
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Solicitud enviada",
+        description: "Se ha enviado la solicitud de reprogramación al cliente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      setRescheduleDialogOpen(false);
+      setSelectedAppointment(null);
+      setRescheduleDate(undefined);
+      setRescheduleNotes("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo solicitar la reprogramación",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleAutoApprove = (enabled: boolean) => {
     updateSettingsMutation.mutate({ autoApproveAppointments: enabled });
   };
@@ -225,6 +266,23 @@ export default function OwnerAppointments() {
     } else if (reviewAction === "reject") {
       rejectMutation.mutate({ id: selectedAppointment.id, notes: reviewNotes });
     }
+  };
+
+  const handleOpenReschedule = (appointment: AppointmentWithDetails) => {
+    setSelectedAppointment(appointment);
+    setRescheduleDialogOpen(true);
+    setRescheduleDate(new Date(appointment.date));
+    setRescheduleNotes("");
+  };
+
+  const handleSubmitReschedule = () => {
+    if (!selectedAppointment || !rescheduleDate) return;
+    
+    requestRescheduleMutation.mutate({
+      id: selectedAppointment.id,
+      newDate: rescheduleDate,
+      notes: rescheduleNotes
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -297,6 +355,23 @@ export default function OwnerAppointments() {
       const aptDate = new Date(apt.date);
       return isSameDay(aptDate, day);
     });
+  };
+
+  const getEventColor = (appointment: AppointmentWithDetails): string => {
+    // Verde: aprobada
+    if (appointment.ownerApprovalStatus === "approved" && appointment.rescheduleStatus === "none") {
+      return "border-green-500 bg-green-50";
+    }
+    // Amarilla: reprogramada (requested o approved)
+    if (appointment.rescheduleStatus === "requested" || appointment.rescheduleStatus === "approved") {
+      return "border-yellow-500 bg-yellow-50";
+    }
+    // Roja: cancelada o rechazada
+    if (appointment.status === "cancelled" || appointment.ownerApprovalStatus === "rejected") {
+      return "border-red-500 bg-red-50";
+    }
+    // Gris: pendiente
+    return "border-gray-300 bg-gray-50";
   };
 
   const handlePrevWeek = () => {
@@ -488,7 +563,7 @@ export default function OwnerAppointments() {
                         key={apt.id}
                         variant="outline"
                         size="sm"
-                        className="w-full justify-start text-left h-auto py-2"
+                        className={`w-full justify-start text-left h-auto py-2 ${getEventColor(apt)}`}
                         onClick={() => setSelectedAppointment(apt)}
                         data-testid={`calendar-event-${apt.id}`}
                       >
@@ -517,16 +592,19 @@ export default function OwnerAppointments() {
         <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
           <TabsList>
             <TabsTrigger value="pending" data-testid="tab-pending">
-              Pendientes ({allAppointments.filter(a => a.ownerApprovalStatus === "pending").length})
+              Pendientes ({allAppointments.filter(a => a.ownerApprovalStatus === "pending" && a.status !== "completed" && a.status !== "cancelled").length})
             </TabsTrigger>
             <TabsTrigger value="approved" data-testid="tab-approved">
-              Aprobadas ({allAppointments.filter(a => a.ownerApprovalStatus === "approved").length})
+              Aprobadas ({allAppointments.filter(a => a.ownerApprovalStatus === "approved" && a.status !== "completed" && a.status !== "cancelled").length})
             </TabsTrigger>
             <TabsTrigger value="rejected" data-testid="tab-rejected">
-              Rechazadas ({allAppointments.filter(a => a.ownerApprovalStatus === "rejected").length})
+              Rechazadas ({allAppointments.filter(a => a.ownerApprovalStatus === "rejected" && a.status !== "completed" && a.status !== "cancelled").length})
             </TabsTrigger>
             <TabsTrigger value="all" data-testid="tab-all">
-              Todas ({allAppointments.length})
+              Todas ({allAppointments.filter(a => a.status !== "completed" && a.status !== "cancelled").length})
+            </TabsTrigger>
+            <TabsTrigger value="archived" data-testid="tab-archived">
+              Archivadas ({allAppointments.filter(a => a.status === "completed" || a.status === "cancelled").length})
             </TabsTrigger>
           </TabsList>
 
@@ -547,8 +625,9 @@ export default function OwnerAppointments() {
                 >
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="flex-1 min-w-0 space-y-3">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-base">
                             {getPropertyDisplay(appointment.property)}
                           </h3>
@@ -560,44 +639,51 @@ export default function OwnerAppointments() {
                           )}
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <CalendarIcon className="w-3.5 h-3.5" />
-                            <span className="truncate">{format(new Date(appointment.date), "dd MMM, HH:mm", { locale: es })}</span>
-                          </div>
-                          
+                        {/* Fecha y ubicación */}
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground flex-wrap">
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-5 w-5">
+                            <CalendarIcon className="w-4 h-4" />
+                            <span>{format(new Date(appointment.date), "dd MMM, HH:mm", { locale: es })}</span>
+                          </div>
+                          {appointment.property?.location && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              <span className="truncate">{appointment.property.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Cliente y Conserje alineados */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
                               {appointment.client?.profileImageUrl && (
                                 <AvatarImage src={appointment.client.profileImageUrl} />
                               )}
-                              <AvatarFallback className="text-[10px]">
+                              <AvatarFallback className="text-xs">
                                 {getInitials(getClientName(appointment.client))}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="truncate text-xs">{getClientName(appointment.client)}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-muted-foreground">Cliente</div>
+                              <div className="font-medium text-sm truncate">{getClientName(appointment.client)}</div>
+                            </div>
                           </div>
-
-                          {appointment.property?.location && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <MapPin className="w-3.5 h-3.5" />
-                              <span className="truncate text-xs">{appointment.property.location}</span>
+                          
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              {appointment.concierge?.profileImageUrl && (
+                                <AvatarImage src={appointment.concierge.profileImageUrl} />
+                              )}
+                              <AvatarFallback className="text-xs">
+                                {appointment.concierge ? getInitials(getConciergeName(appointment.concierge)) : "NA"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-muted-foreground">Conserje</div>
+                              <div className="font-medium text-sm truncate">{getConciergeName(appointment.concierge)}</div>
                             </div>
-                          )}
-
-                          {appointment.concierge && (
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-5 w-5">
-                                {appointment.concierge.profileImageUrl && (
-                                  <AvatarImage src={appointment.concierge.profileImageUrl} />
-                                )}
-                                <AvatarFallback className="text-[10px]">
-                                  {getInitials(getConciergeName(appointment.concierge))}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="truncate text-xs">{getConciergeName(appointment.concierge)}</span>
-                            </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                       
@@ -808,27 +894,44 @@ export default function OwnerAppointments() {
               )}
 
               {/* Actions */}
-              {selectedAppointment.ownerApprovalStatus === "pending" && (
-                <div className="flex gap-2 pt-4 border-t">
+              <div className="flex gap-2 pt-4 border-t">
+                {selectedAppointment.ownerApprovalStatus === "pending" && (
+                  <>
+                    <Button
+                      className="flex-1"
+                      onClick={() => handleOpenReview(selectedAppointment, "approve")}
+                      data-testid="button-approve-dialog"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Aprobar Visita
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="destructive"
+                      onClick={() => handleOpenReview(selectedAppointment, "reject")}
+                      data-testid="button-reject-dialog"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Rechazar Visita
+                    </Button>
+                  </>
+                )}
+                
+                {selectedAppointment.ownerApprovalStatus === "approved" && selectedAppointment.rescheduleStatus === "none" && (
                   <Button
                     className="flex-1"
-                    onClick={() => handleOpenReview(selectedAppointment, "approve")}
-                    data-testid="button-approve-dialog"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedAppointment(selectedAppointment);
+                      handleOpenReschedule(selectedAppointment);
+                    }}
+                    data-testid="button-reschedule-dialog"
                   >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Aprobar Visita
+                    <CalendarClock className="w-4 h-4 mr-2" />
+                    Solicitar Reprogramación
                   </Button>
-                  <Button
-                    className="flex-1"
-                    variant="destructive"
-                    onClick={() => handleOpenReview(selectedAppointment, "reject")}
-                    data-testid="button-reject-dialog"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Rechazar Visita
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -904,6 +1007,86 @@ export default function OwnerAppointments() {
                 : reviewAction === "approve"
                 ? "Aprobar"
                 : "Rechazar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Dialog */}
+      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+        <DialogContent data-testid="dialog-reschedule">
+          <DialogHeader>
+            <DialogTitle>Solicitar Reprogramación</DialogTitle>
+            <DialogDescription>
+              Propón una nueva fecha y hora para esta visita. El cliente deberá aprobar la reprogramación.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {selectedAppointment && (
+              <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">Propiedad:</span>{" "}
+                  {getPropertyDisplay(selectedAppointment.property)}
+                </div>
+                <div>
+                  <span className="font-medium">Cliente:</span>{" "}
+                  {getClientName(selectedAppointment.client)}
+                </div>
+                <div>
+                  <span className="font-medium">Fecha actual:</span>{" "}
+                  {format(new Date(selectedAppointment.date), "dd 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="rescheduleDate">Nueva fecha y hora *</Label>
+              <Input
+                id="rescheduleDate"
+                type="datetime-local"
+                value={rescheduleDate ? format(rescheduleDate, "yyyy-MM-dd'T'HH:mm") : ""}
+                onChange={(e) => setRescheduleDate(new Date(e.target.value))}
+                data-testid="input-reschedule-date"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="rescheduleNotes">Motivo de reprogramación (opcional)</Label>
+              <Textarea
+                id="rescheduleNotes"
+                value={rescheduleNotes}
+                onChange={(e) => setRescheduleNotes(e.target.value)}
+                placeholder="Explica por qué necesitas reprogramar..."
+                rows={3}
+                data-testid="input-reschedule-notes"
+              />
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md text-sm text-yellow-800">
+              <strong>Nota:</strong> El cliente recibirá una notificación para aprobar o rechazar la reprogramación. 
+              Si el cliente rechaza, la cita se cancelará automáticamente.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRescheduleDialogOpen(false);
+                setRescheduleDate(undefined);
+                setRescheduleNotes("");
+              }}
+              data-testid="button-cancel-reschedule"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitReschedule}
+              disabled={!rescheduleDate || requestRescheduleMutation.isPending}
+              data-testid="button-confirm-reschedule"
+            >
+              {requestRescheduleMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
             </Button>
           </DialogFooter>
         </DialogContent>
