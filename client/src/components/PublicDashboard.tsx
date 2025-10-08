@@ -309,9 +309,9 @@ export default function PublicDashboard() {
                       data-testid={`card-property-${property.id}`}
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                        {property.images && property.images[0] ? (
+                        {property.primaryImages && property.primaryImages[0] ? (
                           <img
-                            src={property.images[0]}
+                            src={property.primaryImages[0]}
                             alt={property.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                             data-testid={`img-property-${property.id}`}
@@ -612,9 +612,9 @@ export default function PublicDashboard() {
                 data-testid={`card-all-property-${property.id}`}
               >
                 <div className="relative aspect-square overflow-hidden bg-muted">
-                  {property.images && property.images[0] ? (
+                  {property.primaryImages && property.primaryImages[0] ? (
                     <img
-                      src={property.images[0]}
+                      src={property.primaryImages[0]}
                       alt={property.title}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                       data-testid={`img-all-property-${property.id}`}

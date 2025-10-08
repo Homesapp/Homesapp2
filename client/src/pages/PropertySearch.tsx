@@ -498,10 +498,10 @@ export default function PropertySearch() {
                           />
                         </Button>
                       )}
-                      {property.images && property.images.length > 0 ? (
+                      {property.primaryImages && property.primaryImages.length > 0 ? (
                         <div className="h-48 bg-muted relative overflow-hidden">
                           <img
-                            src={property.images[0]}
+                            src={property.primaryImages[0]}
                             alt={property.title}
                             className="w-full h-full object-cover"
                           />
