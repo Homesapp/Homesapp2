@@ -2037,6 +2037,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Colonia actualizada: ${colony.name}`
       );
 
+      // Invalidate cache after updating colony
+      await cache.invalidate(CacheKeys.coloniesApproved());
+
       res.json(colony);
     } catch (error) {
       console.error("Error updating colony:", error);
@@ -2057,6 +2060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         `Colonia eliminada`
       );
+
+      // Invalidate cache after deleting colony
+      await cache.invalidate(CacheKeys.coloniesApproved());
 
       res.status(204).send();
     } catch (error) {
@@ -2091,6 +2097,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Colonia aprobada: ${colony.name}`
       );
 
+      // Invalidate cache after approving colony
+      await cache.invalidate(CacheKeys.coloniesApproved());
+
       res.json(colony);
     } catch (error) {
       console.error("Error approving colony:", error);
@@ -2117,6 +2126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         `Colonia rechazada: ${colony.name}`
       );
+
+      // Invalidate cache after rejecting colony (removes from approved list)
+      await cache.invalidate(CacheKeys.coloniesApproved());
 
       res.json(colony);
     } catch (error) {
@@ -2784,6 +2796,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Amenidad aprobada: ${amenity.name}`
       );
 
+      // Invalidate cache after approving amenity
+      await cache.invalidate(CacheKeys.amenities());
+
       res.json(amenity);
     } catch (error) {
       console.error("Error approving amenity:", error);
@@ -2809,6 +2824,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         `Amenidad rechazada: ${amenity.name}`
       );
+
+      // Invalidate cache after rejecting amenity (removes from approved list)
+      await cache.invalidate(CacheKeys.amenities());
 
       res.json(amenity);
     } catch (error) {
@@ -2850,6 +2868,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Amenidad actualizada: ${amenity.name}`
       );
 
+      // Invalidate cache after updating amenity
+      await cache.invalidate(CacheKeys.amenities());
+
       res.json(amenity);
     } catch (error) {
       console.error("Error updating amenity:", error);
@@ -2875,6 +2896,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       await storage.deleteAmenity(id);
+      
+      // Invalidate cache after deleting amenity
+      await cache.invalidate(CacheKeys.amenities());
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting amenity:", error);
