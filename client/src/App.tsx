@@ -10,13 +10,10 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { RoleSelector } from "@/components/RoleSelector";
 import { AppSidebar } from "@/components/AppSidebar";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { PWAProvider } from "@/contexts/PWAContext";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import { PWAUpdateNotification } from "@/components/PWAUpdateNotification";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useGlobalErrorHandler } from "@/hooks/useGlobalErrorHandler";
@@ -306,14 +303,10 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <LanguageProvider>
-            <PWAProvider>
-              <TooltipProvider>
-                <AuthenticatedApp />
-                <Toaster />
-                <PWAInstallPrompt />
-                <PWAUpdateNotification />
-              </TooltipProvider>
-            </PWAProvider>
+            <TooltipProvider>
+              <AuthenticatedApp />
+              <Toaster />
+            </TooltipProvider>
           </LanguageProvider>
         </ThemeProvider>
       </QueryClientProvider>

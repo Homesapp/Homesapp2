@@ -11,12 +11,6 @@ Preferred communication style: Simple, everyday language.
 ### Frontend
 The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query for server state. UI components are built with Radix UI and Shadcn/ui, styled with Tailwind CSS, and support light/dark themes and i18n (Spanish/English). The design emphasizes professionalism and role-switching.
 
-**Modern React Patterns Implemented (2025-10-08)**:
-- **Progressive Web App (PWA)**: Full offline support with Service Worker, cache strategies (CacheFirst for static assets, NetworkFirst for API, StaleWhileRevalidate for reference data), install prompts with 7-day dismiss cooldown, and update notifications
-- **Context API**: Centralized state management for theme (ThemeProvider), language (LanguageProvider), and PWA (PWAProvider) using singleton pattern to prevent duplicate registrations in Strict Mode
-- **Custom Hooks**: Extensive use of domain-specific hooks (useAuth with role-switching, useAppointments, useProperties, etc.) with useMemo/useCallback for performance optimization
-- **Server State**: TanStack Query v5 for all API data fetching with proper invalidation patterns and hierarchical cache keys
-
 ### Backend
 The backend is built with Node.js, Express.js, and TypeScript (ESM), providing a RESTful API. It features role-based middleware, JSON error handling, and dual authentication: Replit Auth (OpenID Connect) for regular users and local username/password for administrators, including session management and user approval workflows.
 
@@ -50,25 +44,6 @@ The schema includes:
 - **Read Replicas Decision**: Deferred until traffic exceeds 10,000+ DAU - current architecture sufficient for 12-24 months projected growth
 - **Query Performance**: Post-index baselines show 50-90% improvements on critical queries (property search, appointments, financial reports)
 - **Scalability Documentation**: Complete analysis documented in SCALABILITY_ANALYSIS.md with prioritized optimization roadmap
-
-**Redis Cache Implementation (2025-10-08)**:
-- **Tier 1 Static Data Caching**: Implemented Redis cache for 4 high-frequency reference data endpoints with 24h TTL
-  - /api/condominiums/approved - Approved condominium listings
-  - /api/colonies/approved - Approved colony listings
-  - /api/amenities - All amenities (property & condominium)
-  - /api/property-features - All property features with icons
-- **Cache Infrastructure**: Created cache module (server/cache.ts) with ioredis client supporting Upstash and local Redis
-- **Graceful Degradation**: System works without Redis configured - cache operations fail silently, app continues normally
-- **Complete Cache Invalidation**: 17 admin mutation endpoints automatically invalidate cache on data modifications:
-  - Condominiums: create (admin), approve, reject, update, toggle active, delete
-  - Colonies: create (admin), approve, reject, update, delete
-  - Amenities: create (admin), approve, reject, update, delete
-  - Property Features: create
-- **Smart Invalidation**: Only admin-approved data is cached; user suggestions (pending status) don't trigger invalidation
-- **Expected Impact**: 50-90% reduction in database queries for reference data, improved response times for property search/filtering
-- **Cache Helpers**: Centralized invalidation functions (server/cacheInvalidation.ts) for maintainability and consistency
-- **Type Safety**: Generic cache.get<T>() with TypeScript support for type-safe cache retrieval
-- **Cost**: $0-8/month for Upstash Redis (free tier: 10K requests/day, paid tier: $0.20/100K requests)
 
 ### Key Features and Workflows
 *   **Dual-Type Appointment Scheduling**: Supports individual and tour slots with admin-configurable business hours.
