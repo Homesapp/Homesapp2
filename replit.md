@@ -89,13 +89,23 @@ The schema includes:
     - Admin panel for managing all limit increase requests with filtering by status
     - Successful approval automatically updates owner's propertyLimit field
     - Full audit logging of all limit changes and request actions
+*   **Admin Draft Management System** (2025-10-08): Comprehensive draft visualization and filtering in admin property panel:
+    - Admin endpoints include both real properties AND submitted drafts (status="submitted") in unified view
+    - Draft transformation: `draft-{id}` prefixed IDs, `approvalStatus: "pending_review"`, `isDraft: true`
+    - Full filtering support: Text search, propertyType, ownerId, price ranges (checks both rentPrice/salePrice), bedroom/bathroom ranges
+    - Smart exclusion logic: Status filter (rent/sale/both) excludes ALL drafts; unsatisfiable filters (zone, condo, featured) exclude drafts
+    - Stats endpoint counts drafts in "pending" category with same filtering logic as list (ensures consistency)
+    - Approve/reject endpoints detect drafts via ID prefix and handle appropriately
+    - **Critical enum fix**: All "pending" references changed to "pending_review" to match database enum across backend and frontend
+    - Defensive frontend: Query validation, Array.isArray() checks, proper error handling
+    - Endpoints: GET /api/admin/properties (with draft inclusion), GET /api/admin/properties/stats, /api/property-submission-drafts (CRUD)
 
 ### System Design Choices
 The platform employs unified middleware for consistent authentication and automatic logging for auditing. The public dashboard adapts based on user authentication. WebSocket security for real-time chat ensures session-based authentication and per-conversation authorization.
 
 ### Testing and Development
 *   **Test Authentication Endpoint** (Development only): `/api/auth/test/set-role` allows authenticated users to change their role for testing purposes. Protected by `NODE_ENV === "development"` check and requires valid authentication. Supports roles: cliente, owner, seller, concierge, admin, admin_jr, master.
-*   **Draft Property Visibility**: `/api/owner/properties` endpoint merges real properties with submitted drafts (status="submitted"), transforming drafts into property-like objects with `isDraft: true` flag, `draft-{id}` prefixed IDs, and `approvalStatus: "pending"`. Enables owners to see submitted properties before admin approval.
+*   **Draft Property Visibility**: `/api/owner/properties` endpoint merges real properties with submitted drafts (status="submitted"), transforming drafts into property-like objects with `isDraft: true` flag, `draft-{id}` prefixed IDs, and `approvalStatus: "pending_review"`. Enables owners to see submitted properties before admin approval.
 *   **Drag-and-Drop Media**: Property wizard Step 3 supports HTML5 drag-and-drop API for reordering primary and secondary images with visual feedback (opacity changes during drag).
 
 ## External Dependencies
