@@ -75,10 +75,10 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious }
     },
     onSuccess: () => {
       toast({
-        title: "Propiedad enviada",
-        description: "Tu propiedad ha sido enviada para revisión. Recibirás una notificación cuando sea aprobada.",
+        title: "Propiedad enviada para revisión",
+        description: "Tu propiedad ha sido enviada y aparecerá en Mis Propiedades con estado 'Pendiente' hasta que sea aprobada por un administrador.",
       });
-      setLocation("/mis-propiedades");
+      setLocation("/my-properties"); // Use English route (both routes work now)
     },
     onError: (error: any) => {
       toast({

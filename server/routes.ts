@@ -3884,9 +3884,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Acceso denegado" });
       }
 
-      // Get properties where user is owner
+      // Get actual properties where user is owner
       const properties = await storage.getProperties({ ownerId: userId });
-      res.json(properties);
+      
+      // Also get submitted/approved drafts that haven't been converted to properties yet
+      const drafts = await storage.getPropertySubmissionDrafts({ 
+        userId, 
+        status: "submitted" 
+      });
+      
+      // Convert drafts to property-like objects with draft flag
+      const draftProperties = drafts.map(draft => ({
+        id: `draft-${draft.id}`,
+        isDraft: true,
+        draftId: draft.id,
+        title: draft.basicInfo?.title || "Propiedad sin título",
+        description: draft.basicInfo?.description || "",
+        propertyType: draft.basicInfo?.propertyType || "house",
+        price: draft.basicInfo?.rentPrice || draft.basicInfo?.salePrice || "0",
+        currency: draft.basicInfo?.currency || "MXN",
+        bedrooms: draft.basicInfo?.bedrooms || 0,
+        bathrooms: draft.basicInfo?.bathrooms || 0,
+        area: draft.basicInfo?.area || 0,
+        location: draft.locationInfo?.location || "",
+        images: draft.media?.images || [],
+        primaryImages: draft.media?.primaryImages || [],
+        ownerId: draft.userId,
+        approvalStatus: "pending", // Drafts submitted are pending approval
+        ownerStatus: "active",
+        published: false,
+        active: false,
+        createdAt: draft.createdAt,
+        updatedAt: draft.updatedAt,
+      }));
+      
+      // Combine real properties and draft properties
+      const allProperties = [...properties, ...draftProperties];
+      
+      res.json(allProperties);
     } catch (error) {
       console.error("Error fetching owner properties:", error);
       res.status(500).json({ message: "Error al obtener propiedades" });
