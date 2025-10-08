@@ -379,21 +379,30 @@ export default function MyProperties() {
                       }
                     }}
                   >
-                    {(property.primaryImages && property.primaryImages.length > 0) || (property.images && property.images.length > 0) ? (
-                      <img
-                        src={
-                          property.primaryImages && property.primaryImages.length > 0
-                            ? property.primaryImages[property.coverImageIndex || 0]
-                            : property.images[0]
-                        }
-                        alt={property.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Building2 className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
+                    {(() => {
+                      const hasPrimary = property.primaryImages && property.primaryImages.length > 0;
+                      const hasLegacy = property.images && property.images.length > 0;
+                      const coverIndex = property.coverImageIndex || 0;
+                      const coverImage = hasPrimary && coverIndex < property.primaryImages.length
+                        ? property.primaryImages[coverIndex]
+                        : hasPrimary
+                        ? property.primaryImages[0]
+                        : hasLegacy
+                        ? property.images[0]
+                        : null;
+
+                      return coverImage ? (
+                        <img
+                          src={coverImage}
+                          alt={property.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Building2 className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   <div className="flex-1 min-w-0">

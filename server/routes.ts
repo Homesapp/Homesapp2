@@ -3894,9 +3894,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
+      // If email is provided instead of staffId, look up the user by email
+      let staffId = req.body.staffId;
+      if (req.body.email && !staffId) {
+        const staffMember = await storage.getUserByEmail(req.body.email);
+        if (!staffMember) {
+          return res.status(404).json({ message: "Usuario no encontrado con ese email" });
+        }
+        staffId = staffMember.id;
+      }
+
       const staffData = insertPropertyStaffSchema.parse({
         propertyId: id,
-        ...req.body,
+        staffId,
+        role: req.body.role,
+        assignedById: userId,
       });
 
       const staff = await storage.assignStaff(staffData);

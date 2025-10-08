@@ -60,6 +60,7 @@ import MyProperties from "@/pages/MyProperties";
 import OwnerPropertyDetails from "@/pages/OwnerPropertyDetails";
 import EditOwnerProperty from "@/pages/EditOwnerProperty";
 import PropertyDocuments from "@/pages/PropertyDocuments";
+import OwnerFinancialReport from "@/pages/OwnerFinancialReport";
 import AdminChangeRequests from "@/pages/AdminChangeRequests";
 import AdminPropertyLimitRequests from "@/pages/AdminPropertyLimitRequests";
 import AdminInspectionReports from "@/pages/AdminInspectionReports";
@@ -238,6 +239,7 @@ function AuthenticatedApp() {
               <Route path="/owner/property/:id/documents" component={PropertyDocuments} />
               <Route path="/owner/property/:id" component={OwnerPropertyDetails} />
               <Route path="/owner/appointments" component={OwnerAppointments} />
+              <Route path="/owner/financial-report" component={OwnerFinancialReport} />
               <Route path="/admin/appointments" component={AdminAppointmentManagement} />
               <Route path="/admin/sellers" component={AdminSellerManagement} />
               <Route path="/admin/properties" component={AdminPropertyManagement} />

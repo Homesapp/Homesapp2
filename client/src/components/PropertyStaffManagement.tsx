@@ -52,7 +52,7 @@ const taskStatuses = [
 ];
 
 const staffFormSchema = z.object({
-  staffId: z.string().min(1, "El ID del personal es requerido"),
+  email: z.string().email("Email inválido").min(1, "El email es requerido"),
   role: z.string().min(1, "El rol es requerido"),
 });
 
@@ -75,7 +75,7 @@ export function PropertyStaffManagement({ propertyId }: PropertyStaffManagementP
   const staffForm = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
     defaultValues: {
-      staffId: "",
+      email: "",
       role: "",
     },
   });
@@ -183,12 +183,12 @@ export function PropertyStaffManagement({ propertyId }: PropertyStaffManagementP
                 <form onSubmit={staffForm.handleSubmit((data) => addStaffMutation.mutate(data))} className="space-y-4">
                   <FormField
                     control={staffForm.control}
-                    name="staffId"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Miembro del Personal</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="ID del usuario" data-testid="input-staff-id" />
+                          <Input {...field} type="email" placeholder="correo@ejemplo.com" data-testid="input-staff-email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
