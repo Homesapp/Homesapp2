@@ -21,6 +21,8 @@ import AdminLogin from "@/pages/AdminLogin";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import PropertySearch from "@/pages/PropertySearch";
 import PropertyDetails from "@/pages/PropertyDetails";
 import PropertyFullDetails from "@/pages/PropertyFullDetails";
@@ -126,6 +128,8 @@ function AuthenticatedApp() {
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/buscar-propiedades" component={PropertySearch} />
         <Route path="/solicitud-proveedor" component={ProviderApplication} />
         <Route path="/aplicar" component={Apply} />

@@ -35,6 +35,8 @@ import type { User } from "@shared/schema";
 import { useUserAuditHistory, useUpdateUserRole } from "@/hooks/useUsers";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -49,7 +51,8 @@ import {
   Trash2,
   Plus,
   Eye,
-  Shield
+  Shield,
+  KeyRound
 } from "lucide-react";
 
 const roleLabels: Record<string, string> = {
@@ -98,14 +101,56 @@ interface UserProfileDialogProps {
 export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialogProps) {
   const [newRole, setNewRole] = useState<string>("");
   const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { data: auditHistory, isLoading: isLoadingHistory } = useUserAuditHistory(
     user?.id || null,
     100
   );
   const updateUserRole = useUpdateUserRole();
   const { toast } = useToast();
+  
+  const sendResetLink = useMutation({
+    mutationFn: async (userId: string) => {
+      return apiRequest('POST', `/api/admin/users/${userId}/send-reset-link`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Enlace enviado",
+        description: "El enlace de restablecimiento ha sido enviado al usuario",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo enviar el enlace de restablecimiento",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      return apiRequest('DELETE', `/api/admin/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido eliminado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/approved'] });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el usuario",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (!user) return null;
 
@@ -345,35 +390,87 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
                   </Card>
                 )}
                 
+                {(currentUser?.role === "master" || currentUser?.role === "admin") && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Acciones Administrativas
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Gestionar contraseña y cuenta del usuario</p>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => sendResetLink.mutate(user.id)}
+                            disabled={sendResetLink.isPending || !user.passwordHash}
+                            data-testid="button-send-reset-link"
+                          >
+                            <KeyRound className="h-4 w-4 mr-2" />
+                            {sendResetLink.isPending ? "Enviando..." : "Enviar Link de Restablecimiento"}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setShowDeleteDialog(true)}
+                            disabled={deleteUser.isPending || user.id === currentUser?.id}
+                            data-testid="button-delete-user"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar Usuario
+                          </Button>
+                        </div>
+                        {!user.passwordHash && (
+                          <p className="text-xs text-muted-foreground">
+                            Este usuario usa autenticación de terceros. No se puede enviar enlace de restablecimiento.
+                          </p>
+                        )}
+                        {user.id === currentUser?.id && (
+                          <p className="text-xs text-muted-foreground">
+                            No puedes eliminar tu propia cuenta desde aquí.
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm">Información Personal</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Nombre</p>
-                        <p className="text-sm">{user.firstName || "—"}</p>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-muted-foreground">Nombre</span>
+                        <span className="text-sm font-medium">{user.firstName || "—"}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Apellido</p>
-                        <p className="text-sm">{user.lastName || "—"}</p>
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-muted-foreground">Apellido</span>
+                        <span className="text-sm font-medium">{user.lastName || "—"}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Email</p>
-                        <p className="text-sm">{user.email || "—"}</p>
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-muted-foreground">Email</span>
+                        <span className="text-sm font-medium truncate ml-4">{user.email || "—"}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Rol</p>
-                        <p className="text-sm">{roleLabels[user.role] || user.role}</p>
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-muted-foreground">Rol</span>
+                        <Badge variant="secondary">{roleLabels[user.role] || user.role}</Badge>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Estado</p>
-                        <p className="text-sm">{statusLabels[user.status] || user.status}</p>
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-muted-foreground">Estado</span>
+                        <Badge 
+                          variant={user.status === "approved" ? "default" : user.status === "pending" ? "outline" : "destructive"}
+                        >
+                          {statusLabels[user.status] || user.status}
+                        </Badge>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">ID</p>
-                        <p className="text-xs font-mono">{user.id}</p>
+                      <div className="flex items-start justify-between py-2">
+                        <span className="text-sm font-medium text-muted-foreground">ID</span>
+                        <span className="text-xs font-mono break-all text-right ml-4">{user.id}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -425,6 +522,37 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
               data-testid="button-confirm-role-change"
             >
               {updateUserRole.isPending ? "Cambiando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent data-testid="dialog-confirm-delete-user">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estás a punto de eliminar permanentemente a <span className="font-semibold">{fullName}</span> ({user.email}).
+              Esta acción no se puede deshacer y eliminará:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Todos los datos del usuario</li>
+                <li>Propiedades asociadas</li>
+                <li>Citas y reservas</li>
+                <li>Historial de actividad</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-user">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteUser.mutate(user.id)}
+              disabled={deleteUser.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-delete-user"
+            >
+              {deleteUser.isPending ? "Eliminando..." : "Eliminar Permanentemente"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

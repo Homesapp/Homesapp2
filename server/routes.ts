@@ -82,6 +82,8 @@ import {
   insertContractCycleMetricSchema,
   insertWorkflowEventSchema,
   insertSystemAlertSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -850,6 +852,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error skipping onboarding:", error);
       res.status(500).json({ message: "Failed to skip onboarding" });
+    }
+  });
+
+  // Password reset routes
+  app.post("/api/password-reset/request", async (req, res) => {
+    try {
+      const validated = requestPasswordResetSchema.parse(req.body);
+      const { email } = validated;
+      
+      const user = await storage.getUserByEmail(email);
+      
+      if (user && user.passwordHash) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        
+        await storage.createPasswordResetToken({
+          userId: user.id,
+          token,
+          expiresAt,
+          used: false,
+        });
+        
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+          : `http://localhost:5000`;
+        const resetLink = `${baseUrl}/reset-password?token=${token}`;
+        
+        const { sendPasswordResetEmail } = await import("./resend");
+        await sendPasswordResetEmail(
+          user.email,
+          user.firstName || 'Usuario',
+          resetLink
+        );
+      }
+      
+      res.json({ message: "Si el email existe, recibirás un enlace de restablecimiento" });
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Email inválido", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al procesar solicitud" });
+    }
+  });
+  
+  app.post("/api/password-reset/reset", async (req, res) => {
+    try {
+      const validated = resetPasswordSchema.parse(req.body);
+      const { token, newPassword } = validated;
+      
+      const resetToken = await storage.getPasswordResetToken(token);
+      
+      if (!resetToken) {
+        return res.status(400).json({ message: "Token inválido o expirado" });
+      }
+      
+      if (resetToken.used) {
+        return res.status(400).json({ message: "Este token ya fue usado" });
+      }
+      
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Este token ha expirado" });
+      }
+      
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(resetToken.userId, passwordHash);
+      await storage.markPasswordResetTokenAsUsed(token);
+      
+      res.json({ message: "Contraseña actualizada exitosamente" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al restablecer contraseña" });
+    }
+  });
+  
+  // Admin send password reset link to user
+  app.post("/api/admin/users/:userId/send-reset-link", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      if (!user.passwordHash) {
+        return res.status(400).json({ message: "Esta cuenta usa autenticación de terceros. No se puede enviar enlace de restablecimiento." });
+      }
+      
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token,
+        expiresAt,
+        used: false,
+      });
+      
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : `http://localhost:5000`;
+      const resetLink = `${baseUrl}/reset-password?token=${token}`;
+      
+      const { sendPasswordResetEmail } = await import("./resend");
+      await sendPasswordResetEmail(
+        user.email,
+        user.firstName || 'Usuario',
+        resetLink
+      );
+      
+      await createAuditLog(
+        req,
+        "update",
+        "user",
+        userId,
+        `Admin envió enlace de restablecimiento de contraseña a ${user.email}`
+      );
+      
+      res.json({ message: "Enlace de restablecimiento enviado exitosamente" });
+    } catch (error) {
+      console.error("Error sending reset link:", error);
+      res.status(500).json({ message: "Error al enviar enlace de restablecimiento" });
+    }
+  });
+  
+  // Admin delete user completely
+  app.delete("/api/admin/users/:userId", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      await createAuditLog(
+        req,
+        "delete",
+        "user",
+        userId,
+        `Admin eliminó usuario: ${user.firstName} ${user.lastName} (${user.email})`
+      );
+      
+      await storage.deleteUser(userId);
+      
+      res.json({ message: "Usuario eliminado exitosamente" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Error al eliminar usuario" });
     }
   });
 

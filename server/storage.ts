@@ -197,6 +197,9 @@ import {
   type InsertWorkflowEvent,
   type SystemAlert,
   type InsertSystemAlert,
+  passwordResetTokens,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -217,6 +220,13 @@ export interface IStorage {
   approveAllPendingUsers(): Promise<number>;
   updateUserProfile(id: string, updates: { firstName?: string; lastName?: string; bio?: string; profileImageUrl?: string; phone?: string; preferredLanguage?: string }): Promise<User>;
   deleteUser(id: string): Promise<void>;
+  updateUserPassword(id: string, passwordHash: string): Promise<User>;
+  
+  // Password reset token operations
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
   
   // Email verification token operations
   createEmailVerificationToken(token: InsertEmailVerificationToken): Promise<EmailVerificationToken>;
@@ -824,6 +834,42 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  async updateUserPassword(id: string, passwordHash: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  // Password reset token operations
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db.insert(passwordResetTokens).values(tokenData).returning();
+    return token;
+  }
+
+  async getPasswordResetToken(tokenString: string): Promise<PasswordResetToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, tokenString));
+    return token;
+  }
+
+  async markPasswordResetTokenAsUsed(tokenString: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.token, tokenString));
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(lte(passwordResetTokens.expiresAt, new Date()));
   }
 
   // Email verification token operations

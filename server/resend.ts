@@ -238,3 +238,44 @@ export async function sendOwnerReferralApprovedNotification(
     throw error;
   }
 }
+
+export async function sendPasswordResetEmail(
+  to: string,
+  userName: string,
+  resetLink: string
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to,
+      subject: 'Restablece tu contraseña - HomesApp',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1e293b;">Restablece tu contraseña</h2>
+          <p>Hola ${userName},</p>
+          <p>Recibimos una solicitud para restablecer tu contraseña en HomesApp.</p>
+          <p>Haz clic en el siguiente botón para crear una nueva contraseña:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+              Restablecer contraseña
+            </a>
+          </div>
+          
+          <p style="color: #64748b; font-size: 14px;">O copia y pega este enlace en tu navegador:</p>
+          <p style="color: #3b82f6; font-size: 14px; word-break: break-all;">${resetLink}</p>
+          
+          <p style="color: #dc2626; font-size: 14px; margin-top: 30px;">Este enlace expirará en 1 hora por seguridad.</p>
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">Si no solicitaste restablecer tu contraseña, puedes ignorar este email. Tu contraseña no será cambiada.</p>
+        </div>
+      `,
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw error;
+  }
+}
