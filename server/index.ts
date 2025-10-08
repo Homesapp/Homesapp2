@@ -8,7 +8,6 @@ const app = express();
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   crossOriginEmbedderPolicy: false,
-  frameguard: false, // Permite que la app se cargue en iframes
 }));
 
 app.use(express.json({ limit: '10mb' }));
