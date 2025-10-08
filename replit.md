@@ -17,6 +17,12 @@ The backend is built with Node.js, Express.js, and TypeScript (ESM), providing a
 ### Data Storage
 PostgreSQL (Neon serverless) and Drizzle ORM are used for type-safe database interactions. The schema supports user management, property lifecycle, appointment scheduling, client presentation cards, service providers, offer workflows, staff assignments, audit logs, lead capture, a `condominiums` table with a three-state approval workflow, and a bidirectional review system. Financial tracking, payout management, and a comprehensive rental contract system are integrated, handling commissions, referrals, and rental income with automated commission calculations and digital signature tracking.
 
+The schema includes:
+- **Condominiums**: Linked to colonies via `colonyId` foreign key for parent-child relationship
+- **Colonies**: Standalone entities that can contain multiple condominiums
+- **Amenities**: Categorized as property or condominium amenities
+- **Property Features**: Custom characteristics for properties with optional icons (e.g., pool, gym, garden)
+
 ### Key Features and Workflows
 *   **Dual-Type Appointment Scheduling**: Supports individual and tour slots with admin-configurable business hours.
 *   **Property Management**: Includes property approval workflow, owner change requests, auto-approval settings, sublease functionality, and pet-friendly indicators.
@@ -36,6 +42,12 @@ PostgreSQL (Neon serverless) and Drizzle ORM are used for type-safe database int
 *   **Application System**: Unified application flow for sellers and service providers.
 *   **Admin Panel Enhancements**: Full English translation, admin profile management, integrations control, and contract management.
 *   **Role Request System**: Enhanced with mandatory contact and experience fields.
+*   **Admin CRUD System**: Full create/read/update/delete capabilities for condominiums, colonies, amenities, and property features. Admin users bypass suggestion limits and create entities as auto-approved. The system includes:
+    - Colony management with edit, delete, and toggle active/inactive
+    - Amenity management with category support (property/condominium)
+    - Property features management with optional Lucide icon names
+    - Condominium management with colony linking and full CRUD operations
+    - Unified admin interface in AdminCondominiums page with 4 tabs
 
 ### System Design Choices
 The platform employs unified middleware for consistent authentication and automatic logging for auditing. The public dashboard adapts based on user authentication. WebSocket security for real-time chat ensures session-based authentication and per-conversation authorization.

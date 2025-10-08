@@ -29,6 +29,7 @@ import {
   Sparkles,
   Check,
   X,
+  Star,
 } from "lucide-react";
 import type { Condominium, Colony, Amenity } from "@shared/schema";
 import { format } from "date-fns";
@@ -60,6 +61,24 @@ export default function AdminCondominiums() {
   const [editData, setEditData] = useState({ name: "", zone: "", address: "" });
   const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
   const [editedNames, setEditedNames] = useState<Record<string, string>>({});
+  
+  // Colony state
+  const [showCreateColonyDialog, setShowCreateColonyDialog] = useState(false);
+  const [showEditColonyDialog, setShowEditColonyDialog] = useState(false);
+  const [selectedColony, setSelectedColony] = useState<Colony | null>(null);
+  const [colonyFormData, setColonyFormData] = useState({ name: "" });
+  
+  // Amenity state
+  const [showCreateAmenityDialog, setShowCreateAmenityDialog] = useState(false);
+  const [showEditAmenityDialog, setShowEditAmenityDialog] = useState(false);
+  const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
+  const [amenityFormData, setAmenityFormData] = useState({ name: "", category: "property" as "property" | "condominium" });
+  
+  // Property Features state
+  const [showCreateFeatureDialog, setShowCreateFeatureDialog] = useState(false);
+  const [showEditFeatureDialog, setShowEditFeatureDialog] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const [featureFormData, setFeatureFormData] = useState({ name: "", icon: "", active: true });
 
   const { data: stats } = useQuery({
     queryKey: ["/api/admin/condominiums-stats"],
@@ -84,6 +103,10 @@ export default function AdminCondominiums() {
 
   const { data: amenities = [], isLoading: loadingAmenities } = useQuery<Amenity[]>({
     queryKey: ["/api/amenities"],
+  });
+
+  const { data: propertyFeatures = [], isLoading: loadingFeatures } = useQuery<any[]>({
+    queryKey: ["/api/property-features"],
   });
 
   const pendingColonies = colonies.filter((c) => c.approvalStatus === "pending");
@@ -172,6 +195,177 @@ export default function AdminCondominiums() {
     },
     onError: () => {
       toast({ title: t("admin.suggestions.rejectError"), variant: "destructive" });
+    },
+  });
+
+  // Admin Colony CRUD mutations
+  const createColonyMutation = useMutation({
+    mutationFn: async (data: { name: string }) => {
+      return await apiRequest("POST", "/api/colonies", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Colonia creada", description: "La colonia ha sido creada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/colonies"] });
+      setShowCreateColonyDialog(false);
+      setColonyFormData({ name: "" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo crear la colonia", variant: "destructive" });
+    },
+  });
+
+  const editColonyMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PUT", `/api/admin/colonies/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Colonia actualizada", description: "La colonia ha sido actualizada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/colonies"] });
+      setShowEditColonyDialog(false);
+      setSelectedColony(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo actualizar la colonia", variant: "destructive" });
+    },
+  });
+
+  const deleteColonyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/admin/colonies/${id}`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Colonia eliminada", description: "La colonia ha sido eliminada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/colonies"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo eliminar la colonia", variant: "destructive" });
+    },
+  });
+
+  const toggleColonyActiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      return await apiRequest("PUT", `/api/admin/colonies/${id}`, { active });
+    },
+    onSuccess: (_, { active }) => {
+      toast({ title: active ? "Colonia activada" : "Colonia suspendida" });
+      queryClient.invalidateQueries({ queryKey: ["/api/colonies"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo cambiar el estado", variant: "destructive" });
+    },
+  });
+
+  // Admin Amenity CRUD mutations
+  const createAmenityMutation = useMutation({
+    mutationFn: async (data: { name: string; category: "property" | "condominium" }) => {
+      return await apiRequest("POST", "/api/amenities", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Amenidad creada", description: "La amenidad ha sido creada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/amenities"] });
+      setShowCreateAmenityDialog(false);
+      setAmenityFormData({ name: "", category: "property" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo crear la amenidad", variant: "destructive" });
+    },
+  });
+
+  const editAmenityMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PUT", `/api/admin/amenities/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Amenidad actualizada", description: "La amenidad ha sido actualizada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/amenities"] });
+      setShowEditAmenityDialog(false);
+      setSelectedAmenity(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo actualizar la amenidad", variant: "destructive" });
+    },
+  });
+
+  const deleteAmenityMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/admin/amenities/${id}`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Amenidad eliminada", description: "La amenidad ha sido eliminada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/amenities"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo eliminar la amenidad", variant: "destructive" });
+    },
+  });
+
+  const toggleAmenityActiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      return await apiRequest("PUT", `/api/admin/amenities/${id}`, { active });
+    },
+    onSuccess: (_, { active }) => {
+      toast({ title: active ? "Amenidad activada" : "Amenidad suspendida" });
+      queryClient.invalidateQueries({ queryKey: ["/api/amenities"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo cambiar el estado", variant: "destructive" });
+    },
+  });
+
+  // Property Features CRUD mutations
+  const createFeatureMutation = useMutation({
+    mutationFn: async (data: { name: string; icon?: string; active: boolean }) => {
+      return await apiRequest("POST", "/api/property-features", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Característica creada", description: "La característica ha sido creada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/property-features"] });
+      setShowCreateFeatureDialog(false);
+      setFeatureFormData({ name: "", icon: "", active: true });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo crear la característica", variant: "destructive" });
+    },
+  });
+
+  const editFeatureMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PUT", `/api/property-features/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Característica actualizada", description: "La característica ha sido actualizada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/property-features"] });
+      setShowEditFeatureDialog(false);
+      setSelectedFeature(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo actualizar la característica", variant: "destructive" });
+    },
+  });
+
+  const deleteFeatureMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/property-features/${id}`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Característica eliminada", description: "La característica ha sido eliminada exitosamente" });
+      queryClient.invalidateQueries({ queryKey: ["/api/property-features"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo eliminar la característica", variant: "destructive" });
+    },
+  });
+
+  const toggleFeatureActiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      return await apiRequest("PUT", `/api/property-features/${id}`, { active });
+    },
+    onSuccess: (_, { active }) => {
+      toast({ title: active ? "Característica activada" : "Característica suspendida" });
+      queryClient.invalidateQueries({ queryKey: ["/api/property-features"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo cambiar el estado", variant: "destructive" });
     },
   });
 
@@ -490,10 +684,10 @@ export default function AdminCondominiums() {
       </div>
 
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="colonies" data-testid="tab-colonies">
             <MapPin className="w-4 h-4 mr-2" />
-            {t("admin.suggestions.coloniesTab")} ({pendingColonies.length})
+            {t("admin.suggestions.coloniesTab")} ({colonies.length})
           </TabsTrigger>
           <TabsTrigger value="condominiums" data-testid="tab-condominiums-main">
             <Building2 className="w-4 h-4 mr-2" />
@@ -501,73 +695,137 @@ export default function AdminCondominiums() {
           </TabsTrigger>
           <TabsTrigger value="amenities" data-testid="tab-amenities">
             <Sparkles className="w-4 h-4 mr-2" />
-            Amenidades ({pendingAmenities.length})
+            Amenidades ({amenities.length})
+          </TabsTrigger>
+          <TabsTrigger value="features" data-testid="tab-features">
+            <Star className="w-4 h-4 mr-2" />
+            Características ({propertyFeatures.length})
           </TabsTrigger>
         </TabsList>
 
         {/* Colonies Tab */}
         <TabsContent value="colonies" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => setShowCreateColonyDialog(true)} data-testid="button-create-colony">
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Colonia
+            </Button>
+          </div>
+          
           {loadingColonies ? (
             <Card>
               <CardContent className="p-6">
                 <p className="text-muted-foreground text-center">{t("common.loading")}</p>
               </CardContent>
             </Card>
-          ) : pendingColonies.length === 0 ? (
+          ) : colonies.length === 0 ? (
             <Card>
               <CardContent className="p-6">
                 <p className="text-muted-foreground text-center" data-testid="text-no-colonies">
-                  {t("admin.suggestions.noColonies")}
+                  No hay colonias registradas
                 </p>
               </CardContent>
             </Card>
           ) : (
-            pendingColonies.map((colony) => (
-              <Card key={colony.id} data-testid={`card-colony-${colony.id}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <Input
-                        value={editedNames[colony.id] ?? colony.name}
-                        onChange={(e) => setEditedNames((prev) => ({ ...prev, [colony.id]: e.target.value }))}
-                        placeholder="Nombre de la colonia"
-                        data-testid={`input-colony-name-${colony.id}`}
-                      />
-                      <CardDescription>
-                        <span className="text-sm">
-                          {t("admin.suggestions.requestedBy")}{" "}
-                          <span className="font-medium">{colony.requestedBy || "N/A"}</span>
-                        </span>
-                      </CardDescription>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {colonies.map((colony) => (
+                <Card key={colony.id} className="hover-elevate" data-testid={`card-colony-${colony.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg truncate" data-testid={`text-colony-name-${colony.id}`}>
+                            {colony.name}
+                          </CardTitle>
+                          {!colony.active && (
+                            <Badge variant="destructive" className="mt-1">Suspendida</Badge>
+                          )}
+                        </div>
+                      </div>
+                      {getStatusBadge(colony.approvalStatus)}
                     </div>
-                    <Badge variant="secondary" data-testid={`badge-status-${colony.id}`}>
-                      {t("common.pending")}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => rejectColonyMutation.mutate(colony.id)}
-                      disabled={rejectColonyMutation.isPending}
-                      data-testid={`button-reject-colony-${colony.id}`}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      {t("admin.suggestions.rejectButton")}
-                    </Button>
-                    <Button
-                      onClick={() => approveColonyMutation.mutate(colony.id)}
-                      disabled={approveColonyMutation.isPending}
-                      data-testid={`button-approve-colony-${colony.id}`}
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      {t("admin.suggestions.approveButton")}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                    <CardDescription>
+                      <div data-testid={`text-colony-date-${colony.id}`} className="text-xs">
+                        Creado: {format(new Date(colony.createdAt), "dd/MM/yyyy HH:mm")}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {colony.approvalStatus === "pending" && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            if (!editedNames[colony.id]) {
+                              setEditedNames((prev) => ({ ...prev, [colony.id]: colony.name }));
+                            }
+                            approveColonyMutation.mutate(colony.id);
+                          }}
+                          className="flex-1"
+                          data-testid={`button-approve-pending-${colony.id}`}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Aprobar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => rejectColonyMutation.mutate(colony.id)}
+                          className="flex-1"
+                          data-testid={`button-reject-pending-${colony.id}`}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Rechazar
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedColony(colony);
+                          setColonyFormData({ name: colony.name });
+                          setShowEditColonyDialog(true);
+                        }}
+                        data-testid={`button-edit-colony-${colony.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro de que deseas ${colony.active ? 'suspender' : 'activar'} la colonia "${colony.name}"?`)) {
+                            toggleColonyActiveMutation.mutate({ id: colony.id, active: !colony.active });
+                          }
+                        }}
+                        disabled={toggleColonyActiveMutation.isPending}
+                        data-testid={`button-toggle-colony-${colony.id}`}
+                      >
+                        {colony.active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro de que deseas eliminar la colonia "${colony.name}"? Esta acción no se puede deshacer.`)) {
+                            deleteColonyMutation.mutate(colony.id);
+                          }
+                        }}
+                        disabled={deleteColonyMutation.isPending}
+                        data-testid={`button-delete-colony-${colony.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 
@@ -750,72 +1008,238 @@ export default function AdminCondominiums() {
 
         {/* Amenities Tab */}
         <TabsContent value="amenities" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => setShowCreateAmenityDialog(true)} data-testid="button-create-amenity">
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Amenidad
+            </Button>
+          </div>
+          
           {loadingAmenities ? (
             <Card>
               <CardContent className="p-6">
                 <p className="text-muted-foreground text-center">{t("common.loading")}</p>
               </CardContent>
             </Card>
-          ) : pendingAmenities.length === 0 ? (
+          ) : amenities.length === 0 ? (
             <Card>
               <CardContent className="p-6">
                 <p className="text-muted-foreground text-center" data-testid="text-no-amenities">
-                  No hay amenidades pendientes
+                  No hay amenidades registradas
                 </p>
               </CardContent>
             </Card>
           ) : (
-            pendingAmenities.map((amenity) => (
-              <Card key={amenity.id} data-testid={`card-amenity-${amenity.id}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <Input
-                        value={editedNames[amenity.id] ?? amenity.name}
-                        onChange={(e) => setEditedNames((prev) => ({ ...prev, [amenity.id]: e.target.value }))}
-                        placeholder="Nombre de la amenidad"
-                        data-testid={`input-amenity-name-${amenity.id}`}
-                      />
-                      <CardDescription>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm">
-                            {t("admin.suggestions.requestedBy")}{" "}
-                            <span className="font-medium">{amenity.requestedBy || "N/A"}</span>
-                          </span>
-                          <Badge variant="outline" className="capitalize">
-                            {amenity.category === "property" ? "Propiedad" : "Condominio"}
-                          </Badge>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {amenities.map((amenity) => (
+                <Card key={amenity.id} className="hover-elevate" data-testid={`card-amenity-${amenity.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Sparkles className="w-5 h-5 text-primary flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg truncate" data-testid={`text-amenity-name-${amenity.id}`}>
+                            {amenity.name}
+                          </CardTitle>
+                          {!amenity.active && (
+                            <Badge variant="destructive" className="mt-1">Suspendida</Badge>
+                          )}
                         </div>
-                      </CardDescription>
+                      </div>
+                      {getStatusBadge(amenity.approvalStatus)}
                     </div>
-                    <Badge variant="secondary" data-testid={`badge-status-${amenity.id}`}>
-                      {t("common.pending")}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => rejectAmenityMutation.mutate(amenity.id)}
-                      disabled={rejectAmenityMutation.isPending}
-                      data-testid={`button-reject-amenity-${amenity.id}`}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      {t("admin.suggestions.rejectButton")}
-                    </Button>
-                    <Button
-                      onClick={() => approveAmenityMutation.mutate(amenity.id)}
-                      disabled={approveAmenityMutation.isPending}
-                      data-testid={`button-approve-amenity-${amenity.id}`}
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      {t("admin.suggestions.approveButton")}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                    <CardDescription>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {amenity.category === "property" ? "Propiedad" : "Condominio"}
+                        </Badge>
+                      </div>
+                      <div data-testid={`text-amenity-date-${amenity.id}`} className="text-xs mt-1">
+                        Creado: {format(new Date(amenity.createdAt), "dd/MM/yyyy HH:mm")}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {amenity.approvalStatus === "pending" && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            if (!editedNames[amenity.id]) {
+                              setEditedNames((prev) => ({ ...prev, [amenity.id]: amenity.name }));
+                            }
+                            approveAmenityMutation.mutate(amenity.id);
+                          }}
+                          className="flex-1"
+                          data-testid={`button-approve-pending-${amenity.id}`}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Aprobar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => rejectAmenityMutation.mutate(amenity.id)}
+                          className="flex-1"
+                          data-testid={`button-reject-pending-${amenity.id}`}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Rechazar
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedAmenity(amenity);
+                          setAmenityFormData({ name: amenity.name, category: amenity.category });
+                          setShowEditAmenityDialog(true);
+                        }}
+                        data-testid={`button-edit-amenity-${amenity.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro de que deseas ${amenity.active ? 'suspender' : 'activar'} la amenidad "${amenity.name}"?`)) {
+                            toggleAmenityActiveMutation.mutate({ id: amenity.id, active: !amenity.active });
+                          }
+                        }}
+                        disabled={toggleAmenityActiveMutation.isPending}
+                        data-testid={`button-toggle-amenity-${amenity.id}`}
+                      >
+                        {amenity.active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro de que deseas eliminar la amenidad "${amenity.name}"? Esta acción no se puede deshacer.`)) {
+                            deleteAmenityMutation.mutate(amenity.id);
+                          }
+                        }}
+                        disabled={deleteAmenityMutation.isPending}
+                        data-testid={`button-delete-amenity-${amenity.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Property Features Tab */}
+        <TabsContent value="features" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => setShowCreateFeatureDialog(true)} data-testid="button-create-feature">
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Característica
+            </Button>
+          </div>
+          
+          {loadingFeatures ? (
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-muted-foreground text-center">{t("common.loading")}</p>
+              </CardContent>
+            </Card>
+          ) : propertyFeatures.length === 0 ? (
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-muted-foreground text-center" data-testid="text-no-features">
+                  No hay características registradas
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {propertyFeatures.map((feature) => (
+                <Card key={feature.id} className="hover-elevate" data-testid={`card-feature-${feature.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Star className="w-5 h-5 text-primary flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg truncate" data-testid={`text-feature-name-${feature.id}`}>
+                            {feature.name}
+                          </CardTitle>
+                          {!feature.active && (
+                            <Badge variant="destructive" className="mt-1">Suspendida</Badge>
+                          )}
+                        </div>
+                      </div>
+                      {feature.active ? (
+                        <Badge variant="default">Activa</Badge>
+                      ) : (
+                        <Badge variant="secondary">Inactiva</Badge>
+                      )}
+                    </div>
+                    <CardDescription>
+                      {feature.icon && (
+                        <div className="text-xs">
+                          Icono: {feature.icon}
+                        </div>
+                      )}
+                      <div data-testid={`text-feature-date-${feature.id}`} className="text-xs mt-1">
+                        Creado: {format(new Date(feature.createdAt), "dd/MM/yyyy HH:mm")}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFeature(feature);
+                          setFeatureFormData({ name: feature.name, icon: feature.icon || "", active: feature.active });
+                          setShowEditFeatureDialog(true);
+                        }}
+                        data-testid={`button-edit-feature-${feature.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro de que deseas ${feature.active ? 'suspender' : 'activar'} la característica "${feature.name}"?`)) {
+                            toggleFeatureActiveMutation.mutate({ id: feature.id, active: !feature.active });
+                          }
+                        }}
+                        disabled={toggleFeatureActiveMutation.isPending}
+                        data-testid={`button-toggle-feature-${feature.id}`}
+                      >
+                        {feature.active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Estás seguro de que deseas eliminar la característica "${feature.name}"? Esta acción no se puede deshacer.`)) {
+                            deleteFeatureMutation.mutate(feature.id);
+                          }
+                        }}
+                        disabled={deleteFeatureMutation.isPending}
+                        data-testid={`button-delete-feature-${feature.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -1016,6 +1440,319 @@ export default function AdminCondominiums() {
                 Eliminar Duplicados
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Colony Create Dialog */}
+      <Dialog open={showCreateColonyDialog} onOpenChange={setShowCreateColonyDialog}>
+        <DialogContent data-testid="dialog-create-colony">
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Colonia</DialogTitle>
+            <DialogDescription>
+              Crea una nueva colonia que estará aprobada automáticamente
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="colony-name">Nombre *</Label>
+              <Input
+                id="colony-name"
+                value={colonyFormData.name}
+                onChange={(e) => setColonyFormData({ ...colonyFormData, name: e.target.value })}
+                placeholder="Nombre de la colonia"
+                data-testid="input-new-colony-name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateColonyDialog(false)} data-testid="button-cancel-create-colony">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!colonyFormData.name.trim()) {
+                  toast({ title: "Error", description: "El nombre de la colonia es requerido", variant: "destructive" });
+                  return;
+                }
+                createColonyMutation.mutate({ name: colonyFormData.name });
+              }}
+              disabled={createColonyMutation.isPending}
+              data-testid="button-submit-create-colony"
+            >
+              Crear Colonia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Colony Edit Dialog */}
+      <Dialog open={showEditColonyDialog} onOpenChange={setShowEditColonyDialog}>
+        <DialogContent data-testid="dialog-edit-colony">
+          <DialogHeader>
+            <DialogTitle>Editar Colonia</DialogTitle>
+            <DialogDescription>
+              Modifica los datos de la colonia
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-colony-name">Nombre *</Label>
+              <Input
+                id="edit-colony-name"
+                value={colonyFormData.name}
+                onChange={(e) => setColonyFormData({ ...colonyFormData, name: e.target.value })}
+                placeholder="Nombre de la colonia"
+                data-testid="input-edit-colony-name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditColonyDialog(false)} data-testid="button-cancel-edit-colony">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedColony || !colonyFormData.name.trim()) {
+                  toast({ title: "Error", description: "El nombre de la colonia es requerido", variant: "destructive" });
+                  return;
+                }
+                editColonyMutation.mutate({ id: selectedColony.id, data: { name: colonyFormData.name } });
+              }}
+              disabled={editColonyMutation.isPending}
+              data-testid="button-submit-edit-colony"
+            >
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Amenity Create Dialog */}
+      <Dialog open={showCreateAmenityDialog} onOpenChange={setShowCreateAmenityDialog}>
+        <DialogContent data-testid="dialog-create-amenity">
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Amenidad</DialogTitle>
+            <DialogDescription>
+              Crea una nueva amenidad que estará aprobada automáticamente
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="amenity-name">Nombre *</Label>
+              <Input
+                id="amenity-name"
+                value={amenityFormData.name}
+                onChange={(e) => setAmenityFormData({ ...amenityFormData, name: e.target.value })}
+                placeholder="Nombre de la amenidad"
+                data-testid="input-new-amenity-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amenity-category">Categoría *</Label>
+              <Select
+                value={amenityFormData.category}
+                onValueChange={(value: "property" | "condominium") => setAmenityFormData({ ...amenityFormData, category: value })}
+              >
+                <SelectTrigger id="amenity-category" data-testid="select-new-amenity-category">
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="property">Propiedad</SelectItem>
+                  <SelectItem value="condominium">Condominio</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateAmenityDialog(false)} data-testid="button-cancel-create-amenity">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!amenityFormData.name.trim()) {
+                  toast({ title: "Error", description: "El nombre de la amenidad es requerido", variant: "destructive" });
+                  return;
+                }
+                createAmenityMutation.mutate({ name: amenityFormData.name, category: amenityFormData.category });
+              }}
+              disabled={createAmenityMutation.isPending}
+              data-testid="button-submit-create-amenity"
+            >
+              Crear Amenidad
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Amenity Edit Dialog */}
+      <Dialog open={showEditAmenityDialog} onOpenChange={setShowEditAmenityDialog}>
+        <DialogContent data-testid="dialog-edit-amenity">
+          <DialogHeader>
+            <DialogTitle>Editar Amenidad</DialogTitle>
+            <DialogDescription>
+              Modifica los datos de la amenidad
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-amenity-name">Nombre *</Label>
+              <Input
+                id="edit-amenity-name"
+                value={amenityFormData.name}
+                onChange={(e) => setAmenityFormData({ ...amenityFormData, name: e.target.value })}
+                placeholder="Nombre de la amenidad"
+                data-testid="input-edit-amenity-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-amenity-category">Categoría *</Label>
+              <Select
+                value={amenityFormData.category}
+                onValueChange={(value: "property" | "condominium") => setAmenityFormData({ ...amenityFormData, category: value })}
+              >
+                <SelectTrigger id="edit-amenity-category" data-testid="select-edit-amenity-category">
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="property">Propiedad</SelectItem>
+                  <SelectItem value="condominium">Condominio</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditAmenityDialog(false)} data-testid="button-cancel-edit-amenity">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedAmenity || !amenityFormData.name.trim()) {
+                  toast({ title: "Error", description: "El nombre de la amenidad es requerido", variant: "destructive" });
+                  return;
+                }
+                editAmenityMutation.mutate({ id: selectedAmenity.id, data: { name: amenityFormData.name, category: amenityFormData.category } });
+              }}
+              disabled={editAmenityMutation.isPending}
+              data-testid="button-submit-edit-amenity"
+            >
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feature Create Dialog */}
+      <Dialog open={showCreateFeatureDialog} onOpenChange={setShowCreateFeatureDialog}>
+        <DialogContent data-testid="dialog-create-feature">
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Característica</DialogTitle>
+            <DialogDescription>
+              Crea una nueva característica de propiedad
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="feature-name">Nombre *</Label>
+              <Input
+                id="feature-name"
+                value={featureFormData.name}
+                onChange={(e) => setFeatureFormData({ ...featureFormData, name: e.target.value })}
+                placeholder="Nombre de la característica"
+                data-testid="input-new-feature-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="feature-icon">Icono (opcional)</Label>
+              <Input
+                id="feature-icon"
+                value={featureFormData.icon}
+                onChange={(e) => setFeatureFormData({ ...featureFormData, icon: e.target.value })}
+                placeholder="Nombre del icono de lucide-react (ej: Home)"
+                data-testid="input-new-feature-icon"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateFeatureDialog(false)} data-testid="button-cancel-create-feature">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!featureFormData.name.trim()) {
+                  toast({ title: "Error", description: "El nombre de la característica es requerido", variant: "destructive" });
+                  return;
+                }
+                createFeatureMutation.mutate({ 
+                  name: featureFormData.name, 
+                  icon: featureFormData.icon || undefined, 
+                  active: true 
+                });
+              }}
+              disabled={createFeatureMutation.isPending}
+              data-testid="button-submit-create-feature"
+            >
+              Crear Característica
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feature Edit Dialog */}
+      <Dialog open={showEditFeatureDialog} onOpenChange={setShowEditFeatureDialog}>
+        <DialogContent data-testid="dialog-edit-feature">
+          <DialogHeader>
+            <DialogTitle>Editar Característica</DialogTitle>
+            <DialogDescription>
+              Modifica los datos de la característica
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-feature-name">Nombre *</Label>
+              <Input
+                id="edit-feature-name"
+                value={featureFormData.name}
+                onChange={(e) => setFeatureFormData({ ...featureFormData, name: e.target.value })}
+                placeholder="Nombre de la característica"
+                data-testid="input-edit-feature-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-feature-icon">Icono (opcional)</Label>
+              <Input
+                id="edit-feature-icon"
+                value={featureFormData.icon}
+                onChange={(e) => setFeatureFormData({ ...featureFormData, icon: e.target.value })}
+                placeholder="Nombre del icono de lucide-react (ej: Home)"
+                data-testid="input-edit-feature-icon"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditFeatureDialog(false)} data-testid="button-cancel-edit-feature">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedFeature || !featureFormData.name.trim()) {
+                  toast({ title: "Error", description: "El nombre de la característica es requerido", variant: "destructive" });
+                  return;
+                }
+                editFeatureMutation.mutate({ 
+                  id: selectedFeature.id, 
+                  data: { 
+                    name: featureFormData.name, 
+                    icon: featureFormData.icon || undefined,
+                    active: featureFormData.active
+                  } 
+                });
+              }}
+              disabled={editFeatureMutation.isPending}
+              data-testid="button-submit-edit-feature"
+            >
+              Guardar Cambios
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
