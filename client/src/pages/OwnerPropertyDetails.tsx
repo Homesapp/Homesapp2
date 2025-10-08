@@ -432,27 +432,44 @@ export default function OwnerPropertyDetails() {
                         <label className="text-sm font-medium text-muted-foreground">Precio Mensual</label>
                         <div className="flex items-center gap-1 text-xl font-semibold mt-1 text-primary">
                           <span data-testid="text-rental-price">
-                            ${Number(property.price).toLocaleString()}
+                            ${Number(property.price).toLocaleString()} {property.currency || 'MXN'}
                           </span>
                           <span className="text-sm text-muted-foreground">/mes</span>
                         </div>
                       </div>
-                      {property.availableFrom && (
+                      {(property.availableFrom || property.availableTo) && (
                         <>
                           <Separator />
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Disponible desde</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <p className="text-sm">
-                                {new Date(property.availableFrom).toLocaleDateString("es-ES", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
-                              </p>
+                          {property.availableFrom && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Disponible desde</label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-sm">
+                                  {new Date(property.availableFrom).toLocaleDateString("es-ES", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}
+                                </p>
+                              </div>
                             </div>
-                          </div>
+                          )}
+                          {property.availableTo && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Disponible hasta</label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-sm">
+                                  {new Date(property.availableTo).toLocaleDateString("es-ES", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </>
                       )}
                       {property.acceptedLeaseDurations && property.acceptedLeaseDurations.length > 0 && (
@@ -490,7 +507,7 @@ export default function OwnerPropertyDetails() {
                         <label className="text-sm font-medium text-muted-foreground">Precio de Venta</label>
                         <div className="flex items-center gap-1 text-xl font-semibold mt-1 text-primary">
                           <span data-testid="text-sale-price">
-                            ${Number(property.salePrice).toLocaleString()}
+                            ${Number(property.salePrice).toLocaleString()} {property.currency || 'MXN'}
                           </span>
                         </div>
                       </div>
