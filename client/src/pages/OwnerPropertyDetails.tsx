@@ -44,7 +44,8 @@ import {
   Waves,
   Flame,
   Check,
-  X as XIcon,
+  X,
+  Plus,
   Images,
 } from "lucide-react";
 import {
