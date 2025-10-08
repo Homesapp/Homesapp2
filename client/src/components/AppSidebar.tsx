@@ -113,7 +113,6 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.properties", url: "/properties", icon: Building2, roles: ["master", "admin", "admin_jr", "seller", "management"] },
     { titleKey: "sidebar.appointments", url: "/appointments", icon: Calendar, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge"] },
     { titleKey: "sidebar.conciergeSchedule", url: "/concierge/horarios", icon: Clock, roles: ["concierge"] },
-    { titleKey: "sidebar.conciergeInspections", url: "/concierge/inspecciones", icon: ClipboardCheck, roles: ["concierge"] },
     { titleKey: "sidebar.clients", url: "/clientes", icon: Users, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.incomeManagement", url: "/accountant/income", icon: DollarSign, roles: ["contador"] },
   ];
