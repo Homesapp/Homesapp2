@@ -4,6 +4,7 @@ import {
   colonies,
   condominiums,
   amenities,
+  propertyFeatures,
   appointments,
   businessHours,
   conciergeBlockedSlots,
@@ -71,6 +72,8 @@ import {
   type InsertCondominium,
   type Amenity,
   type InsertAmenity,
+  type PropertyFeature,
+  type InsertPropertyFeature,
   type UpsertUser,
   type InsertUser,
   type Property,
@@ -271,6 +274,13 @@ export interface IStorage {
   updateAmenity(id: string, updates: Partial<InsertAmenity>): Promise<Amenity>;
   updateAmenityStatus(id: string, approvalStatus: string): Promise<Amenity>;
   deleteAmenity(id: string): Promise<void>;
+  
+  // Property Feature operations
+  getPropertyFeature(id: string): Promise<PropertyFeature | undefined>;
+  getPropertyFeatures(filters?: { active?: boolean }): Promise<PropertyFeature[]>;
+  createPropertyFeature(feature: InsertPropertyFeature): Promise<PropertyFeature>;
+  updatePropertyFeature(id: string, updates: Partial<InsertPropertyFeature>): Promise<PropertyFeature>;
+  deletePropertyFeature(id: string): Promise<void>;
   
   // Suggestion limits
   getUserSuggestionsCount(userId: string, timeframe?: 'today' | 'total'): Promise<number>;
@@ -1161,6 +1171,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAmenity(id: string): Promise<void> {
     await db.delete(amenities).where(eq(amenities.id, id));
+  }
+
+  // Property Features
+  async getPropertyFeature(id: string): Promise<PropertyFeature | undefined> {
+    const [feature] = await db
+      .select()
+      .from(propertyFeatures)
+      .where(eq(propertyFeatures.id, id));
+    return feature;
+  }
+
+  async getPropertyFeatures(filters?: { active?: boolean }): Promise<PropertyFeature[]> {
+    let query = db.select().from(propertyFeatures);
+    
+    if (filters?.active !== undefined) {
+      query = query.where(eq(propertyFeatures.active, filters.active)) as any;
+    }
+    
+    return await query.orderBy(propertyFeatures.name);
+  }
+
+  async createPropertyFeature(featureData: InsertPropertyFeature): Promise<PropertyFeature> {
+    const [feature] = await db.insert(propertyFeatures).values(featureData).returning();
+    return feature;
+  }
+
+  async updatePropertyFeature(id: string, updates: Partial<InsertPropertyFeature>): Promise<PropertyFeature> {
+    const [feature] = await db
+      .update(propertyFeatures)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(propertyFeatures.id, id))
+      .returning();
+    return feature;
+  }
+
+  async deletePropertyFeature(id: string): Promise<void> {
+    await db.delete(propertyFeatures).where(eq(propertyFeatures.id, id));
   }
 
   // Suggestion limits

@@ -2235,6 +2235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body with Zod
       const updateSchema = z.object({
         name: z.string().min(1, "El nombre del condominio es requerido").optional(),
+        colonyId: z.string().optional(),
         zone: z.string().optional(),
         address: z.string().optional(),
       });
@@ -2695,6 +2696,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/admin/amenities/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate request body with Zod
+      const amenitySchema = z.object({
+        name: z.string().min(1, "El nombre de la amenidad es requerido"),
+        category: z.enum(["property", "condo"]).optional(),
+      });
+      
+      const validationResult = amenitySchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const existingAmenity = await storage.getAmenity(id);
+      if (!existingAmenity) {
+        return res.status(404).json({ message: "Amenidad no encontrada" });
+      }
+
+      const amenity = await storage.updateAmenity(id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "amenity",
+        amenity.id,
+        `Amenidad actualizada: ${amenity.name}`
+      );
+
+      res.json(amenity);
+    } catch (error) {
+      console.error("Error updating amenity:", error);
+      res.status(500).json({ message: "Failed to update amenity" });
+    }
+  });
+
   app.delete("/api/admin/amenities/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -2717,6 +2758,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting amenity:", error);
       res.status(500).json({ message: "Failed to delete amenity" });
+    }
+  });
+
+  // Property Features routes
+  app.get("/api/property-features", async (req, res) => {
+    try {
+      const { active } = req.query;
+      const filters: any = {};
+      if (active !== undefined) filters.active = active === "true";
+      
+      const features = await storage.getPropertyFeatures(filters);
+      res.json(features);
+    } catch (error) {
+      console.error("Error fetching property features:", error);
+      res.status(500).json({ message: "Failed to fetch property features" });
+    }
+  });
+
+  app.post("/api/property-features", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      // Validate request body with Zod
+      const featureSchema = z.object({
+        name: z.string().min(1, "El nombre es requerido"),
+        icon: z.string().optional(),
+        active: z.boolean().optional().default(true),
+      });
+      
+      const validationResult = featureSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const feature = await storage.createPropertyFeature(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "property_feature",
+        feature.id,
+        `Característica creada: ${feature.name}`
+      );
+
+      res.json(feature);
+    } catch (error) {
+      console.error("Error creating property feature:", error);
+      res.status(500).json({ message: "Failed to create property feature" });
+    }
+  });
+
+  app.put("/api/property-features/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate request body with Zod
+      const featureSchema = z.object({
+        name: z.string().min(1, "El nombre es requerido").optional(),
+        icon: z.string().optional(),
+        active: z.boolean().optional(),
+      });
+      
+      const validationResult = featureSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const existingFeature = await storage.getPropertyFeature(id);
+      if (!existingFeature) {
+        return res.status(404).json({ message: "Característica no encontrada" });
+      }
+
+      const feature = await storage.updatePropertyFeature(id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "property_feature",
+        feature.id,
+        `Característica actualizada: ${feature.name}`
+      );
+
+      res.json(feature);
+    } catch (error) {
+      console.error("Error updating property feature:", error);
+      res.status(500).json({ message: "Failed to update property feature" });
+    }
+  });
+
+  app.delete("/api/property-features/:id", isAuthenticated, requireFullAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingFeature = await storage.getPropertyFeature(id);
+      if (!existingFeature) {
+        return res.status(404).json({ message: "Característica no encontrada" });
+      }
+
+      await createAuditLog(
+        req,
+        "delete",
+        "property_feature",
+        id,
+        `Característica eliminada: ${existingFeature.name}`
+      );
+
+      await storage.deletePropertyFeature(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting property feature:", error);
+      res.status(500).json({ message: "Failed to delete property feature" });
     }
   });
 
