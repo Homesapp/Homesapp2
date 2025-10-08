@@ -116,17 +116,73 @@ export default function AdminPropertyManagement() {
     },
   });
 
-  // Approve mutation
-  const approveMutation = useMutation({
+  // Accept property mutation (draft/pending_review → accepted)
+  const acceptMutation = useMutation({
     mutationFn: (propertyId: string) =>
-      apiRequest("PATCH", `/api/admin/properties/${propertyId}/approve`, { publish: true }),
+      apiRequest("POST", `/api/properties/${propertyId}/accept`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
-      toast({ title: "Propiedad aprobada", description: "La propiedad ha sido aprobada y publicada" });
+      toast({ title: "Propiedad aceptada", description: "La propiedad ha sido aceptada" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo aceptar la propiedad", variant: "destructive" });
+    },
+  });
+
+  // Validate documents mutation (accepted → documents_validated)
+  const validateDocumentsMutation = useMutation({
+    mutationFn: (propertyId: string) =>
+      apiRequest("POST", `/api/properties/${propertyId}/validate-documents`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      toast({ title: "Documentos validados", description: "Los documentos han sido validados" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudieron validar los documentos", variant: "destructive" });
+    },
+  });
+
+  // Approve without inspection mutation (documents_validated → approved)
+  const approveWithoutInspectionMutation = useMutation({
+    mutationFn: (data: { propertyId: string; reason?: string }) =>
+      apiRequest("POST", `/api/properties/${data.propertyId}/approve-without-inspection`, { reason: data.reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      toast({ title: "Propiedad aprobada", description: "La propiedad ha sido aprobada sin inspección" });
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo aprobar la propiedad", variant: "destructive" });
+    },
+  });
+
+  // Approve property mutation (inspection_completed → approved)
+  const approveMutation = useMutation({
+    mutationFn: (propertyId: string) =>
+      apiRequest("POST", `/api/properties/${propertyId}/approve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      toast({ title: "Propiedad aprobada", description: "La propiedad ha sido aprobada" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo aprobar la propiedad", variant: "destructive" });
+    },
+  });
+
+  // Publish property mutation (approved → published)
+  const publishMutation = useMutation({
+    mutationFn: (propertyId: string) =>
+      apiRequest("POST", `/api/properties/${propertyId}/publish`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      toast({ title: "Propiedad publicada", description: "La propiedad ha sido publicada" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo publicar la propiedad", variant: "destructive" });
     },
   });
 
@@ -192,12 +248,16 @@ export default function AdminPropertyManagement() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { icon: any; variant: any; label: string }> = {
-      pending: { icon: Clock, variant: "outline", label: "Pendiente" },
-      approved: { icon: CheckCircle2, variant: "default", label: "Aprobada" },
-      rejected: { icon: XCircle, variant: "destructive", label: "Rechazada" },
       draft: { icon: FileText, variant: "secondary", label: "Borrador" },
+      pending_review: { icon: Clock, variant: "outline", label: "Pendiente" },
+      changes_requested: { icon: Clock, variant: "outline", label: "Cambios Solicitados" },
+      accepted: { icon: CheckCircle2, variant: "outline", label: "Aceptada" },
+      documents_validated: { icon: CheckCircle2, variant: "default", label: "Docs Validados" },
       inspection_scheduled: { icon: Clock, variant: "outline", label: "Inspección Programada" },
       inspection_completed: { icon: CheckCircle2, variant: "outline", label: "Inspección Completa" },
+      approved: { icon: CheckCircle2, variant: "default", label: "Aprobada" },
+      published: { icon: Eye, variant: "default", label: "Publicada" },
+      rejected: { icon: XCircle, variant: "destructive", label: "Rechazada" },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
@@ -318,12 +378,16 @@ export default function AdminPropertyManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="approved">Aprobada</SelectItem>
-                  <SelectItem value="rejected">Rechazada</SelectItem>
                   <SelectItem value="draft">Borrador</SelectItem>
+                  <SelectItem value="pending_review">Pendiente</SelectItem>
+                  <SelectItem value="changes_requested">Cambios Solicitados</SelectItem>
+                  <SelectItem value="accepted">Aceptada</SelectItem>
+                  <SelectItem value="documents_validated">Docs Validados</SelectItem>
                   <SelectItem value="inspection_scheduled">Inspección Programada</SelectItem>
                   <SelectItem value="inspection_completed">Inspección Completa</SelectItem>
+                  <SelectItem value="approved">Aprobada</SelectItem>
+                  <SelectItem value="published">Publicada</SelectItem>
+                  <SelectItem value="rejected">Rechazada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -762,30 +826,100 @@ export default function AdminPropertyManagement() {
                           </DialogContent>
                         </Dialog>
 
-                        {property.approvalStatus === "pending" && (
+                        {/* Action buttons based on approval status */}
+                        {(property.approvalStatus === "draft" || property.approvalStatus === "pending_review" || property.approvalStatus === "changes_requested") && (
+                          <Button
+                            data-testid={`button-accept-${property.id}`}
+                            size="sm"
+                            onClick={() => acceptMutation.mutate(property.id)}
+                            disabled={acceptMutation.isPending}
+                            className="gap-2"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Aceptar
+                          </Button>
+                        )}
+                        
+                        {property.approvalStatus === "accepted" && (
+                          <Button
+                            data-testid={`button-validate-documents-${property.id}`}
+                            size="sm"
+                            onClick={() => validateDocumentsMutation.mutate(property.id)}
+                            disabled={validateDocumentsMutation.isPending}
+                            className="gap-2"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Validar Documentos
+                          </Button>
+                        )}
+                        
+                        {property.approvalStatus === "documents_validated" && (
                           <>
                             <Button
-                              data-testid={`button-approve-${property.id}`}
+                              data-testid={`button-schedule-inspection-${property.id}`}
                               size="sm"
-                              onClick={() => approveMutation.mutate(property.id)}
-                              disabled={approveMutation.isPending}
+                              variant="outline"
+                              onClick={() => {
+                                // TODO: Open schedule inspection dialog
+                                toast({ title: "Próximamente", description: "Funcionalidad de programar inspección en desarrollo" });
+                              }}
+                              className="gap-2"
+                            >
+                              <Clock className="w-4 h-4" />
+                              Programar Inspección
+                            </Button>
+                            <Button
+                              data-testid={`button-approve-without-inspection-${property.id}`}
+                              size="sm"
+                              onClick={() => approveWithoutInspectionMutation.mutate({ propertyId: property.id, reason: "Propiedad de confianza" })}
+                              disabled={approveWithoutInspectionMutation.isPending}
                               className="gap-2"
                             >
                               <CheckCircle2 className="w-4 h-4" />
-                              Aprobar
-                            </Button>
-                            <Button
-                              data-testid={`button-reject-${property.id}`}
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => rejectMutation.mutate(property.id)}
-                              disabled={rejectMutation.isPending}
-                              className="gap-2"
-                            >
-                              <XCircle className="w-4 h-4" />
-                              Rechazar
+                              Aprobar sin Inspección
                             </Button>
                           </>
+                        )}
+                        
+                        {property.approvalStatus === "inspection_completed" && (
+                          <Button
+                            data-testid={`button-approve-${property.id}`}
+                            size="sm"
+                            onClick={() => approveMutation.mutate(property.id)}
+                            disabled={approveMutation.isPending}
+                            className="gap-2"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Aprobar
+                          </Button>
+                        )}
+                        
+                        {property.approvalStatus === "approved" && (
+                          <Button
+                            data-testid={`button-publish-${property.id}`}
+                            size="sm"
+                            onClick={() => publishMutation.mutate(property.id)}
+                            disabled={publishMutation.isPending}
+                            className="gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Publicar
+                          </Button>
+                        )}
+                        
+                        {/* Reject button - available for most states except published */}
+                        {property.approvalStatus !== "published" && property.approvalStatus !== "rejected" && (
+                          <Button
+                            data-testid={`button-reject-${property.id}`}
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => rejectMutation.mutate(property.id)}
+                            disabled={rejectMutation.isPending}
+                            className="gap-2"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Rechazar
+                          </Button>
                         )}
                       </div>
                     </div>
