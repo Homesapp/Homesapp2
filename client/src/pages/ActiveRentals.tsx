@@ -600,58 +600,69 @@ export default function ActiveRentals() {
                   {t("activeRentals.noMaintenanceRequests", "No hay solicitudes de mantenimiento")}
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("activeRentals.requestTitle", "Título")}</TableHead>
-                      <TableHead>{t("activeRentals.urgency", "Urgencia")}</TableHead>
-                      <TableHead>{t("activeRentals.status", "Estado")}</TableHead>
-                      <TableHead>{t("activeRentals.requestedDate", "Fecha")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {maintenanceRequests.map((request) => (
-                      <TableRow key={request.id} data-testid={`row-maintenance-${request.id}`}>
-                        <TableCell className="font-medium">{request.description}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              request.urgency === "emergency" ? "destructive" :
-                              request.urgency === "urgent" ? "destructive" :
-                              request.urgency === "high" ? "destructive" :
-                              request.urgency === "normal" ? "secondary" :
-                              request.urgency === "medium" ? "secondary" : "outline"
-                            }
-                            data-testid={`badge-urgency-${request.id}`}
-                          >
-                            {request.urgency === "emergency" ? t("activeRentals.emergency", "Emergencia") :
-                             request.urgency === "urgent" ? t("activeRentals.urgent", "Urgente") :
-                             request.urgency === "high" ? t("activeRentals.high", "Alta") :
-                             request.urgency === "normal" ? t("activeRentals.normal", "Normal") :
-                             request.urgency === "medium" ? t("activeRentals.medium", "Media") :
-                             t("activeRentals.low", "Baja")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              request.status === "completed" ? "default" :
-                              request.status === "in_progress" ? "secondary" : "outline"
-                            }
-                            data-testid={`badge-status-${request.id}`}
-                          >
-                            {request.status === "completed" ? t("activeRentals.completed", "Completado") :
-                             request.status === "in_progress" ? t("activeRentals.inProgress", "En Proceso") :
-                             t("activeRentals.pending", "Pendiente")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
+                <div className="space-y-4">
+                  {maintenanceRequests.map((request) => (
+                    <Card key={request.id} data-testid={`card-maintenance-${request.id}`}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">
+                              {request.title || t("activeRentals.maintenanceRequest", "Solicitud de Mantenimiento")}
+                            </CardTitle>
+                            <CardDescription className="mt-2">
+                              {request.description || t("activeRentals.noDescription", "Sin descripción")}
+                            </CardDescription>
+                          </div>
+                          <div className="flex flex-col gap-2 items-end">
+                            <Badge
+                              variant={
+                                request.urgency === "emergency" ? "destructive" :
+                                request.urgency === "urgent" ? "destructive" :
+                                request.urgency === "high" ? "destructive" :
+                                request.urgency === "normal" ? "secondary" :
+                                request.urgency === "medium" ? "secondary" : "outline"
+                              }
+                              data-testid={`badge-urgency-${request.id}`}
+                            >
+                              {request.urgency === "emergency" ? t("activeRentals.emergency", "Emergencia") :
+                               request.urgency === "urgent" ? t("activeRentals.urgent", "Urgente") :
+                               request.urgency === "high" ? t("activeRentals.high", "Alta") :
+                               request.urgency === "normal" ? t("activeRentals.normal", "Normal") :
+                               request.urgency === "medium" ? t("activeRentals.medium", "Media") :
+                               t("activeRentals.low", "Baja")}
+                            </Badge>
+                            <Badge
+                              variant={
+                                request.status === "completed" ? "default" :
+                                request.status === "in_progress" ? "secondary" : "outline"
+                              }
+                              data-testid={`badge-status-${request.id}`}
+                            >
+                              {request.status === "completed" ? t("activeRentals.completed", "Completado") :
+                               request.status === "in_progress" ? t("activeRentals.inProgress", "En Proceso") :
+                               t("activeRentals.pending", "Pendiente")}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      {request.photoData && (
+                        <CardContent>
+                          <img 
+                            src={request.photoData} 
+                            alt={t("activeRentals.problemPhoto", "Foto del Problema")} 
+                            className="w-full max-w-md rounded-lg"
+                            data-testid={`img-problem-${request.id}`}
+                          />
+                        </CardContent>
+                      )}
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-tertiary-foreground">
                           {format(new Date(request.createdAt), "dd MMM yyyy", { locale: language === "es" ? es : undefined })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
