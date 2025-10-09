@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertBudgetSchema, type InsertBudget, type Budget } from "@shared/schema";
@@ -29,7 +29,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useCreateBudget, useUpdateBudget } from "@/hooks/useBudgets";
 import { useProperties } from "@/hooks/useProperties";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface BudgetFormDialogProps {
   open: boolean;
@@ -44,9 +45,11 @@ export function BudgetFormDialog({
   budget,
   mode,
 }: BudgetFormDialogProps) {
+  const { toast } = useToast();
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: properties } = useProperties({ active: true });
+  const [attachmentFiles, setAttachmentFiles] = useState<{ name: string; data: string }[]>([]);
 
   const form = useForm<InsertBudget>({
     resolver: zodResolver(insertBudgetSchema),
@@ -63,6 +66,10 @@ export function BudgetFormDialog({
   });
 
   useEffect(() => {
+    if (!open) {
+      return;
+    }
+    
     if (budget && mode === "edit") {
       form.reset({
         propertyId: budget.propertyId,
@@ -74,6 +81,12 @@ export function BudgetFormDialog({
         attachments: budget.attachments || [],
         notes: budget.notes || "",
       });
+      // Load existing attachments as files for display
+      const files = (budget.attachments || []).map((data, index) => ({
+        name: `Archivo ${index + 1}`,
+        data,
+      }));
+      setAttachmentFiles(files);
     } else if (mode === "create") {
       form.reset({
         propertyId: "",
@@ -85,8 +98,76 @@ export function BudgetFormDialog({
         attachments: [],
         notes: "",
       });
+      setAttachmentFiles([]);
     }
-  }, [budget, mode, form]);
+  }, [budget, mode, form, open]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const filesArray = Array.from(files);
+    
+    // Process all files in parallel
+    const filePromises = filesArray.map(async (file) => {
+      // Validate file type (images and PDFs)
+      const allowedTypes = ['image/', 'application/pdf'];
+      const isValid = allowedTypes.some(type => file.type.startsWith(type));
+      
+      if (!isValid) {
+        toast({
+          title: "Error",
+          description: `${file.name}: Solo se permiten imágenes y PDFs`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: `${file.name} supera el límite de 10MB`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // Convert to base64 (create new FileReader for each file)
+      return new Promise<{ name: string; data: string } | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({ name: file.name, data: reader.result as string });
+        };
+        reader.onerror = () => {
+          toast({
+            title: "Error",
+            description: `Error al leer ${file.name}`,
+            variant: "destructive",
+          });
+          resolve(null);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    const results = await Promise.all(filePromises);
+    const validFiles = results.filter((f): f is { name: string; data: string } => f !== null);
+
+    if (validFiles.length > 0) {
+      const updatedFiles = [...attachmentFiles, ...validFiles];
+      setAttachmentFiles(updatedFiles);
+      form.setValue("attachments", updatedFiles.map(f => f.data));
+    }
+
+    // Reset input
+    event.target.value = "";
+  };
+
+  const removeAttachment = (index: number) => {
+    const updatedFiles = attachmentFiles.filter((_, i) => i !== index);
+    setAttachmentFiles(updatedFiles);
+    form.setValue("attachments", updatedFiles.map(f => f.data));
+  };
 
   const onSubmit = async (data: InsertBudget) => {
     try {
@@ -95,8 +176,9 @@ export function BudgetFormDialog({
       } else {
         await createMutation.mutateAsync(data);
       }
-      onOpenChange(false);
+      setAttachmentFiles([]);
       form.reset();
+      onOpenChange(false);
     } catch (error) {
       console.error("Form submission error:", error);
     }
@@ -224,30 +306,40 @@ export function BudgetFormDialog({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="attachments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Adjuntos (URLs separadas por comas)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="https://ejemplo.com/cotizacion1.pdf, https://ejemplo.com/cotizacion2.pdf"
-                      data-testid="input-attachments"
-                      value={field.value?.join(", ") || ""}
-                      onChange={(e) => {
-                        const attachments = e.target.value
-                          .split(",")
-                          .map((url) => url.trim())
-                          .filter((url) => url.length > 0);
-                        field.onChange(attachments);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="space-y-2">
+              <FormLabel>Adjuntos (Imágenes o PDFs)</FormLabel>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  multiple
+                  onChange={handleFileUpload}
+                  data-testid="input-attachments"
+                />
+                <Upload className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              {attachmentFiles.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {attachmentFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-secondary-foreground" />
+                        <span className="text-sm truncate">{file.name}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeAttachment(index)}
+                        data-testid={`button-remove-attachment-${index}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
-            />
+            </div>
 
             <FormField
               control={form.control}
@@ -272,7 +364,11 @@ export function BudgetFormDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  setAttachmentFiles([]);
+                  form.reset();
+                  onOpenChange(false);
+                }}
                 disabled={isPending}
                 data-testid="button-cancel"
               >
