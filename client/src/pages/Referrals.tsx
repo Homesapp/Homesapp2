@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Plus, Users, Home, TrendingUp, AlertCircle } from "lucide-react";
+import { Plus, Users, Home, TrendingUp, AlertCircle, CreditCard, AlertTriangle } from "lucide-react";
 import { CreateClientReferralDialog } from "@/components/referrals/CreateClientReferralDialog";
 import { CreateOwnerReferralDialog } from "@/components/referrals/CreateOwnerReferralDialog";
 import { ReferralsList } from "@/components/referrals/ReferralsList";
+import { BankInfoForm } from "@/components/referrals/BankInfoForm";
 import type { ClientReferral, OwnerReferral, ReferralConfig } from "@shared/schema";
 
 export default function Referrals() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [showClientDialog, setShowClientDialog] = useState(false);
   const [showOwnerDialog, setShowOwnerDialog] = useState(false);
 
@@ -105,6 +108,8 @@ export default function Referrals() {
     );
   }
 
+  const hasBankInfo = user?.bankAccountName && user?.bankAccountNumber;
+
   return (
     <div className="space-y-6">
       <div>
@@ -115,6 +120,16 @@ export default function Referrals() {
           {t("referrals.description", "Recomienda clientes y propietarios y gana comisiones")}
         </p>
       </div>
+
+      {!hasBankInfo && totalEarnings > 0 && (
+        <Alert variant="destructive" data-testid="alert-setup-bank">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{t("referrals.setupBankAccount", "Configura tu cuenta bancaria")}</AlertTitle>
+          <AlertDescription>
+            {t("referrals.setupBankAccountDesc", "Tienes comisiones pendientes de pago. Configura tu información bancaria para recibir tus pagos.")}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -185,6 +200,11 @@ export default function Referrals() {
               {ownerReferrals.length}
             </Badge>
           </TabsTrigger>
+          <TabsTrigger value="bank-info" data-testid="tab-bank-info">
+            <CreditCard className="h-4 w-4 mr-2" />
+            {t("referrals.bankInfo", "Información Bancaria")}
+            {!hasBankInfo && <AlertTriangle className="h-3 w-3 ml-2 text-destructive" />}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="clients" className="space-y-4">
@@ -223,6 +243,10 @@ export default function Referrals() {
           </div>
 
           <ReferralsList type="owner" referrals={ownerReferrals} />
+        </TabsContent>
+
+        <TabsContent value="bank-info">
+          <BankInfoForm />
         </TabsContent>
       </Tabs>
 
