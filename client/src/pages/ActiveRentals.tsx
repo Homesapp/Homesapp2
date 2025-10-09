@@ -370,7 +370,7 @@ export default function ActiveRentals() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t("activeRentals.title", "Título")}</TableHead>
+                      <TableHead>{t("activeRentals.requestTitle", "Título")}</TableHead>
                       <TableHead>{t("activeRentals.urgency", "Urgencia")}</TableHead>
                       <TableHead>{t("activeRentals.status", "Estado")}</TableHead>
                       <TableHead>{t("activeRentals.requestedDate", "Fecha")}</TableHead>
