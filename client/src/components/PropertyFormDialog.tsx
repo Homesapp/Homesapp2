@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPropertySchema, type InsertProperty, type Property } from "@shared/schema";
@@ -29,7 +29,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useCreateProperty, useUpdateProperty } from "@/hooks/useProperties";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface PropertyFormDialogProps {
   open: boolean;
@@ -44,8 +45,10 @@ export function PropertyFormDialog({
   property,
   mode,
 }: PropertyFormDialogProps) {
+  const { toast } = useToast();
   const createMutation = useCreateProperty();
   const updateMutation = useUpdateProperty();
+  const [imageFiles, setImageFiles] = useState<{ name: string; data: string }[]>([]);
 
   const form = useForm<InsertProperty>({
     resolver: zodResolver(insertPropertySchema),
@@ -69,6 +72,10 @@ export function PropertyFormDialog({
   });
 
   useEffect(() => {
+    if (!open) {
+      return;
+    }
+    
     if (property && mode === "edit") {
       const accessInfo = property.accessInfo as { lockboxCode?: string; contactPerson?: string; contactPhone?: string } | null;
       form.reset({
@@ -88,6 +95,12 @@ export function PropertyFormDialog({
         active: property.active,
         accessInfo: accessInfo || undefined,
       });
+      // Load existing images
+      const files = (property.images || []).map((data, index) => ({
+        name: `Imagen ${index + 1}`,
+        data,
+      }));
+      setImageFiles(files);
     } else if (mode === "create") {
       form.reset({
         title: "",
@@ -106,8 +119,72 @@ export function PropertyFormDialog({
         active: true,
         accessInfo: undefined,
       });
+      setImageFiles([]);
     }
-  }, [property, mode, form]);
+  }, [property, mode, form, open]);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const filesArray = Array.from(files);
+    
+    // Process all files in parallel
+    const filePromises = filesArray.map(async (file) => {
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Error",
+          description: `${file.name}: Solo se permiten imágenes`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: `${file.name} supera el límite de 10MB`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // Convert to base64 (create new FileReader for each file)
+      return new Promise<{ name: string; data: string } | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({ name: file.name, data: reader.result as string });
+        };
+        reader.onerror = () => {
+          toast({
+            title: "Error",
+            description: `Error al leer ${file.name}`,
+            variant: "destructive",
+          });
+          resolve(null);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    const results = await Promise.all(filePromises);
+    const validFiles = results.filter((f): f is { name: string; data: string } => f !== null);
+
+    if (validFiles.length > 0) {
+      const updatedFiles = [...imageFiles, ...validFiles];
+      setImageFiles(updatedFiles);
+      form.setValue("images", updatedFiles.map(f => f.data));
+    }
+
+    // Reset input
+    event.target.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    const updatedFiles = imageFiles.filter((_, i) => i !== index);
+    setImageFiles(updatedFiles);
+    form.setValue("images", updatedFiles.map(f => f.data));
+  };
 
   const onSubmit = async (data: InsertProperty) => {
     try {
@@ -116,8 +193,9 @@ export function PropertyFormDialog({
       } else {
         await createMutation.mutateAsync(data);
       }
-      onOpenChange(false);
+      setImageFiles([]);
       form.reset();
+      onOpenChange(false);
     } catch (error) {
       console.error("Form submission error:", error);
     }
@@ -346,30 +424,43 @@ export function PropertyFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="images"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Imágenes (URLs separadas por comas)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="https://ejemplo.com/imagen1.jpg, https://ejemplo.com/imagen2.jpg"
-                      data-testid="input-images"
-                      value={field.value?.join(", ") || ""}
-                      onChange={(e) => {
-                        const images = e.target.value
-                          .split(",")
-                          .map((img) => img.trim())
-                          .filter((img) => img.length > 0);
-                        field.onChange(images);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="space-y-2">
+              <FormLabel>Imágenes</FormLabel>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  data-testid="input-images"
+                />
+                <Upload className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              {imageFiles.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                  {imageFiles.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={file.data}
+                        alt={file.name}
+                        className="w-full h-32 object-cover rounded-md"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => removeImage(index)}
+                          data-testid={`button-remove-image-${index}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            />
+            </div>
 
             <FormField
               control={form.control}
