@@ -362,22 +362,26 @@ export default function MyIncome() {
       )}
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5" data-testid="tabs-list">
+        <TabsList className={`grid w-full ${user?.role === "cliente" ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-5"}`} data-testid="tabs-list">
           <TabsTrigger value="overview" data-testid="tab-overview">
             {language === "es" ? "Resumen" : "Overview"}
           </TabsTrigger>
           <TabsTrigger value="commissions" data-testid="tab-commissions">
             {language === "es" ? "Comisiones" : "Commissions"}
           </TabsTrigger>
-          <TabsTrigger value="bank-info" data-testid="tab-bank-info">
-            {language === "es" ? "Cuenta Bancaria" : "Bank Account"}
-          </TabsTrigger>
+          {user?.role !== "cliente" && (
+            <TabsTrigger value="bank-info" data-testid="tab-bank-info">
+              {language === "es" ? "Cuenta Bancaria" : "Bank Account"}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="documents" data-testid="tab-documents">
             {language === "es" ? "Documentos" : "Documents"}
           </TabsTrigger>
-          <TabsTrigger value="training" data-testid="tab-training">
-            {language === "es" ? "Entrenamiento" : "Training"}
-          </TabsTrigger>
+          {user?.role !== "cliente" && (
+            <TabsTrigger value="training" data-testid="tab-training">
+              {language === "es" ? "Entrenamiento" : "Training"}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -543,29 +547,52 @@ export default function MyIncome() {
                   {language === "es" ? "Tipos de comisiones:" : "Commission types:"}
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <div className="p-3 rounded-md bg-muted">
-                    <strong>{language === "es" ? "Comisión por Renta:" : "Rental Commission:"}</strong>
-                    <p className="text-muted-foreground mt-1">
-                      {language === "es"
-                        ? "Recibes el 50% de la comisión total cuando completas una renta. Si hay un referido, tu porcentaje se reduce a la mitad del porcentaje del referido."
-                        : "You receive 50% of the total commission when you complete a rental. If there is a referral, your percentage is reduced by half of the referral percentage."}
-                    </p>
-                  </div>
+                  {user?.role !== "cliente" && (
+                    <div className="p-3 rounded-md bg-muted">
+                      <strong>{language === "es" ? "Comisión por Renta:" : "Rental Commission:"}</strong>
+                      <p className="text-muted-foreground mt-1">
+                        {language === "es"
+                          ? "Recibes el 50% de la comisión total cuando completas una renta. Si hay un referido, tu porcentaje se reduce a la mitad del porcentaje del referido."
+                          : "You receive 50% of the total commission when you complete a rental. If there is a referral, your percentage is reduced by half of the referral percentage."}
+                      </p>
+                    </div>
+                  )}
                   <div className="p-3 rounded-md bg-muted">
                     <strong>{language === "es" ? "Referido de Cliente:" : "Client Referral:"}</strong>
                     <p className="text-muted-foreground mt-1">
                       {language === "es"
-                        ? "Ganas una comisión cuando refieres un cliente que completa una renta."
-                        : "You earn a commission when you refer a client who completes a rental."}
+                        ? "Ganas el 25% de la comisión que nosotros obtenemos cuando refieres un cliente que completa una renta."
+                        : "You earn 25% of the commission we obtain when you refer a client who completes a rental."}
                     </p>
+                    <div className="mt-2 p-2 bg-background rounded text-xs space-y-1">
+                      <p className="font-medium">{language === "es" ? "Ejemplo:" : "Example:"}</p>
+                      <p>
+                        {language === "es"
+                          ? "• Si rentamos una propiedad a 1 año por $18,000, ganamos $18,000 de comisión y tú ganas el 25% = $4,500"
+                          : "• If we rent a property for 1 year at $18,000, we earn $18,000 commission and you earn 25% = $4,500"}
+                      </p>
+                      <p>
+                        {language === "es"
+                          ? "• Si es por 6 meses y ganamos $9,000, tú ganas el 25% = $2,250"
+                          : "• If it's for 6 months and we earn $9,000, you earn 25% = $2,250"}
+                      </p>
+                    </div>
                   </div>
                   <div className="p-3 rounded-md bg-muted">
                     <strong>{language === "es" ? "Referido de Propietario:" : "Owner Referral:"}</strong>
                     <p className="text-muted-foreground mt-1">
                       {language === "es"
-                        ? "Ganas una comisión cuando refieres un propietario que enlista una propiedad con nosotros."
-                        : "You earn a commission when you refer an owner who lists a property with us."}
+                        ? "Ganas el 20% de la comisión que nosotros obtenemos cuando refieres un propietario cuya propiedad se renta."
+                        : "You earn 20% of the commission we obtain when you refer an owner whose property gets rented."}
                     </p>
+                    <div className="mt-2 p-2 bg-background rounded text-xs space-y-1">
+                      <p className="font-medium">{language === "es" ? "Ejemplo:" : "Example:"}</p>
+                      <p>
+                        {language === "es"
+                          ? "• Si rentamos la propiedad a 1 año por $18,000 y ganamos $18,000, tú ganas el 20% = $3,600"
+                          : "• If we rent the property for 1 year at $18,000 and earn $18,000, you earn 20% = $3,600"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
