@@ -778,7 +778,7 @@ export default function ActiveRentals() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("activeRentals.description", "Descripción")}</FormLabel>
+                    <FormLabel>{t("activeRentals.descriptionLabel", "Descripción")}</FormLabel>
                     <FormControl>
                       <Textarea {...field} placeholder={t("activeRentals.descPlaceholder", "Describe el problema en detalle")} data-testid="textarea-maintenance-description" />
                     </FormControl>
