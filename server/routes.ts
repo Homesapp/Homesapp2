@@ -7660,11 +7660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Non-admins cannot specify different clientId, silently use their own
       }
       
-      // Clean special values
+      // Clean special values and convert date string to Date object if needed
       const cleanedBody = {
         ...req.body,
         clientId,
         conciergeId: req.body.conciergeId === "none" ? undefined : req.body.conciergeId,
+        // Convert date string to Date object (JSON serialization converts Date to string)
+        date: req.body.date ? new Date(req.body.date) : req.body.date,
       };
       
       const appointmentData = insertAppointmentSchema.parse(cleanedBody);

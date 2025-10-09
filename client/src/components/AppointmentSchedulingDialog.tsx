@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { type Property, type BusinessHours, type PresentationCard } from "@shared/schema";
-import { Calendar, Clock, MapPin, Plus, X } from "lucide-react";
+import { Calendar, Clock, MapPin, Plus, X, Check, ChevronRight, ChevronLeft } from "lucide-react";
 import { format, addDays, startOfDay, isBefore, isAfter, setHours, setMinutes } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -45,6 +45,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   propertyId: z.string().min(1, "Propiedad es requerida"),
@@ -71,6 +73,7 @@ export function AppointmentSchedulingDialog({
   const { toast } = useToast();
   const [selectedProperties, setSelectedProperties] = useState<Property[]>([property]);
   const [showPropertySearch, setShowPropertySearch] = useState(false);
+  const [step, setStep] = useState(1);
 
   // Fetch business hours
   const { data: businessHours } = useQuery<BusinessHours[]>({
@@ -101,6 +104,20 @@ export function AppointmentSchedulingDialog({
 
   const watchDate = form.watch("date");
   const watchMode = form.watch("appointmentMode");
+  const watchTimeSlot = form.watch("timeSlot");
+
+  // Reset step when dialog opens
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      form.reset({
+        propertyId: property.id,
+        appointmentMode: "individual",
+        notes: "",
+      });
+      setSelectedProperties([property]);
+    }
+  }, [open, property, form]);
 
   // Generate available time slots based on business hours
   const getAvailableTimeSlots = (selectedDate: Date) => {
@@ -173,44 +190,47 @@ export function AppointmentSchedulingDialog({
           
           return {
             propertyId: prop.id,
-            date: data.date,
-            time: format(appointmentTime, 'HH:mm'),
-            appointmentMode: "tour" as const,
-            appointmentType: "in-person" as const,
-            presentationCardId: data.presentationCardId || null,
-            notes: data.notes || "",
+            date: appointmentTime,
+            type: "in-person" as const,
+            notes: data.notes,
+            presentationCardId: data.presentationCardId && data.presentationCardId !== "none" 
+              ? data.presentationCardId 
+              : undefined,
             tourGroupId,
+            tourOrder: index + 1,
           };
         });
         
-        // Create all appointments for the tour
+        // Create all tour appointments
         const results = await Promise.all(
           tourAppointments.map(apt => apiRequest("POST", "/api/appointments", apt))
         );
+        
         return results;
       } else {
-        // Single appointment
-        const appointmentData = {
+        // Single appointment (individual mode or tour with only 1 property)
+        const [hour, minute] = startTime.split(':').map(Number);
+        const appointmentDate = new Date(data.date);
+        appointmentDate.setHours(hour, minute, 0, 0);
+        
+        return await apiRequest("POST", "/api/appointments", {
           propertyId: data.propertyId,
-          date: data.date,
-          time: startTime,
-          appointmentMode: data.appointmentMode,
-          appointmentType: "in-person" as const,
-          presentationCardId: data.presentationCardId || null,
-          notes: data.notes || "",
-        };
-        return await apiRequest("POST", "/api/appointments", appointmentData);
+          date: appointmentDate,
+          type: "in-person" as const,
+          notes: data.notes,
+          presentationCardId: data.presentationCardId && data.presentationCardId !== "none" 
+            ? data.presentationCardId 
+            : undefined,
+        });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
       toast({
-        title: "¡Cita coordinada!",
-        description: "Tu cita ha sido agendada exitosamente.",
+        title: "¡Cita agendada!",
+        description: "Tu cita ha sido confirmada exitosamente",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
       onOpenChange(false);
-      form.reset();
-      setSelectedProperties([property]);
     },
     onError: (error: any) => {
       toast({
@@ -250,325 +270,424 @@ export function AppointmentSchedulingDialog({
     };
   };
 
+  const canGoToStep2 = watchMode !== undefined;
+  const canGoToStep3 = watchDate !== undefined;
+  const canGoToStep4 = watchTimeSlot !== undefined;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-appointment-scheduling">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-appointment-scheduling">
         <DialogHeader>
-          <DialogTitle>Coordinar cita</DialogTitle>
+          <DialogTitle className="text-2xl">Coordinar cita</DialogTitle>
           <DialogDescription>
-            Agenda una cita para visitar la propiedad
+            Sigue estos pasos para agendar tu visita
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-1">
-              {/* Appointment Mode */}
-              <FormField
-                control={form.control}
-                name="appointmentMode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de visita</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="grid grid-cols-2 gap-4"
-                      >
-                        <div>
-                          <RadioGroupItem
-                            value="individual"
-                            id="individual"
-                            className="peer sr-only"
-                          />
-                          <Label
-                            htmlFor="individual"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover-elevate peer-data-[state=checked]:border-primary cursor-pointer"
-                            data-testid="radio-individual"
-                          >
-                            <Calendar className="mb-3 h-6 w-6" />
-                            <div className="text-center">
-                              <div className="font-semibold">Visita Individual</div>
-                              <div className="text-sm text-muted-foreground">Una propiedad</div>
-                            </div>
-                          </Label>
-                        </div>
-                        <div>
-                          <RadioGroupItem
-                            value="tour"
-                            id="tour"
-                            className="peer sr-only"
-                          />
-                          <Label
-                            htmlFor="tour"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover-elevate peer-data-[state=checked]:border-primary cursor-pointer"
-                            data-testid="radio-tour"
-                          >
-                            <MapPin className="mb-3 h-6 w-6" />
-                            <div className="text-center">
-                              <div className="font-semibold">Tour de Propiedades</div>
-                              <div className="text-sm text-muted-foreground">Varias propiedades</div>
-                            </div>
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center gap-2 py-4">
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} className="flex items-center">
+              <div
+                className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors",
+                  step >= s
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-muted-foreground text-muted-foreground"
                 )}
-              />
+              >
+                {step > s ? <Check className="w-4 h-4" /> : s}
+              </div>
+              {s < 4 && (
+                <div
+                  className={cn(
+                    "w-12 h-0.5 mx-1",
+                    step > s ? "bg-primary" : "bg-muted-foreground/30"
+                  )}
+                />
+              )}
+            </div>
+          ))}
+        </div>
 
-              {/* Tour Properties Selection */}
-              {watchMode === "tour" && (
-                <div className="space-y-3">
-                  <Label>Propiedades seleccionadas ({selectedProperties.length})</Label>
-                  <div className="space-y-2">
-                    {selectedProperties.map((prop) => (
-                      <div
-                        key={prop.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                        data-testid={`tour-property-${prop.id}`}
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium">{prop.title}</div>
-                          <div className="text-sm text-muted-foreground">{prop.location}</div>
-                        </div>
-                        {selectedProperties.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removePropertyFromTour(prop.id)}
-                            data-testid={`button-remove-property-${prop.id}`}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+        <div className="flex-1 overflow-y-auto px-1">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Step 1: Tipo de visita */}
+              {step === 1 && (
+                <div className="space-y-6 animate-in fade-in-0 duration-300">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Tipo de visita</h3>
+                    <p className="text-sm text-muted-foreground">¿Qué tipo de visita deseas agendar?</p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setShowPropertySearch(!showPropertySearch)}
-                    data-testid="button-add-property-tour"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar propiedad al tour
-                  </Button>
+                  
+                  <FormField
+                    control={form.control}
+                    name="appointmentMode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                          >
+                            <div>
+                              <RadioGroupItem
+                                value="individual"
+                                id="individual"
+                                className="peer sr-only"
+                              />
+                              <Label
+                                htmlFor="individual"
+                                className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-card p-8 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                                data-testid="radio-individual"
+                              >
+                                <Calendar className="mb-4 h-12 w-12 text-primary" />
+                                <div className="text-center space-y-1">
+                                  <div className="text-lg font-semibold">Visita Individual</div>
+                                  <div className="text-sm text-muted-foreground">Visita una propiedad específica</div>
+                                </div>
+                              </Label>
+                            </div>
+                            <div>
+                              <RadioGroupItem
+                                value="tour"
+                                id="tour"
+                                className="peer sr-only"
+                              />
+                              <Label
+                                htmlFor="tour"
+                                className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-card p-8 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                                data-testid="radio-tour"
+                              >
+                                <MapPin className="mb-4 h-12 w-12 text-primary" />
+                                <div className="text-center space-y-1">
+                                  <div className="text-lg font-semibold">Tour de Propiedades</div>
+                                  <div className="text-sm text-muted-foreground">Visita múltiples propiedades</div>
+                                </div>
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Tour Properties Selection */}
+                  {watchMode === "tour" && (
+                    <div className="space-y-4 animate-in fade-in-0 duration-300">
+                      <div>
+                        <Label className="text-base">Propiedades del tour ({selectedProperties.length})</Label>
+                        <p className="text-sm text-muted-foreground mt-1">Selecciona las propiedades que deseas visitar</p>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedProperties.map((prop) => (
+                          <Card key={prop.id} data-testid={`tour-property-${prop.id}`}>
+                            <CardContent className="flex items-center justify-between p-4">
+                              <div className="flex-1">
+                                <div className="font-medium">{prop.title}</div>
+                                <div className="text-sm text-muted-foreground">{prop.location}</div>
+                              </div>
+                              {selectedProperties.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removePropertyFromTour(prop.id)}
+                                  data-testid={`button-remove-property-${prop.id}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowPropertySearch(!showPropertySearch)}
+                        data-testid="button-add-property-tour"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar propiedad al tour
+                      </Button>
+
+                      {showPropertySearch && availableProperties && (
+                        <Card className="border-primary/20">
+                          <CardContent className="p-4 max-h-60 overflow-y-auto space-y-2">
+                            {availableProperties
+                              .filter(p => !selectedProperties.find(sp => sp.id === p.id))
+                              .map((prop) => (
+                                <button
+                                  key={prop.id}
+                                  type="button"
+                                  onClick={() => {
+                                    addPropertyToTour(prop);
+                                    setShowPropertySearch(false);
+                                  }}
+                                  className="w-full text-left p-3 rounded-lg hover-elevate border"
+                                  data-testid={`button-add-${prop.id}`}
+                                >
+                                  <div className="font-medium">{prop.title}</div>
+                                  <div className="text-sm text-muted-foreground">{prop.location}</div>
+                                </button>
+                              ))}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Presentation Card Selection */}
+                  {presentationCards && presentationCards.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="presentationCardId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tarjeta de presentación (opcional)</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-presentation-card">
+                                <SelectValue placeholder="Selecciona una tarjeta" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Sin tarjeta</SelectItem>
+                              {presentationCards.map((card) => (
+                                <SelectItem key={card.id} value={card.id}>
+                                  {card.name || `${card.propertyType} - ${card.location}`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               )}
 
-              {/* Presentation Card Selection */}
-              {presentationCards && presentationCards.length > 0 && (
-                <FormField
-                  control={form.control}
-                  name="presentationCardId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tarjeta de presentación (opcional)</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-presentation-card">
-                            <SelectValue placeholder="Selecciona una tarjeta" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Sin tarjeta</SelectItem>
-                          {presentationCards.map((card) => (
-                            <SelectItem key={card.id} value={card.id}>
-                              {card.name || `${card.propertyType} - ${card.location}`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* Step 2: Fecha */}
+              {step === 2 && (
+                <div className="space-y-6 animate-in fade-in-0 duration-300">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Selecciona una fecha</h3>
+                    <p className="text-sm text-muted-foreground">Elige el día que prefieres para tu visita</p>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <div className="flex justify-center">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={getDisabledDays()}
+                            initialFocus
+                            fromDate={startOfDay(new Date())}
+                            className="rounded-md border"
+                          />
+                        </div>
+                        {field.value && (
+                          <div className="text-center mt-4">
+                            <Badge variant="secondary" className="text-base px-4 py-2">
+                              <Calendar className="w-4 h-4 mr-2" />
+                              {format(field.value, "PPPP", { locale: es })}
+                            </Badge>
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
 
-              {/* Date Selection */}
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Fecha</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                            data-testid="button-select-date"
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: es })
-                            ) : (
-                              <span>Selecciona una fecha</span>
-                            )}
-                            <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={getDisabledDays()}
-                          initialFocus
-                          fromDate={startOfDay(new Date())}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Step 3: Horario */}
+              {step === 3 && (
+                <div className="space-y-6 animate-in fade-in-0 duration-300">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Selecciona un horario</h3>
+                    <p className="text-sm text-muted-foreground">Elige la hora que mejor te convenga</p>
+                  </div>
 
-              {/* Time Slot Selection */}
-              {watchDate && (
-                <FormField
-                  control={form.control}
-                  name="timeSlot"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Horario disponible</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-time-slot">
-                            <SelectValue placeholder="Selecciona un horario" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {timeSlots.length === 0 ? (
-                            <SelectItem value="none" disabled>
-                              No hay horarios disponibles
-                            </SelectItem>
+                  <FormField
+                    control={form.control}
+                    name="timeSlot"
+                    render={({ field }) => (
+                      <FormItem>
+                        {timeSlots.length === 0 ? (
+                          <Card className="border-destructive/50 bg-destructive/5">
+                            <CardContent className="p-6 text-center">
+                              <Clock className="w-12 h-12 mx-auto mb-3 text-destructive" />
+                              <p className="font-medium text-destructive">No hay horarios disponibles</p>
+                              <p className="text-sm text-muted-foreground mt-1">Por favor selecciona otra fecha</p>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {timeSlots.map((slot) => {
+                              const isSelected = field.value === slot;
+                              return (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  onClick={() => field.onChange(slot)}
+                                  className={cn(
+                                    "p-4 rounded-lg border-2 transition-all hover-elevate text-center",
+                                    isSelected
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-muted hover:border-primary/50"
+                                  )}
+                                  data-testid={`button-slot-${slot.replace(/\s/g, '-')}`}
+                                >
+                                  <Clock className={cn("w-5 h-5 mx-auto mb-2", isSelected ? "text-primary-foreground" : "text-primary")} />
+                                  <div className="font-medium">{slot}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Step 4: Confirmación */}
+              {step === 4 && (
+                <div className="space-y-6 animate-in fade-in-0 duration-300">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Confirmar detalles</h3>
+                    <p className="text-sm text-muted-foreground">Revisa la información de tu cita</p>
+                  </div>
+
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          {watchMode === "individual" ? (
+                            <Calendar className="w-5 h-5 text-primary" />
                           ) : (
-                            timeSlots.map((slot) => (
-                              <SelectItem key={slot} value={slot}>
-                                <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4" />
-                                  {slot}
-                                </div>
-                              </SelectItem>
-                            ))
+                            <MapPin className="w-5 h-5 text-primary" />
                           )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            {watchMode === "individual" ? "Visita Individual" : `Tour de ${selectedProperties.length} propiedades`}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {watchMode === "individual" 
+                              ? property.title 
+                              : selectedProperties.map(p => p.title).join(", ")}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">Fecha</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {watchDate && format(watchDate, "PPPP", { locale: es })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Clock className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">Horario</div>
+                          <div className="text-sm text-muted-foreground mt-1">{watchTimeSlot}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notas adicionales (opcional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Agrega cualquier información adicional..."
+                            className="resize-none"
+                            rows={4}
+                            {...field}
+                            data-testid="textarea-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
 
-              {/* Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notas adicionales (opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Agrega cualquier información adicional..."
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                        data-testid="textarea-notes"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex gap-3 pt-4">
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="flex-1"
-                  data-testid="button-cancel"
+                  onClick={() => setStep(Math.max(1, step - 1))}
+                  disabled={step === 1}
+                  data-testid="button-back"
                 >
-                  Cancelar
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Atrás
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={createAppointmentMutation.isPending}
-                  className="flex-1"
-                  data-testid="button-submit-appointment"
-                >
-                  {createAppointmentMutation.isPending ? "Agendando..." : "Confirmar cita"}
-                </Button>
+
+                {step < 4 ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStep(step + 1)}
+                    disabled={
+                      (step === 1 && !canGoToStep2) ||
+                      (step === 2 && !canGoToStep3) ||
+                      (step === 3 && !canGoToStep4)
+                    }
+                    data-testid="button-next"
+                  >
+                    Siguiente
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={createAppointmentMutation.isPending}
+                    data-testid="button-confirm"
+                  >
+                    {createAppointmentMutation.isPending ? "Confirmando..." : "Confirmar cita"}
+                  </Button>
+                )}
               </div>
             </form>
           </Form>
         </div>
       </DialogContent>
-
-      {/* Property Search Dialog */}
-      <Dialog open={showPropertySearch} onOpenChange={setShowPropertySearch}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-add-property">
-          <DialogHeader>
-            <DialogTitle>Agregar propiedad al tour</DialogTitle>
-            <DialogDescription>
-              Selecciona propiedades adicionales para incluir en el tour
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {availableProperties && availableProperties.length > 0 ? (
-              availableProperties
-                .filter(prop => !selectedProperties.find(p => p.id === prop.id))
-                .map((prop) => (
-                  <div
-                    key={prop.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
-                    onClick={() => {
-                      addPropertyToTour(prop);
-                      setShowPropertySearch(false);
-                    }}
-                    data-testid={`available-property-${prop.id}`}
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium">{prop.title}</div>
-                      <div className="text-sm text-muted-foreground">{prop.location}</div>
-                      <div className="text-sm font-semibold text-primary mt-1">
-                        ${prop.pricePerMonth?.toLocaleString()}/mes
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      data-testid={`button-select-property-${prop.id}`}
-                    >
-                      Seleccionar
-                    </Button>
-                  </div>
-                ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay propiedades disponibles
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 }
