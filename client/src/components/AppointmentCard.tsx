@@ -156,19 +156,22 @@ export function AppointmentCard({
 
         {status === "pending" && (
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              className="flex-1"
-              onClick={onConfirm}
-              data-testid="button-confirm-appointment"
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Confirmar
-            </Button>
+            {/* Only admin, master, admin_jr, owner, and seller can confirm appointments */}
+            {userRole && ["master", "admin", "admin_jr", "owner", "seller"].includes(userRole) && (
+              <Button 
+                size="sm" 
+                className="flex-1"
+                onClick={onConfirm}
+                data-testid="button-confirm-appointment"
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Confirmar
+              </Button>
+            )}
             <Button 
               variant="destructive" 
               size="sm" 
-              className="flex-1"
+              className={userRole && ["master", "admin", "admin_jr", "owner", "seller"].includes(userRole) ? "flex-1" : "w-full"}
               onClick={onCancel}
               data-testid="button-cancel-appointment"
             >
