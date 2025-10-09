@@ -178,7 +178,10 @@ export default function Referrals() {
               ${totalEarnings.toFixed(2)}
             </div>
             <p className="text-xs text-secondary-foreground">
-              {config?.clientReferralCommissionPercent}% {t("referrals.clients", "clientes")} · {config?.ownerReferralCommissionPercent}% {t("referrals.owners", "propietarios")}
+              {(user?.role === "cliente" || user?.role === "owner") 
+                ? <>25% {t("referrals.clients", "clientes")} · 20% {t("referrals.owners", "propietarios")}</>
+                : <>{config?.clientReferralCommissionPercent}% {t("referrals.clients", "clientes")} · {config?.ownerReferralCommissionPercent}% {t("referrals.owners", "propietarios")}</>
+              }
             </p>
           </CardContent>
         </Card>

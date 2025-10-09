@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Building2, User, Plus, FileText, Briefcase, Scale, Calculator, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +111,7 @@ export function RoleToggle() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { state } = useSidebar();
+  const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
 
@@ -134,14 +136,15 @@ export function RoleToggle() {
     mutationFn: async (newRole: string) => {
       return apiRequest("PATCH", "/api/users/switch-role", { role: newRole });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: t("role.updated"),
         description: t("role.updatedDesc"),
       });
       setIsOpen(false);
-      window.location.reload();
+      navigate("/");
     },
     onError: (error: any) => {
       toast({
