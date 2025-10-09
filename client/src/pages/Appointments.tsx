@@ -1,21 +1,23 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Clock, MapPin, Plus, ChevronLeft, ChevronRight, X, Video, MessageCircle, Phone, Star, Navigation } from "lucide-react";
+import { Calendar, Clock, MapPin, Plus, ChevronLeft, ChevronRight, X, Video, MessageCircle, Phone, Star, Navigation, StarIcon } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth, isPast } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { type Appointment } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface AppointmentWithDetails extends Appointment {
   property?: {
@@ -51,6 +53,11 @@ export default function Appointments() {
   const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [conciergeRating, setConciergeRating] = useState<number>(0);
+  const [conciergeComment, setConciergeComment] = useState("");
+  const [propertyRating, setPropertyRating] = useState<number>(0);
+  const [propertyComment, setPropertyComment] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -60,6 +67,71 @@ export default function Appointments() {
   });
 
   const updateAppointment = useUpdateAppointment();
+
+  // Check if user already left reviews for this appointment
+  const { data: conciergeReviews = [] } = useQuery<any[]>({
+    queryKey: [`/api/reviews/concierges?appointmentId=${selectedAppointment?.id}&clientId=${user?.id}`],
+    enabled: !!selectedAppointment?.id && !!user?.id,
+  });
+
+  const { data: propertyReviews = [] } = useQuery<any[]>({
+    queryKey: [`/api/reviews/properties?appointmentId=${selectedAppointment?.id}&clientId=${user?.id}`],
+    enabled: !!selectedAppointment?.id && !!user?.id,
+  });
+
+  // Mutation for concierge review
+  const createConciergeReview = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("POST", "/api/reviews/concierges", data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey.some(
+            (key) => typeof key === 'string' && key.startsWith('/api/reviews/concierges')
+          );
+        }
+      });
+      toast({
+        title: "Review enviada",
+        description: "Tu review del conserje ha sido guardada exitosamente",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la review del conserje",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for property review
+  const createPropertyReview = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("POST", "/api/reviews/properties", data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey.some(
+            (key) => typeof key === 'string' && key.startsWith('/api/reviews/properties')
+          );
+        }
+      });
+      toast({
+        title: "Review enviada",
+        description: "Tu review de la propiedad ha sido guardada exitosamente",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la review de la propiedad",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Calculate date range for calendar
   const dateRange = useMemo(() => {
@@ -158,6 +230,63 @@ export default function Appointments() {
     const first = concierge.firstName?.[0] || "";
     const last = concierge.lastName?.[0] || "";
     return (first + last).toUpperCase() || "C";
+  };
+
+  const canLeaveReview = (appointment: AppointmentWithDetails) => {
+    if (!appointment) return false;
+    const appointmentDate = new Date(appointment.date);
+    const hasPassed = isPast(appointmentDate);
+    const hasCompletedStatus = appointment.status === "completed";
+    return hasPassed || hasCompletedStatus;
+  };
+
+  const hasLeftConciergeReview = () => {
+    return conciergeReviews.length > 0;
+  };
+
+  const hasLeftPropertyReview = () => {
+    return propertyReviews.length > 0;
+  };
+
+  const handleSubmitReviews = async () => {
+    if (!selectedAppointment) return;
+
+    const promises = [];
+
+    // Submit concierge review if applicable and not already submitted
+    if (selectedAppointment.conciergeId && conciergeRating > 0 && !hasLeftConciergeReview()) {
+      promises.push(
+        createConciergeReview.mutateAsync({
+          conciergeId: selectedAppointment.conciergeId,
+          appointmentId: selectedAppointment.id,
+          rating: conciergeRating.toString(),
+          comment: conciergeComment || undefined,
+        })
+      );
+    }
+
+    // Submit property review if applicable and not already submitted
+    if (selectedAppointment.propertyId && propertyRating > 0 && !hasLeftPropertyReview()) {
+      promises.push(
+        createPropertyReview.mutateAsync({
+          propertyId: selectedAppointment.propertyId,
+          appointmentId: selectedAppointment.id,
+          rating: propertyRating.toString(),
+          comment: propertyComment || undefined,
+        })
+      );
+    }
+
+    try {
+      await Promise.all(promises);
+      setReviewDialogOpen(false);
+      setConciergeRating(0);
+      setConciergeComment("");
+      setPropertyRating(0);
+      setPropertyComment("");
+    } catch (error) {
+      // Errors are handled by mutation onError
+    }
   };
 
   const pendingCount = myAppointments.filter(a => a.status === "pending").length;
@@ -605,6 +734,201 @@ export default function Appointments() {
                   </Button>
                 </div>
               )}
+
+              {/* Leave Review Button - Show if appointment has passed */}
+              {canLeaveReview(selectedAppointment) && (
+                <div className="flex gap-2 pt-4 border-t">
+                  {selectedAppointment.conciergeId && !hasLeftConciergeReview() && (
+                    <Button
+                      variant="default"
+                      className="flex-1"
+                      onClick={() => setReviewDialogOpen(true)}
+                      data-testid="button-leave-review"
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Dejar Review
+                    </Button>
+                  )}
+                  {selectedAppointment.propertyId && !hasLeftPropertyReview() && !selectedAppointment.conciergeId && (
+                    <Button
+                      variant="default"
+                      className="flex-1"
+                      onClick={() => setReviewDialogOpen(true)}
+                      data-testid="button-leave-review"
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Dejar Review de Propiedad
+                    </Button>
+                  )}
+                  {hasLeftConciergeReview() && hasLeftPropertyReview() && (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      Ya has dejado tu review para esta cita
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Review Dialog */}
+      {reviewDialogOpen && selectedAppointment && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-testid="dialog-leave-review">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle>Dejar Review</CardTitle>
+                  <CardDescription>Comparte tu experiencia con la visita</CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setReviewDialogOpen(false);
+                    setConciergeRating(0);
+                    setConciergeComment("");
+                    setPropertyRating(0);
+                    setPropertyComment("");
+                  }}
+                  data-testid="button-close-review-dialog"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Concierge Review */}
+              {selectedAppointment.concierge && !hasLeftConciergeReview() && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium mb-2">Review del Conserje</h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={selectedAppointment.concierge.profileImageUrl || undefined} />
+                        <AvatarFallback>{getConciergeInitials(selectedAppointment.concierge)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium text-sm">
+                          {selectedAppointment.concierge.firstName} {selectedAppointment.concierge.lastName}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Calificación</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setConciergeRating(star)}
+                          className="focus:outline-none"
+                          data-testid={`concierge-star-${star}`}
+                        >
+                          <Star
+                            className={cn(
+                              "h-8 w-8 transition-colors",
+                              star <= conciergeRating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-muted-foreground"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Comentarios (opcional)</label>
+                    <Textarea
+                      placeholder="Comparte más detalles sobre tu experiencia con el conserje..."
+                      value={conciergeComment}
+                      onChange={(e) => setConciergeComment(e.target.value)}
+                      rows={3}
+                      data-testid="input-concierge-comment"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Property Review */}
+              {selectedAppointment.property && !hasLeftPropertyReview() && (
+                <div className="space-y-4 border-t pt-4">
+                  <div>
+                    <h3 className="font-medium mb-2">Review de la Propiedad</h3>
+                    <div className="text-sm text-muted-foreground mb-3">
+                      {getPropertyDisplay(selectedAppointment.property)}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Calificación</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setPropertyRating(star)}
+                          className="focus:outline-none"
+                          data-testid={`property-star-${star}`}
+                        >
+                          <Star
+                            className={cn(
+                              "h-8 w-8 transition-colors",
+                              star <= propertyRating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-muted-foreground"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Comentarios (opcional)</label>
+                    <Textarea
+                      placeholder="Comparte tu opinión sobre la propiedad..."
+                      value={propertyComment}
+                      onChange={(e) => setPropertyComment(e.target.value)}
+                      rows={3}
+                      data-testid="input-property-comment"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setReviewDialogOpen(false);
+                    setConciergeRating(0);
+                    setConciergeComment("");
+                    setPropertyRating(0);
+                    setPropertyComment("");
+                  }}
+                  data-testid="button-cancel-review"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="default"
+                  className="flex-1"
+                  onClick={handleSubmitReviews}
+                  disabled={
+                    (selectedAppointment.conciergeId && !hasLeftConciergeReview() && conciergeRating === 0) &&
+                    (selectedAppointment.propertyId && !hasLeftPropertyReview() && propertyRating === 0)
+                  }
+                  data-testid="button-submit-review"
+                >
+                  Enviar Review
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
