@@ -8,7 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Clock, MapPin, Plus, ChevronLeft, ChevronRight, X, Video } from "lucide-react";
+import { Calendar, Clock, MapPin, Plus, ChevronLeft, ChevronRight, X, Video, MessageCircle, Phone, Star, Navigation } from "lucide-react";
+import { SiWhatsapp } from "react-icons/si";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -20,12 +23,26 @@ interface AppointmentWithDetails extends Appointment {
     title: string;
     condoName?: string | null;
     unitNumber?: string | null;
+    location?: string;
+    googleMapsUrl?: string | null;
+    latitude?: string | null;
+    longitude?: string | null;
   };
   client?: {
     id: string;
     firstName?: string | null;
     lastName?: string | null;
     email: string;
+  };
+  concierge?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email: string;
+    phone?: string | null;
+    profileImageUrl?: string | null;
+    rating?: number;
+    reviewCount?: number;
   };
 }
 
@@ -36,6 +53,7 @@ export default function Appointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   
   const { data: allAppointments = [], isLoading } = useQuery<AppointmentWithDetails[]>({
     queryKey: ["/api/appointments"],
@@ -115,6 +133,31 @@ export default function Appointments() {
     }
     if (property.condoName) return property.condoName;
     return property.title || "Propiedad";
+  };
+
+  const getWhatsAppLink = (phone?: string | null) => {
+    if (!phone) return null;
+    const cleanPhone = phone.replace(/\D/g, '');
+    return `https://wa.me/${cleanPhone}`;
+  };
+
+  const getGoogleMapsLink = (property?: AppointmentWithDetails["property"]) => {
+    if (!property) return null;
+    if (property.googleMapsUrl) return property.googleMapsUrl;
+    if (property.latitude && property.longitude) {
+      return `https://www.google.com/maps?q=${property.latitude},${property.longitude}`;
+    }
+    if (property.location) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.location)}`;
+    }
+    return null;
+  };
+
+  const getConciergeInitials = (concierge?: AppointmentWithDetails["concierge"]) => {
+    if (!concierge) return "C";
+    const first = concierge.firstName?.[0] || "";
+    const last = concierge.lastName?.[0] || "";
+    return (first + last).toUpperCase() || "C";
   };
 
   const pendingCount = myAppointments.filter(a => a.status === "pending").length;
@@ -416,8 +459,125 @@ export default function Appointments() {
                   </div>
                 )}
 
+                {/* Concierge Info - Only show if confirmed and concierge assigned */}
+                {selectedAppointment.status === "confirmed" && selectedAppointment.concierge && (
+                  <div className="border-t pt-4">
+                    <div className="text-sm font-medium mb-3">Tu Conserje Asignado</div>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={selectedAppointment.concierge.profileImageUrl || undefined} />
+                          <AvatarFallback>{getConciergeInitials(selectedAppointment.concierge)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            {selectedAppointment.concierge.firstName} {selectedAppointment.concierge.lastName}
+                          </div>
+                          {selectedAppointment.concierge.rating !== undefined && selectedAppointment.concierge.rating > 0 && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                              <span>{selectedAppointment.concierge.rating.toFixed(1)}</span>
+                              {selectedAppointment.concierge.reviewCount && (
+                                <span>({selectedAppointment.concierge.reviewCount} reviews)</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Contact Buttons */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setLocation(`/chat?userId=${selectedAppointment.concierge?.id}`)}
+                          data-testid="button-chat-concierge"
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Chat
+                        </Button>
+                        {selectedAppointment.concierge.phone && getWhatsAppLink(selectedAppointment.concierge.phone) && (
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => window.open(getWhatsAppLink(selectedAppointment.concierge?.phone) || "", "_blank")}
+                            data-testid="button-whatsapp-concierge"
+                          >
+                            <SiWhatsapp className="h-4 w-4 mr-2" />
+                            WhatsApp
+                          </Button>
+                        )}
+                        {selectedAppointment.concierge.phone && (
+                          <Button
+                            variant="outline"
+                            className="w-full col-span-2"
+                            onClick={() => window.open(`tel:${selectedAppointment.concierge?.phone}`, "_blank")}
+                            data-testid="button-call-concierge"
+                          >
+                            <Phone className="h-4 w-4 mr-2" />
+                            Llamar: {selectedAppointment.concierge.phone}
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Access Information */}
+                      {selectedAppointment.accessType && (
+                        <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                          <div className="text-sm font-medium">Información de Acceso</div>
+                          <div className="text-sm space-y-1">
+                            <div>
+                              <span className="text-muted-foreground">Tipo: </span>
+                              {selectedAppointment.accessType === "lockbox" ? "Caja de Seguridad" :
+                               selectedAppointment.accessType === "electronic" ? "Cerradura Electrónica" :
+                               selectedAppointment.accessType === "manual" ? "Manual" : "Otro"}
+                            </div>
+                            {selectedAppointment.accessCode && (
+                              <div>
+                                <span className="text-muted-foreground">Código: </span>
+                                <span className="font-mono">{selectedAppointment.accessCode}</span>
+                              </div>
+                            )}
+                            {selectedAppointment.accessInstructions && (
+                              <div>
+                                <span className="text-muted-foreground">Instrucciones: </span>
+                                {selectedAppointment.accessInstructions}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Property Location - Show for confirmed appointments */}
+                {selectedAppointment.status === "confirmed" && selectedAppointment.property && (
+                  <div className="border-t pt-4">
+                    <div className="text-sm font-medium mb-3">Ubicación</div>
+                    <div className="space-y-3">
+                      {selectedAppointment.property.location && (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                          <span className="text-sm">{selectedAppointment.property.location}</span>
+                        </div>
+                      )}
+                      {getGoogleMapsLink(selectedAppointment.property) && (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => window.open(getGoogleMapsLink(selectedAppointment.property) || "", "_blank")}
+                          data-testid="button-google-maps"
+                        >
+                          <Navigation className="h-4 w-4 mr-2" />
+                          Abrir en Google Maps
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {selectedAppointment.type === "video" && selectedAppointment.meetLink && selectedAppointment.status === "confirmed" && (
-                  <div>
+                  <div className="border-t pt-4">
                     <Button 
                       variant="outline" 
                       className="w-full"
