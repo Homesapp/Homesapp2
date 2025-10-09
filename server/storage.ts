@@ -33,6 +33,8 @@ import {
   systemConfig,
   rentalApplications,
   rentalContracts,
+  rentalPayments,
+  tenantMaintenanceRequests,
   propertyChangeRequests,
   propertyLimitRequests,
   inspectionReports,
@@ -129,6 +131,10 @@ import {
   type InsertRentalApplication,
   type RentalContract,
   type InsertRentalContract,
+  type RentalPayment,
+  type InsertRentalPayment,
+  type TenantMaintenanceRequest,
+  type InsertTenantMaintenanceRequest,
   type PropertyChangeRequest,
   type InsertPropertyChangeRequest,
   type PropertyLimitRequest,
@@ -546,6 +552,10 @@ export interface IStorage {
   updateRentalContract(id: string, updates: Partial<InsertRentalContract>): Promise<RentalContract>;
   updateRentalContractStatus(id: string, status: string, additionalData?: { apartadoDate?: Date; contractSignedDate?: Date; checkInDate?: Date; payoutReleasedAt?: Date }): Promise<RentalContract>;
   deleteRentalContract(id: string): Promise<void>;
+  getActiveRentalsByTenant(tenantId: string): Promise<RentalContract[]>;
+  getRentalPayments(rentalContractId: string): Promise<RentalPayment[]>;
+  createTenantMaintenanceRequest(requestData: InsertTenantMaintenanceRequest): Promise<TenantMaintenanceRequest>;
+  getTenantMaintenanceRequests(rentalContractId: string): Promise<TenantMaintenanceRequest[]>;
 
   // Property Change Request operations
   getPropertyChangeRequest(id: string): Promise<PropertyChangeRequest | undefined>;
@@ -3242,6 +3252,41 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRentalContract(id: string): Promise<void> {
     await db.delete(rentalContracts).where(eq(rentalContracts.id, id));
+  }
+
+  async getActiveRentalsByTenant(tenantId: string): Promise<RentalContract[]> {
+    // Get contracts where user is tenant and status is check_in (active rental)
+    return await db
+      .select()
+      .from(rentalContracts)
+      .where(
+        and(
+          eq(rentalContracts.tenantId, tenantId),
+          eq(rentalContracts.status, 'check_in')
+        )
+      )
+      .orderBy(desc(rentalContracts.createdAt));
+  }
+
+  async getRentalPayments(rentalContractId: string): Promise<RentalPayment[]> {
+    return await db
+      .select()
+      .from(rentalPayments)
+      .where(eq(rentalPayments.rentalContractId, rentalContractId))
+      .orderBy(rentalPayments.dueDate);
+  }
+
+  async createTenantMaintenanceRequest(requestData: InsertTenantMaintenanceRequest): Promise<TenantMaintenanceRequest> {
+    const [request] = await db.insert(tenantMaintenanceRequests).values(requestData).returning();
+    return request;
+  }
+
+  async getTenantMaintenanceRequests(rentalContractId: string): Promise<TenantMaintenanceRequest[]> {
+    return await db
+      .select()
+      .from(tenantMaintenanceRequests)
+      .where(eq(tenantMaintenanceRequests.rentalContractId, rentalContractId))
+      .orderBy(desc(tenantMaintenanceRequests.createdAt));
   }
 
   // Property Change Request operations

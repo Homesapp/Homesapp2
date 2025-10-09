@@ -9918,6 +9918,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Active Rentals routes (for clients/tenants)
+  app.get("/api/rentals/active", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get active rental contracts where user is tenant
+      const activeRentals = await storage.getActiveRentalsByTenant(userId);
+      
+      // Filter sensitive fields before sending to client
+      const filteredRentals = activeRentals.map(rental => ({
+        id: rental.id,
+        propertyId: rental.propertyId,
+        rentalType: rental.rentalType,
+        monthlyRent: rental.monthlyRent,
+        depositAmount: rental.depositAmount,
+        contractStartDate: rental.contractStartDate,
+        contractEndDate: rental.contractEndDate,
+        checkInDate: rental.checkInDate,
+        status: rental.status,
+        // Do not expose ownerId, sellerId, or internal notes
+      }));
+      
+      res.json(filteredRentals);
+    } catch (error) {
+      console.error("Error fetching active rentals:", error);
+      res.status(500).json({ message: "Failed to fetch active rentals" });
+    }
+  });
+
+  app.get("/api/rentals/:id/payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user has access to this rental
+      const rental = await storage.getRentalContract(id);
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      if (rental.tenantId !== userId && rental.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const payments = await storage.getRentalPayments(id);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching rental payments:", error);
+      res.status(500).json({ message: "Failed to fetch rental payments" });
+    }
+  });
+
+  app.post("/api/rentals/:id/maintenance-request", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user is tenant of this rental
+      const rental = await storage.getRentalContract(id);
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      if (rental.tenantId !== userId) {
+        return res.status(403).json({ message: "Only tenant can create maintenance requests" });
+      }
+      
+      const requestData = insertTenantMaintenanceRequestSchema.parse({
+        ...req.body,
+        rentalContractId: id,
+        tenantId: userId,
+        ownerId: rental.ownerId,
+        propertyId: rental.propertyId,
+      });
+      
+      const maintenanceRequest = await storage.createTenantMaintenanceRequest(requestData);
+      
+      // Create notification for owner
+      await storage.createNotification({
+        userId: rental.ownerId,
+        type: "maintenance_request",
+        title: "Nueva solicitud de mantenimiento",
+        message: `Tu inquilino ha enviado una solicitud de mantenimiento: ${req.body.title}`,
+        relatedEntityType: "maintenance_request",
+        relatedEntityId: maintenanceRequest.id,
+      });
+      
+      res.status(201).json(maintenanceRequest);
+    } catch (error: any) {
+      console.error("Error creating maintenance request:", error);
+      res.status(400).json({ message: error.message || "Failed to create maintenance request" });
+    }
+  });
+
+  app.get("/api/rentals/:id/maintenance-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user has access to this rental
+      const rental = await storage.getRentalContract(id);
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      if (rental.tenantId !== userId && rental.ownerId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const requests = await storage.getTenantMaintenanceRequests(id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching maintenance requests:", error);
+      res.status(500).json({ message: "Failed to fetch maintenance requests" });
+    }
+  });
+
   // Permission routes
   app.get("/api/users/:id/permissions", isAuthenticated, requireRole(["master", "admin"]), async (req, res) => {
     try {
