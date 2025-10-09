@@ -620,103 +620,21 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
           </SidebarGroup>
         )}
 
-        {/* Owner Groups */}
+        {/* Owner Items - flat structure without collapsibles */}
         {hasOwnerGroups && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredOwnerProperties.length > 0 && (
-                  <Collapsible 
-                    open={openGroups.ownerProperties}
-                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, ownerProperties: open }))}
-                    className="group/collapsible">
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton data-testid="collapsible-owner-properties">
-                          <Building2 />
-                          <span>{language === "es" ? "Mis Propiedades" : "My Properties"}</span>
-                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {filteredOwnerProperties.map((item) => (
-                            <SidebarMenuSubItem key={item.titleKey}>
-                              <SidebarMenuSubButton asChild isActive={location === item.url}>
-                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
-                                  <item.icon />
-                                  <span>{t(item.titleKey)}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                )}
-
-                {filteredOwnerActivity.length > 0 && (
-                  <Collapsible 
-                    open={openGroups.ownerActivity}
-                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, ownerActivity: open }))}
-                    className="group/collapsible">
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton data-testid="collapsible-owner-activity">
-                          <Calendar />
-                          <span>{language === "es" ? "Mi Actividad" : "My Activity"}</span>
-                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {filteredOwnerActivity.map((item) => (
-                            <SidebarMenuSubItem key={item.titleKey}>
-                              <SidebarMenuSubButton asChild isActive={location === item.url}>
-                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
-                                  <item.icon />
-                                  <span>{t(item.titleKey)}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                )}
-
-                {filteredOwnerFinance.length > 0 && (
-                  <Collapsible 
-                    open={openGroups.ownerFinance}
-                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, ownerFinance: open }))}
-                    className="group/collapsible">
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton data-testid="collapsible-owner-finance">
-                          <DollarSign />
-                          <span>{language === "es" ? "Finanzas" : "Finance"}</span>
-                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {filteredOwnerFinance.map((item) => (
-                            <SidebarMenuSubItem key={item.titleKey}>
-                              <SidebarMenuSubButton asChild isActive={location === item.url}>
-                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
-                                  <item.icon />
-                                  <span>{t(item.titleKey)}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                )}
+                {[...filteredOwnerProperties, ...filteredOwnerActivity, ...filteredOwnerFinance].map((item) => (
+                  <SidebarMenuItem key={item.titleKey}>
+                    <SidebarMenuButton asChild isActive={location === item.url}>
+                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                        <item.icon />
+                        <span>{t(item.titleKey)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
