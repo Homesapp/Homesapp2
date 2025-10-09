@@ -7672,6 +7672,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get available concierges for a specific time slot
+  app.get("/api/appointments/available-concierges", isAuthenticated, async (req: any, res) => {
+    try {
+      const { date } = req.query;
+      
+      if (!date) {
+        return res.status(400).json({ message: "Date parameter is required" });
+      }
+
+      const slotDate = new Date(date);
+      const availableConcierges = await storage.getAvailableConcierguesForSlot(slotDate);
+      
+      // Enrich with ratings
+      const enrichedConcierges = await Promise.all(
+        availableConcierges.map(async (concierge) => {
+          const reviews = await storage.getConciergeReviews({ conciergeId: concierge.id });
+          const avgRating = reviews.length > 0 
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+            : 0;
+          
+          return {
+            ...concierge,
+            rating: avgRating || undefined,
+            reviewCount: reviews.length || undefined,
+          };
+        })
+      );
+      
+      res.json(enrichedConcierges);
+    } catch (error) {
+      console.error("Error fetching available concierges:", error);
+      res.status(500).json({ message: "Failed to fetch available concierges" });
+    }
+  });
+
+  // Get slot availability count
+  app.get("/api/appointments/slot-availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const { date } = req.query;
+      
+      if (!date) {
+        return res.status(400).json({ message: "Date parameter is required" });
+      }
+
+      const slotDate = new Date(date);
+      const availableCount = await storage.getAvailableSlotCount(slotDate);
+      
+      res.json({ 
+        date: slotDate, 
+        availableSpaces: availableCount,
+        isAvailable: availableCount > 0 
+      });
+    } catch (error) {
+      console.error("Error checking slot availability:", error);
+      res.status(500).json({ message: "Failed to check slot availability" });
+    }
+  });
+
+  // Assign concierge to appointment (for owners and admins)
+  app.patch("/api/appointments/:id/assign-concierge", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { conciergeId, accessType, accessCode, accessInstructions } = req.body;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Cita no encontrada" });
+      }
+
+      // Check permissions: owner of the property or admin
+      const property = await storage.getProperty(appointment.propertyId);
+      const isOwner = property?.ownerId === userId;
+      const isAdmin = user && ["master", "admin", "admin_jr", "management"].includes(user.role);
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ message: "No tienes permiso para asignar conserjes a esta cita" });
+      }
+
+      // Validate concierge is available
+      const availableConcierges = await storage.getAvailableConcierguesForSlot(appointment.date);
+      const isConciergeAvailable = availableConcierges.some(c => c.id === conciergeId);
+
+      if (!isConciergeAvailable) {
+        return res.status(400).json({ message: "El conserje seleccionado no está disponible para este horario" });
+      }
+
+      // Assign concierge with access information
+      const updatedAppointment = await storage.assignConciergeToAppointment(
+        id,
+        conciergeId,
+        userId,
+        { accessType, accessCode, accessInstructions }
+      );
+
+      await createAuditLog(req, "update", "appointment", id, `Conserje asignado por ${isOwner ? "propietario" : "administrador"}`);
+
+      // Send notifications to all parties
+      const concierge = await storage.getUser(conciergeId);
+      const client = await storage.getUser(appointment.clientId);
+
+      // TODO: Send notifications with Google Maps location and schedule details
+      // - Client: confirmation with property address, time, concierge info
+      // - Owner: confirmation with concierge assignment
+      // - Concierge: appointment details, access instructions, property location
+      // - Admin: assignment confirmation
+
+      res.json({ 
+        message: "Conserje asignado exitosamente",
+        appointment: updatedAppointment,
+        concierge: concierge ? {
+          firstName: concierge.firstName,
+          lastName: concierge.lastName,
+          email: concierge.email,
+          phoneNumber: concierge.phoneNumber,
+        } : null
+      });
+    } catch (error: any) {
+      console.error("Error assigning concierge:", error);
+      res.status(400).json({ message: error.message || "Error al asignar conserje" });
+    }
+  });
+
   app.post("/api/appointments", isAuthenticated, async (req: any, res) => {
     let googleEventId: string | null = null;
     

@@ -389,6 +389,12 @@ export interface IStorage {
   createConciergeBlockedSlot(slot: InsertConciergeBlockedSlot): Promise<ConciergeBlockedSlot>;
   deleteConciergeBlockedSlot(id: string): Promise<void>;
   
+  // Concierge Availability operations
+  getActiveConciergues(): Promise<any[]>;
+  getAvailableConcierguesForSlot(date: Date): Promise<any[]>;
+  getAvailableSlotCount(date: Date): Promise<number>;
+  assignConciergeToAppointment(appointmentId: string, conciergeId: string, assignedBy: string, accessInfo?: { accessType?: string; accessCode?: string; accessInstructions?: string }): Promise<Appointment>;
+  
   // Property Review operations
   getPropertyReview(id: string): Promise<PropertyReview | undefined>;
   getPropertyReviews(filters?: { propertyId?: string; clientId?: string }): Promise<PropertyReview[]>;
@@ -2082,6 +2088,99 @@ export class DatabaseStorage implements IStorage {
 
   async deleteConciergeBlockedSlot(id: string): Promise<void> {
     await db.delete(conciergeBlockedSlots).where(eq(conciergeBlockedSlots.id, id));
+  }
+
+  // Concierge Availability operations
+  async getActiveConciergues(): Promise<any[]> {
+    return await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        phoneNumber: users.phoneNumber,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "concierge"),
+          eq(users.approved, true)
+        )
+      );
+  }
+
+  async getAvailableConcierguesForSlot(date: Date): Promise<any[]> {
+    // Get all active concierges
+    const activeConcierges = await this.getActiveConciergues();
+    
+    // Check each concierge's blocked slots and existing appointments
+    const availableConcierges = [];
+    
+    for (const concierge of activeConcierges) {
+      // Check if concierge has this time slot blocked
+      const blockedSlots = await db
+        .select()
+        .from(conciergeBlockedSlots)
+        .where(
+          and(
+            eq(conciergeBlockedSlots.conciergeId, concierge.id),
+            lte(conciergeBlockedSlots.startTime, date),
+            gte(conciergeBlockedSlots.endTime, date)
+          )
+        );
+      
+      if (blockedSlots.length > 0) continue; // Skip if blocked
+      
+      // Check if concierge already has an appointment at this time
+      const existingAppointment = await db
+        .select()
+        .from(appointments)
+        .where(
+          and(
+            eq(appointments.conciergeId, concierge.id),
+            eq(appointments.date, date),
+            not(eq(appointments.status, "cancelled"))
+          )
+        );
+      
+      if (existingAppointment.length > 0) continue; // Skip if already booked
+      
+      availableConcierges.push(concierge);
+    }
+    
+    return availableConcierges;
+  }
+
+  async getAvailableSlotCount(date: Date): Promise<number> {
+    const availableConcierges = await this.getAvailableConcierguesForSlot(date);
+    return availableConcierges.length;
+  }
+
+  async assignConciergeToAppointment(
+    appointmentId: string,
+    conciergeId: string,
+    assignedBy: string,
+    accessInfo?: { 
+      accessType?: string; 
+      accessCode?: string; 
+      accessInstructions?: string;
+    }
+  ): Promise<Appointment> {
+    const [updated] = await db
+      .update(appointments)
+      .set({
+        conciergeId,
+        conciergeAssignedBy: assignedBy,
+        conciergeAssignedAt: new Date(),
+        ...(accessInfo?.accessType && { accessType: accessInfo.accessType }),
+        ...(accessInfo?.accessCode && { accessCode: accessInfo.accessCode }),
+        ...(accessInfo?.accessInstructions && { accessInstructions: accessInfo.accessInstructions }),
+        updatedAt: new Date(),
+      })
+      .where(eq(appointments.id, appointmentId))
+      .returning();
+    
+    return updated;
   }
 
   // Property Review operations

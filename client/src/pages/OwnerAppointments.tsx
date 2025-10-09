@@ -75,6 +75,11 @@ export default function OwnerAppointments() {
   const [conciergeProfileOpen, setConciergeProfileOpen] = useState(false);
   const [selectedClientAppointment, setSelectedClientAppointment] = useState<AppointmentWithDetails | null>(null);
   const [selectedConciergeAppointment, setSelectedConciergeAppointment] = useState<AppointmentWithDetails | null>(null);
+  const [assignConciergeDialogOpen, setAssignConciergeDialogOpen] = useState(false);
+  const [selectedConciergeId, setSelectedConciergeId] = useState("");
+  const [accessType, setAccessType] = useState<"lockbox" | "electronic" | "manual" | "other">("lockbox");
+  const [accessCode, setAccessCode] = useState("");
+  const [accessInstructions, setAccessInstructions] = useState("");
   const { toast } = useToast();
 
   const { data: allAppointments = [], isLoading } = useQuery<AppointmentWithDetails[]>({
@@ -90,6 +95,12 @@ export default function OwnerAppointments() {
   const { data: conciergeReviews = [] } = useQuery<any[]>({
     queryKey: [`/api/reviews/concierges?conciergeId=${conciergeId}`],
     enabled: !!conciergeId && conciergeProfileOpen,
+  });
+
+  // Fetch available concierges when assigning
+  const { data: availableConcierges = [], isLoading: isLoadingConcierges } = useQuery<any[]>({
+    queryKey: [`/api/appointments/available-concierges?date=${selectedAppointment?.date}`],
+    enabled: assignConciergeDialogOpen && !!selectedAppointment,
   });
 
   // Calculate date range for calendar
@@ -296,6 +307,42 @@ export default function OwnerAppointments() {
     },
   });
 
+  const assignConciergeMutation = useMutation({
+    mutationFn: async ({ appointmentId, conciergeId, accessType, accessCode, accessInstructions }: {
+      appointmentId: string;
+      conciergeId: string;
+      accessType: string;
+      accessCode: string;
+      accessInstructions: string;
+    }) => {
+      return apiRequest("PATCH", `/api/appointments/${appointmentId}/assign-concierge`, {
+        conciergeId,
+        accessType,
+        accessCode,
+        accessInstructions,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Conserje asignado",
+        description: "El conserje ha sido asignado exitosamente a la cita",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      setAssignConciergeDialogOpen(false);
+      setSelectedConciergeId("");
+      setAccessType("lockbox");
+      setAccessCode("");
+      setAccessInstructions("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo asignar el conserje",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleAutoApprove = (enabled: boolean) => {
     updateSettingsMutation.mutate({ autoApproveAppointments: enabled });
   };
@@ -336,6 +383,22 @@ export default function OwnerAppointments() {
       id: selectedAppointment.id,
       newDate: rescheduleDate,
       notes: rescheduleNotes
+    });
+  };
+
+  const handleOpenAssignConcierge = () => {
+    setAssignConciergeDialogOpen(true);
+  };
+
+  const handleSubmitAssignConcierge = () => {
+    if (!selectedAppointment || !selectedConciergeId) return;
+    
+    assignConciergeMutation.mutate({
+      appointmentId: selectedAppointment.id,
+      conciergeId: selectedConciergeId,
+      accessType,
+      accessCode,
+      accessInstructions,
     });
   };
 
@@ -1102,6 +1165,18 @@ export default function OwnerAppointments() {
                     Solicitar Reprogramación
                   </Button>
                 )}
+                
+                {selectedAppointment.ownerApprovalStatus === "approved" && !selectedAppointment.conciergeId && (
+                  <Button
+                    className="flex-1"
+                    variant="outline"
+                    onClick={handleOpenAssignConcierge}
+                    data-testid="button-assign-concierge"
+                  >
+                    <UserCircle className="w-4 h-4 mr-2" />
+                    Asignar Conserje
+                  </Button>
+                )}
               </div>
             </div>
           </DialogContent>
@@ -1494,6 +1569,137 @@ export default function OwnerAppointments() {
               </Card>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Concierge Dialog */}
+      <Dialog open={assignConciergeDialogOpen} onOpenChange={setAssignConciergeDialogOpen}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-assign-concierge">
+          <DialogHeader>
+            <DialogTitle>Asignar Conserje a la Cita</DialogTitle>
+            <DialogDescription>
+              Selecciona un conserje disponible y proporciona las instrucciones de acceso
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Appointment Info */}
+            {selectedAppointment && (
+              <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">Propiedad:</span>{" "}
+                  {getPropertyDisplay(selectedAppointment.property)}
+                </div>
+                <div>
+                  <span className="font-medium">Fecha:</span>{" "}
+                  {format(new Date(selectedAppointment.date), "dd 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+                </div>
+                {selectedAppointment.visitType && (
+                  <div>
+                    <span className="font-medium">Tipo de visita:</span>{" "}
+                    {formatVisitType(selectedAppointment.visitType)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Concierge Select */}
+            <div>
+              <Label htmlFor="concierge-select">Conserje *</Label>
+              <Select value={selectedConciergeId} onValueChange={setSelectedConciergeId}>
+                <SelectTrigger id="concierge-select" data-testid="select-concierge">
+                  <SelectValue placeholder="Selecciona un conserje" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingConcierges ? (
+                    <SelectItem value="loading" disabled>Cargando conserjes...</SelectItem>
+                  ) : availableConcierges.length === 0 ? (
+                    <SelectItem value="none" disabled>No hay conserjes disponibles</SelectItem>
+                  ) : (
+                    availableConcierges.map((concierge: any) => (
+                      <SelectItem key={concierge.id} value={concierge.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{concierge.firstName && concierge.lastName ? `${concierge.firstName} ${concierge.lastName}` : concierge.email}</span>
+                          {concierge.rating && (
+                            <span className="text-xs text-muted-foreground">
+                              ({concierge.rating.toFixed(1)} ⭐)
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Access Type Select */}
+            <div>
+              <Label htmlFor="access-type-select">Tipo de Acceso *</Label>
+              <Select value={accessType} onValueChange={(value) => setAccessType(value as "lockbox" | "electronic" | "manual" | "other")}>
+                <SelectTrigger id="access-type-select" data-testid="select-access-type">
+                  <SelectValue placeholder="Selecciona tipo de acceso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lockbox">Lockbox</SelectItem>
+                  <SelectItem value="electronic">Cerradura Electrónica</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="other">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Access Code - Only show if not manual */}
+            {accessType !== "manual" && (
+              <div>
+                <Label htmlFor="access-code">Código/Clave de Acceso</Label>
+                <Input
+                  id="access-code"
+                  type="text"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Ingresa el código o clave"
+                  data-testid="input-access-code"
+                />
+              </div>
+            )}
+
+            {/* Access Instructions */}
+            <div>
+              <Label htmlFor="access-instructions">Instrucciones Adicionales</Label>
+              <Textarea
+                id="access-instructions"
+                value={accessInstructions}
+                onChange={(e) => setAccessInstructions(e.target.value)}
+                placeholder="Proporciona instrucciones adicionales sobre el acceso..."
+                rows={3}
+                data-testid="textarea-access-instructions"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAssignConciergeDialogOpen(false);
+                setSelectedConciergeId("");
+                setAccessType("lockbox");
+                setAccessCode("");
+                setAccessInstructions("");
+              }}
+              data-testid="button-cancel-assign-concierge"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitAssignConcierge}
+              disabled={!selectedConciergeId || assignConciergeMutation.isPending}
+              data-testid="button-confirm-assign-concierge"
+            >
+              {assignConciergeMutation.isPending ? "Asignando..." : "Asignar Conserje"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
