@@ -1252,13 +1252,10 @@ export const rentalPayments = pgTable("rental_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   rentalContractId: varchar("rental_contract_id").notNull().references(() => rentalContracts.id, { onDelete: "cascade" }),
   tenantId: varchar("tenant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   dueDate: timestamp("due_date").notNull(), // Fecha de vencimiento del pago
-  paidAt: timestamp("paid_at"), // Fecha cuando se pagó
+  paymentDate: timestamp("payment_date"), // Fecha cuando se pagó
   status: rentalPaymentStatusEnum("status").notNull().default("pending"),
-  paymentMethod: varchar("payment_method"), // Método de pago usado
-  transactionReference: varchar("transaction_reference"), // Referencia bancaria u otro identificador
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1283,25 +1280,16 @@ export const tenantMaintenanceRequests = pgTable("tenant_maintenance_requests", 
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   rentalContractId: varchar("rental_contract_id").notNull().references(() => rentalContracts.id, { onDelete: "cascade" }),
   tenantId: varchar("tenant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
-  maintenanceType: tenantMaintenanceTypeEnum("maintenance_type").notNull(),
-  title: varchar("title").notNull(),
   description: text("description").notNull(),
-  urgency: varchar("urgency").notNull().default("normal"), // low, normal, high, emergency
-  status: tenantMaintenanceRequestStatusEnum("status").notNull().default("requested"),
-  images: text("images").array().default(sql`ARRAY[]::text[]`), // Fotos del problema
-  ownerNotifiedAt: timestamp("owner_notified_at"),
-  scheduledDate: timestamp("scheduled_date"), // Fecha programada para el mantenimiento
-  completedAt: timestamp("completed_at"),
-  ownerNotes: text("owner_notes"), // Notas del propietario
-  resolution: text("resolution"), // Descripción de cómo se resolvió
+  urgency: varchar("urgency").notNull().default("normal"), // low, normal, urgent
+  status: varchar("status").notNull().default("pending"), // pending, in_progress, completed, cancelled
+  adminNotes: text("admin_notes"), // Notas del administrador
+  resolvedAt: timestamp("resolved_at"), // Fecha de resolución
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_tenant_maintenance_contract").on(table.rentalContractId),
   index("idx_tenant_maintenance_tenant").on(table.tenantId),
-  index("idx_tenant_maintenance_owner").on(table.ownerId),
   index("idx_tenant_maintenance_status").on(table.status),
 ]);
 

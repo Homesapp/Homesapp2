@@ -384,18 +384,22 @@ export default function ActiveRentals() {
                   <TableBody>
                     {maintenanceRequests.map((request) => (
                       <TableRow key={request.id} data-testid={`row-maintenance-${request.id}`}>
-                        <TableCell className="font-medium">{request.title}</TableCell>
+                        <TableCell className="font-medium">{request.description}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
                               request.urgency === "emergency" ? "destructive" :
+                              request.urgency === "urgent" ? "destructive" :
                               request.urgency === "high" ? "destructive" :
+                              request.urgency === "normal" ? "secondary" :
                               request.urgency === "medium" ? "secondary" : "outline"
                             }
                             data-testid={`badge-urgency-${request.id}`}
                           >
                             {request.urgency === "emergency" ? t("activeRentals.emergency", "Emergencia") :
+                             request.urgency === "urgent" ? t("activeRentals.urgent", "Urgente") :
                              request.urgency === "high" ? t("activeRentals.high", "Alta") :
+                             request.urgency === "normal" ? t("activeRentals.normal", "Normal") :
                              request.urgency === "medium" ? t("activeRentals.medium", "Media") :
                              t("activeRentals.low", "Baja")}
                           </Badge>

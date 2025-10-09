@@ -3272,14 +3272,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveRentalsByTenant(tenantId: string): Promise<RentalContract[]> {
-    // Get contracts where user is tenant and status is check_in (active rental)
+    // Get contracts where user is tenant and status is active (activo or check_in)
     return await db
       .select()
       .from(rentalContracts)
       .where(
         and(
           eq(rentalContracts.tenantId, tenantId),
-          eq(rentalContracts.status, 'check_in')
+          or(
+            eq(rentalContracts.status, 'activo'),
+            eq(rentalContracts.status, 'check_in')
+          )
         )
       )
       .orderBy(desc(rentalContracts.createdAt));
