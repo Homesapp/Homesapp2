@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useUser } from "@/contexts/UserContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,12 +75,12 @@ const maintenanceRequestSchema = z.object({
 
 export default function ActiveRentals() {
   const { t, language } = useLanguage();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedRental, setSelectedRental] = useState<string | null>(null);
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
 
-  const isOwner = user?.role === "propietario";
+  const isOwner = user?.role === "owner";
   const rentalsEndpoint = isOwner ? "/api/owner/active-rentals" : "/api/rentals/active";
 
   const { data: rentals = [], isLoading: rentalsLoading } = useQuery<ActiveRental[]>({

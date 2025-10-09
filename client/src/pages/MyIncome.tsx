@@ -362,14 +362,14 @@ export default function MyIncome() {
       )}
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className={`grid w-full ${(user?.role === "cliente" || user?.role === "propietario") ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-5"}`} data-testid="tabs-list">
+        <TabsList className={`grid w-full ${(user?.role === "cliente" || user?.role === "owner") ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-5"}`} data-testid="tabs-list">
           <TabsTrigger value="overview" data-testid="tab-overview">
             {language === "es" ? "Resumen" : "Overview"}
           </TabsTrigger>
           <TabsTrigger value="commissions" data-testid="tab-commissions">
             {language === "es" ? "Comisiones" : "Commissions"}
           </TabsTrigger>
-          {user?.role !== "cliente" && user?.role !== "propietario" && (
+          {user?.role !== "cliente" && user?.role !== "owner" && (
             <TabsTrigger value="bank-info" data-testid="tab-bank-info">
               {language === "es" ? "Cuenta Bancaria" : "Bank Account"}
             </TabsTrigger>
@@ -377,7 +377,7 @@ export default function MyIncome() {
           <TabsTrigger value="documents" data-testid="tab-documents">
             {language === "es" ? "Documentos" : "Documents"}
           </TabsTrigger>
-          {user?.role !== "cliente" && user?.role !== "propietario" && (
+          {user?.role !== "cliente" && user?.role !== "owner" && (
             <TabsTrigger value="training" data-testid="tab-training">
               {language === "es" ? "Entrenamiento" : "Training"}
             </TabsTrigger>
@@ -547,7 +547,7 @@ export default function MyIncome() {
                   {language === "es" ? "Tipos de comisiones:" : "Commission types:"}
                 </h3>
                 <div className="space-y-2 text-sm">
-                  {user?.role !== "cliente" && user?.role !== "propietario" && (
+                  {user?.role !== "cliente" && user?.role !== "owner" && (
                     <div className="p-3 rounded-md bg-muted">
                       <strong>{language === "es" ? "Comisión por Renta:" : "Rental Commission:"}</strong>
                       <p className="text-muted-foreground mt-1">
