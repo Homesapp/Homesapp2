@@ -539,28 +539,21 @@ export default function PropertyFullDetails() {
 
                 <Separator />
 
-                {property.status === "rent" || property.status === "both" ? (
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        setShowAuthDialog(true);
-                        return;
-                      }
-                      setShowAppointmentDialog(true);
-                    }}
-                    data-testid="button-request-opportunity"
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Coordinar cita
-                  </Button>
-                ) : (
-                  <Button className="w-full" size="lg" data-testid="button-contact">
-                    <Phone className="h-4 w-4 mr-2" />
-                    Contactar
-                  </Button>
-                )}
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setShowAuthDialog(true);
+                      return;
+                    }
+                    setShowAppointmentDialog(true);
+                  }}
+                  data-testid="button-request-opportunity"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Coordinar cita
+                </Button>
 
                 <Button variant="outline" className="w-full" data-testid="button-add-to-favorites">
                   <Heart className="h-4 w-4 mr-2" />
