@@ -3,8 +3,8 @@ import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Calendar, FileEdit, CheckCircle2, AlertCircle, Clock, ArrowRight, Users, MessageSquare, DollarSign, Wrench } from "lucide-react";
-import type { Property, PropertyChangeRequest, Appointment, MaintenanceSchedule } from "@shared/schema";
+import { Building2, Calendar, FileEdit, CheckCircle2, AlertCircle, Clock, ArrowRight, Users, MessageSquare, DollarSign, Wrench, Home } from "lucide-react";
+import type { Property, PropertyChangeRequest, Appointment, MaintenanceSchedule, RentalContract } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
 type InterestedClient = {
@@ -59,6 +59,10 @@ export default function OwnerDashboard() {
     queryKey: ["/api/owner/maintenance-schedules"],
   });
 
+  const { data: activeRentals = [], isLoading: loadingActiveRentals } = useQuery<RentalContract[]>({
+    queryKey: ["/api/owner/active-rentals"],
+  });
+
   // Filter owner appointments
   const pendingAppointments = appointments.filter(a => a.ownerApprovalStatus === "pending");
   const upcomingAppointments = appointments
@@ -83,7 +87,7 @@ export default function OwnerDashboard() {
     .sort((a, b) => new Date(a.nextDue).getTime() - new Date(b.nextDue).getTime())
     .slice(0, 5);
 
-  const isLoading = loadingProperties || loadingChangeRequests || loadingAppointments || loadingInterestedClients || loadingFinancial || loadingMaintenance;
+  const isLoading = loadingProperties || loadingChangeRequests || loadingAppointments || loadingInterestedClients || loadingFinancial || loadingMaintenance || loadingActiveRentals;
 
   if (isLoading) {
     return (
@@ -105,7 +109,7 @@ export default function OwnerDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card data-testid="card-total-properties">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Propiedades</CardTitle>
@@ -167,6 +171,19 @@ export default function OwnerDashboard() {
             <div className="text-2xl font-bold">{interestedClients.length}</div>
             <p className="text-xs text-muted-foreground">
               Solicitudes de oportunidad
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-active-rentals">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rentas Activas</CardTitle>
+            <Home className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeRentals.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Contratos activos
             </p>
           </CardContent>
         </Card>
@@ -504,6 +521,14 @@ export default function OwnerDashboard() {
                 Gestionar visitas
               </Button>
             </Link>
+            {activeRentals.length > 0 && (
+              <Link href="/rentas-activas">
+                <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-active-rentals">
+                  <Home className="h-4 w-4" />
+                  Rentas Activas
+                </Button>
+              </Link>
+            )}
             <Link href="/buscar-propiedades">
               <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-search">
                 <Building2 className="h-4 w-4" />

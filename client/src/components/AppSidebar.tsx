@@ -144,7 +144,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
 
   const ownerActivityGroup = [
     { titleKey: "sidebar.ownerVisits", url: "/owner/appointments", icon: Calendar, roles: ["owner"] },
-    { titleKey: "sidebar.ownerActiveRentals", url: "/owner/rentas-activas", icon: Home, roles: ["owner"] },
+    { titleKey: "sidebar.ownerActiveRentals", url: "/rentas-activas", icon: Home, roles: ["owner"] },
   ];
 
   const ownerFinanceGroup = [

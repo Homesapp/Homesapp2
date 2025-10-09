@@ -15,11 +15,12 @@ import {
   Zap,
   TrendingUp,
   Building2,
-  User
+  User,
+  Wrench
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import type { Appointment, Property, User as UserType, Lead } from "@shared/schema";
+import type { Appointment, Property, User as UserType, Lead, RentalContract, TenantMaintenanceRequest } from "@shared/schema";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -69,6 +70,14 @@ export default function ClientDashboard() {
     queryKey: ["/api/leads"],
   });
 
+  const { data: activeRentals = [], isLoading: activeRentalsLoading } = useQuery<RentalContract[]>({
+    queryKey: ["/api/client/active-rentals"],
+  });
+
+  const { data: maintenanceRequests = [], isLoading: maintenanceLoading } = useQuery<TenantMaintenanceRequest[]>({
+    queryKey: ["/api/client/maintenance-requests"],
+  });
+
   const myAppointments = appointments.filter(apt => apt.clientId === user?.id);
   const upcomingAppointments = myAppointments
     .filter(apt => {
@@ -84,7 +93,11 @@ export default function ClientDashboard() {
     lead.status !== "closed_won"
   );
 
-  const isLoading = appointmentsLoading || favoritesLoading || leadsLoading;
+  const pendingMaintenanceRequests = maintenanceRequests.filter(req => 
+    req.status === "pending" || req.status === "in_progress"
+  );
+
+  const isLoading = appointmentsLoading || favoritesLoading || leadsLoading || activeRentalsLoading || maintenanceLoading;
 
   if (isLoading) {
     return <LoadingScreen className="h-full" />;
@@ -103,7 +116,7 @@ export default function ClientDashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card data-testid="card-stat-appointments">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("clientDashboard.upcomingAppointments")}</CardTitle>
@@ -139,6 +152,39 @@ export default function ClientDashboard() {
               <div className="text-2xl font-bold">{myLeads.length}</div>
               <p className="text-xs text-muted-foreground">
                 {myLeads.length === 1 ? t("clientDashboard.activeOpportunity") : t("clientDashboard.activeOpportunities")}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-stat-active-rentals">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {language === "es" ? "Rentas Activas" : "Active Rentals"}
+              </CardTitle>
+              <Home className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeRentals.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {activeRentals.length === 1 
+                  ? (language === "es" ? "Propiedad rentada" : "Property rented")
+                  : (language === "es" ? "Propiedades rentadas" : "Properties rented")
+                }
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-stat-maintenance">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {language === "es" ? "Solicitudes Pendientes" : "Pending Requests"}
+              </CardTitle>
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingMaintenanceRequests.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {language === "es" ? "Mantenimientos" : "Maintenance"}
               </p>
             </CardContent>
           </Card>
@@ -195,6 +241,16 @@ export default function ClientDashboard() {
               <Zap className="h-4 w-4 mr-2" />
               {t("clientDashboard.myOpportunities")}
             </Button>
+            {activeRentals.length > 0 && (
+              <Button 
+                variant="outline"
+                onClick={() => setLocation("/rentas-activas")}
+                data-testid="button-active-rentals"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                {language === "es" ? "Rentas Activas" : "Active Rentals"}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
