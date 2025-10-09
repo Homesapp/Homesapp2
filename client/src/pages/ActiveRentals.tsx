@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,13 +14,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Home, DollarSign, Wrench, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Upload, X } from "lucide-react";
+import { Home, DollarSign, Wrench, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Upload, X, MessageSquare, Send } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useChatWebSocket } from "@/hooks/useChatWebSocket";
+import { formatDistanceToNow } from "date-fns";
+import type { ChatConversation, ChatMessage } from "@shared/schema";
 
 interface ActiveRental {
   id: string;
@@ -91,6 +96,8 @@ export default function ActiveRentals() {
   const [selectedPayment, setSelectedPayment] = useState<RentalPayment | null>(null);
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [problemPhotoFile, setProblemPhotoFile] = useState<{ name: string; data: string } | null>(null);
+  const [chatMessage, setChatMessage] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isOwner = user?.role === "owner";
   const rentalsEndpoint = isOwner ? "/api/owner/active-rentals" : "/api/rentals/active";
@@ -108,6 +115,20 @@ export default function ActiveRentals() {
     queryKey: ["/api/rentals", selectedRental, "maintenance-requests"],
     enabled: !!selectedRental,
   });
+
+  // Chat conversation and messages
+  const { data: chatConversation } = useQuery<ChatConversation>({
+    queryKey: ["/api/rentals", selectedRental, "chat-conversation"],
+    enabled: !!selectedRental,
+  });
+
+  const { data: chatMessages = [] } = useQuery<ChatMessage[]>({
+    queryKey: ["/api/chat/conversations", chatConversation?.id, "messages"],
+    enabled: !!chatConversation?.id,
+  });
+
+  // Connect to WebSocket for real-time chat updates
+  useChatWebSocket(chatConversation?.id || null);
 
   const maintenanceForm = useForm({
     resolver: zodResolver(maintenanceRequestSchema),
@@ -189,6 +210,25 @@ export default function ActiveRentals() {
     },
   });
 
+  const sendChatMessageMutation = useMutation({
+    mutationFn: async (data: { conversationId: string; message: string; senderId: string }) => {
+      return await apiRequest("POST", `/api/chat/messages`, data);
+    },
+    onSuccess: () => {
+      setChatMessage("");
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", chatConversation?.id, "messages"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es"
+          ? "No se pudo enviar el mensaje"
+          : "Could not send message"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleProblemPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -251,6 +291,31 @@ export default function ActiveRentals() {
       maintenanceForm.reset();
     }
   }, [showMaintenanceDialog, maintenanceForm]);
+
+  // Auto-scroll to bottom when new chat messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const handleSendChatMessage = () => {
+    if (!chatMessage.trim() || !chatConversation?.id || !user?.id) return;
+    
+    sendChatMessageMutation.mutate({
+      conversationId: chatConversation.id,
+      message: chatMessage.trim(),
+      senderId: user.id,
+    });
+  };
+
+  const getUserInitials = (name?: string) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   if (rentalsLoading) {
     return (
@@ -425,6 +490,10 @@ export default function ActiveRentals() {
             <Wrench className="h-4 w-4 mr-2" />
             {t("activeRentals.maintenance", "Mantenimiento")}
           </TabsTrigger>
+          <TabsTrigger value="chat" data-testid="tab-chat">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            {t("activeRentals.chat", "Chat")}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="payments">
@@ -584,6 +653,86 @@ export default function ActiveRentals() {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="chat">
+          <Card className="flex flex-col h-[600px]">
+            <CardHeader className="border-b">
+              <CardTitle>{t("activeRentals.chat", "Chat")}</CardTitle>
+              <CardDescription>
+                {t("activeRentals.chatDesc", "Comunícate con el propietario y el personal de mantenimiento")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 flex flex-col">
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center text-secondary-foreground py-12">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>{t("activeRentals.noMessages", "No hay mensajes aún")}</p>
+                      <p className="text-sm">{t("activeRentals.startConversation", "Inicia la conversación")}</p>
+                    </div>
+                  ) : (
+                    <>
+                      {chatMessages.map((msg) => {
+                        const isOwn = msg.senderId === user?.id;
+                        
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
+                            data-testid={`message-${msg.id}`}
+                          >
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>
+                                {getUserInitials(user?.firstName || undefined)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className={`flex-1 ${isOwn ? "text-right" : ""}`}>
+                              <div
+                                className={`inline-block p-3 rounded-lg ${
+                                  isOwn
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                }`}
+                              >
+                                <p className="whitespace-pre-wrap">{msg.message}</p>
+                              </div>
+                              <p className="text-xs text-tertiary-foreground mt-1">
+                                {formatDistanceToNow(new Date(msg.createdAt), {
+                                  addSuffix: true,
+                                  locale: language === "es" ? es : undefined,
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+              <div className="p-4 border-t">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={t("activeRentals.typeMessage", "Escribe un mensaje...")}
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendChatMessage()}
+                    data-testid="input-chat-message"
+                  />
+                  <Button
+                    onClick={handleSendChatMessage}
+                    disabled={!chatMessage.trim() || sendChatMessageMutation.isPending}
+                    data-testid="button-send-message"
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
