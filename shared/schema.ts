@@ -1471,6 +1471,14 @@ export const appointments = pgTable("appointments", {
   staffMemberCompany: text("staff_member_company"), // Empresa
   staffMemberWhatsapp: varchar("staff_member_whatsapp"), // WhatsApp del staff
   accessCredentialsSent: boolean("access_credentials_sent").default(false), // Si se enviaron credenciales
+  
+  // Campos para claves de acceso para conserje
+  accessType: varchar("access_type"), // lockbox, electronic, manual, other
+  accessCode: text("access_code"), // Código/clave de acceso
+  accessInstructions: text("access_instructions"), // Instrucciones adicionales
+  conciergeAssignedBy: varchar("concierge_assigned_by").references(() => users.id), // Quién asignó al conserje (propietario o admin)
+  conciergeAssignedAt: timestamp("concierge_assigned_at"), // Cuándo se asignó
+  
   clientFeedback: jsonb("client_feedback"), // Feedback del cliente (opciones predefinidas)
   staffFeedback: text("staff_feedback"), // Feedback del staff (texto libre)
   
