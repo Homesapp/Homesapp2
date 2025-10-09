@@ -96,23 +96,18 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     properties: false,
     config: false,
     community: false,
+    clientProperties: false,
+    clientActivity: false,
+    clientFinance: false,
+    ownerProperties: false,
+    ownerActivity: false,
+    ownerFinance: false,
+    sellerFinance: false,
   });
 
   const mainItems = [
     { titleKey: "sidebar.home", url: "/", icon: Home, roles: ["master", "admin", "admin_jr", "seller", "management", "concierge", "provider", "cliente"] },
     { titleKey: "sidebar.dashboard", url: "/owner/dashboard", icon: Home, roles: ["owner"] },
-    { titleKey: "sidebar.searchProperties", url: "/buscar-propiedades", icon: Search, roles: ["cliente"] },
-    { titleKey: "sidebar.favorites", url: "/favoritos", icon: Heart, roles: ["cliente"] },
-    { titleKey: "sidebar.cards", url: "/cards", icon: CreditCard, roles: ["cliente"] },
-    { titleKey: "sidebar.myAppointments", url: "/mis-citas", icon: Calendar, roles: ["cliente"] },
-    { titleKey: "sidebar.myOpportunities", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
-    { titleKey: "sidebar.activeRentals", url: "/rentas-activas", icon: Home, roles: ["cliente"] },
-    { titleKey: "sidebar.myProperties", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
-    { titleKey: "sidebar.ownerVisits", url: "/owner/appointments", icon: Calendar, roles: ["owner"] },
-    { titleKey: "sidebar.financialReport", url: "/owner/financial-report", icon: FileText, roles: ["owner"] },
-    { titleKey: "sidebar.ownerActiveRentals", url: "/owner/rentas-activas", icon: Home, roles: ["owner"] },
-    { titleKey: "sidebar.referrals", url: "/referidos", icon: Share2, roles: ["cliente", "owner", "master", "admin", "admin_jr", "seller"] },
-    { titleKey: "sidebar.myIncome", url: "/mis-ingresos", icon: DollarSign, roles: ["cliente", "owner", "seller"] },
     { titleKey: "sidebar.notifications", url: "/notificaciones", icon: Bell, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
     { titleKey: "sidebar.messages", url: "/chat", icon: MessageCircle, roles: ["master", "admin", "admin_jr", "seller", "owner", "management", "concierge", "provider", "cliente"] },
     { titleKey: "sidebar.leads", url: "/leads", icon: Users, roles: ["master", "admin", "admin_jr", "seller", "management"] },
@@ -122,6 +117,46 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.conciergeSchedule", url: "/concierge/horarios", icon: Clock, roles: ["concierge"] },
     { titleKey: "sidebar.clients", url: "/clientes", icon: Users, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.incomeManagement", url: "/accountant/income", icon: DollarSign, roles: ["contador"] },
+  ];
+
+  // Client-specific groups
+  const clientPropertiesGroup = [
+    { titleKey: "sidebar.searchProperties", url: "/buscar-propiedades", icon: Search, roles: ["cliente"] },
+    { titleKey: "sidebar.favorites", url: "/favoritos", icon: Heart, roles: ["cliente"] },
+    { titleKey: "sidebar.cards", url: "/cards", icon: CreditCard, roles: ["cliente"] },
+  ];
+
+  const clientActivityGroup = [
+    { titleKey: "sidebar.myAppointments", url: "/mis-citas", icon: Calendar, roles: ["cliente"] },
+    { titleKey: "sidebar.myOpportunities", url: "/mis-oportunidades", icon: Zap, roles: ["cliente"] },
+    { titleKey: "sidebar.activeRentals", url: "/rentas-activas", icon: Home, roles: ["cliente"] },
+  ];
+
+  const clientFinanceGroup = [
+    { titleKey: "sidebar.referrals", url: "/referidos", icon: Share2, roles: ["cliente"] },
+    { titleKey: "sidebar.myIncome", url: "/mis-ingresos", icon: DollarSign, roles: ["cliente"] },
+  ];
+
+  // Owner-specific groups
+  const ownerPropertiesGroup = [
+    { titleKey: "sidebar.myProperties", url: "/mis-propiedades", icon: Building2, roles: ["owner"] },
+  ];
+
+  const ownerActivityGroup = [
+    { titleKey: "sidebar.ownerVisits", url: "/owner/appointments", icon: Calendar, roles: ["owner"] },
+    { titleKey: "sidebar.ownerActiveRentals", url: "/owner/rentas-activas", icon: Home, roles: ["owner"] },
+  ];
+
+  const ownerFinanceGroup = [
+    { titleKey: "sidebar.financialReport", url: "/owner/financial-report", icon: FileText, roles: ["owner"] },
+    { titleKey: "sidebar.referrals", url: "/referidos", icon: Share2, roles: ["owner"] },
+    { titleKey: "sidebar.myIncome", url: "/mis-ingresos", icon: DollarSign, roles: ["owner"] },
+  ];
+
+  // Seller finance group
+  const sellerFinanceGroup = [
+    { titleKey: "sidebar.referrals", url: "/referidos", icon: Share2, roles: ["seller", "master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.myIncome", url: "/mis-ingresos", icon: DollarSign, roles: ["seller"] },
   ];
 
   const adminSingleItems = [
@@ -210,12 +245,48 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     ? serviceItems.filter((item) => item.roles.includes(userRole))
     : [];
 
+  const filteredClientProperties = userRole 
+    ? clientPropertiesGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  const filteredClientActivity = userRole 
+    ? clientActivityGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  const filteredClientFinance = userRole 
+    ? clientFinanceGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  const filteredOwnerProperties = userRole 
+    ? ownerPropertiesGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  const filteredOwnerActivity = userRole 
+    ? ownerActivityGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  const filteredOwnerFinance = userRole 
+    ? ownerFinanceGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  const filteredSellerFinance = userRole 
+    ? sellerFinanceGroup.filter((item) => item.roles.includes(userRole))
+    : [];
+
   const hasAdminItems = filteredAdminSingle.length > 0 || 
                         filteredProcessManagement.length > 0 ||
                         filteredUsersAndRoles.length > 0 || 
                         filteredProperties.length > 0 || 
                         filteredConfig.length > 0 || 
                         filteredCommunity.length > 0;
+
+  const hasClientGroups = filteredClientProperties.length > 0 || 
+                          filteredClientActivity.length > 0 || 
+                          filteredClientFinance.length > 0;
+
+  const hasOwnerGroups = filteredOwnerProperties.length > 0 || 
+                         filteredOwnerActivity.length > 0 || 
+                         filteredOwnerFinance.length > 0;
 
   const isGroupActive = (items: typeof usersAndRolesGroup) => {
     return items.some(item => location === item.url || location.startsWith(item.url + '/'));
@@ -228,6 +299,13 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
       properties: isGroupActive(propertiesGroup),
       config: isGroupActive(configGroup),
       community: isGroupActive(communityGroup),
+      clientProperties: isGroupActive(clientPropertiesGroup),
+      clientActivity: isGroupActive(clientActivityGroup),
+      clientFinance: isGroupActive(clientFinanceGroup),
+      ownerProperties: isGroupActive(ownerPropertiesGroup),
+      ownerActivity: isGroupActive(ownerActivityGroup),
+      ownerFinance: isGroupActive(ownerFinanceGroup),
+      sellerFinance: isGroupActive(sellerFinanceGroup),
     });
   }, [location]);
 
@@ -448,6 +526,248 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
           </SidebarGroup>
         )}
 
+        {/* Client Groups */}
+        {hasClientGroups && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredClientProperties.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.clientProperties}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, clientProperties: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-client-properties">
+                          <Building2 />
+                          <span>{language === "es" ? "Propiedades" : "Properties"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredClientProperties.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+
+                {filteredClientActivity.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.clientActivity}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, clientActivity: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-client-activity">
+                          <Calendar />
+                          <span>{language === "es" ? "Mi Actividad" : "My Activity"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredClientActivity.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+
+                {filteredClientFinance.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.clientFinance}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, clientFinance: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-client-finance">
+                          <DollarSign />
+                          <span>{language === "es" ? "Finanzas" : "Finance"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredClientFinance.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Owner Groups */}
+        {hasOwnerGroups && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredOwnerProperties.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.ownerProperties}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, ownerProperties: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-owner-properties">
+                          <Building2 />
+                          <span>{language === "es" ? "Mis Propiedades" : "My Properties"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredOwnerProperties.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+
+                {filteredOwnerActivity.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.ownerActivity}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, ownerActivity: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-owner-activity">
+                          <Calendar />
+                          <span>{language === "es" ? "Mi Actividad" : "My Activity"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredOwnerActivity.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+
+                {filteredOwnerFinance.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.ownerFinance}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, ownerFinance: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-owner-finance">
+                          <DollarSign />
+                          <span>{language === "es" ? "Finanzas" : "Finance"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredOwnerFinance.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Seller Finance Group */}
+        {filteredSellerFinance.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <Collapsible 
+                  open={openGroups.sellerFinance}
+                  onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, sellerFinance: open }))}
+                  className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton data-testid="collapsible-seller-finance">
+                        <DollarSign />
+                        <span>{language === "es" ? "Finanzas" : "Finance"}</span>
+                        <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {filteredSellerFinance.map((item) => (
+                          <SidebarMenuSubItem key={item.titleKey}>
+                            <SidebarMenuSubButton asChild isActive={location === item.url}>
+                              <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                <item.icon />
+                                <span>{t(item.titleKey)}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {filteredService.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>{t("sidebar.services")}</SidebarGroupLabel>
@@ -470,7 +790,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className={state === "expanded" ? "p-4 border-t space-y-2" : "p-2 border-t space-y-2"}>
+        <div className="p-2 border-t space-y-2">
           <RoleToggle />
           <Link href="/ayuda" data-testid="link-help">
             <Button
