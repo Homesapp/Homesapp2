@@ -82,6 +82,17 @@ export default function OwnerAppointments() {
   const [accessInstructions, setAccessInstructions] = useState("");
   const { toast } = useToast();
 
+  // Handler to reset concierge assignment form
+  const handleCloseAssignConciergeDialog = (open: boolean) => {
+    setAssignConciergeDialogOpen(open);
+    if (!open) {
+      setSelectedConciergeId("");
+      setAccessType("lockbox");
+      setAccessCode("");
+      setAccessInstructions("");
+    }
+  };
+
   const { data: allAppointments = [], isLoading } = useQuery<AppointmentWithDetails[]>({
     queryKey: ["/api/appointments"],
   });
@@ -1573,7 +1584,7 @@ export default function OwnerAppointments() {
       </Dialog>
 
       {/* Assign Concierge Dialog */}
-      <Dialog open={assignConciergeDialogOpen} onOpenChange={setAssignConciergeDialogOpen}>
+      <Dialog open={assignConciergeDialogOpen} onOpenChange={handleCloseAssignConciergeDialog}>
         <DialogContent className="max-w-2xl" data-testid="dialog-assign-concierge">
           <DialogHeader>
             <DialogTitle>Asignar Conserje a la Cita</DialogTitle>
