@@ -499,15 +499,12 @@ export default function PropertySearch() {
                         </Button>
                       )}
                       {property.primaryImages && property.primaryImages.length > 0 ? (
-                        <div className="h-48 bg-muted relative overflow-hidden">
+                        <div className="h-36 bg-muted relative overflow-hidden">
                           <img
                             src={property.primaryImages[0]}
                             alt={property.title}
                             className="w-full h-full object-cover"
                           />
-                          <Badge className="absolute top-2 left-2 bg-secondary" data-testid={`badge-status-${property.id}`}>
-                            {property.status === "rent" ? "Renta" : property.status === "sale" ? "Venta" : "Renta/Venta"}
-                          </Badge>
                           {property.featured && (
                             <Badge className="absolute top-2 right-2">
                               Destacada
@@ -515,70 +512,85 @@ export default function PropertySearch() {
                           )}
                         </div>
                       ) : (
-                        <div className="h-48 bg-muted flex items-center justify-center">
+                        <div className="h-36 bg-muted flex items-center justify-center">
                           <MapPin className="h-12 w-12 text-muted-foreground" />
                         </div>
                       )}
-                      <CardHeader>
-                        <CardTitle className="line-clamp-1">{property.title}</CardTitle>
-                        <CardDescription className="line-clamp-2">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="line-clamp-1 text-base">{property.title}</CardTitle>
+                        <CardDescription className="line-clamp-1 text-xs">
                           {property.description || "Sin descripción"}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold text-primary">
-                            {formatPrice(property.price)}
-                          </span>
-                          {property.rating && parseFloat(property.rating) > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span className="text-sm font-medium">{property.rating}</span>
+                      <CardContent className="space-y-2 pt-0">
+                        <div className="space-y-1">
+                          {/* Mostrar tipo de operación */}
+                          <div className="text-xs font-medium text-muted-foreground" data-testid={`text-type-${property.id}`}>
+                            {property.status === "rent" && "En Renta"}
+                            {property.status === "sale" && "En Venta"}
+                            {property.status === "both" && "Renta o Venta"}
+                          </div>
+                          
+                          {/* Precio(s) */}
+                          {property.status === "both" ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-sm font-semibold text-primary">{formatPrice(property.price)}</span>
+                                <span className="text-xs text-muted-foreground">/mes</span>
+                              </div>
+                              {property.salePrice && (
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-sm font-semibold text-primary">{formatPrice(property.salePrice)}</span>
+                                  <span className="text-xs text-muted-foreground">venta</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-lg font-bold text-primary">
+                                  {formatPrice(property.status === "sale" && property.salePrice ? property.salePrice : property.price)}
+                                </span>
+                                {property.status === "rent" && (
+                                  <span className="text-xs text-muted-foreground">/mes</span>
+                                )}
+                              </div>
+                              {property.rating && parseFloat(property.rating) > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                  <span className="text-xs font-medium">{property.rating}</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Bed className="h-4 w-4" />
+                            <Bed className="h-3 w-3" />
                             <span>{property.bedrooms}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Bath className="h-4 w-4" />
+                            <Bath className="h-3 w-3" />
                             <span>{property.bathrooms}</span>
                           </div>
                           {property.area && (
                             <div className="flex items-center gap-1">
-                              <Square className="h-4 w-4" />
-                              <span>{property.area} m²</span>
+                              <Square className="h-3 w-3" />
+                              <span>{property.area}m²</span>
                             </div>
                           )}
                           {(property.amenities?.includes("Mascotas permitidas") || property.amenities?.includes("Pet Friendly")) && (
                             <div className="flex items-center gap-1" title="Pet-friendly">
-                              <PawPrint className="h-4 w-4 text-foreground" />
+                              <PawPrint className="h-3 w-3 text-foreground" />
                             </div>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4" />
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
                           <span className="line-clamp-1">{property.location}</span>
                         </div>
-
-                        {property.amenities && property.amenities.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {property.amenities.slice(0, 3).map((amenity, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {amenity}
-                              </Badge>
-                            ))}
-                            {property.amenities.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{property.amenities.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   ))}
