@@ -431,6 +431,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configure multer for payment proof uploads
+  const paymentProofStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'attached_assets/payment_proofs/');
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = crypto.randomBytes(4).toString('hex');
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext).toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20);
+      cb(null, `payment_${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const uploadPaymentProof = multer({
+    storage: paymentProofStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB limit for payment proofs
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Tipo de archivo no permitido. Solo JPG, PNG y WEBP.'));
+      }
+    }
+  });
+
   // Upload property photo endpoint
   app.post("/api/upload/property-photo", isAuthenticated, requireRole(["owner", "admin", "master"]), upload.single('photo'), async (req: any, res) => {
     try {
@@ -10036,6 +10064,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching rental payments:", error);
       res.status(500).json({ message: "Failed to fetch rental payments" });
+    }
+  });
+
+  // Register payment with proof endpoint (authorization check first)
+  app.post("/api/rentals/payments/:paymentId/register", isAuthenticated, async (req: any, res, next) => {
+    try {
+      const { paymentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Get payment details and verify authorization BEFORE file upload
+      const payment = await storage.getRentalPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      // Verify user is the tenant
+      if (payment.tenantId !== userId) {
+        return res.status(403).json({ message: "Only tenant can register payment" });
+      }
+      
+      // Store payment in request for later use
+      (req as any).validatedPayment = payment;
+      
+      // Now proceed with file upload
+      uploadPaymentProof.single('proof')(req, res, async (err: any) => {
+        if (err) {
+          return res.status(400).json({ message: err.message || "File upload failed" });
+        }
+        
+        // Require payment proof file
+        if (!req.file) {
+          return res.status(400).json({ message: "Payment proof is required" });
+        }
+        
+        const paymentProofUrl = `/attached_assets/payment_proofs/${req.file.filename}`;
+        
+        // Update payment with proof and status
+        const updatedPayment = await storage.updateRentalPayment(paymentId, {
+          paymentDate: new Date(),
+          paymentProof: paymentProofUrl,
+          status: "paid",
+          notes: req.body.notes || null,
+        });
+        
+        // Get rental contract for notification
+        const rental = await storage.getRentalContract(payment.rentalContractId);
+        if (rental) {
+          // Notify owner about payment
+          await storage.createNotification({
+            userId: rental.ownerId,
+            type: "payment_received",
+            title: "Pago registrado",
+            message: `Tu inquilino ha registrado un pago de $${payment.amount}`,
+            relatedEntityType: "rental_payment",
+            relatedEntityId: paymentId,
+          });
+        }
+        
+        res.json(updatedPayment);
+      });
+    } catch (error: any) {
+      console.error("Error registering payment:", error);
+      res.status(500).json({ message: error.message || "Failed to register payment" });
     }
   });
 

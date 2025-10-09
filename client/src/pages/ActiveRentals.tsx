@@ -86,6 +86,9 @@ export default function ActiveRentals() {
   const { toast } = useToast();
   const [selectedRental, setSelectedRental] = useState<string | null>(null);
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<RentalPayment | null>(null);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
 
   const isOwner = user?.role === "owner";
   const rentalsEndpoint = isOwner ? "/api/owner/active-rentals" : "/api/rentals/active";
@@ -135,6 +138,50 @@ export default function ActiveRentals() {
         description: error.message || (language === "es"
           ? "No se pudo enviar la solicitud"
           : "Could not send request"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const registerPaymentMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedPayment) throw new Error("No payment selected");
+      
+      const formData = new FormData();
+      if (paymentProofFile) {
+        formData.append('proof', paymentProofFile);
+      }
+      
+      const response = await fetch(`/api/rentals/payments/${selectedPayment.id}/register`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to register payment');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: language === "es" ? "Pago registrado" : "Payment registered",
+        description: language === "es"
+          ? "Tu pago ha sido registrado exitosamente"
+          : "Your payment has been registered successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/rentals", selectedRental, "payments"] });
+      setShowPaymentDialog(false);
+      setSelectedPayment(null);
+      setPaymentProofFile(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es"
+          ? "No se pudo registrar el pago"
+          : "Could not register payment"),
         variant: "destructive",
       });
     },
@@ -356,6 +403,7 @@ export default function ActiveRentals() {
                       <TableHead>{t("activeRentals.amount", "Monto")}</TableHead>
                       <TableHead>{t("activeRentals.status", "Estado")}</TableHead>
                       <TableHead>{t("activeRentals.paidDate", "Fecha de Pago")}</TableHead>
+                      {!isOwner && <TableHead>{t("activeRentals.actions", "Acciones")}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -381,6 +429,22 @@ export default function ActiveRentals() {
                         <TableCell>
                           {payment.paidDate ? format(new Date(payment.paidDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined }) : "-"}
                         </TableCell>
+                        {!isOwner && (
+                          <TableCell>
+                            {payment.status === "pending" && (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedPayment(payment);
+                                  setShowPaymentDialog(true);
+                                }}
+                                data-testid={`button-register-payment-${payment.id}`}
+                              >
+                                {t("activeRentals.registerPayment", "Registrar Pago")}
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -556,6 +620,76 @@ export default function ActiveRentals() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Register Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent data-testid="dialog-register-payment">
+          <DialogHeader>
+            <DialogTitle>{t("activeRentals.registerPayment", "Registrar Pago")}</DialogTitle>
+            <DialogDescription>
+              {t("activeRentals.registerPaymentDesc", "Sube el comprobante de tu transferencia")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedPayment && (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">{t("activeRentals.amount", "Monto")}: </span>
+                  ${selectedPayment.amount}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">{t("activeRentals.dueDate", "Fecha de Vencimiento")}: </span>
+                  {format(new Date(selectedPayment.dueDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined })}
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {t("activeRentals.paymentProof", "Comprobante de Pago")}
+              </label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setPaymentProofFile(file);
+                  }
+                }}
+                data-testid="input-payment-proof"
+              />
+              {paymentProofFile && (
+                <p className="text-sm text-secondary-foreground">
+                  {t("activeRentals.fileSelected", "Archivo seleccionado")}: {paymentProofFile.name}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowPaymentDialog(false);
+                setSelectedPayment(null);
+                setPaymentProofFile(null);
+              }}
+              data-testid="button-cancel-payment"
+            >
+              {t("activeRentals.cancel", "Cancelar")}
+            </Button>
+            <Button
+              onClick={() => registerPaymentMutation.mutate()}
+              disabled={!paymentProofFile || registerPaymentMutation.isPending}
+              data-testid="button-submit-payment"
+            >
+              {registerPaymentMutation.isPending
+                ? t("activeRentals.registering", "Registrando...")
+                : t("activeRentals.register", "Registrar")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

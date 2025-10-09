@@ -561,6 +561,8 @@ export interface IStorage {
   getActiveRentalsByTenant(tenantId: string): Promise<RentalContract[]>;
   getActiveRentalsByOwner(ownerId: string): Promise<RentalContract[]>;
   getRentalPayments(rentalContractId: string): Promise<RentalPayment[]>;
+  getRentalPayment(id: string): Promise<RentalPayment | undefined>;
+  updateRentalPayment(id: string, updates: Partial<InsertRentalPayment>): Promise<RentalPayment>;
   createTenantMaintenanceRequest(requestData: InsertTenantMaintenanceRequest): Promise<TenantMaintenanceRequest>;
   getTenantMaintenanceRequests(rentalContractId: string): Promise<TenantMaintenanceRequest[]>;
   
@@ -3334,6 +3336,24 @@ export class DatabaseStorage implements IStorage {
       .from(rentalPayments)
       .where(eq(rentalPayments.rentalContractId, rentalContractId))
       .orderBy(rentalPayments.dueDate);
+  }
+
+  async getRentalPayment(id: string): Promise<RentalPayment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(rentalPayments)
+      .where(eq(rentalPayments.id, id))
+      .limit(1);
+    return payment;
+  }
+
+  async updateRentalPayment(id: string, updates: Partial<InsertRentalPayment>): Promise<RentalPayment> {
+    const [updated] = await db
+      .update(rentalPayments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(rentalPayments.id, id))
+      .returning();
+    return updated;
   }
 
   async createTenantMaintenanceRequest(requestData: InsertTenantMaintenanceRequest): Promise<TenantMaintenanceRequest> {

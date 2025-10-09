@@ -1256,6 +1256,7 @@ export const rentalPayments = pgTable("rental_payments", {
   dueDate: timestamp("due_date").notNull(), // Fecha de vencimiento del pago
   paymentDate: timestamp("payment_date"), // Fecha cuando se pagó
   status: rentalPaymentStatusEnum("status").notNull().default("pending"),
+  paymentProof: text("payment_proof"), // Ruta del comprobante de pago (imagen)
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
