@@ -491,6 +491,16 @@ const translations: Record<Language, Record<string, string>> = {
     "activeRentals.requestSentDesc": "Tu solicitud ha sido enviada al propietario",
     "activeRentals.paymentRegistered": "Pago registrado",
     "activeRentals.paymentRegisteredDesc": "El pago ha sido registrado exitosamente",
+    "activeRentals.approved": "Aprobado",
+    
+    // Services
+    "services.rent": "Renta",
+    "services.electricity": "Luz",
+    "services.water": "Agua",
+    "services.internet": "Internet",
+    "services.gas": "Gas",
+    "services.maintenance": "Mantenimiento",
+    "services.other": "Otro",
     
     "common.firstName": "Nombre",
     "common.lastName": "Apellido",
@@ -1329,6 +1339,16 @@ const translations: Record<Language, Record<string, string>> = {
     "activeRentals.requestSentDesc": "Your request has been sent to the owner",
     "activeRentals.paymentRegistered": "Payment registered",
     "activeRentals.paymentRegisteredDesc": "The payment has been successfully registered",
+    "activeRentals.approved": "Approved",
+    
+    // Services
+    "services.rent": "Rent",
+    "services.electricity": "Electricity",
+    "services.water": "Water",
+    "services.internet": "Internet",
+    "services.gas": "Gas",
+    "services.maintenance": "Maintenance",
+    "services.other": "Other",
     
     "common.firstName": "First Name",
     "common.lastName": "Last Name",

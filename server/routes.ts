@@ -10130,6 +10130,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Owner approves a payment
+  app.post("/api/rentals/payments/:paymentId/approve", isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Get payment details
+      const payment = await storage.getRentalPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      // Get rental contract to verify user is owner
+      const rental = await storage.getRentalContract(payment.rentalContractId);
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      if (rental.ownerId !== userId) {
+        return res.status(403).json({ message: "Only owner can approve payments" });
+      }
+      
+      // Approve the payment
+      const approvedPayment = await storage.approveRentalPayment(paymentId, userId);
+      
+      // Notify tenant
+      await storage.createNotification({
+        userId: rental.tenantId,
+        type: "payment_approved",
+        title: "Pago aprobado",
+        message: `El propietario ha aprobado tu pago de ${payment.serviceType === 'rent' ? 'renta' : payment.serviceType}`,
+        relatedEntityType: "rental_payment",
+        relatedEntityId: paymentId,
+      });
+      
+      res.json(approvedPayment);
+    } catch (error: any) {
+      console.error("Error approving payment:", error);
+      res.status(500).json({ message: error.message || "Failed to approve payment" });
+    }
+  });
+
+  // Get pending payments for owner to approve
+  app.get("/api/owner/pending-payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'owner' && user?.role !== 'admin' && user?.role !== 'master') {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const payments = await storage.getPendingPaymentsByOwner(userId);
+      res.json(payments);
+    } catch (error: any) {
+      console.error("Error fetching pending payments:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch pending payments" });
+    }
+  });
+
   app.post("/api/rentals/:id/maintenance-request", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;

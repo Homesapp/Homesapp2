@@ -563,6 +563,8 @@ export interface IStorage {
   getRentalPayments(rentalContractId: string): Promise<RentalPayment[]>;
   getRentalPayment(id: string): Promise<RentalPayment | undefined>;
   updateRentalPayment(id: string, updates: Partial<InsertRentalPayment>): Promise<RentalPayment>;
+  approveRentalPayment(id: string, ownerId: string): Promise<RentalPayment>;
+  getPendingPaymentsByOwner(ownerId: string): Promise<RentalPayment[]>;
   createTenantMaintenanceRequest(requestData: InsertTenantMaintenanceRequest): Promise<TenantMaintenanceRequest>;
   getTenantMaintenanceRequests(rentalContractId: string): Promise<TenantMaintenanceRequest[]>;
   
@@ -3355,6 +3357,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rentalPayments.id, id))
       .returning();
     return updated;
+  }
+
+  async approveRentalPayment(id: string, ownerId: string): Promise<RentalPayment> {
+    const [updated] = await db
+      .update(rentalPayments)
+      .set({ 
+        approvedBy: ownerId,
+        approvedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(rentalPayments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPendingPaymentsByOwner(ownerId: string): Promise<RentalPayment[]> {
+    // Get all payments for contracts owned by this owner that are paid but not approved
+    const payments = await db
+      .select({
+        payment: rentalPayments,
+        contract: rentalContracts
+      })
+      .from(rentalPayments)
+      .innerJoin(rentalContracts, eq(rentalPayments.rentalContractId, rentalContracts.id))
+      .where(
+        and(
+          eq(rentalContracts.ownerId, ownerId),
+          eq(rentalPayments.status, 'paid'),
+          isNull(rentalPayments.approvedBy)
+        )
+      )
+      .orderBy(desc(rentalPayments.paymentDate));
+    
+    return payments.map(p => p.payment);
   }
 
   async createTenantMaintenanceRequest(requestData: InsertTenantMaintenanceRequest): Promise<TenantMaintenanceRequest> {

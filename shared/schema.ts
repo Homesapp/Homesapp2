@@ -236,6 +236,16 @@ export const rentalPaymentStatusEnum = pgEnum("rental_payment_status", [
   "cancelled",       // Cancelado
 ]);
 
+export const serviceTypeEnum = pgEnum("service_type", [
+  "rent",            // Renta
+  "electricity",     // Luz
+  "water",           // Agua
+  "internet",        // Internet
+  "gas",             // Gas
+  "maintenance",     // Mantenimiento
+  "other",           // Otro
+]);
+
 export const tenantMaintenanceRequestStatusEnum = pgEnum("tenant_maintenance_request_status", [
   "requested",       // Solicitado por inquilino
   "owner_notified",  // Propietario notificado
@@ -1221,6 +1231,9 @@ export const rentalContracts = pgTable("rental_contracts", {
   // Referido de la propiedad (si aplica)
   referralPartnerId: varchar("referral_partner_id").references(() => users.id), // ID del socio referido
   
+  // Servicios incluidos en el contrato
+  includedServices: jsonb("included_services"), // Array de servicios: ["electricity", "water", "internet", "gas"]
+  
   // Fechas importantes
   apartadoDate: timestamp("apartado_date"), // Fecha cuando se hizo el apartado
   contractSignedDate: timestamp("contract_signed_date"), // Fecha de firma del contrato
@@ -1247,16 +1260,19 @@ export const insertRentalContractSchema = createInsertSchema(rentalContracts).om
 export type InsertRentalContract = z.infer<typeof insertRentalContractSchema>;
 export type RentalContract = typeof rentalContracts.$inferSelect;
 
-// Rental Payments table - Pagos mensuales de renta
+// Rental Payments table - Pagos mensuales de renta y servicios
 export const rentalPayments = pgTable("rental_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   rentalContractId: varchar("rental_contract_id").notNull().references(() => rentalContracts.id, { onDelete: "cascade" }),
   tenantId: varchar("tenant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceType: serviceTypeEnum("service_type").notNull().default("rent"), // Tipo de servicio
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   dueDate: timestamp("due_date").notNull(), // Fecha de vencimiento del pago
   paymentDate: timestamp("payment_date"), // Fecha cuando se pagó
   status: rentalPaymentStatusEnum("status").notNull().default("pending"),
-  paymentProof: text("payment_proof"), // Ruta del comprobante de pago (imagen)
+  paymentProof: text("payment_proof"), // Ruta del comprobante de pago (imagen base64)
+  approvedBy: varchar("approved_by").references(() => users.id), // ID del propietario que aprobó
+  approvedAt: timestamp("approved_at"), // Fecha de aprobación
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1264,6 +1280,7 @@ export const rentalPayments = pgTable("rental_payments", {
   index("idx_rental_payments_contract").on(table.rentalContractId),
   index("idx_rental_payments_tenant").on(table.tenantId),
   index("idx_rental_payments_status").on(table.status),
+  index("idx_rental_payments_service_type").on(table.serviceType),
   index("idx_rental_payments_due_date").on(table.dueDate),
 ]);
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,15 @@ import {
   Banknote,
   Car,
   PawPrint,
-  Users
+  Users,
+  Zap,
+  Droplet,
+  Wifi,
+  Flame
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface ActiveRental {
   id: string;
@@ -86,6 +91,21 @@ interface TenantMoveInForm {
   tenantSignedAt?: string;
 }
 
+interface RentalPayment {
+  id: string;
+  rentalContractId: string;
+  tenantId: string;
+  serviceType: string;
+  amount: string;
+  dueDate: string;
+  paymentDate?: string;
+  status: string;
+  paymentProof?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  notes?: string;
+}
+
 export default function OwnerActiveRentals() {
   const { t, language } = useLanguage();
   const [selectedRental, setSelectedRental] = useState<string | null>(null);
@@ -112,6 +132,25 @@ export default function OwnerActiveRentals() {
       return response.json();
     },
     enabled: !!selectedRental,
+  });
+
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery<RentalPayment[]>({
+    queryKey: ["/api/rentals", selectedRental, "payments"],
+    queryFn: async () => {
+      const response = await fetch(`/api/rentals/${selectedRental}/payments`);
+      if (!response.ok) throw new Error("Failed to fetch payments");
+      return response.json();
+    },
+    enabled: !!selectedRental,
+  });
+
+  const approvePaymentMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      return apiRequest("POST", `/api/rentals/payments/${paymentId}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rentals", selectedRental, "payments"] });
+    },
   });
 
   const selectedRentalData = rentals.find(r => r.id === selectedRental);
@@ -216,10 +255,14 @@ export default function OwnerActiveRentals() {
         <div className="md:col-span-2">
           {selectedRental && selectedRentalData ? (
             <Tabs defaultValue="contract" className="w-full">
-              <TabsList className="grid w-full grid-cols-3" data-testid="tabs-rental-sections">
+              <TabsList className="grid w-full grid-cols-4" data-testid="tabs-rental-sections">
                 <TabsTrigger value="contract" data-testid="tab-contract">
                   <FileText className="mr-2 h-4 w-4" />
                   {language === "es" ? "Contrato" : "Contract"}
+                </TabsTrigger>
+                <TabsTrigger value="payments" data-testid="tab-payments">
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  {language === "es" ? "Pagos" : "Payments"}
                 </TabsTrigger>
                 <TabsTrigger value="inventory" data-testid="tab-inventory">
                   <Package className="mr-2 h-4 w-4" />
@@ -309,6 +352,135 @@ export default function OwnerActiveRentals() {
                     </Button>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="payments" className="space-y-4">
+                {paymentsLoading ? (
+                  <Skeleton className="h-64 w-full" />
+                ) : (
+                  <Card data-testid="card-payments">
+                    <CardHeader>
+                      <CardTitle data-testid="text-payments-title">
+                        {language === "es" ? "Gestión de Pagos" : "Payment Management"}
+                      </CardTitle>
+                      <CardDescription data-testid="text-payments-description">
+                        {language === "es" 
+                          ? "Revisa y aprueba los pagos por servicio"
+                          : "Review and approve service payments"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Tabs defaultValue="rent" className="w-full">
+                        <TabsList className="grid w-full grid-cols-5">
+                          <TabsTrigger value="rent" data-testid="tab-service-rent">
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            {t("services.rent")}
+                          </TabsTrigger>
+                          <TabsTrigger value="electricity" data-testid="tab-service-electricity">
+                            <Zap className="mr-2 h-4 w-4" />
+                            {t("services.electricity")}
+                          </TabsTrigger>
+                          <TabsTrigger value="water" data-testid="tab-service-water">
+                            <Droplet className="mr-2 h-4 w-4" />
+                            {t("services.water")}
+                          </TabsTrigger>
+                          <TabsTrigger value="internet" data-testid="tab-service-internet">
+                            <Wifi className="mr-2 h-4 w-4" />
+                            {t("services.internet")}
+                          </TabsTrigger>
+                          <TabsTrigger value="gas" data-testid="tab-service-gas">
+                            <Flame className="mr-2 h-4 w-4" />
+                            {t("services.gas")}
+                          </TabsTrigger>
+                        </TabsList>
+
+                        {["rent", "electricity", "water", "internet", "gas"].map((serviceType) => {
+                          const servicePayments = payments.filter(p => p.serviceType === serviceType);
+                          
+                          return (
+                            <TabsContent key={serviceType} value={serviceType} className="space-y-4">
+                              {servicePayments.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8" data-testid={`no-payments-${serviceType}`}>
+                                  <DollarSign className="h-12 w-12 text-muted-foreground mb-2" />
+                                  <p className="text-muted-foreground">
+                                    {language === "es" 
+                                      ? `No hay pagos de ${t(`services.${serviceType}`).toLowerCase()}` 
+                                      : `No ${t(`services.${serviceType}`).toLowerCase()} payments`}
+                                  </p>
+                                </div>
+                              ) : (
+                                <Table data-testid={`table-payments-${serviceType}`}>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead data-testid={`header-due-date-${serviceType}`}>
+                                        {language === "es" ? "Fecha de Vencimiento" : "Due Date"}
+                                      </TableHead>
+                                      <TableHead data-testid={`header-amount-${serviceType}`}>
+                                        {language === "es" ? "Monto" : "Amount"}
+                                      </TableHead>
+                                      <TableHead data-testid={`header-status-${serviceType}`}>
+                                        {language === "es" ? "Estado" : "Status"}
+                                      </TableHead>
+                                      <TableHead data-testid={`header-payment-date-${serviceType}`}>
+                                        {language === "es" ? "Fecha de Pago" : "Payment Date"}
+                                      </TableHead>
+                                      <TableHead data-testid={`header-actions-${serviceType}`}>
+                                        {language === "es" ? "Acciones" : "Actions"}
+                                      </TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {servicePayments.map((payment) => (
+                                      <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                                        <TableCell data-testid={`cell-due-date-${payment.id}`}>
+                                          {formatDate(payment.dueDate)}
+                                        </TableCell>
+                                        <TableCell data-testid={`cell-amount-${payment.id}`}>
+                                          {formatCurrency(payment.amount)}
+                                        </TableCell>
+                                        <TableCell data-testid={`cell-status-${payment.id}`}>
+                                          <Badge 
+                                            variant={payment.status === "paid" ? "default" : "outline"}
+                                            data-testid={`badge-status-${payment.id}`}
+                                          >
+                                            {payment.status === "paid" 
+                                              ? (language === "es" ? "Pagado" : "Paid")
+                                              : (language === "es" ? "Pendiente" : "Pending")}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell data-testid={`cell-payment-date-${payment.id}`}>
+                                          {payment.paymentDate ? formatDate(payment.paymentDate) : "-"}
+                                        </TableCell>
+                                        <TableCell data-testid={`cell-actions-${payment.id}`}>
+                                          {payment.approvedBy ? (
+                                            <Badge variant="secondary" data-testid={`badge-approved-${payment.id}`}>
+                                              {language === "es" ? "Aprobado" : "Approved"}
+                                            </Badge>
+                                          ) : payment.status === "paid" ? (
+                                            <Button
+                                              size="sm"
+                                              onClick={() => approvePaymentMutation.mutate(payment.id)}
+                                              disabled={approvePaymentMutation.isPending}
+                                              data-testid={`button-approve-${payment.id}`}
+                                            >
+                                              {approvePaymentMutation.isPending 
+                                                ? (language === "es" ? "Aprobando..." : "Approving...")
+                                                : (language === "es" ? "Aprobar" : "Approve")}
+                                            </Button>
+                                          ) : null}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </TabsContent>
+                          );
+                        })}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="inventory" className="space-y-4">

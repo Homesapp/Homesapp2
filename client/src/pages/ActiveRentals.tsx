@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Home, DollarSign, Wrench, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Upload, X, MessageSquare, Send } from "lucide-react";
+import { Home, DollarSign, Wrench, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Upload, X, MessageSquare, Send, ExternalLink, Zap, Droplet, Wifi, Flame } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useForm } from "react-hook-form";
@@ -37,6 +37,7 @@ interface ActiveRental {
   contractEndDate?: string;
   checkInDate?: string;
   status: string;
+  includedServices?: string[]; // Lista de servicios: ["electricity", "water", "internet", "gas"]
   // Property information
   propertyTitle?: string;
   propertyType?: string;
@@ -50,13 +51,14 @@ interface RentalPayment {
   id: string;
   rentalContractId: string;
   tenantId: string;
-  ownerId: string;
+  serviceType: string; // rent, electricity, water, internet, gas, maintenance, other
   amount: string;
   dueDate: string;
-  paidDate?: string;
+  paymentDate?: string;
   status: string;
-  paymentMethod?: string;
-  transactionReference?: string;
+  paymentProof?: string;
+  approvedBy?: string;
+  approvedAt?: string;
   notes?: string;
 }
 
@@ -108,6 +110,11 @@ export default function ActiveRentals() {
 
   const { data: payments = [], isLoading: paymentsLoading } = useQuery<RentalPayment[]>({
     queryKey: ["/api/rentals", selectedRental, "payments"],
+    queryFn: async () => {
+      const response = await fetch(`/api/rentals/${selectedRental}/payments`);
+      if (!response.ok) throw new Error("Failed to fetch payments");
+      return response.json();
+    },
     enabled: !!selectedRental,
   });
 
@@ -366,9 +373,19 @@ export default function ActiveRentals() {
       {currentRental && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Home className="h-5 w-5" />
-              {currentRental.propertyTitle || t("activeRentals.property", "Propiedad")}
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Home className="h-5 w-5" />
+                {currentRental.propertyTitle || t("activeRentals.property", "Propiedad")}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => window.open(`/properties/${currentRental.propertyId}`, '_blank')}
+                data-testid="button-view-property"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
             </CardTitle>
             <CardDescription>
               {currentRental.unitType === "condominio" ? (
@@ -501,74 +518,112 @@ export default function ActiveRentals() {
             <CardHeader>
               <CardTitle>{t("activeRentals.paymentHistory", "Historial de Pagos")}</CardTitle>
               <CardDescription>
-                {t("activeRentals.paymentHistoryDesc", "Revisa tus pagos mensuales de renta")}
+                {t("activeRentals.paymentHistoryDesc", "Revisa tus pagos por servicio")}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {paymentsLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : payments.length === 0 ? (
-                <p className="text-center text-secondary-foreground py-8">
-                  {t("activeRentals.noPayments", "No hay pagos registrados")}
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("activeRentals.dueDate", "Fecha de Vencimiento")}</TableHead>
-                      <TableHead>{t("activeRentals.amount", "Monto")}</TableHead>
-                      <TableHead>{t("activeRentals.status", "Estado")}</TableHead>
-                      <TableHead>{t("activeRentals.paidDate", "Fecha de Pago")}</TableHead>
-                      {!isOwner && <TableHead>{t("activeRentals.actions", "Acciones")}</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
-                        <TableCell>
-                          {format(new Date(payment.dueDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined })}
-                        </TableCell>
-                        <TableCell className="font-medium">${payment.amount}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={payment.status === "paid" ? "default" : payment.status === "pending" ? "secondary" : "destructive"}
-                            data-testid={`badge-payment-status-${payment.id}`}
-                          >
-                            {payment.status === "paid" && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                            {payment.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                            {payment.status === "overdue" && <AlertCircle className="h-3 w-3 mr-1" />}
-                            {payment.status === "paid" ? t("activeRentals.paid", "Pagado") :
-                             payment.status === "pending" ? t("activeRentals.pending", "Pendiente") :
-                             t("activeRentals.overdue", "Vencido")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {payment.paidDate ? format(new Date(payment.paidDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined }) : "-"}
-                        </TableCell>
-                        {!isOwner && (
-                          <TableCell>
-                            {payment.status === "pending" && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedPayment(payment);
-                                  setShowPaymentDialog(true);
-                                }}
-                                data-testid={`button-register-payment-${payment.id}`}
-                              >
-                                {t("activeRentals.registerPayment", "Registrar Pago")}
-                              </Button>
-                            )}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+              <Tabs defaultValue="rent" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="rent" data-testid="tab-rent-payments">
+                    <DollarSign className="h-3 w-3 mr-1" />
+                    {t("services.rent", "Renta")}
+                  </TabsTrigger>
+                  <TabsTrigger value="electricity" data-testid="tab-electricity-payments">
+                    <Zap className="h-3 w-3 mr-1" />
+                    {t("services.electricity", "Luz")}
+                  </TabsTrigger>
+                  <TabsTrigger value="water" data-testid="tab-water-payments">
+                    <Droplet className="h-3 w-3 mr-1" />
+                    {t("services.water", "Agua")}
+                  </TabsTrigger>
+                  <TabsTrigger value="internet" data-testid="tab-internet-payments">
+                    <Wifi className="h-3 w-3 mr-1" />
+                    {t("services.internet", "Internet")}
+                  </TabsTrigger>
+                  <TabsTrigger value="gas" data-testid="tab-gas-payments">
+                    <Flame className="h-3 w-3 mr-1" />
+                    {t("services.gas", "Gas")}
+                  </TabsTrigger>
+                </TabsList>
+                
+                {['rent', 'electricity', 'water', 'internet', 'gas'].map((serviceType) => {
+                  const servicePayments = payments.filter(p => p.serviceType === serviceType);
+                  
+                  return (
+                    <TabsContent key={serviceType} value={serviceType} className="mt-4">
+                      {paymentsLoading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-12 w-full" />
+                          <Skeleton className="h-12 w-full" />
+                        </div>
+                      ) : servicePayments.length === 0 ? (
+                        <p className="text-center text-secondary-foreground py-8">
+                          {t("activeRentals.noPayments", "No hay pagos registrados")}
+                        </p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>{t("activeRentals.dueDate", "Fecha de Vencimiento")}</TableHead>
+                              <TableHead>{t("activeRentals.amount", "Monto")}</TableHead>
+                              <TableHead>{t("activeRentals.status", "Estado")}</TableHead>
+                              <TableHead>{t("activeRentals.paidDate", "Fecha de Pago")}</TableHead>
+                              {!isOwner && <TableHead>{t("activeRentals.actions", "Acciones")}</TableHead>}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {servicePayments.map((payment) => (
+                              <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                                <TableCell>
+                                  {format(new Date(payment.dueDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined })}
+                                </TableCell>
+                                <TableCell className="font-medium">${payment.amount}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={payment.status === "paid" ? "default" : payment.status === "pending" ? "secondary" : "destructive"}
+                                    data-testid={`badge-payment-status-${payment.id}`}
+                                  >
+                                    {payment.status === "paid" && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                                    {payment.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                                    {payment.status === "overdue" && <AlertCircle className="h-3 w-3 mr-1" />}
+                                    {payment.status === "paid" ? t("activeRentals.paid", "Pagado") :
+                                     payment.status === "pending" ? t("activeRentals.pending", "Pendiente") :
+                                     t("activeRentals.overdue", "Vencido")}
+                                  </Badge>
+                                  {payment.approvedBy && (
+                                    <Badge variant="outline" className="ml-2">
+                                      {t("activeRentals.approved", "Aprobado")}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {payment.paymentDate ? format(new Date(payment.paymentDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined }) : "-"}
+                                </TableCell>
+                                {!isOwner && (
+                                  <TableCell>
+                                    {payment.status === "pending" && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedPayment(payment);
+                                          setShowPaymentDialog(true);
+                                        }}
+                                        data-testid={`button-register-payment-${payment.id}`}
+                                      >
+                                        {t("activeRentals.registerPayment", "Registrar Pago")}
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
