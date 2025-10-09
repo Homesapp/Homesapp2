@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
@@ -104,7 +104,7 @@ export default function ActiveRentals() {
   const createMaintenanceRequestMutation = useMutation({
     mutationFn: async (data: z.infer<typeof maintenanceRequestSchema>) => {
       if (!selectedRental) throw new Error("No rental selected");
-      return await apiRequest("POST", `/api/rentals/${selectedRental}/maintenance-request`, data);
+      return await apiRequest("POST", `/api/rentals/${selectedRental}/maintenance-requests`, data);
     },
     onSuccess: () => {
       toast({
