@@ -510,9 +510,10 @@ export default function PropertyFullDetails() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Price and CTA */}
-            <Card className="sticky top-6">
+          <div className="lg:col-span-1">
+            <div className="sticky top-6 space-y-6">
+              {/* Price and CTA */}
+              <Card>
               <CardHeader>
                 <CardTitle>Información del precio</CardTitle>
               </CardHeader>
@@ -668,6 +669,7 @@ export default function PropertyFullDetails() {
                 )}
               </CardContent>
             </Card>
+            </div>
           </div>
         </div>
       </div>
