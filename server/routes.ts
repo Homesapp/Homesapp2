@@ -16270,6 +16270,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all assignments with user and condominium details (admin only)
+  app.get("/api/hoa-manager/all-assignments", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      const allAssignments = await storage.getHoaManagerAssignmentsByStatus("pending");
+      
+      // Enrich with user and condominium details
+      const enriched = await Promise.all(
+        allAssignments.map(async (assignment) => {
+          const manager = await storage.getUser(assignment.managerId);
+          const condominium = await storage.getCondominium(assignment.condominiumId);
+          
+          return {
+            ...assignment,
+            manager: manager ? {
+              id: manager.id,
+              firstName: manager.firstName,
+              lastName: manager.lastName,
+              email: manager.email,
+            } : undefined,
+            condominium: condominium ? {
+              id: condominium.id,
+              name: condominium.name,
+            } : undefined,
+          };
+        })
+      );
+      
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching all assignments:", error);
+      res.status(500).json({ message: "Failed to fetch all assignments" });
+    }
+  });
+
   // Get my assignments (HOA manager)
   app.get("/api/hoa-manager/my-assignments", isAuthenticated, async (req: any, res) => {
     try {

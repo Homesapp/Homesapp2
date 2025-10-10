@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Clock, User as UserIcon } from "lucide-react";
+import { CheckCircle, XCircle, Clock, User as UserIcon, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useApproveRoleRequest, useRejectRoleRequest } from "@/hooks/useRoleRequests";
 import { format } from "date-fns";
@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { HoaManagerRequests } from "@/components/HoaManagerRequests";
 
 const roleLabels: Record<string, string> = {
   owner: "Propietario",
@@ -173,6 +174,10 @@ export default function RoleRequests() {
           <TabsTrigger value="all" data-testid="tab-all">
             Todas
           </TabsTrigger>
+          <TabsTrigger value="hoa-manager" data-testid="tab-hoa-manager">
+            <Building2 className="h-4 w-4 mr-2" />
+            HOA Manager
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6 space-y-4">
@@ -310,6 +315,10 @@ export default function RoleRequests() {
               </Card>
             ))
           )}
+        </TabsContent>
+
+        <TabsContent value="hoa-manager" className="mt-6">
+          <HoaManagerRequests />
         </TabsContent>
       </Tabs>
 
