@@ -6038,7 +6038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await createAuditLog(
         req,
-        featured ? "feature" : "unfeature",
+        "update",
         "property",
         id,
         `Propiedad ${featured ? 'marcada como destacada' : 'desmarcada como destacada'}: ${property.title}`
