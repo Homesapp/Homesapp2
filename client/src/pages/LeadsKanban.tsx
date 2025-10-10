@@ -41,6 +41,20 @@ import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent 
+} from "@/components/ui/chart";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  ResponsiveContainer,
+  Cell
+} from "recharts";
 
 const LEAD_STATUSES = [
   { 
@@ -65,32 +79,46 @@ const LEAD_STATUSES = [
     description: "Lead validado y calificado"
   },
   { 
-    value: "interesado", 
-    label: "Interesado", 
+    value: "cita_agendada", 
+    label: "Cita Agendada", 
     color: "bg-yellow-500",
-    icon: TrendingUp,
-    description: "Interés confirmado"
+    icon: CalendarCheck,
+    description: "Cita programada con el lead"
   },
   { 
-    value: "visita_agendada", 
-    label: "Visita Agendada", 
+    value: "visita_completada", 
+    label: "Visita Completada", 
     color: "bg-orange-500",
-    icon: CalendarCheck,
-    description: "Cita programada"
+    icon: CheckCircle2,
+    description: "Visita realizada exitosamente"
+  },
+  { 
+    value: "oferta_enviada", 
+    label: "Oferta Enviada", 
+    color: "bg-amber-500",
+    icon: Send,
+    description: "Oferta de renta enviada"
   },
   { 
     value: "en_negociacion", 
     label: "En Negociación", 
     color: "bg-indigo-500",
     icon: HandshakeIcon,
-    description: "Negociando oferta"
+    description: "Negociando términos"
+  },
+  { 
+    value: "contrato_firmado", 
+    label: "Contrato Firmado", 
+    color: "bg-teal-500",
+    icon: FileCheck,
+    description: "Contrato de renta firmado"
   },
   { 
     value: "ganado", 
     label: "Ganado", 
     color: "bg-green-500",
-    icon: FileCheck,
-    description: "Contrato cerrado"
+    icon: CheckCircle2,
+    description: "Cliente activo rentando"
   },
   { 
     value: "perdido", 
@@ -114,8 +142,8 @@ export default function LeadsKanban() {
   const form = useForm({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      first_name: "",
+      last_name: "",
       email: "",
       phone: "",
       source: "",
@@ -265,7 +293,7 @@ export default function LeadsKanban() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="first_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nombre</FormLabel>
@@ -278,7 +306,7 @@ export default function LeadsKanban() {
                   />
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="last_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Apellido</FormLabel>
@@ -426,6 +454,93 @@ export default function LeadsKanban() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sales Funnel Visualization */}
+      <Card data-testid="sales-funnel-chart">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Embudo de Ventas - Distribución por Etapa
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Visualización del flujo de leads a través del pipeline
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              leads: {
+                label: "Leads",
+              },
+            }}
+            className="h-[300px] w-full"
+          >
+            <BarChart
+              data={LEAD_STATUSES.map((status) => ({
+                name: status.label,
+                value: getLeadsByStatus(status.value).length,
+                color: status.color.replace('bg-', ''),
+              }))}
+              layout="horizontal"
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis 
+                dataKey="name" 
+                type="category"
+                width={120}
+                tick={{ fontSize: 12 }}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                {LEAD_STATUSES.map((status, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={`hsl(var(--chart-${(index % 5) + 1}))`}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+          
+          {/* Funnel Statistics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
+            <div className="space-y-1" data-testid="funnel-stat-calificado-to-cita">
+              <p className="text-xs text-muted-foreground">Calificado → Cita</p>
+              <p className="text-lg font-semibold">
+                {getLeadsByStatus("calificado").length > 0
+                  ? ((getLeadsByStatus("cita_agendada").length / getLeadsByStatus("calificado").length) * 100).toFixed(0)
+                  : "0"}%
+              </p>
+            </div>
+            <div className="space-y-1" data-testid="funnel-stat-cita-to-visita">
+              <p className="text-xs text-muted-foreground">Cita → Visita Completada</p>
+              <p className="text-lg font-semibold">
+                {getLeadsByStatus("cita_agendada").length > 0
+                  ? ((getLeadsByStatus("visita_completada").length / getLeadsByStatus("cita_agendada").length) * 100).toFixed(0)
+                  : "0"}%
+              </p>
+            </div>
+            <div className="space-y-1" data-testid="funnel-stat-visita-to-oferta">
+              <p className="text-xs text-muted-foreground">Visita → Oferta</p>
+              <p className="text-lg font-semibold">
+                {getLeadsByStatus("visita_completada").length > 0
+                  ? ((getLeadsByStatus("oferta_enviada").length / getLeadsByStatus("visita_completada").length) * 100).toFixed(0)
+                  : "0"}%
+              </p>
+            </div>
+            <div className="space-y-1" data-testid="funnel-stat-contrato-to-ganado">
+              <p className="text-xs text-muted-foreground">Contrato → Ganado</p>
+              <p className="text-lg font-semibold text-green-600">
+                {getLeadsByStatus("contrato_firmado").length > 0
+                  ? ((getLeadsByStatus("ganado").length / getLeadsByStatus("contrato_firmado").length) * 100).toFixed(0)
+                  : "0"}%
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
