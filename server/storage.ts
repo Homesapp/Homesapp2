@@ -73,6 +73,11 @@ import {
   errorLogs,
   contractTenantInfo,
   contractOwnerInfo,
+  contractLegalDocuments,
+  contractTermDiscussions,
+  contractApprovals,
+  checkInAppointments,
+  contractSignedDocuments,
   type User,
   type Colony,
   type InsertColony,
@@ -224,6 +229,16 @@ import {
   type InsertContractTenantInfo,
   type ContractOwnerInfo,
   type InsertContractOwnerInfo,
+  type ContractLegalDocument,
+  type InsertContractLegalDocument,
+  type ContractTermDiscussion,
+  type InsertContractTermDiscussion,
+  type ContractApproval,
+  type InsertContractApproval,
+  type CheckInAppointment,
+  type InsertCheckInAppointment,
+  type ContractSignedDocument,
+  type InsertContractSignedDocument,
   passwordResetTokens,
   type PasswordResetToken,
   type InsertPasswordResetToken,
@@ -868,6 +883,40 @@ export interface IStorage {
   createTenantScreening(screening: InsertTenantScreening): Promise<TenantScreening>;
   updateTenantScreening(id: string, updates: Partial<InsertTenantScreening>): Promise<TenantScreening>;
   updateTenantScreeningStatus(id: string, status: string, reviewedBy?: string, reviewNotes?: string): Promise<TenantScreening>;
+
+  // Contract Legal Document operations
+  getContractLegalDocument(id: string): Promise<ContractLegalDocument | undefined>;
+  getContractLegalDocuments(rentalContractId: string): Promise<ContractLegalDocument[]>;
+  createContractLegalDocument(document: InsertContractLegalDocument): Promise<ContractLegalDocument>;
+  updateContractLegalDocument(id: string, updates: Partial<InsertContractLegalDocument>): Promise<ContractLegalDocument>;
+  deleteContractLegalDocument(id: string): Promise<void>;
+
+  // Contract Term Discussion operations
+  getContractTermDiscussion(id: string): Promise<ContractTermDiscussion | undefined>;
+  getContractTermDiscussions(legalDocumentId: string): Promise<ContractTermDiscussion[]>;
+  createContractTermDiscussion(discussion: InsertContractTermDiscussion): Promise<ContractTermDiscussion>;
+  updateContractTermDiscussion(id: string, updates: Partial<InsertContractTermDiscussion>): Promise<ContractTermDiscussion>;
+  resolveContractTermDiscussion(id: string, resolvedById: string): Promise<ContractTermDiscussion>;
+
+  // Contract Approval operations
+  getContractApproval(id: string): Promise<ContractApproval | undefined>;
+  getContractApprovals(legalDocumentId: string): Promise<ContractApproval[]>;
+  createContractApproval(approval: InsertContractApproval): Promise<ContractApproval>;
+  getUserContractApproval(legalDocumentId: string, userId: string): Promise<ContractApproval | undefined>;
+
+  // Check-in Appointment operations
+  getCheckInAppointment(id: string): Promise<CheckInAppointment | undefined>;
+  getCheckInAppointments(filters?: { rentalContractId?: string; status?: string }): Promise<CheckInAppointment[]>;
+  createCheckInAppointment(appointment: InsertCheckInAppointment): Promise<CheckInAppointment>;
+  updateCheckInAppointment(id: string, updates: Partial<InsertCheckInAppointment>): Promise<CheckInAppointment>;
+  completeCheckInAppointment(id: string): Promise<CheckInAppointment>;
+  cancelCheckInAppointment(id: string, cancellationReason: string): Promise<CheckInAppointment>;
+
+  // Contract Signed Document operations
+  getContractSignedDocument(id: string): Promise<ContractSignedDocument | undefined>;
+  getContractSignedDocuments(rentalContractId: string): Promise<ContractSignedDocument[]>;
+  createContractSignedDocument(document: InsertContractSignedDocument): Promise<ContractSignedDocument>;
+  deleteContractSignedDocument(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5831,6 +5880,180 @@ export class DatabaseStorage implements IStorage {
     
     const result = await db.update(tenantScreenings).set(updates).where(eq(tenantScreenings.id, id)).returning();
     return result[0];
+  }
+
+  // Contract Legal Document operations
+  async getContractLegalDocument(id: string): Promise<ContractLegalDocument | undefined> {
+    const result = await db.select().from(contractLegalDocuments).where(eq(contractLegalDocuments.id, id));
+    return result[0];
+  }
+
+  async getContractLegalDocuments(rentalContractId: string): Promise<ContractLegalDocument[]> {
+    return await db.select()
+      .from(contractLegalDocuments)
+      .where(eq(contractLegalDocuments.rentalContractId, rentalContractId))
+      .orderBy(desc(contractLegalDocuments.createdAt));
+  }
+
+  async createContractLegalDocument(document: InsertContractLegalDocument): Promise<ContractLegalDocument> {
+    const result = await db.insert(contractLegalDocuments).values(document).returning();
+    return result[0];
+  }
+
+  async updateContractLegalDocument(id: string, updates: Partial<InsertContractLegalDocument>): Promise<ContractLegalDocument> {
+    const result = await db.update(contractLegalDocuments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(contractLegalDocuments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteContractLegalDocument(id: string): Promise<void> {
+    await db.delete(contractLegalDocuments).where(eq(contractLegalDocuments.id, id));
+  }
+
+  // Contract Term Discussion operations
+  async getContractTermDiscussion(id: string): Promise<ContractTermDiscussion | undefined> {
+    const result = await db.select().from(contractTermDiscussions).where(eq(contractTermDiscussions.id, id));
+    return result[0];
+  }
+
+  async getContractTermDiscussions(legalDocumentId: string): Promise<ContractTermDiscussion[]> {
+    return await db.select()
+      .from(contractTermDiscussions)
+      .where(eq(contractTermDiscussions.legalDocumentId, legalDocumentId))
+      .orderBy(desc(contractTermDiscussions.createdAt));
+  }
+
+  async createContractTermDiscussion(discussion: InsertContractTermDiscussion): Promise<ContractTermDiscussion> {
+    const result = await db.insert(contractTermDiscussions).values(discussion).returning();
+    return result[0];
+  }
+
+  async updateContractTermDiscussion(id: string, updates: Partial<InsertContractTermDiscussion>): Promise<ContractTermDiscussion> {
+    const result = await db.update(contractTermDiscussions)
+      .set(updates)
+      .where(eq(contractTermDiscussions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async resolveContractTermDiscussion(id: string, resolvedById: string): Promise<ContractTermDiscussion> {
+    const result = await db.update(contractTermDiscussions)
+      .set({ 
+        status: 'resolved',
+        resolvedById,
+        resolvedAt: new Date()
+      })
+      .where(eq(contractTermDiscussions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Contract Approval operations
+  async getContractApproval(id: string): Promise<ContractApproval | undefined> {
+    const result = await db.select().from(contractApprovals).where(eq(contractApprovals.id, id));
+    return result[0];
+  }
+
+  async getContractApprovals(legalDocumentId: string): Promise<ContractApproval[]> {
+    return await db.select()
+      .from(contractApprovals)
+      .where(eq(contractApprovals.legalDocumentId, legalDocumentId))
+      .orderBy(desc(contractApprovals.approvedAt));
+  }
+
+  async createContractApproval(approval: InsertContractApproval): Promise<ContractApproval> {
+    const result = await db.insert(contractApprovals).values(approval).returning();
+    return result[0];
+  }
+
+  async getUserContractApproval(legalDocumentId: string, userId: string): Promise<ContractApproval | undefined> {
+    const result = await db.select()
+      .from(contractApprovals)
+      .where(
+        and(
+          eq(contractApprovals.legalDocumentId, legalDocumentId),
+          eq(contractApprovals.userId, userId)
+        )
+      );
+    return result[0];
+  }
+
+  // Check-in Appointment operations
+  async getCheckInAppointment(id: string): Promise<CheckInAppointment | undefined> {
+    const result = await db.select().from(checkInAppointments).where(eq(checkInAppointments.id, id));
+    return result[0];
+  }
+
+  async getCheckInAppointments(filters?: { rentalContractId?: string; status?: string }): Promise<CheckInAppointment[]> {
+    const conditions = [];
+    if (filters?.rentalContractId) conditions.push(eq(checkInAppointments.rentalContractId, filters.rentalContractId));
+    if (filters?.status) conditions.push(eq(checkInAppointments.status, filters.status as any));
+    
+    return await db.select()
+      .from(checkInAppointments)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(checkInAppointments.scheduledDate));
+  }
+
+  async createCheckInAppointment(appointment: InsertCheckInAppointment): Promise<CheckInAppointment> {
+    const result = await db.insert(checkInAppointments).values(appointment).returning();
+    return result[0];
+  }
+
+  async updateCheckInAppointment(id: string, updates: Partial<InsertCheckInAppointment>): Promise<CheckInAppointment> {
+    const result = await db.update(checkInAppointments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(checkInAppointments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async completeCheckInAppointment(id: string): Promise<CheckInAppointment> {
+    const result = await db.update(checkInAppointments)
+      .set({ 
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(checkInAppointments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async cancelCheckInAppointment(id: string, cancellationReason: string): Promise<CheckInAppointment> {
+    const result = await db.update(checkInAppointments)
+      .set({ 
+        status: 'cancelled',
+        cancellationReason,
+        updatedAt: new Date()
+      })
+      .where(eq(checkInAppointments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Contract Signed Document operations
+  async getContractSignedDocument(id: string): Promise<ContractSignedDocument | undefined> {
+    const result = await db.select().from(contractSignedDocuments).where(eq(contractSignedDocuments.id, id));
+    return result[0];
+  }
+
+  async getContractSignedDocuments(rentalContractId: string): Promise<ContractSignedDocument[]> {
+    return await db.select()
+      .from(contractSignedDocuments)
+      .where(eq(contractSignedDocuments.rentalContractId, rentalContractId))
+      .orderBy(desc(contractSignedDocuments.createdAt));
+  }
+
+  async createContractSignedDocument(document: InsertContractSignedDocument): Promise<ContractSignedDocument> {
+    const result = await db.insert(contractSignedDocuments).values(document).returning();
+    return result[0];
+  }
+
+  async deleteContractSignedDocument(id: string): Promise<void> {
+    await db.delete(contractSignedDocuments).where(eq(contractSignedDocuments.id, id));
   }
 }
 
