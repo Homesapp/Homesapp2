@@ -1,5 +1,6 @@
 import { useState, type DragEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,8 @@ import {
   CalendarCheck,
   FileCheck,
   HandshakeIcon,
+  Eye,
+  Send,
 } from "lucide-react";
 import { type Lead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -104,6 +107,7 @@ const leadFormSchema = insertLeadSchema.extend({
 
 export default function LeadsKanban() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   
@@ -552,6 +556,55 @@ export default function LeadsKanban() {
                               <span className="capitalize">Fuente: {lead.source}</span>
                             </div>
                           )}
+
+                          {/* Quick Actions */}
+                          <div className="flex flex-wrap gap-2 pt-3 border-t">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocation(`/seller/appointments?leadId=${lead.id}&leadName=${encodeURIComponent(`${lead.firstName} ${lead.lastName}`)}`);
+                              }}
+                              data-testid={`button-schedule-appointment-${lead.id}`}
+                            >
+                              <CalendarCheck className="h-3 w-3" />
+                              Agendar Cita
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast({
+                                  title: "Función en desarrollo",
+                                  description: "La creación de ofertas estará disponible próximamente",
+                                });
+                              }}
+                              data-testid={`button-create-offer-${lead.id}`}
+                            >
+                              <Send className="h-3 w-3" />
+                              Crear Oferta
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast({
+                                  title: "Función en desarrollo",
+                                  description: "La vista detallada del lead estará disponible próximamente",
+                                });
+                              }}
+                              data-testid={`button-view-details-${lead.id}`}
+                            >
+                              <Eye className="h-3 w-3" />
+                              Ver Detalles
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     );
