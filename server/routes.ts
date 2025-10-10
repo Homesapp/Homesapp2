@@ -11,6 +11,7 @@ import { requireResourceOwnership } from "./middleware/resourceOwnership";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification } from "./gmail";
+import { sendOfferLinkEmail } from "./resend";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
 import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter, propertySubmissionLimiter } from "./rateLimiters";
 import { 
@@ -11682,6 +11683,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching offer tokens:", error);
       res.status(500).json({ message: "Error al obtener tokens de oferta" });
+    }
+  });
+
+  // Send offer link via email
+  app.post("/api/offer-tokens/:id/send-email", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { clientEmail, clientName } = req.body;
+
+      if (!clientEmail || !clientName) {
+        return res.status(400).json({ message: "Email y nombre del cliente son requeridos" });
+      }
+
+      // Get offer token
+      const [offerToken] = await db
+        .select()
+        .from(offerTokens)
+        .where(eq(offerTokens.id, id))
+        .limit(1);
+
+      if (!offerToken) {
+        return res.status(404).json({ message: "Token de oferta no encontrado" });
+      }
+
+      // Get property info
+      const property = await storage.getProperty(offerToken.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+
+      // Build offer link
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? `https://${process.env.REPL_SLUG}.replit.app`
+        : 'http://localhost:5000';
+      const offerLink = `${baseUrl}/offer/${offerToken.token}`;
+
+      // Send email
+      await sendOfferLinkEmail(
+        clientEmail,
+        clientName,
+        property.title || 'la propiedad',
+        offerLink
+      );
+
+      await createAuditLog(
+        req,
+        "create",
+        "offer_token_email",
+        offerToken.id,
+        `Email enviado a ${clientEmail} con link de oferta para ${property.title}`
+      );
+
+      res.json({ 
+        message: "Email enviado exitosamente",
+        offerLink 
+      });
+    } catch (error: any) {
+      console.error("Error sending offer link email:", error);
+      res.status(500).json({ message: error.message || "Error al enviar email" });
     }
   });
 

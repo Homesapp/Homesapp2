@@ -279,3 +279,83 @@ export async function sendPasswordResetEmail(
     throw error;
   }
 }
+
+export async function sendOfferLinkEmail(
+  to: string,
+  clientName: string,
+  propertyTitle: string,
+  offerLink: string
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to,
+      subject: `¡Genera tu oferta de renta para ${propertyTitle}! - HomesApp`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <!-- Logo -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #1e293b; margin: 0; font-size: 28px;">HomesApp</h1>
+            <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Tulum Rental Homes</p>
+          </div>
+          
+          <h2 style="color: #1e293b;">¡Hola ${clientName}!</h2>
+          
+          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+            Gracias por tu interés en <strong>${propertyTitle}</strong>. Nos complace que estés considerando esta propiedad para tu próximo hogar en Tulum.
+          </p>
+          
+          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+            Hemos preparado un enlace privado para que puedas completar tu oferta de renta. Este proceso es rápido, seguro y te permitirá expresar tu interés formal en la propiedad.
+          </p>
+          
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="${offerLink}" style="background-color: #3b82f6; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+              Completar mi oferta de renta
+            </a>
+          </div>
+          
+          <p style="color: #64748b; font-size: 14px;">O copia y pega este enlace en tu navegador:</p>
+          <p style="color: #3b82f6; font-size: 14px; word-break: break-all; background-color: #f1f5f9; padding: 12px; border-radius: 6px;">${offerLink}</p>
+          
+          <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e; font-size: 14px;">
+              <strong>⏰ Importante:</strong> Este enlace es válido por 24 horas. Completa tu oferta lo antes posible para asegurar tu interés en la propiedad.
+            </p>
+          </div>
+          
+          <h3 style="color: #1e293b; margin-top: 30px;">¿Qué incluye la oferta?</h3>
+          <ul style="color: #475569; line-height: 1.8;">
+            <li>Información personal y profesional</li>
+            <li>Monto de renta ofertado y condiciones</li>
+            <li>Fecha de ingreso deseada</li>
+            <li>Servicios que deseas incluir</li>
+          </ul>
+          
+          <p style="color: #475569; font-size: 16px; margin-top: 25px;">
+            Una vez que recibamos tu oferta, nuestro equipo la revisará y te contactará lo antes posible para continuar con el proceso.
+          </p>
+          
+          <div style="border-top: 1px solid #e2e8f0; margin-top: 35px; padding-top: 20px;">
+            <p style="color: #64748b; font-size: 13px; margin: 5px 0;">
+              Saludos cordiales,<br>
+              <strong>El equipo de HomesApp</strong><br>
+              Tulum Rental Homes ™
+            </p>
+          </div>
+          
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 25px;">
+            Si no solicitaste este enlace o no estás interesado en la propiedad, puedes ignorar este email de forma segura.
+          </p>
+        </div>
+      `,
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('Error sending offer link email:', error);
+    throw error;
+  }
+}
