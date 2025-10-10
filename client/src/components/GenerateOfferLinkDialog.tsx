@@ -36,11 +36,20 @@ type EmailFormValues = z.infer<typeof emailFormSchema>;
 
 interface GenerateOfferLinkDialogProps {
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  leadInfo?: {
+    name: string;
+    email: string;
+    phone: string;
+  };
 }
 
-export function GenerateOfferLinkDialog({ trigger }: GenerateOfferLinkDialogProps) {
+export default function GenerateOfferLinkDialog({ trigger, open: externalOpen, onOpenChange, leadInfo }: GenerateOfferLinkDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   const [generatedToken, setGeneratedToken] = useState<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -54,8 +63,8 @@ export function GenerateOfferLinkDialog({ trigger }: GenerateOfferLinkDialogProp
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailFormSchema),
     defaultValues: {
-      clientEmail: "",
-      clientName: "",
+      clientName: leadInfo?.name || "",
+      clientEmail: leadInfo?.email || "",
     },
   });
 

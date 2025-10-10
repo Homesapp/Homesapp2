@@ -27,6 +27,7 @@ import {
 import { type Lead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import GenerateOfferLinkDialog from "@/components/GenerateOfferLinkDialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -143,6 +144,8 @@ export default function LeadsKanban() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [offerDialogOpen, setOfferDialogOpen] = useState(false);
+  const [selectedLeadForOffer, setSelectedLeadForOffer] = useState<Lead | null>(null);
   
   useEffect(() => {
     if (!dialogOpen) {
@@ -884,10 +887,8 @@ export default function LeadsKanban() {
                               className="flex-1 text-xs gap-1"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toast({
-                                  title: "Función en desarrollo",
-                                  description: "La creación de ofertas estará disponible próximamente",
-                                });
+                                setSelectedLeadForOffer(lead);
+                                setOfferDialogOpen(true);
                               }}
                               data-testid={`button-create-offer-${lead.id}`}
                             >
@@ -921,6 +922,19 @@ export default function LeadsKanban() {
           );
         })}
       </div>
+
+      {/* Generate Offer Link Dialog */}
+      {selectedLeadForOffer && (
+        <GenerateOfferLinkDialog
+          open={offerDialogOpen}
+          onOpenChange={setOfferDialogOpen}
+          leadInfo={{
+            name: `${selectedLeadForOffer.firstName} ${selectedLeadForOffer.lastName}`,
+            email: selectedLeadForOffer.email || "",
+            phone: selectedLeadForOffer.phone || "",
+          }}
+        />
+      )}
     </div>
   );
 }
