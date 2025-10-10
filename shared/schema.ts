@@ -1500,7 +1500,16 @@ export const insertContractLegalDocumentSchema = createInsertSchema(contractLega
   updatedAt: true,
 });
 
+export const updateContractLegalDocumentSchema = insertContractLegalDocumentSchema.pick({
+  documentUrl: true,
+  documentName: true,
+  version: true,
+  notes: true,
+  status: true,
+}).partial();
+
 export type InsertContractLegalDocument = z.infer<typeof insertContractLegalDocumentSchema>;
+export type UpdateContractLegalDocument = z.infer<typeof updateContractLegalDocumentSchema>;
 export type ContractLegalDocument = typeof contractLegalDocuments.$inferSelect;
 
 // Contract Term Discussions table - Debate de términos del contrato
@@ -1584,7 +1593,19 @@ export const insertCheckInAppointmentSchema = createInsertSchema(checkInAppointm
   updatedAt: true,
 });
 
+export const updateCheckInAppointmentSchema = insertCheckInAppointmentSchema.pick({
+  scheduledDate: true,
+  duration: true,
+  location: true,
+  assignedAdminId: true,
+  status: true,
+  completedAt: true,
+  cancellationReason: true,
+  notes: true,
+}).partial();
+
 export type InsertCheckInAppointment = z.infer<typeof insertCheckInAppointmentSchema>;
+export type UpdateCheckInAppointment = z.infer<typeof updateCheckInAppointmentSchema>;
 export type CheckInAppointment = typeof checkInAppointments.$inferSelect;
 
 // Contract Signed Documents table - Contratos escaneados subidos en check-in

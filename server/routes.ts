@@ -85,6 +85,13 @@ import {
   insertFeedbackSchema,
   insertContractTenantInfoSchema,
   insertContractOwnerInfoSchema,
+  insertContractLegalDocumentSchema,
+  updateContractLegalDocumentSchema,
+  insertContractTermDiscussionSchema,
+  insertContractApprovalSchema,
+  insertCheckInAppointmentSchema,
+  updateCheckInAppointmentSchema,
+  insertContractSignedDocumentSchema,
   updateFeedbackSchema,
   insertRentalCommissionConfigSchema,
   insertAccountantAssignmentSchema,
@@ -10612,6 +10619,578 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying contract:", error);
       res.status(500).json({ message: "Error al verificar contrato" });
+    }
+  });
+
+  // Contract Legal Documents routes
+  app.get("/api/contracts/:contractId/legal-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Get contract to verify access
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const user = await storage.getUser(userId);
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify user has access (tenant, owner, admin, or lawyer)
+      const isAuthorized = 
+        contract.tenantId === userId ||
+        property?.ownerId === userId ||
+        ["master", "admin", "admin_jr", "abogado"].includes(user?.role || "");
+
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const documents = await storage.getContractLegalDocuments(contractId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching legal documents:", error);
+      res.status(500).json({ message: "Error al obtener documentos legales" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/legal-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      // Only lawyers can upload legal documents
+      if (user?.role !== "abogado") {
+        return res.status(403).json({ message: "Solo abogados pueden subir documentos legales" });
+      }
+
+      const validationResult = insertContractLegalDocumentSchema.safeParse({
+        ...req.body,
+        rentalContractId: contractId,
+        uploadedById: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+      const document = await storage.createContractLegalDocument(sanitizedData);
+
+      await createAuditLog(
+        req,
+        "create",
+        "contract_legal_document",
+        document.id,
+        `Documento legal subido para contrato ${contractId}`
+      );
+
+      res.json(document);
+    } catch (error) {
+      console.error("Error creating legal document:", error);
+      res.status(500).json({ message: "Error al crear documento legal" });
+    }
+  });
+
+  app.patch("/api/legal-documents/:documentId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const document = await storage.getContractLegalDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Documento no encontrado" });
+      }
+
+      const user = await storage.getUser(userId);
+      // Only the lawyer who uploaded or admins can update
+      if (document.uploadedById !== userId && !["master", "admin"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      // Use dedicated update schema that excludes rentalContractId and uploadedById
+      const validationResult = updateContractLegalDocumentSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+      
+      // Force immutable fields to their original values to prevent reassignment
+      const safeUpdate = {
+        ...sanitizedData,
+        rentalContractId: document.rentalContractId,
+        uploadedById: document.uploadedById,
+      };
+      
+      const updatedDocument = await storage.updateContractLegalDocument(documentId, safeUpdate);
+
+      await createAuditLog(
+        req,
+        "update",
+        "contract_legal_document",
+        documentId,
+        "Documento legal actualizado"
+      );
+
+      res.json(updatedDocument);
+    } catch (error) {
+      console.error("Error updating legal document:", error);
+      res.status(500).json({ message: "Error al actualizar documento" });
+    }
+  });
+
+  // Contract Term Discussions routes
+  app.get("/api/legal-documents/:documentId/discussions", isAuthenticated, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const document = await storage.getContractLegalDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Documento no encontrado" });
+      }
+
+      const contract = await storage.getRentalContract(document.rentalContractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const user = await storage.getUser(userId);
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify access
+      const isAuthorized = 
+        contract.tenantId === userId ||
+        property?.ownerId === userId ||
+        ["master", "admin", "admin_jr", "abogado"].includes(user?.role || "");
+
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const discussions = await storage.getContractTermDiscussions(documentId);
+      res.json(discussions);
+    } catch (error) {
+      console.error("Error fetching discussions:", error);
+      res.status(500).json({ message: "Error al obtener discusiones" });
+    }
+  });
+
+  app.post("/api/legal-documents/:documentId/discussions", isAuthenticated, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const document = await storage.getContractLegalDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Documento no encontrado" });
+      }
+
+      const validationResult = insertContractTermDiscussionSchema.safeParse({
+        ...req.body,
+        legalDocumentId: documentId,
+        userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+      const discussion = await storage.createContractTermDiscussion(sanitizedData);
+
+      await createAuditLog(
+        req,
+        "create",
+        "contract_term_discussion",
+        discussion.id,
+        `Discusión creada en documento ${documentId}`
+      );
+
+      res.json(discussion);
+    } catch (error) {
+      console.error("Error creating discussion:", error);
+      res.status(500).json({ message: "Error al crear discusión" });
+    }
+  });
+
+  app.patch("/api/discussions/:discussionId/resolve", isAuthenticated, async (req: any, res) => {
+    try {
+      const { discussionId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      // Only lawyers and admins can resolve discussions
+      if (!["abogado", "master", "admin"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "No autorizado para resolver discusiones" });
+      }
+
+      const discussion = await storage.resolveContractTermDiscussion(discussionId, userId);
+
+      await createAuditLog(
+        req,
+        "update",
+        "contract_term_discussion",
+        discussionId,
+        "Discusión resuelta"
+      );
+
+      res.json(discussion);
+    } catch (error) {
+      console.error("Error resolving discussion:", error);
+      res.status(500).json({ message: "Error al resolver discusión" });
+    }
+  });
+
+  // Contract Approvals routes
+  app.get("/api/legal-documents/:documentId/approvals", isAuthenticated, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const document = await storage.getContractLegalDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Documento no encontrado" });
+      }
+
+      const contract = await storage.getRentalContract(document.rentalContractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const user = await storage.getUser(userId);
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify access
+      const isAuthorized = 
+        contract.tenantId === userId ||
+        property?.ownerId === userId ||
+        ["master", "admin", "admin_jr", "abogado"].includes(user?.role || "");
+
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const approvals = await storage.getContractApprovals(documentId);
+      res.json(approvals);
+    } catch (error) {
+      console.error("Error fetching approvals:", error);
+      res.status(500).json({ message: "Error al obtener aprobaciones" });
+    }
+  });
+
+  app.post("/api/legal-documents/:documentId/approve", isAuthenticated, async (req: any, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const document = await storage.getContractLegalDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Documento no encontrado" });
+      }
+
+      const contract = await storage.getRentalContract(document.rentalContractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Determine user role
+      let userRole = "other";
+      if (contract.tenantId === userId) userRole = "tenant";
+      else if (property?.ownerId === userId) userRole = "owner";
+
+      if (!["tenant", "owner"].includes(userRole)) {
+        return res.status(403).json({ message: "Solo inquilinos y propietarios pueden aprobar" });
+      }
+
+      const validationResult = insertContractApprovalSchema.safeParse({
+        ...req.body,
+        legalDocumentId: documentId,
+        userId,
+        userRole,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+      const approval = await storage.createContractApproval(sanitizedData);
+
+      // Check if both parties have approved
+      const allApprovals = await storage.getContractApprovals(documentId);
+      const tenantApproval = allApprovals.find(a => a.userRole === "tenant" && a.approved);
+      const ownerApproval = allApprovals.find(a => a.userRole === "owner" && a.approved);
+
+      if (tenantApproval && ownerApproval) {
+        // Both approved - update document status
+        await storage.updateContractLegalDocument(documentId, { status: "approved" });
+        
+        // Update contract to firmado status
+        await storage.updateRentalContractStatus(contract.id, 'firmado');
+
+        // Notify parties about approval
+        await storage.createNotification({
+          userId: contract.tenantId,
+          title: "Contrato Aprobado",
+          message: `El contrato legal ha sido aprobado por ambas partes.`,
+          category: "contract",
+          relatedEntityType: "rental_contract",
+          relatedEntityId: contract.id,
+        });
+
+        if (property?.ownerId) {
+          await storage.createNotification({
+            userId: property.ownerId,
+            title: "Contrato Aprobado",
+            message: `El contrato legal ha sido aprobado por ambas partes.`,
+            category: "contract",
+            relatedEntityType: "rental_contract",
+            relatedEntityId: contract.id,
+          });
+        }
+      }
+
+      await createAuditLog(
+        req,
+        "create",
+        "contract_approval",
+        approval.id,
+        `Aprobación registrada para documento ${documentId}`
+      );
+
+      res.json(approval);
+    } catch (error) {
+      console.error("Error creating approval:", error);
+      res.status(500).json({ message: "Error al crear aprobación" });
+    }
+  });
+
+  // Check-in Appointment routes
+  app.get("/api/contracts/:contractId/check-in", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const user = await storage.getUser(userId);
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify access
+      const isAuthorized = 
+        contract.tenantId === userId ||
+        property?.ownerId === userId ||
+        ["master", "admin", "admin_jr"].includes(user?.role || "");
+
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const appointments = await storage.getCheckInAppointments({ rentalContractId: contractId });
+      res.json(appointments[0] || null);
+    } catch (error) {
+      console.error("Error fetching check-in appointment:", error);
+      res.status(500).json({ message: "Error al obtener cita de check-in" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/check-in", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      // Only admins can schedule check-in appointments
+      if (!["master", "admin", "admin_jr"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "Solo administradores pueden programar check-in" });
+      }
+
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const property = await storage.getProperty(contract.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+
+      const validationResult = insertCheckInAppointmentSchema.safeParse({
+        ...req.body,
+        rentalContractId: contractId,
+        propertyId: contract.propertyId,
+        tenantId: contract.tenantId,
+        ownerId: property.ownerId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+      const appointment = await storage.createCheckInAppointment(sanitizedData);
+
+      // Notify parties
+      await storage.createNotification({
+        userId: contract.tenantId,
+        title: "Cita de Check-in Programada",
+        message: `Se ha programado tu cita de check-in para ${new Date(appointment.scheduledDate).toLocaleString()}.`,
+        category: "appointment",
+        relatedEntityType: "check_in_appointment",
+        relatedEntityId: appointment.id,
+      });
+
+      if (property.ownerId) {
+        await storage.createNotification({
+          userId: property.ownerId,
+          title: "Cita de Check-in Programada",
+          message: `Se ha programado la cita de check-in para ${new Date(appointment.scheduledDate).toLocaleString()}.`,
+          category: "appointment",
+          relatedEntityType: "check_in_appointment",
+          relatedEntityId: appointment.id,
+        });
+      }
+
+      await createAuditLog(
+        req,
+        "create",
+        "check_in_appointment",
+        appointment.id,
+        `Cita de check-in programada para contrato ${contractId}`
+      );
+
+      res.json(appointment);
+    } catch (error) {
+      console.error("Error creating check-in appointment:", error);
+      res.status(500).json({ message: "Error al crear cita de check-in" });
+    }
+  });
+
+  app.patch("/api/check-in/:appointmentId/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const { appointmentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      if (!["master", "admin", "admin_jr"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "Solo administradores pueden completar check-in" });
+      }
+
+      const appointment = await storage.completeCheckInAppointment(appointmentId);
+      
+      // Update contract to check_in status
+      await storage.updateRentalContractStatus(appointment.rentalContractId, 'check_in');
+
+      await createAuditLog(
+        req,
+        "update",
+        "check_in_appointment",
+        appointmentId,
+        "Cita de check-in completada"
+      );
+
+      res.json(appointment);
+    } catch (error) {
+      console.error("Error completing check-in:", error);
+      res.status(500).json({ message: "Error al completar check-in" });
+    }
+  });
+
+  // Contract Signed Documents routes
+  app.get("/api/contracts/:contractId/signed-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const user = await storage.getUser(userId);
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify access
+      const isAuthorized = 
+        contract.tenantId === userId ||
+        property?.ownerId === userId ||
+        ["master", "admin", "admin_jr"].includes(user?.role || "");
+
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const documents = await storage.getContractSignedDocuments(contractId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching signed documents:", error);
+      res.status(500).json({ message: "Error al obtener documentos firmados" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/signed-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      // Only admins can upload signed documents
+      if (!["master", "admin", "admin_jr"].includes(user?.role || "")) {
+        return res.status(403).json({ message: "Solo administradores pueden subir documentos firmados" });
+      }
+
+      const validationResult = insertContractSignedDocumentSchema.safeParse({
+        ...req.body,
+        rentalContractId: contractId,
+        uploadedById: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+      const document = await storage.createContractSignedDocument(sanitizedData);
+
+      await createAuditLog(
+        req,
+        "create",
+        "contract_signed_document",
+        document.id,
+        `Documento firmado subido para contrato ${contractId}`
+      );
+
+      res.json(document);
+    } catch (error) {
+      console.error("Error uploading signed document:", error);
+      res.status(500).json({ message: "Error al subir documento firmado" });
     }
   });
 
