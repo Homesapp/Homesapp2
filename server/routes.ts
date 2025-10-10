@@ -73,6 +73,7 @@ import {
   insertChatConversationSchema,
   insertChatMessageSchema,
   insertChatParticipantSchema,
+  chatConversations,
   updateUserProfileSchema,
   updateBankInfoSchema,
   uploadSellerDocumentSchema,
@@ -124,7 +125,7 @@ import {
   insertHoaAnnouncementReadSchema,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, sql } from "drizzle-orm";
 
 // Helper function to create audit logs
 async function createAuditLog(
@@ -1191,9 +1192,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       
+      // Prevent self-deletion
+      if (req.user && req.user.id === userId) {
+        return res.status(400).json({ message: "No puedes eliminar tu propia cuenta" });
+      }
+      
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      // Check for related data that would prevent deletion
+      const hasRelatedData = await db.select({ count: sql<number>`count(*)::int` })
+        .from(chatConversations)
+        .where(eq(chatConversations.createdById, userId))
+        .then(rows => rows[0]?.count > 0);
+      
+      if (hasRelatedData) {
+        return res.status(400).json({ 
+          message: "No se puede eliminar este usuario porque tiene conversaciones de chat asociadas. Considera suspender la cuenta en su lugar." 
+        });
       }
       
       await createAuditLog(

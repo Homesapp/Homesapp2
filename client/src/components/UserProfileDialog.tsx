@@ -38,7 +38,7 @@ import { useUserAuditHistory, useUpdateUserRole } from "@/hooks/useUsers";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, invalidateRelatedQueries } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -162,7 +162,9 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
         title: "Usuario eliminado",
         description: "El usuario ha sido eliminado exitosamente",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/approved'] });
+      // Invalidar todas las queries relacionadas con usuarios
+      invalidateRelatedQueries('/api/users');
+      invalidateRelatedQueries('/api/admin/users');
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -182,14 +184,12 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
         endDate: data.endDate,
       });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       toast({
         title: "Usuario suspendido",
         description: "La cuenta del usuario ha sido suspendida",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/approved'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${variables.userId}/presentation-cards`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${variables.userId}/properties`] });
+      invalidateRelatedQueries('/api/users');
       setShowSuspendDialog(false);
       setSuspensionReason("");
       setSuspensionEndDate("");
@@ -208,14 +208,12 @@ export function UserProfileDialog({ user, open, onOpenChange }: UserProfileDialo
     mutationFn: async (userId: string) => {
       return await apiRequest('POST', `/api/admin/users/${userId}/unsuspend`);
     },
-    onSuccess: (_, userId) => {
+    onSuccess: () => {
       toast({
         title: "Usuario reactivado",
         description: "La cuenta del usuario ha sido reactivada",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/approved'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/presentation-cards`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/properties`] });
+      invalidateRelatedQueries('/api/users');
     },
     onError: (error: any) => {
       toast({

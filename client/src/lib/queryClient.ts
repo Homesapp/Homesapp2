@@ -55,3 +55,13 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Helper function to invalidate related queries
+export function invalidateRelatedQueries(baseUrl: string) {
+  queryClient.invalidateQueries({ 
+    predicate: (query) => 
+      query.queryKey.some(key => 
+        typeof key === 'string' && key.includes(baseUrl)
+      )
+  });
+}
