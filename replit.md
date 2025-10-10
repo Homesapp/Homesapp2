@@ -38,6 +38,7 @@ The platform employs unified middleware for consistent authentication and automa
       - POST /api/admin/properties/:id/publish - Publica una propiedad ya aprobada (establece `published = true`)
       - POST /api/admin/properties/:id/reject - Rechaza y despublica una propiedad
     - **Public Home Filter**: Non-authenticated users only see properties with `published = true` for security (enforced in GET /api/properties/search endpoint)
+    - **Featured Properties**: Admin can mark properties as "featured" (destacadas) for special visibility. PATCH /api/admin/properties/:id/featured endpoint toggles featured status. UI includes toggle button with star icon and stats counter in admin dashboard.
 *   **Rental Management**: Active rental portals for clients and owners, including service-based payment tracking, owner payment approval, and tenant maintenance requests.
 *   **Rental Opportunity & Offer System**: Workflow for clients to request and create rental offers, followed by a bidirectional counter-offer negotiation system. Administrators can grant rental opportunities directly.
 *   **Contract Elaboration System**: Automated workflow triggered after offer acceptance, involving client and owner information forms, admin document verification, lawyer contract elaboration, tripartite chat for negotiations, and digital signatures. Contracts progress through statuses: draft, apartado, firmado, check_in, activo. UI includes tabbed interfaces and visual progress indicators.
