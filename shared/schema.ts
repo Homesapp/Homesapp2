@@ -1778,11 +1778,16 @@ export type TenantMoveInForm = typeof tenantMoveInForms.$inferSelect;
 // Appointments table
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Ahora opcional
   clientId: varchar("client_id").notNull().references(() => users.id),
   conciergeId: varchar("concierge_id").references(() => users.id),
   presentationCardId: varchar("presentation_card_id").references(() => presentationCards.id), // Tarjeta de presentación requerida
   opportunityRequestId: varchar("opportunity_request_id").references(() => rentalOpportunityRequests.id, { onDelete: "set null" }), // Link to SOR
+  
+  // Campos para propiedades no registradas en el sistema
+  condominiumName: text("condominium_name"), // Nombre del condominio
+  unitNumber: text("unit_number"), // Número de unidad o nombre de casa
+  
   date: timestamp("date").notNull(),
   type: appointmentTypeEnum("type").notNull(),
   mode: appointmentModeEnum("mode").notNull().default("individual"), // individual (1hr) or tour (30min/property)
