@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield, Star } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type AccessInfo = 
@@ -194,6 +194,23 @@ export default function AdminPropertyManagement() {
     },
   });
 
+  // Toggle featured mutation
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: ({ propertyId, featured }: { propertyId: string; featured: boolean }) =>
+      apiRequest("PATCH", `/api/admin/properties/${propertyId}/featured`, { featured }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      toast({ 
+        title: variables.featured ? "Propiedad destacada" : "Propiedad no destacada", 
+        description: variables.featured ? "La propiedad se muestra como destacada" : "La propiedad ya no es destacada" 
+      });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo actualizar el estado destacado", variant: "destructive" });
+    },
+  });
+
   const handleSelectAll = () => {
     if (selectedProperties.length === properties.length) {
       setSelectedProperties([]);
@@ -300,6 +317,16 @@ export default function AdminPropertyManagement() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-500">{stats?.published || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Destacadas</CardTitle>
+                <Star className="w-4 h-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-500">{stats?.featured || 0}</div>
               </CardContent>
             </Card>
           </>
@@ -877,6 +904,22 @@ export default function AdminPropertyManagement() {
                           >
                             <Eye className="w-4 h-4" />
                             Publicar
+                          </Button>
+                        )}
+                        {(property.approvalStatus === "approved" || property.published) && (
+                          <Button
+                            data-testid={`button-featured-${property.id}`}
+                            size="sm"
+                            variant={property.featured ? "default" : "outline"}
+                            onClick={() => toggleFeaturedMutation.mutate({ 
+                              propertyId: property.id, 
+                              featured: !property.featured 
+                            })}
+                            disabled={toggleFeaturedMutation.isPending}
+                            className="gap-2"
+                          >
+                            <Star className={`w-4 h-4 ${property.featured ? "fill-current" : ""}`} />
+                            {property.featured ? "Destacada" : "Destacar"}
                           </Button>
                         )}
                       </div>
