@@ -32,7 +32,7 @@ export default function AdminOfferManagement() {
 
   const handleDownloadPDF = async (offerId: string) => {
     try {
-      const response = await fetch(`/api/offer-tokens/${offerId}/pdf`);
+      const response = await fetch(`/api/offers/${offerId}/pdf`);
       if (!response.ok) throw new Error("Error al generar PDF");
       
       const blob = await response.blob();

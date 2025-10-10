@@ -11747,7 +11747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate PDF for offer
-  app.get("/api/offer-tokens/:id/pdf", isAuthenticated, requireRole(["admin", "master", "admin_jr"]), async (req, res) => {
+  app.get("/api/offers/:id/pdf", isAuthenticated, requireRole(["admin", "master", "admin_jr"]), async (req, res) => {
     try {
       const { id } = req.params;
 
