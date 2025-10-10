@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useState, useEffect, type DragEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,6 +144,13 @@ export default function LeadsKanban() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   
+  useEffect(() => {
+    if (!dialogOpen) {
+      form.reset();
+      setSelectedProperties([]);
+    }
+  }, [dialogOpen]);
+  
   const form = useForm({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
@@ -190,6 +197,7 @@ export default function LeadsKanban() {
       toast({ title: "Lead creado exitosamente" });
       setDialogOpen(false);
       form.reset();
+      setSelectedProperties([]);
     },
     onError: (error: any) => {
       const errorData = error?.response?.data || error;
