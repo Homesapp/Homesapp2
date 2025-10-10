@@ -978,7 +978,7 @@ export interface IStorage {
   getApprovedHoaManagerByCondominium(condominiumId: string): Promise<HoaManagerAssignment | undefined>;
   createHoaManagerAssignment(assignment: InsertHoaManagerAssignment): Promise<HoaManagerAssignment>;
   updateHoaManagerAssignment(id: string, updates: Partial<InsertHoaManagerAssignment>): Promise<HoaManagerAssignment>;
-  approveHoaManagerAssignment(id: string, approvedById: string): Promise<HoaManagerAssignment>;
+  approveHoaManagerAssignment(id: string, approvedById: string, reason?: string): Promise<HoaManagerAssignment>;
   rejectHoaManagerAssignment(id: string, rejectedById: string, reason: string): Promise<HoaManagerAssignment>;
   suspendHoaManagerAssignment(id: string, suspendedById: string, reason: string): Promise<HoaManagerAssignment>;
 
@@ -6363,12 +6363,13 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async approveHoaManagerAssignment(id: string, approvedById: string): Promise<HoaManagerAssignment> {
+  async approveHoaManagerAssignment(id: string, approvedById: string, reason?: string): Promise<HoaManagerAssignment> {
     const result = await db.update(hoaManagerAssignments)
       .set({
         status: 'approved',
         approvedById,
         approvedAt: new Date(),
+        approvalReason: reason,
         updatedAt: new Date()
       })
       .where(eq(hoaManagerAssignments.id, id))

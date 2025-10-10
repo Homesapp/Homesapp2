@@ -4023,6 +4023,7 @@ export const hoaManagerAssignments = pgTable("hoa_manager_assignments", {
   requestedAt: timestamp("requested_at").defaultNow().notNull(),
   approvedById: varchar("approved_by_id").references(() => users.id), // Admin que aprobó
   approvedAt: timestamp("approved_at"),
+  approvalReason: text("approval_reason"), // Motivo de aprobación
   rejectedById: varchar("rejected_by_id").references(() => users.id), // Admin que rechazó
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),

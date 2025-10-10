@@ -16297,14 +16297,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/hoa-manager/assignments/:id/approve", isAuthenticated, requireRole(["admin", "master"]), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const assignment = await storage.approveHoaManagerAssignment(req.params.id, userId);
+      const { reason } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({ message: "Approval reason is required" });
+      }
+
+      const assignment = await storage.approveHoaManagerAssignment(req.params.id, userId, reason);
+
+      // Get condominium details for notification
+      const condominium = await storage.getCondominium(assignment.condominiumId);
+
+      // Notify the manager about approval
+      await storage.createNotification({
+        userId: assignment.managerId,
+        type: "role_approved",
+        title: "Solicitud de HOA Manager Aprobada",
+        message: `Tu solicitud para administrar ${condominium?.name || 'el condominio'} ha sido aprobada. Motivo: ${reason}`,
+        link: "/perfil"
+      });
 
       await createAuditLog(
         req,
         "approve",
         "hoa_manager_assignment",
         req.params.id,
-        `Approved HOA manager assignment for condominium ${assignment.condominiumId}`
+        `Approved HOA manager assignment for condominium ${assignment.condominiumId}: ${reason}`
       );
 
       res.json(assignment);
@@ -16325,6 +16343,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const assignment = await storage.rejectHoaManagerAssignment(req.params.id, userId, reason);
+
+      // Get condominium details for notification
+      const condominium = await storage.getCondominium(assignment.condominiumId);
+
+      // Notify the manager about rejection
+      await storage.createNotification({
+        userId: assignment.managerId,
+        type: "role_rejected",
+        title: "Solicitud de HOA Manager Rechazada",
+        message: `Tu solicitud para administrar ${condominium?.name || 'el condominio'} ha sido rechazada. Motivo: ${reason}`,
+        link: "/perfil"
+      });
 
       await createAuditLog(
         req,
