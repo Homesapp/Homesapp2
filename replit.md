@@ -45,6 +45,12 @@ The platform employs unified middleware for consistent authentication and automa
 *   **HOA (Homeowners Association) Module**: Complete condominium management system for admin, owner, and HOA Manager roles. Includes unit, fee, issue management, and a comprehensive announcement system with assignment workflows, notifications, and security.
 *   **Comprehensive Notification System**: Full-featured notification system with real-time updates, filtering, priority levels, email integration, and detailed user preferences.
 *   **AI-Powered Capabilities**: Predictive analytics, automated legal document generation, intelligent tenant screening, and a virtual assistant (MARCO) powered by OpenAI GPT-4.
+*   **CRM Lead Management System**: Modern Kanban-style lead management with 10-stage rental pipeline:
+    - **Lead Status Flow**: nuevo → contactado → calificado → cita_agendada → visita_completada → oferta_enviada → en_negociacion → contrato_firmado → ganado → perdido
+    - **Sales Funnel Visualization**: Interactive horizontal bar chart showing lead distribution across all stages with key conversion metrics (calificado→cita, cita→visita, visita→oferta, contrato→ganado)
+    - **Quick Actions**: Direct access buttons on lead cards for scheduling appointments, creating offers, and viewing details
+    - **Enhanced Lead Cards**: Display associated appointments, offers, and contract information with visual indicators
+    - **Staff-Created Leads**: Auto-verified email for leads manually registered by sellers/admins to prevent FK constraint violations
 *   **Operational Efficiency**: Marketing automation, preventive maintenance scheduling, enhanced referral tracking, and comprehensive admin CRUD systems.
 *   **User Experience**: Airbnb-style role switching, full i18n support, real-time chat, granular email notification preferences, and auto-logout security feature.
 
