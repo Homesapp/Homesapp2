@@ -94,8 +94,22 @@ export function AppointmentFormDialog({
   useEffect(() => {
     if (appointment && mode === "edit") {
       const appointmentDate = new Date(appointment.date);
+      
+      // Check if this is a manual property entry (has condominium/unit but no propertyId)
+      if (!appointment.propertyId && appointment.condominiumName && appointment.unitNumber) {
+        setPropertyInputMode("manual");
+        setManualCondominium(appointment.condominiumName);
+        setManualUnit(appointment.unitNumber);
+        setSelectedProperties([]);
+      } else if (appointment.propertyId) {
+        setPropertyInputMode("registered");
+        setSelectedProperties([appointment.propertyId]);
+        setManualCondominium("");
+        setManualUnit("");
+      }
+      
       form.reset({
-        propertyId: appointment.propertyId,
+        propertyId: appointment.propertyId || "",
         clientId: appointment.clientId,
         conciergeId: appointment.conciergeId || undefined,
         date: appointmentDate,
@@ -105,9 +119,10 @@ export function AppointmentFormDialog({
         notes: appointment.notes || "",
         meetLink: appointment.meetLink || undefined,
         googleEventId: appointment.googleEventId || undefined,
+        condominiumName: appointment.condominiumName || "",
+        unitNumber: appointment.unitNumber || "",
       });
       setAppointmentMode(appointment.mode || "individual");
-      setSelectedProperties([appointment.propertyId]);
       setTime(format(appointmentDate, "HH:mm"));
     } else if (mode === "create") {
       form.reset({
@@ -121,9 +136,14 @@ export function AppointmentFormDialog({
         notes: "",
         meetLink: undefined,
         googleEventId: undefined,
+        condominiumName: "",
+        unitNumber: "",
       });
       setAppointmentMode("individual");
+      setPropertyInputMode("registered");
       setSelectedProperties([]);
+      setManualCondominium("");
+      setManualUnit("");
       setTime("10:00");
     }
   }, [appointment, mode, form, user]);
@@ -187,13 +207,23 @@ export function AppointmentFormDialog({
 
       if (mode === "edit" && appointment) {
         // Edit mode: solo actualizar la cita existente
-        const appointmentData = {
+        const appointmentData: any = {
           ...data,
-          propertyId: selectedProperties[0],
           date: appointmentDate,
           mode: appointmentMode,
           clientId: user?.id || data.clientId,
         };
+        
+        // Preserve property info based on input mode
+        if (propertyInputMode === "manual") {
+          appointmentData.condominiumName = manualCondominium;
+          appointmentData.unitNumber = manualUnit;
+          appointmentData.propertyId = undefined;
+        } else {
+          appointmentData.propertyId = selectedProperties[0];
+          appointmentData.condominiumName = undefined;
+          appointmentData.unitNumber = undefined;
+        }
         
         await updateMutation.mutateAsync({ id: appointment.id, data: appointmentData });
         toast({

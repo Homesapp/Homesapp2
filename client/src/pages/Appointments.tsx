@@ -236,7 +236,16 @@ export default function Appointments() {
     }
   };
 
-  const getPropertyDisplay = (property?: AppointmentWithDetails["property"]) => {
+  const getPropertyDisplay = (property?: AppointmentWithDetails["property"], appointment?: AppointmentWithDetails) => {
+    // Check for manual property entry first (condominiumName and unitNumber directly on appointment)
+    if (appointment?.condominiumName && appointment?.unitNumber) {
+      return `${appointment.condominiumName} - Unidad ${appointment.unitNumber}`;
+    }
+    if (appointment?.condominiumName) {
+      return appointment.condominiumName;
+    }
+    
+    // Then check for registered property
     if (!property) return "Propiedad";
     if (property.condoName && property.unitNumber) {
       return `${property.condoName} - Unidad ${property.unitNumber}`;
@@ -490,7 +499,7 @@ export default function Appointments() {
                             )}
                             data-testid={`appointment-preview-${apt.id}`}
                           >
-                            {format(new Date(apt.date), "HH:mm")} {getPropertyDisplay(apt.property)}
+                            {format(new Date(apt.date), "HH:mm")} {getPropertyDisplay(apt.property, apt)}
                           </div>
                         ))}
                         {dayAppointments.length > 3 && (
@@ -518,7 +527,7 @@ export default function Appointments() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <CardTitle className="text-lg">{getPropertyDisplay(apt.property)}</CardTitle>
+                          <CardTitle className="text-lg">{getPropertyDisplay(apt.property, apt)}</CardTitle>
                           <CardDescription className="mt-1">
                             {format(new Date(apt.date), "PPPP 'a las' HH:mm", { locale: es })}
                           </CardDescription>
@@ -585,7 +594,12 @@ export default function Appointments() {
               <div className="space-y-4">
                 <div>
                   <div className="text-sm text-muted-foreground">Propiedad</div>
-                  <div className="font-medium mt-1">{getPropertyDisplay(selectedAppointment.property)}</div>
+                  <div className="font-medium mt-1">{getPropertyDisplay(selectedAppointment.property, selectedAppointment)}</div>
+                  {selectedAppointment.condominiumName && selectedAppointment.unitNumber && (
+                    <p className="text-xs text-muted-foreground italic mt-1">
+                      * Propiedad ingresada manualmente (no registrada en el sistema)
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -927,7 +941,7 @@ export default function Appointments() {
                   <div>
                     <h3 className="font-medium mb-2">Review de la Propiedad</h3>
                     <div className="text-sm text-muted-foreground mb-3">
-                      {getPropertyDisplay(selectedAppointment.property)}
+                      {getPropertyDisplay(selectedAppointment.property, selectedAppointment)}
                     </div>
                   </div>
                   
