@@ -89,7 +89,10 @@ export function VisitDetailsCard({
   const appointmentDate = new Date(appointment.date);
   const propertyName = appointment.property?.condoName && appointment.property?.unitNumber
     ? `${appointment.property.condoName} - Unidad ${appointment.property.unitNumber}`
-    : appointment.property?.title || "Propiedad";
+    : appointment.property?.title 
+    || (appointment.condominiumName && appointment.unitNumber 
+      ? `${appointment.condominiumName} - Unidad ${appointment.unitNumber}` 
+      : "Propiedad");
 
   return (
     <Card data-testid={`visit-card-${appointmentId}`}>
@@ -129,22 +132,39 @@ export function VisitDetailsCard({
         </div>
 
         {/* Información de la Propiedad */}
-        {appointment.property && (
+        {(appointment.property || (appointment.condominiumName && appointment.unitNumber)) && (
           <div className="border-t pt-4">
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
               <Building className="h-4 w-4" />
               Ubicación
             </h3>
             <div className="space-y-1 text-sm">
-              <p className="flex items-center gap-2">
-                <MapPin className="h-3 w-3 text-muted-foreground" />
-                <span>{appointment.property.location}</span>
-              </p>
-              {appointment.property.condominium && (
-                <p className="text-muted-foreground">
-                  {appointment.property.condominium.name}
-                  {appointment.property.unitNumber && ` - Unidad ${appointment.property.unitNumber}`}
-                </p>
+              {appointment.property ? (
+                <>
+                  <p className="flex items-center gap-2">
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    <span>{appointment.property.location}</span>
+                  </p>
+                  {appointment.property.condominium && (
+                    <p className="text-muted-foreground">
+                      {appointment.property.condominium.name}
+                      {appointment.property.unitNumber && ` - Unidad ${appointment.property.unitNumber}`}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="flex items-center gap-2">
+                    <Building className="h-3 w-3 text-muted-foreground" />
+                    <span>{appointment.condominiumName}</span>
+                  </p>
+                  <p className="text-muted-foreground">
+                    Unidad {appointment.unitNumber}
+                  </p>
+                  <p className="text-xs text-muted-foreground italic mt-1">
+                    * Propiedad ingresada manualmente (no registrada en el sistema)
+                  </p>
+                </>
               )}
             </div>
           </div>

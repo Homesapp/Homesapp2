@@ -220,10 +220,15 @@ export default function CalendarPage() {
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {appointment.property && (
+                      {(appointment.property || (appointment.condominiumName && appointment.unitNumber)) && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
-                          <span>{appointment.property.title}</span>
+                          <span>
+                            {appointment.property?.title 
+                              || (appointment.condominiumName && appointment.unitNumber 
+                                ? `${appointment.condominiumName} - Unidad ${appointment.unitNumber}` 
+                                : "Propiedad")}
+                          </span>
                         </div>
                       )}
                       {appointment.concierge && (
@@ -301,11 +306,20 @@ export default function CalendarPage() {
                 </p>
               </div>
 
-              {selectedAppointment.property && (
+              {(selectedAppointment.property || (selectedAppointment.condominiumName && selectedAppointment.unitNumber)) && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Propiedad</label>
-                  <p className="text-base">{selectedAppointment.property.title}</p>
-                  <p className="text-sm text-muted-foreground">{selectedAppointment.property.location}</p>
+                  {selectedAppointment.property ? (
+                    <>
+                      <p className="text-base">{selectedAppointment.property.title}</p>
+                      <p className="text-sm text-muted-foreground">{selectedAppointment.property.location}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base">{selectedAppointment.condominiumName} - Unidad {selectedAppointment.unitNumber}</p>
+                      <p className="text-sm text-muted-foreground italic">Propiedad ingresada manualmente</p>
+                    </>
+                  )}
                 </div>
               )}
 
