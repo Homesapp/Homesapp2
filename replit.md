@@ -41,6 +41,22 @@ The platform employs unified middleware for consistent authentication and automa
     - **Security**: Multi-layer authorization checks verify approved manager status before any announcement operations. Owners can only mark announcements as read if they own units in the condominium. All announcement visibility respects condominium boundaries.
     - **API Routes**: POST /api/hoa-manager/assignments (request assignment), GET /api/hoa-manager/my-assignments, GET /api/hoa-manager/all-assignments (admin - returns enriched data with user and condominium details), POST /api/hoa-manager/assignments/:id/approve|reject|suspend (admin only - requires reason parameter, creates notifications), POST /api/hoa-manager/announcements (create), PATCH /api/hoa-manager/announcements/:id (update), POST /api/hoa-manager/announcements/:id/publish, DELETE /api/hoa-manager/announcements/:id, POST /api/hoa-manager/announcements/:id/read (owner marks as read), GET /api/hoa-manager/my-unread-announcements (owner's unread).
     - **Audit Logging**: All assignment and announcement operations create audit logs with user, action, and details.
+*   **Comprehensive Notification System**: Full-featured notification system with real-time updates, filtering, and user preferences. Features:
+    - **Notification Types** (12 types): appointment, offer, message, property_update, rental_update, opportunity, role_approved, role_rejected, hoa_announcement, contract_update, payment_reminder, system
+    - **Priority Levels**: low, medium, high, urgent with color-coded badges and SLA deadline tracking
+    - **Backend API**: 
+      - GET /api/notifications - Fetch all user notifications
+      - POST /api/notifications - Create notification
+      - PATCH /api/notifications/:id/read - Mark as read
+      - PATCH /api/notifications/:id/unread - Mark as unread
+      - DELETE /api/notifications/:id - Delete notification
+      - POST /api/notifications/mark-all-read - Bulk mark as read
+    - **Storage Layer**: getNotifications, getNotification, createNotification, markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead, deleteNotification
+    - **Frontend Components**:
+      - NotificationBell (header): Popover with unread count badge, recent notifications preview, and link to full page
+      - Notifications page (/notificaciones): Advanced filtering (search, type, priority), tabbed interface (all/unread/read/preferences), SLA status indicators, email notification preferences per type
+    - **Email Integration**: Granular email notification preferences for each notification type stored in owner settings
+    - **Security**: All routes protected with isAuthenticated middleware and requireResourceOwnership for user-specific operations
 *   **AI-Powered Capabilities**: Predictive analytics, automated legal document generation, intelligent tenant screening, and a virtual assistant (MARCO) powered by OpenAI GPT-4.
 *   **Operational Efficiency**: Marketing automation, preventive maintenance scheduling, enhanced referral tracking, and comprehensive admin CRUD systems.
 *   **User Experience**: Airbnb-style role switching, full i18n support, real-time chat, granular email notification preferences, and auto-logout security feature (5 minutes of inactivity) for all authenticated users.
