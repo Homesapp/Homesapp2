@@ -136,6 +136,20 @@ export default function AdminPropertyManagement() {
     },
   });
 
+  // Publish mutation (for already approved properties)
+  const publishMutation = useMutation({
+    mutationFn: (propertyId: string) =>
+      apiRequest("PATCH", `/api/admin/properties/${propertyId}/publish`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+      toast({ title: "Propiedad publicada", description: "La propiedad ahora es visible en el home público" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo publicar la propiedad", variant: "destructive" });
+    },
+  });
+
   // Reject mutation
   const rejectMutation = useMutation({
     mutationFn: (propertyId: string) =>
@@ -852,6 +866,18 @@ export default function AdminPropertyManagement() {
                               Rechazar
                             </Button>
                           </>
+                        )}
+                        {property.approvalStatus === "approved" && !property.published && (
+                          <Button
+                            data-testid={`button-publish-${property.id}`}
+                            size="sm"
+                            onClick={() => publishMutation.mutate(property.id)}
+                            disabled={publishMutation.isPending}
+                            className="gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Publicar
+                          </Button>
                         )}
                       </div>
                     </div>

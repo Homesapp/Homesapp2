@@ -5989,6 +5989,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New endpoint to publish already approved properties
+  app.patch("/api/admin/properties/:id/publish", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.user.claims.sub;
+      
+      const property = await storage.getProperty(id);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+      
+      // Update to published
+      const updated = await storage.updateProperty(id, {
+        published: true,
+        approvalStatus: "approved", // Ensure it's approved too
+      });
+      
+      await createAuditLog(
+        req,
+        "publish",
+        "property",
+        id,
+        `Propiedad publicada: ${property.title}`
+      );
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error publishing property:", error);
+      res.status(500).json({ message: error.message || "Error al publicar propiedad" });
+    }
+  });
+
   app.patch("/api/admin/properties/:id/reject", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
     try {
       const { id } = req.params;
