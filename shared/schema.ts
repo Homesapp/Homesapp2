@@ -4168,3 +4168,61 @@ export const hoaAnnouncementReadsRelations = relations(hoaAnnouncementReads, ({ 
     references: [users.id],
   }),
 }));
+
+// Offer Tokens - Enlaces privados para ofertas de renta sin login
+export const offerTokens = pgTable("offer_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token").notNull().unique(), // Token único para la URL
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Vendedor o admin que creó el link
+  expiresAt: timestamp("expires_at").notNull(), // 24 horas después de creación
+  isUsed: boolean("is_used").notNull().default(false),
+  offerData: jsonb("offer_data").$type<{
+    // Perfil del Cliente
+    nombreCompleto?: string;
+    nacionalidad?: string;
+    edad?: number;
+    tiempoResidenciaTulum?: string;
+    trabajoPosicion?: string;
+    companiaTrabaja?: string;
+    tieneMascotas?: string;
+    ingresoMensualPromedio?: string;
+    numeroInquilinos?: number;
+    tieneGarante?: string;
+    usoInmueble?: "vivienda" | "subarrendamiento";
+    // Detalles de la Oferta
+    rentaOfertada?: number;
+    rentasAdelantadas?: number;
+    fechaIngreso?: string;
+    duracionContrato?: string;
+    serviciosIncluidos?: string;
+    serviciosNoIncluidos?: string;
+    pedidoEspecial?: string;
+    // Metadata
+    submittedAt?: string;
+    clientEmail?: string;
+    clientPhone?: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOfferTokenSchema = createInsertSchema(offerTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOfferToken = z.infer<typeof insertOfferTokenSchema>;
+export type OfferToken = typeof offerTokens.$inferSelect;
+
+export const offerTokensRelations = relations(offerTokens, ({ one }) => ({
+  property: one(properties, {
+    fields: [offerTokens.propertyId],
+    references: [properties.id],
+  }),
+  creator: one(users, {
+    fields: [offerTokens.createdBy],
+    references: [users.id],
+  }),
+}));

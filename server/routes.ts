@@ -123,6 +123,8 @@ import {
   insertHoaManagerAssignmentSchema,
   insertHoaAnnouncementSchema,
   insertHoaAnnouncementReadSchema,
+  insertOfferTokenSchema,
+  offerTokens,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
@@ -11497,6 +11499,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying contract:", error);
       res.status(500).json({ message: "Error al verificar contrato" });
+    }
+  });
+
+  // Offer Token routes - Enlaces privados para ofertas sin login
+  app.post("/api/offer-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller"]), async (req: any, res) => {
+    try {
+      const { propertyId } = req.body;
+      const userId = req.user.claims.sub;
+
+      // Validate property exists
+      const property = await storage.getProperty(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+
+      // Generate unique token
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Calculate expiration (24 hours from now)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      // Create offer token
+      const offerToken = await db.insert(offerTokens).values({
+        token,
+        propertyId,
+        createdBy: userId,
+        expiresAt,
+        isUsed: false,
+      }).returning();
+
+      await createAuditLog(
+        req,
+        "create",
+        "offer_token",
+        offerToken[0].id,
+        `Token de oferta creado para propiedad ${property.title || propertyId}`
+      );
+
+      // Return token with property info
+      res.status(201).json({
+        ...offerToken[0],
+        property,
+      });
+    } catch (error: any) {
+      console.error("Error creating offer token:", error);
+      res.status(400).json({ message: error.message || "Error al crear token de oferta" });
+    }
+  });
+
+  // Validate offer token (public route)
+  app.get("/api/offer-tokens/:token/validate", async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      const [offerToken] = await db
+        .select()
+        .from(offerTokens)
+        .where(eq(offerTokens.token, token))
+        .limit(1);
+
+      if (!offerToken) {
+        return res.status(404).json({ 
+          valid: false, 
+          message: "Token no encontrado" 
+        });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(offerToken.expiresAt)) {
+        return res.status(410).json({ 
+          valid: false, 
+          message: "Este enlace ha expirado" 
+        });
+      }
+
+      // Check if already used
+      if (offerToken.isUsed) {
+        return res.status(410).json({ 
+          valid: false, 
+          message: "Este enlace ya fue utilizado" 
+        });
+      }
+
+      // Get property info
+      const property = await storage.getProperty(offerToken.propertyId);
+
+      res.json({
+        valid: true,
+        property,
+        expiresAt: offerToken.expiresAt,
+      });
+    } catch (error) {
+      console.error("Error validating offer token:", error);
+      res.status(500).json({ message: "Error al validar token" });
+    }
+  });
+
+  // Submit offer via token (public route)
+  app.post("/api/offer-tokens/:token/submit", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const offerData = req.body;
+
+      const [offerToken] = await db
+        .select()
+        .from(offerTokens)
+        .where(eq(offerTokens.token, token))
+        .limit(1);
+
+      if (!offerToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(offerToken.expiresAt)) {
+        return res.status(410).json({ message: "Este enlace ha expirado" });
+      }
+
+      // Check if already used
+      if (offerToken.isUsed) {
+        return res.status(410).json({ message: "Este enlace ya fue utilizado" });
+      }
+
+      // Update offer token with submitted data
+      const [updatedToken] = await db
+        .update(offerTokens)
+        .set({
+          offerData: {
+            ...offerData,
+            submittedAt: new Date().toISOString(),
+          },
+          isUsed: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(offerTokens.id, offerToken.id))
+        .returning();
+
+      res.json({
+        message: "Oferta enviada exitosamente",
+        tokenId: updatedToken.id,
+      });
+    } catch (error) {
+      console.error("Error submitting offer:", error);
+      res.status(500).json({ message: "Error al enviar oferta" });
+    }
+  });
+
+  // Get all received offers (admins only)
+  app.get("/api/offer-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr"]), async (req, res) => {
+    try {
+      const { status } = req.query;
+
+      let query = db
+        .select()
+        .from(offerTokens)
+        .orderBy(desc(offerTokens.createdAt));
+
+      if (status === "used") {
+        query = query.where(eq(offerTokens.isUsed, true));
+      } else if (status === "pending") {
+        query = query.where(eq(offerTokens.isUsed, false));
+      }
+
+      const tokens = await query;
+
+      // Enrich with property and creator info
+      const enrichedTokens = await Promise.all(
+        tokens.map(async (token) => {
+          const property = await storage.getProperty(token.propertyId);
+          const creator = await storage.getUser(token.createdBy);
+          return {
+            ...token,
+            property,
+            creator,
+          };
+        })
+      );
+
+      res.json(enrichedTokens);
+    } catch (error) {
+      console.error("Error fetching offer tokens:", error);
+      res.status(500).json({ message: "Error al obtener tokens de oferta" });
     }
   });
 
