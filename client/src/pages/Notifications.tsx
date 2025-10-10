@@ -115,6 +115,18 @@ export default function Notifications() {
         return "🏠";
       case "rental_update":
         return "🔑";
+      case "opportunity":
+        return "🎯";
+      case "role_approved":
+        return "✅";
+      case "role_rejected":
+        return "❌";
+      case "hoa_announcement":
+        return "📣";
+      case "contract_update":
+        return "📄";
+      case "payment_reminder":
+        return "💳";
       default:
         return "📢";
     }
@@ -225,6 +237,12 @@ export default function Notifications() {
                   <SelectItem value="message">Mensajes</SelectItem>
                   <SelectItem value="property_update">Propiedades</SelectItem>
                   <SelectItem value="rental_update">Rentas</SelectItem>
+                  <SelectItem value="opportunity">Oportunidades</SelectItem>
+                  <SelectItem value="role_approved">Roles Aprobados</SelectItem>
+                  <SelectItem value="role_rejected">Roles Rechazados</SelectItem>
+                  <SelectItem value="hoa_announcement">Anuncios HOA</SelectItem>
+                  <SelectItem value="contract_update">Contratos</SelectItem>
+                  <SelectItem value="payment_reminder">Recordatorios de Pago</SelectItem>
                   <SelectItem value="system">Sistema</SelectItem>
                 </SelectContent>
               </Select>

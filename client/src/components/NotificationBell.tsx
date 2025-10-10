@@ -60,6 +60,18 @@ export function NotificationBell() {
         return "🏠";
       case "rental_update":
         return "🔑";
+      case "opportunity":
+        return "🎯";
+      case "role_approved":
+        return "✅";
+      case "role_rejected":
+        return "❌";
+      case "hoa_announcement":
+        return "📣";
+      case "contract_update":
+        return "📄";
+      case "payment_reminder":
+        return "💳";
       default:
         return "📢";
     }
