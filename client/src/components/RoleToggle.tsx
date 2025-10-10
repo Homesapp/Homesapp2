@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -151,10 +152,21 @@ export function RoleToggle() {
     },
   });
 
+  // Watch the selected role
+  const selectedRole = form.watch("requestedRole");
+
+  // Clear condominium field when role is not HOA Manager
+  useEffect(() => {
+    if (selectedRole && selectedRole !== "hoa_manager") {
+      form.setValue("condominiumId", "");
+    }
+  }, [selectedRole, form]);
+
   // Fetch approved condominiums for HOA Manager selection
+  // Only fetch when dialog is open and role is HOA Manager
   const { data: condominiums = [], isLoading: loadingCondominiums } = useQuery({
     queryKey: ["/api/condominiums", { approvalStatus: "approved" }],
-    enabled: selectedRole === "hoa_manager",
+    enabled: showApplicationDialog && selectedRole === "hoa_manager",
   });
 
   const switchRoleMutation = useMutation({
@@ -191,6 +203,7 @@ export function RoleToggle() {
       }
       
       // For other roles, use the existing role-requests endpoint
+      // Explicitly exclude condominiumId from payload
       return apiRequest("POST", "/api/role-requests", {
         userId: user?.id,
         requestedRole: data.requestedRole,
@@ -200,6 +213,7 @@ export function RoleToggle() {
         yearsOfExperience: data.yearsOfExperience,
         experience: data.experience,
         additionalInfo: data.additionalInfo,
+        // condominiumId is intentionally excluded for non-HOA roles
       });
     },
     onSuccess: (_, variables) => {
@@ -244,7 +258,6 @@ export function RoleToggle() {
   // Available roles to apply for
   const availableRoles = ["abogado", "contador", "seller", "management", "provider", "concierge", "hoa_manager"];
 
-  const selectedRole = form.watch("requestedRole");
   const roleInfo = selectedRole ? ROLE_DESCRIPTIONS[selectedRole] : null;
 
   const onSubmit = (data: RoleApplicationFormData) => {
@@ -337,7 +350,16 @@ export function RoleToggle() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
+      <Dialog 
+        open={showApplicationDialog} 
+        onOpenChange={(open) => {
+          setShowApplicationDialog(open);
+          if (!open) {
+            // Reset form when dialog closes
+            form.reset();
+          }
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]" data-testid="dialog-role-application">
           <DialogHeader>
             <DialogTitle>Solicitar Rol Adicional</DialogTitle>
@@ -365,15 +387,7 @@ export function RoleToggle() {
                               "cursor-pointer transition-all hover-elevate",
                               isSelected && "border-primary bg-primary/5"
                             )}
-                            onClick={() => {
-                              field.onChange(role);
-                              // Reset experience fields when changing role
-                              if (role !== field.value) {
-                                form.setValue("experience", "");
-                                form.setValue("yearsOfExperience", 0);
-                                form.setValue("condominiumId", "");
-                              }
-                            }}
+                            onClick={() => field.onChange(role)}
                             data-testid={`button-select-role-${role}`}
                           >
                             <CardContent className="p-4 flex flex-col items-center text-center gap-2 relative">
@@ -569,17 +583,15 @@ export function RoleToggle() {
               )}
 
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowApplicationDialog(false);
-                    form.reset();
-                  }}
-                  data-testid="button-cancel-application"
-                >
-                  Cancelar
-                </Button>
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    data-testid="button-cancel-application"
+                  >
+                    Cancelar
+                  </Button>
+                </DialogClose>
                 <Button
                   type="submit"
                   disabled={!selectedRole || applyRoleMutation.isPending}
