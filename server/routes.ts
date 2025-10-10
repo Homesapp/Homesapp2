@@ -1355,6 +1355,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user role (admin can assign roles directly)
+  app.patch("/api/admin/users/:userId/role", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { role, additionalRole } = req.body;
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Validate role
+      const validRoles = ["cliente", "seller", "owner", "concierge", "provider", "admin", "admin_jr", "master", "management"];
+      if (role && !validRoles.includes(role)) {
+        return res.status(400).json({ message: "Rol inválido" });
+      }
+      if (additionalRole && !validRoles.includes(additionalRole)) {
+        return res.status(400).json({ message: "Rol adicional inválido" });
+      }
+
+      const updateData: any = {};
+      if (role) updateData.role = role;
+      if (additionalRole !== undefined) updateData.additionalRole = additionalRole;
+
+      await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId));
+
+      await createAuditLog(
+        req,
+        "update",
+        "user",
+        userId,
+        `Admin actualizó rol de ${user.firstName} ${user.lastName} a: ${role}${additionalRole ? ` (adicional: ${additionalRole})` : ""}`
+      );
+
+      res.json({ message: "Rol actualizado exitosamente" });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Error al actualizar rol" });
+    }
+  });
+
   // Seller document and commission terms routes
   app.patch("/api/seller/document", isAuthenticated, requireRole(["seller"]), async (req: any, res) => {
     try {
