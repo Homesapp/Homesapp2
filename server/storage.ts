@@ -597,6 +597,7 @@ export interface IStorage {
   getLeadByEmail(email: string): Promise<Lead | undefined>;
   getLeads(filters?: { status?: string; assignedToId?: string; registeredById?: string }): Promise<Lead[]>;
   getActiveLead(email: string): Promise<Lead | undefined>; // Get non-expired lead by email
+  getActiveLeadByPhone(phone: string): Promise<Lead | undefined>; // Get non-expired lead by phone
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead>;
   updateLeadStatus(id: string, status: string): Promise<Lead>;
@@ -3566,6 +3567,22 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(leads.email, email),
+          gte(leads.validUntil, now)
+        )
+      )
+      .orderBy(desc(leads.createdAt))
+      .limit(1);
+    return lead;
+  }
+
+  async getActiveLeadByPhone(phone: string): Promise<Lead | undefined> {
+    const now = new Date();
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(
+        and(
+          eq(leads.phone, phone),
           gte(leads.validUntil, now)
         )
       )

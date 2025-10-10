@@ -7504,11 +7504,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validUntil = new Date();
       validUntil.setMonth(validUntil.getMonth() + validityMonths);
       
-      // Verificar si existe un lead activo (no expirado) con el mismo email
-      const existingLead = await storage.getActiveLead(leadData.email);
+      // Verificar si existe un lead activo (no expirado) con el mismo teléfono
+      const existingLead = await storage.getActiveLeadByPhone(leadData.phone);
       
       if (existingLead) {
-        // Lead duplicado detectado
+        // Lead duplicado detectado - calcular tiempo restante
+        const now = new Date();
+        const validUntilDate = new Date(existingLead.validUntil);
+        const daysRemaining = Math.ceil((validUntilDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const monthsRemaining = Math.floor(daysRemaining / 30);
+        const daysRemainingAfterMonths = daysRemaining % 30;
+        
         const originalSeller = await storage.getUser(existingLead.registeredById);
         
         // Obtener propiedades ofrecidas al lead por el vendedor original
@@ -7539,16 +7545,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createNotification({
           userId: existingLead.registeredById,
           title: "Lead duplicado detectado",
-          message: `El lead ${existingLead.firstName} ${existingLead.lastName} fue registrado nuevamente por ${currentUser.firstName} ${currentUser.lastName}`,
+          message: `El lead ${existingLead.firstName} ${existingLead.lastName} (${existingLead.phone}) fue registrado nuevamente por ${currentUser.firstName} ${currentUser.lastName}`,
           type: "lead_duplicate",
           link: `/leads/${existingLead.id}`,
         });
         
-        await createAuditLog(req, "create", "lead", existingLead.id, `Intento de crear lead duplicado: ${leadData.firstName} ${leadData.lastName}`);
+        await createAuditLog(req, "create", "lead", existingLead.id, `Intento de crear lead duplicado: ${leadData.firstName} ${leadData.lastName} (${leadData.phone})`);
+        
+        // Construir mensaje de tiempo restante
+        let timeMessage = "";
+        if (monthsRemaining > 0) {
+          timeMessage = `${monthsRemaining} ${monthsRemaining === 1 ? 'mes' : 'meses'}`;
+          if (daysRemainingAfterMonths > 0) {
+            timeMessage += ` y ${daysRemainingAfterMonths} ${daysRemainingAfterMonths === 1 ? 'día' : 'días'}`;
+          }
+        } else {
+          timeMessage = `${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'}`;
+        }
         
         return res.status(409).json({ 
-          message: "Este lead ya fue registrado y sigue activo",
-          existingLead,
+          message: `Este lead ya fue registrado por ${originalSeller?.firstName} ${originalSeller?.lastName} el ${new Date(existingLead.createdAt).toLocaleDateString('es-MX')}. Tiempo restante para que se libere: ${timeMessage}`,
+          existingLead: {
+            id: existingLead.id,
+            firstName: existingLead.firstName,
+            lastName: existingLead.lastName,
+            phone: existingLead.phone,
+            registeredBy: `${originalSeller?.firstName} ${originalSeller?.lastName}`,
+            createdAt: existingLead.createdAt,
+            validUntil: existingLead.validUntil,
+            daysRemaining,
+          },
           isDuplicate: true
         });
       }
