@@ -22,7 +22,7 @@ PostgreSQL (Neon serverless) with Drizzle ORM provides type-safe database intera
 The platform employs unified middleware for consistent authentication and automatic logging. The public dashboard adapts based on user authentication status. WebSocket-based real-time chat ensures session-based authentication and per-conversation authorization. A development-only authentication endpoint facilitates role switching for testing purposes.
 
 ### Key Features
-*   **Role-Based Access Control**: Granular permissions across all user types.
+*   **Role-Based Access Control**: Granular permissions across all user types with admin direct role assignment capability. Admins can update both primary and additional roles for any user via the user management interface (PATCH /api/admin/users/:userId/role).
 *   **Advanced Appointment System**: Dual-type scheduling with concierge assignment, dynamic slot availability, and post-appointment client features.
 *   **Property Management Lifecycle**: Features property approval workflows with two-stage publication system (approved → published), owner change requests, sublease functionality, comprehensive photo editing, and a 5-step property submission wizard with digital agreement signing. Properties must be both "approved" and "published" to appear on the public home page for security reasons.
     - **Property Approval States**: 
