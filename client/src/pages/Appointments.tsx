@@ -588,8 +588,8 @@ export default function Appointments() {
                   </div>
                 )}
 
-                {/* Concierge Info - Only show if confirmed and concierge assigned */}
-                {selectedAppointment.status === "confirmed" && selectedAppointment.concierge && (
+                {/* Concierge Info - Show if confirmed or completed and concierge assigned */}
+                {(selectedAppointment.status === "confirmed" || selectedAppointment.status === "completed") && selectedAppointment.concierge && (
                   <div className="border-t pt-4">
                     <div className="text-sm font-medium mb-3">Tu Conserje Asignado</div>
                     <div className="space-y-4">
@@ -679,8 +679,8 @@ export default function Appointments() {
                   </div>
                 )}
 
-                {/* Property Location - Show for confirmed appointments */}
-                {selectedAppointment.status === "confirmed" && selectedAppointment.property && (
+                {/* Property Location - Show for confirmed or completed appointments */}
+                {(selectedAppointment.status === "confirmed" || selectedAppointment.status === "completed") && selectedAppointment.property && (
                   <div className="border-t pt-4">
                     <div className="text-sm font-medium mb-3">Ubicación</div>
                     <div className="space-y-3">
