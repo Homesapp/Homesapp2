@@ -6020,6 +6020,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint to toggle featured status
+  app.patch("/api/admin/properties/:id/featured", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { featured } = req.body;
+      const adminId = req.user.claims.sub;
+      
+      const property = await storage.getProperty(id);
+      if (!property) {
+        return res.status(404).json({ message: "Propiedad no encontrada" });
+      }
+      
+      const updated = await storage.updateProperty(id, {
+        featured: featured,
+      });
+      
+      await createAuditLog(
+        req,
+        featured ? "feature" : "unfeature",
+        "property",
+        id,
+        `Propiedad ${featured ? 'marcada como destacada' : 'desmarcada como destacada'}: ${property.title}`
+      );
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating featured status:", error);
+      res.status(500).json({ message: error.message || "Error al actualizar estado destacado" });
+    }
+  });
+
   app.patch("/api/admin/properties/:id/reject", isAuthenticated, requireRole(["master", "admin", "admin_jr"]), async (req: any, res) => {
     try {
       const { id } = req.params;
