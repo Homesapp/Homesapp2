@@ -223,7 +223,7 @@ export function RoleToggle() {
           <Button 
             variant={isCollapsed ? "ghost" : "outline"}
             size={isCollapsed ? "icon" : "default"}
-            className={isCollapsed ? "" : "gap-2 w-full justify-start"} 
+            className={isCollapsed ? "border-0" : "gap-2 w-full justify-start"} 
             data-testid="button-role-toggle"
           >
             <CurrentIcon className="h-4 w-4" />
