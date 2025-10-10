@@ -92,7 +92,12 @@ export default function LawyerDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contracts", selectedContract?.id, "legal-documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/rental-contracts"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          typeof query.queryKey[0] === 'string' && 
+          query.queryKey[0].startsWith("/api/admin/rental-contracts")
+      });
       toast({
         title: "Documento subido",
         description: "El PDF legal ha sido subido exitosamente",

@@ -110,6 +110,9 @@ import AdminRentalOpportunityRequests from "@/pages/AdminRentalOpportunityReques
 import ContractView from "@/pages/ContractView";
 import ContractTenantForm from "@/pages/ContractTenantForm";
 import ContractOwnerForm from "@/pages/ContractOwnerForm";
+import LawyerDashboard from "@/pages/LawyerDashboard";
+import ContractLegalReview from "@/pages/ContractLegalReview";
+import CheckInManagement from "@/pages/CheckInManagement";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -241,6 +244,9 @@ function AuthenticatedApp() {
               <Route path="/contract/:contractId" component={ContractView} />
               <Route path="/contract-tenant-form/:contractId" component={ContractTenantForm} />
               <Route path="/contract-owner-form/:contractId" component={ContractOwnerForm} />
+              <Route path="/contract/:contractId/legal-review" component={ContractLegalReview} />
+              <Route path="/lawyer/dashboard" component={LawyerDashboard} />
+              <Route path="/admin/check-in" component={CheckInManagement} />
               <Route path="/owner/dashboard" component={OwnerDashboard} />
               <Route path="/admin/dashboard" component={AdminDashboard} />
               <Route path="/admin/profile" component={AdminProfile} />
