@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useGlobalErrorHandler } from "@/hooks/useGlobalErrorHandler";
+import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { apiRequest } from "@/lib/queryClient";
 import Landing from "@/pages/Landing";
 import AdminLogin from "@/pages/AdminLogin";
@@ -134,6 +135,12 @@ function AuthenticatedApp() {
       queryClient.clear();
       setLocation("/admin-login");
     },
+  });
+  
+  // Enable auto-logout after 5 minutes of inactivity for authenticated users
+  useAutoLogout({
+    enabled: isAuthenticated || isAdminAuthenticated,
+    onLogout: isAdminAuthenticated ? () => adminLogoutMutation.mutate() : undefined,
   });
 
   const style = {
