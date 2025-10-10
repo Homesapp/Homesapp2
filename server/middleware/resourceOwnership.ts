@@ -103,14 +103,17 @@ export const requireResourceOwnership = (
       // Check ownership based on resource type and field
       const resourceOwnerId = resource[ownerField];
       
-      // For appointments, check clientId, assignedToId, and property owner
+      // For appointments, check clientId, assignedToId, and property owner (if property exists)
       if (resourceType === 'appointment') {
         const isClient = resource.clientId === userId;
         const isAssigned = resource.assignedToId === userId;
         
-        // Get property to check if user is the owner
-        const property = await storage.getProperty(resource.propertyId);
-        const isPropertyOwner = property?.ownerId === userId;
+        // Get property to check if user is the owner (only if propertyId exists)
+        let isPropertyOwner = false;
+        if (resource.propertyId) {
+          const property = await storage.getProperty(resource.propertyId);
+          isPropertyOwner = property?.ownerId === userId;
+        }
         
         if (!isClient && !isAssigned && !isPropertyOwner) {
           return res.status(403).json({ 

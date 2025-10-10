@@ -8521,6 +8521,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Non-admins cannot specify different clientId, silently use their own
       }
       
+      // Validate manual property data (only for sellers and admins)
+      const hasPropertyId = !!req.body.propertyId;
+      const hasManualProperty = req.body.condominiumName || req.body.unitNumber;
+      
+      if (hasManualProperty) {
+        // Only sellers and admins can create appointments with manual properties
+        if (!user || !["master", "admin", "admin_jr", "seller"].includes(user.role)) {
+          return res.status(403).json({ 
+            message: "Solo vendedores y administradores pueden crear citas con propiedades manuales" 
+          });
+        }
+        
+        // Can't have both propertyId and manual property data
+        if (hasPropertyId) {
+          return res.status(400).json({ 
+            message: "No puedes proporcionar propertyId y datos de propiedad manual al mismo tiempo" 
+          });
+        }
+        
+        // Both condominiumName and unitNumber are required for manual properties
+        if (!req.body.condominiumName || !req.body.unitNumber) {
+          return res.status(400).json({ 
+            message: "Debes proporcionar tanto el nombre del condominio como el número de unidad" 
+          });
+        }
+      } else if (!hasPropertyId) {
+        // Must have either propertyId or manual property data
+        return res.status(400).json({ 
+          message: "Debes proporcionar una propiedad existente o los datos de condominio y unidad" 
+        });
+      }
+      
       // Clean special values and convert date string to Date object if needed
       const cleanedBody = {
         ...req.body,
@@ -8560,13 +8592,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let meetLink = null;
       
       if (appointmentData.type === "video") {
-        const property = await storage.getProperty(appointmentData.propertyId);
+        const property = appointmentData.propertyId ? await storage.getProperty(appointmentData.propertyId) : null;
+        const propertyTitle = property?.title || 
+          (appointmentData.condominiumName && appointmentData.unitNumber 
+            ? `${appointmentData.condominiumName} - ${appointmentData.unitNumber}`
+            : "Propiedad");
+        
         const appointmentDate = new Date(appointmentData.date);
         const endDate = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1 hour later
 
         try {
           const eventResult = await createGoogleMeetEvent({
-            summary: `Visita Virtual: ${property?.title || "Propiedad"}`,
+            summary: `Visita Virtual: ${propertyTitle}`,
             description: `Cita virtual para visitar la propiedad`,
             start: appointmentDate,
             end: endDate,
@@ -8591,16 +8628,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Log appointment creation
-        const property = await storage.getProperty(appointment.propertyId);
+        const property = appointment.propertyId ? await storage.getProperty(appointment.propertyId) : null;
+        const propertyDescription = property?.title || 
+          (appointment.condominiumName && appointment.unitNumber 
+            ? `${appointment.condominiumName} - ${appointment.unitNumber}`
+            : "propiedad");
+        
         await createAuditLog(
           req,
           "create",
           "appointment",
           appointment.id,
-          `Cita creada para ${property?.title || "propiedad"} - ${new Date(appointment.date).toLocaleDateString()}`
+          `Cita creada para ${propertyDescription} - ${new Date(appointment.date).toLocaleDateString()}`
         );
 
-        // Auto-approval logic
+        // Auto-approval logic (only for properties in system)
         if (property && property.ownerId) {
           const ownerSettings = await storage.getOwnerSettings(property.ownerId);
           
