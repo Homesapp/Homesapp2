@@ -7554,31 +7554,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Crear nuevo lead con fecha de validez
+      // Leads registrados por vendedores/admin se marcan como verificados automáticamente
       const lead = await storage.createLead({
         ...leadData,
         registeredById: userId,
         validUntil,
-        emailVerified: false,
+        emailVerified: true, // Auto-verificado cuando es registrado por staff
       });
-      
-      // Generar token de verificación para el email del lead
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const verificationLink = `${process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.repl.co` : 'http://localhost:5000'}/verify-lead?token=${verificationToken}&email=${encodeURIComponent(lead.email)}`;
-      
-      // Guardar token de verificación en la base de datos (reutilizando tabla de tokens)
-      await storage.createEmailVerificationToken({
-        userId: lead.id, // Usar ID del lead
-        token: verificationToken,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
-      });
-      
-      // Enviar email de confirmación al lead
-      try {
-        await sendLeadVerificationEmail(lead.email, lead.firstName, verificationLink);
-      } catch (emailError) {
-        console.error("Error enviando email de verificación al lead:", emailError);
-        // No falla la creación del lead si no se puede enviar el email
-      }
       
       await createAuditLog(req, "create", "lead", lead.id, `Lead creado: ${lead.firstName} ${lead.lastName}`);
       
