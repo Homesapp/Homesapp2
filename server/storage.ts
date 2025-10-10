@@ -518,7 +518,7 @@ export interface IStorage {
   getOffersByOwner(ownerId: string): Promise<Array<Offer & { property: Property; client: User }>>;
   createOffer(offer: InsertOffer): Promise<Offer>;
   updateOffer(id: string, updates: Partial<InsertOffer>): Promise<Offer>;
-  acceptOffer(offerId: string): Promise<Offer>;
+  acceptOffer(offerId: string): Promise<{ offer: Offer; contract: RentalContract }>;
   rejectOffer(offerId: string, reason?: string): Promise<Offer>;
   createCounterOffer(offerId: string, counterOfferData: {
     counterOfferAmount?: string;
@@ -2999,8 +2999,17 @@ export class DatabaseStorage implements IStorage {
     const isForSublease = currentOffer.clientPropertyUse === 'subarrendamiento';
     const administrativeFee = isForSublease ? 3800 : 2500;
 
-    // Calculate lease dates
-    const leaseStartDate = currentOffer.moveInDate || new Date();
+    // Calculate lease dates with robust validation
+    let leaseStartDate = new Date();
+    if (currentOffer.moveInDate) {
+      const parsedDate = new Date(currentOffer.moveInDate);
+      if (!isNaN(parsedDate.getTime())) {
+        leaseStartDate = parsedDate;
+      } else {
+        console.warn('[WARN] Invalid moveInDate, using current date:', currentOffer.moveInDate);
+      }
+    }
+    
     const leaseEndDate = new Date(leaseStartDate);
     leaseEndDate.setMonth(leaseEndDate.getMonth() + contractDurationMonths);
 

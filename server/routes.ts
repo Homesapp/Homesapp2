@@ -10202,6 +10202,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST endpoint for accept (compatibility with testing/external APIs)
+  app.post("/api/owner/offers/:id/accept", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify offer exists and user is the owner
+      const offer = await storage.getOffer(id);
+      if (!offer) {
+        return res.status(404).json({ message: "Oferta no encontrada" });
+      }
+
+      const property = await storage.getProperty(offer.propertyId);
+      if (!property || property.ownerId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para aceptar esta oferta" });
+      }
+
+      // Validate workflow state - owner can accept when it's client's turn (pending or countered by client)
+      if (offer.status === 'accepted' || offer.status === 'rejected') {
+        return res.status(400).json({ message: "Esta oferta ya fue procesada" });
+      }
+
+      if (offer.status === 'countered' && offer.lastOfferedBy === 'owner') {
+        return res.status(400).json({ message: "No puedes aceptar tu propia contraoferta. Espera la respuesta del cliente." });
+      }
+
+      const { offer: acceptedOffer, contract } = await storage.acceptOffer(id);
+      
+      console.log(`[ACCEPT OFFER] Offer ${id} accepted. Contract created: ${contract?.id}`);
+      
+      // Create notification for client about accepted offer
+      await storage.createNotification({
+        userId: offer.clientId,
+        title: "Oferta Aceptada",
+        message: `Tu oferta de renta para ${property.title || 'la propiedad'} ha sido aceptada por el propietario.`,
+        category: "offer",
+        relatedEntityType: "offer",
+        relatedEntityId: id,
+      });
+
+      // Create notification for client about contract
+      if (contract) {
+        await storage.createNotification({
+          userId: offer.clientId,
+          title: "Completar Formato de Inquilino",
+          message: `Por favor completa el formato de inquilino para proceder con el contrato de ${property.title || 'la propiedad'}.`,
+          category: "contract",
+          relatedEntityType: "rental_contract",
+          relatedEntityId: contract.id,
+        });
+
+        // Create notification for owner about contract
+        await storage.createNotification({
+          userId: property.ownerId!,
+          title: "Completar Formato de Propietario",
+          message: `Por favor completa el formato de propietario para proceder con el contrato de ${property.title || 'la propiedad'}.`,
+          category: "contract",
+          relatedEntityType: "rental_contract",
+          relatedEntityId: contract.id,
+        });
+      }
+
+      await createAuditLog(
+        req,
+        "update",
+        "offer",
+        id,
+        `Oferta aceptada por propietario - Contrato creado: ${contract?.id}`
+      );
+
+      res.json({ offer: acceptedOffer, contract });
+    } catch (error) {
+      console.error("Error accepting offer:", error);
+      res.status(500).json({ message: "Error al aceptar oferta" });
+    }
+  });
+
   app.patch("/api/owner/offers/:id/reject", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
