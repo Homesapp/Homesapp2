@@ -107,6 +107,7 @@ import AdminLegalDocuments from "@/pages/AdminLegalDocuments";
 import AdminTenantScreening from "@/pages/AdminTenantScreening";
 import AdminMarketingCampaigns from "@/pages/AdminMarketingCampaigns";
 import AdminRentalOpportunityRequests from "@/pages/AdminRentalOpportunityRequests";
+import ContractView from "@/pages/ContractView";
 import ContractTenantForm from "@/pages/ContractTenantForm";
 import ContractOwnerForm from "@/pages/ContractOwnerForm";
 import NotFound from "@/pages/not-found";
@@ -237,6 +238,7 @@ function AuthenticatedApp() {
               <Route path="/favoritos" component={Favorites} />
               <Route path="/mis-oportunidades" component={MyOpportunities} />
               <Route path="/rental-offer/:propertyId" component={RentalOfferForm} />
+              <Route path="/contract/:contractId" component={ContractView} />
               <Route path="/contract-tenant-form/:contractId" component={ContractTenantForm} />
               <Route path="/contract-owner-form/:contractId" component={ContractOwnerForm} />
               <Route path="/owner/dashboard" component={OwnerDashboard} />

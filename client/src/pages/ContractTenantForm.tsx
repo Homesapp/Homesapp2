@@ -128,10 +128,7 @@ export default function ContractTenantForm() {
 
   const saveMutation = useMutation({
     mutationFn: (data: TenantFormData) => 
-      apiRequest(`/api/contracts/${contractId}/tenant-info`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      apiRequest("POST", `/api/contracts/${contractId}/tenant-info`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         predicate: (query) => 
