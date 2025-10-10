@@ -15319,6 +15319,448 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // HOA (Homeowners Association) Module Routes
+  // ========================================
+
+  // Condominium Units
+  app.get("/api/hoa/condominiums/:condominiumId/units", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const units = await storage.getCondominiumUnitsByCondominium(req.params.condominiumId);
+      res.json(units);
+    } catch (error: any) {
+      console.error("Error fetching condominium units:", error);
+      res.status(500).json({ message: "Failed to fetch units" });
+    }
+  });
+
+  app.get("/api/hoa/my-units", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const units = await storage.getCondominiumUnitsByOwner(userId);
+      res.json(units);
+    } catch (error: any) {
+      console.error("Error fetching my units:", error);
+      res.status(500).json({ message: "Failed to fetch units" });
+    }
+  });
+
+  app.get("/api/hoa/units/:id", isAuthenticated, async (req, res) => {
+    try {
+      const unit = await storage.getCondominiumUnit(req.params.id);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      res.json(unit);
+    } catch (error: any) {
+      console.error("Error fetching unit:", error);
+      res.status(500).json({ message: "Failed to fetch unit" });
+    }
+  });
+
+  app.post("/api/hoa/units", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const validationResult = insertCondominiumUnitSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const unit = await storage.createCondominiumUnit(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "condominium_unit",
+        unit.id,
+        `Created unit ${unit.unitNumber} in condominium ${unit.condominiumId}`
+      );
+
+      res.status(201).json(unit);
+    } catch (error: any) {
+      console.error("Error creating unit:", error);
+      res.status(500).json({ message: "Failed to create unit" });
+    }
+  });
+
+  app.patch("/api/hoa/units/:id", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const validationResult = insertCondominiumUnitSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const existingUnit = await storage.getCondominiumUnit(req.params.id);
+      if (!existingUnit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+
+      const unit = await storage.updateCondominiumUnit(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "condominium_unit",
+        req.params.id,
+        `Updated unit ${unit.unitNumber}`
+      );
+
+      res.json(unit);
+    } catch (error: any) {
+      console.error("Error updating unit:", error);
+      res.status(500).json({ message: "Failed to update unit" });
+    }
+  });
+
+  app.delete("/api/hoa/units/:id", isAuthenticated, requireRole(["admin", "master"]), async (req, res) => {
+    try {
+      await storage.deleteCondominiumUnit(req.params.id);
+
+      await createAuditLog(
+        req,
+        "delete",
+        "condominium_unit",
+        req.params.id,
+        `Deleted unit`
+      );
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting unit:", error);
+      res.status(500).json({ message: "Failed to delete unit" });
+    }
+  });
+
+  // Condominium Fees
+  app.get("/api/hoa/units/:unitId/fees", isAuthenticated, async (req, res) => {
+    try {
+      const fees = await storage.getCondominiumFeesByUnit(req.params.unitId);
+      res.json(fees);
+    } catch (error: any) {
+      console.error("Error fetching fees:", error);
+      res.status(500).json({ message: "Failed to fetch fees" });
+    }
+  });
+
+  app.get("/api/hoa/fees/status/:status", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const fees = await storage.getCondominiumFeesByStatus(req.params.status);
+      res.json(fees);
+    } catch (error: any) {
+      console.error("Error fetching fees:", error);
+      res.status(500).json({ message: "Failed to fetch fees" });
+    }
+  });
+
+  app.post("/api/hoa/fees", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const userId = req.session.adminUser?.id || req.user?.claims?.sub;
+      const validationResult = insertCondominiumFeeSchema.safeParse({
+        ...req.body,
+        createdById: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const fee = await storage.createCondominiumFee(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "condominium_fee",
+        fee.id,
+        `Created fee for unit ${fee.condominiumUnitId} - ${fee.month}/${fee.year}`
+      );
+
+      res.status(201).json(fee);
+    } catch (error: any) {
+      console.error("Error creating fee:", error);
+      res.status(500).json({ message: "Failed to create fee" });
+    }
+  });
+
+  app.patch("/api/hoa/fees/:id", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const validationResult = insertCondominiumFeeSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const existingFee = await storage.getCondominiumFee(req.params.id);
+      if (!existingFee) {
+        return res.status(404).json({ message: "Fee not found" });
+      }
+
+      const fee = await storage.updateCondominiumFee(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "condominium_fee",
+        req.params.id,
+        `Updated fee`
+      );
+
+      res.json(fee);
+    } catch (error: any) {
+      console.error("Error updating fee:", error);
+      res.status(500).json({ message: "Failed to update fee" });
+    }
+  });
+
+  app.patch("/api/hoa/fees/:id/status", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const fee = await storage.updateCondominiumFeeStatus(req.params.id, status);
+
+      await createAuditLog(
+        req,
+        "update",
+        "condominium_fee",
+        req.params.id,
+        `Updated fee status to ${status}`
+      );
+
+      res.json(fee);
+    } catch (error: any) {
+      console.error("Error updating fee status:", error);
+      res.status(500).json({ message: "Failed to update fee status" });
+    }
+  });
+
+  // Condominium Fee Payments
+  app.get("/api/hoa/fees/:feeId/payments", isAuthenticated, async (req, res) => {
+    try {
+      const payments = await storage.getCondominiumFeePaymentsByFee(req.params.feeId);
+      res.json(payments);
+    } catch (error: any) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  app.post("/api/hoa/fees/:feeId/payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validationResult = insertCondominiumFeePaymentSchema.safeParse({
+        ...req.body,
+        condominiumFeeId: req.params.feeId,
+        registeredById: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const payment = await storage.createCondominiumFeePayment(validationResult.data);
+
+      // Update fee status to pagado
+      await storage.updateCondominiumFeeStatus(req.params.feeId, "pagado");
+
+      await createAuditLog(
+        req,
+        "create",
+        "condominium_fee_payment",
+        payment.id,
+        `Registered payment for fee ${req.params.feeId}`
+      );
+
+      res.status(201).json(payment);
+    } catch (error: any) {
+      console.error("Error creating payment:", error);
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  // Condominium Issues
+  app.get("/api/hoa/condominiums/:condominiumId/issues", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const issues = await storage.getCondominiumIssuesByCondominium(req.params.condominiumId);
+      res.json(issues);
+    } catch (error: any) {
+      console.error("Error fetching issues:", error);
+      res.status(500).json({ message: "Failed to fetch issues" });
+    }
+  });
+
+  app.get("/api/hoa/my-issues", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const issues = await storage.getCondominiumIssuesByReporter(userId);
+      res.json(issues);
+    } catch (error: any) {
+      console.error("Error fetching my issues:", error);
+      res.status(500).json({ message: "Failed to fetch issues" });
+    }
+  });
+
+  app.get("/api/hoa/issues/status/:status", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const issues = await storage.getCondominiumIssuesByStatus(req.params.status);
+      res.json(issues);
+    } catch (error: any) {
+      console.error("Error fetching issues:", error);
+      res.status(500).json({ message: "Failed to fetch issues" });
+    }
+  });
+
+  app.get("/api/hoa/issues/:id", isAuthenticated, async (req, res) => {
+    try {
+      const issue = await storage.getCondominiumIssue(req.params.id);
+      if (!issue) {
+        return res.status(404).json({ message: "Issue not found" });
+      }
+      res.json(issue);
+    } catch (error: any) {
+      console.error("Error fetching issue:", error);
+      res.status(500).json({ message: "Failed to fetch issue" });
+    }
+  });
+
+  app.post("/api/hoa/issues", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validationResult = insertCondominiumIssueSchema.safeParse({
+        ...req.body,
+        reportedById: userId,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const issue = await storage.createCondominiumIssue(validationResult.data);
+
+      await createAuditLog(
+        req,
+        "create",
+        "condominium_issue",
+        issue.id,
+        `Reported issue: ${issue.title}`
+      );
+
+      res.status(201).json(issue);
+    } catch (error: any) {
+      console.error("Error creating issue:", error);
+      res.status(500).json({ message: "Failed to create issue" });
+    }
+  });
+
+  app.patch("/api/hoa/issues/:id", isAuthenticated, async (req, res) => {
+    try {
+      const validationResult = insertCondominiumIssueSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const existingIssue = await storage.getCondominiumIssue(req.params.id);
+      if (!existingIssue) {
+        return res.status(404).json({ message: "Issue not found" });
+      }
+
+      const issue = await storage.updateCondominiumIssue(req.params.id, validationResult.data);
+
+      await createAuditLog(
+        req,
+        "update",
+        "condominium_issue",
+        req.params.id,
+        `Updated issue: ${issue.title}`
+      );
+
+      res.json(issue);
+    } catch (error: any) {
+      console.error("Error updating issue:", error);
+      res.status(500).json({ message: "Failed to update issue" });
+    }
+  });
+
+  app.patch("/api/hoa/issues/:id/status", isAuthenticated, requireRole(["admin", "master", "management"]), async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const existingIssue = await storage.getCondominiumIssue(req.params.id);
+      if (!existingIssue) {
+        return res.status(404).json({ message: "Issue not found" });
+      }
+
+      const issue = await storage.updateCondominiumIssueStatus(req.params.id, status);
+
+      await createAuditLog(
+        req,
+        "update",
+        "condominium_issue",
+        req.params.id,
+        `Updated issue status to ${status}`
+      );
+
+      res.json(issue);
+    } catch (error: any) {
+      console.error("Error updating issue status:", error);
+      res.status(500).json({ message: "Failed to update issue status" });
+    }
+  });
+
+  app.post("/api/hoa/issues/:id/resolve", isAuthenticated, requireRole(["admin", "master", "management"]), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { resolution } = req.body;
+
+      if (!resolution) {
+        return res.status(400).json({ message: "Resolution is required" });
+      }
+
+      const existingIssue = await storage.getCondominiumIssue(req.params.id);
+      if (!existingIssue) {
+        return res.status(404).json({ message: "Issue not found" });
+      }
+
+      const issue = await storage.resolveCondominiumIssue(req.params.id, userId, resolution);
+
+      await createAuditLog(
+        req,
+        "update",
+        "condominium_issue",
+        req.params.id,
+        `Resolved issue: ${issue.title}`
+      );
+
+      res.json(issue);
+    } catch (error: any) {
+      console.error("Error resolving issue:", error);
+      res.status(500).json({ message: "Failed to resolve issue" });
+    }
+  });
+
   const httpServer = createServer(app);
   const sessionMiddleware = getSession();
   

@@ -269,6 +269,18 @@ import {
   tenantMoveInForms,
   type TenantMoveInForm,
   type InsertTenantMoveInForm,
+  condominiumUnits,
+  type CondominiumUnit,
+  type InsertCondominiumUnit,
+  condominiumFees,
+  type CondominiumFee,
+  type InsertCondominiumFee,
+  condominiumFeePayments,
+  type CondominiumFeePayment,
+  type InsertCondominiumFeePayment,
+  condominiumIssues,
+  type CondominiumIssue,
+  type InsertCondominiumIssue,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -917,6 +929,37 @@ export interface IStorage {
   getContractSignedDocuments(rentalContractId: string): Promise<ContractSignedDocument[]>;
   createContractSignedDocument(document: InsertContractSignedDocument): Promise<ContractSignedDocument>;
   deleteContractSignedDocument(id: string): Promise<void>;
+
+  // HOA - Condominium Unit operations
+  getCondominiumUnit(id: string): Promise<CondominiumUnit | undefined>;
+  getCondominiumUnitsByCondominium(condominiumId: string): Promise<CondominiumUnit[]>;
+  getCondominiumUnitsByOwner(ownerId: string): Promise<CondominiumUnit[]>;
+  createCondominiumUnit(unit: InsertCondominiumUnit): Promise<CondominiumUnit>;
+  updateCondominiumUnit(id: string, updates: Partial<InsertCondominiumUnit>): Promise<CondominiumUnit>;
+  deleteCondominiumUnit(id: string): Promise<void>;
+
+  // HOA - Condominium Fee operations
+  getCondominiumFee(id: string): Promise<CondominiumFee | undefined>;
+  getCondominiumFeesByUnit(unitId: string): Promise<CondominiumFee[]>;
+  getCondominiumFeesByStatus(status: string): Promise<CondominiumFee[]>;
+  createCondominiumFee(fee: InsertCondominiumFee): Promise<CondominiumFee>;
+  updateCondominiumFee(id: string, updates: Partial<InsertCondominiumFee>): Promise<CondominiumFee>;
+  updateCondominiumFeeStatus(id: string, status: string): Promise<CondominiumFee>;
+
+  // HOA - Condominium Fee Payment operations
+  getCondominiumFeePayment(id: string): Promise<CondominiumFeePayment | undefined>;
+  getCondominiumFeePaymentsByFee(feeId: string): Promise<CondominiumFeePayment[]>;
+  createCondominiumFeePayment(payment: InsertCondominiumFeePayment): Promise<CondominiumFeePayment>;
+
+  // HOA - Condominium Issue operations
+  getCondominiumIssue(id: string): Promise<CondominiumIssue | undefined>;
+  getCondominiumIssuesByCondominium(condominiumId: string): Promise<CondominiumIssue[]>;
+  getCondominiumIssuesByStatus(status: string): Promise<CondominiumIssue[]>;
+  getCondominiumIssuesByReporter(reportedById: string): Promise<CondominiumIssue[]>;
+  createCondominiumIssue(issue: InsertCondominiumIssue): Promise<CondominiumIssue>;
+  updateCondominiumIssue(id: string, updates: Partial<InsertCondominiumIssue>): Promise<CondominiumIssue>;
+  updateCondominiumIssueStatus(id: string, status: string): Promise<CondominiumIssue>;
+  resolveCondominiumIssue(id: string, resolvedById: string, resolution: string): Promise<CondominiumIssue>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6054,6 +6097,167 @@ export class DatabaseStorage implements IStorage {
 
   async deleteContractSignedDocument(id: string): Promise<void> {
     await db.delete(contractSignedDocuments).where(eq(contractSignedDocuments.id, id));
+  }
+
+  // ========================================
+  // HOA Module Operations
+  // ========================================
+
+  // Condominium Unit operations
+  async getCondominiumUnit(id: string): Promise<CondominiumUnit | undefined> {
+    const result = await db.select().from(condominiumUnits).where(eq(condominiumUnits.id, id));
+    return result[0];
+  }
+
+  async getCondominiumUnitsByCondominium(condominiumId: string): Promise<CondominiumUnit[]> {
+    return await db.select()
+      .from(condominiumUnits)
+      .where(eq(condominiumUnits.condominiumId, condominiumId))
+      .orderBy(condominiumUnits.unitNumber);
+  }
+
+  async getCondominiumUnitsByOwner(ownerId: string): Promise<CondominiumUnit[]> {
+    return await db.select()
+      .from(condominiumUnits)
+      .where(eq(condominiumUnits.ownerId, ownerId))
+      .orderBy(desc(condominiumUnits.createdAt));
+  }
+
+  async createCondominiumUnit(unit: InsertCondominiumUnit): Promise<CondominiumUnit> {
+    const result = await db.insert(condominiumUnits).values(unit).returning();
+    return result[0];
+  }
+
+  async updateCondominiumUnit(id: string, updates: Partial<InsertCondominiumUnit>): Promise<CondominiumUnit> {
+    const result = await db.update(condominiumUnits)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(condominiumUnits.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCondominiumUnit(id: string): Promise<void> {
+    await db.delete(condominiumUnits).where(eq(condominiumUnits.id, id));
+  }
+
+  // Condominium Fee operations
+  async getCondominiumFee(id: string): Promise<CondominiumFee | undefined> {
+    const result = await db.select().from(condominiumFees).where(eq(condominiumFees.id, id));
+    return result[0];
+  }
+
+  async getCondominiumFeesByUnit(unitId: string): Promise<CondominiumFee[]> {
+    return await db.select()
+      .from(condominiumFees)
+      .where(eq(condominiumFees.condominiumUnitId, unitId))
+      .orderBy(desc(condominiumFees.year), desc(condominiumFees.month));
+  }
+
+  async getCondominiumFeesByStatus(status: string): Promise<CondominiumFee[]> {
+    return await db.select()
+      .from(condominiumFees)
+      .where(eq(condominiumFees.status, status as any))
+      .orderBy(condominiumFees.dueDate);
+  }
+
+  async createCondominiumFee(fee: InsertCondominiumFee): Promise<CondominiumFee> {
+    const result = await db.insert(condominiumFees).values(fee).returning();
+    return result[0];
+  }
+
+  async updateCondominiumFee(id: string, updates: Partial<InsertCondominiumFee>): Promise<CondominiumFee> {
+    const result = await db.update(condominiumFees)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(condominiumFees.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateCondominiumFeeStatus(id: string, status: string): Promise<CondominiumFee> {
+    const result = await db.update(condominiumFees)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(condominiumFees.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Condominium Fee Payment operations
+  async getCondominiumFeePayment(id: string): Promise<CondominiumFeePayment | undefined> {
+    const result = await db.select().from(condominiumFeePayments).where(eq(condominiumFeePayments.id, id));
+    return result[0];
+  }
+
+  async getCondominiumFeePaymentsByFee(feeId: string): Promise<CondominiumFeePayment[]> {
+    return await db.select()
+      .from(condominiumFeePayments)
+      .where(eq(condominiumFeePayments.condominiumFeeId, feeId))
+      .orderBy(desc(condominiumFeePayments.paidAt));
+  }
+
+  async createCondominiumFeePayment(payment: InsertCondominiumFeePayment): Promise<CondominiumFeePayment> {
+    const result = await db.insert(condominiumFeePayments).values(payment).returning();
+    return result[0];
+  }
+
+  // Condominium Issue operations
+  async getCondominiumIssue(id: string): Promise<CondominiumIssue | undefined> {
+    const result = await db.select().from(condominiumIssues).where(eq(condominiumIssues.id, id));
+    return result[0];
+  }
+
+  async getCondominiumIssuesByCondominium(condominiumId: string): Promise<CondominiumIssue[]> {
+    return await db.select()
+      .from(condominiumIssues)
+      .where(eq(condominiumIssues.condominiumId, condominiumId))
+      .orderBy(desc(condominiumIssues.createdAt));
+  }
+
+  async getCondominiumIssuesByStatus(status: string): Promise<CondominiumIssue[]> {
+    return await db.select()
+      .from(condominiumIssues)
+      .where(eq(condominiumIssues.status, status as any))
+      .orderBy(desc(condominiumIssues.createdAt));
+  }
+
+  async getCondominiumIssuesByReporter(reportedById: string): Promise<CondominiumIssue[]> {
+    return await db.select()
+      .from(condominiumIssues)
+      .where(eq(condominiumIssues.reportedById, reportedById))
+      .orderBy(desc(condominiumIssues.createdAt));
+  }
+
+  async createCondominiumIssue(issue: InsertCondominiumIssue): Promise<CondominiumIssue> {
+    const result = await db.insert(condominiumIssues).values(issue).returning();
+    return result[0];
+  }
+
+  async updateCondominiumIssue(id: string, updates: Partial<InsertCondominiumIssue>): Promise<CondominiumIssue> {
+    const result = await db.update(condominiumIssues)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(condominiumIssues.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateCondominiumIssueStatus(id: string, status: string): Promise<CondominiumIssue> {
+    const result = await db.update(condominiumIssues)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(condominiumIssues.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async resolveCondominiumIssue(id: string, resolvedById: string, resolution: string): Promise<CondominiumIssue> {
+    const result = await db.update(condominiumIssues)
+      .set({
+        status: 'resuelto',
+        resolvedAt: new Date(),
+        resolution,
+        updatedAt: new Date()
+      })
+      .where(eq(condominiumIssues.id, id))
+      .returning();
+    return result[0];
   }
 }
 
