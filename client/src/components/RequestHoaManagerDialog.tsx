@@ -100,7 +100,7 @@ export function RequestHoaManagerDialog({ trigger }: RequestHoaManagerDialogProp
   };
 
   return (
-    <Dialog open={open} onValueChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" data-testid="button-request-hoa-manager">
