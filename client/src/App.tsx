@@ -117,6 +117,7 @@ import ContractLegalReview from "@/pages/ContractLegalReview";
 import CheckInManagement from "@/pages/CheckInManagement";
 import HoaManagement from "@/pages/HoaManagement";
 import OwnerHoaPortal from "@/pages/OwnerHoaPortal";
+import PublicOfferForm from "@/pages/PublicOfferForm";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -172,6 +173,7 @@ function AuthenticatedApp() {
         <Route path="/favoritos" component={Favorites} />
         <Route path="/terminos" component={Terms} />
         <Route path="/privacidad" component={Privacy} />
+        <Route path="/offer/:token" component={PublicOfferForm} />
         <Route path="/" component={PublicDashboard} />
         <Route component={PublicDashboard} />
       </Switch>
