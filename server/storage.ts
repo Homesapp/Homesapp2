@@ -482,8 +482,18 @@ export interface IStorage {
   // Offer operations
   getOffer(id: string): Promise<Offer | undefined>;
   getOffers(filters?: { status?: string; clientId?: string; propertyId?: string }): Promise<Offer[]>;
+  getOffersByOwner(ownerId: string): Promise<Array<Offer & { property: Property; client: User }>>;
   createOffer(offer: InsertOffer): Promise<Offer>;
   updateOffer(id: string, updates: Partial<InsertOffer>): Promise<Offer>;
+  acceptOffer(offerId: string): Promise<Offer>;
+  rejectOffer(offerId: string, reason?: string): Promise<Offer>;
+  createCounterOffer(offerId: string, counterOfferData: {
+    counterOfferAmount?: string;
+    counterOfferServicesIncluded?: any;
+    counterOfferServicesExcluded?: any;
+    counterOfferNotes?: string;
+    offeredBy: 'client' | 'owner';
+  }): Promise<Offer>;
   
   // Rental Opportunity Request operations
   getVisitedPropertiesByClient(clientId: string): Promise<Array<Property & { appointment: Appointment }>>;
@@ -2819,6 +2829,106 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(offers.id, id))
       .returning();
+    return offer;
+  }
+
+  async getOffersByOwner(ownerId: string): Promise<Array<Offer & { property: Property; client: User }>> {
+    const offersList = await db
+      .select({
+        offer: offers,
+        property: properties,
+        client: users,
+      })
+      .from(offers)
+      .innerJoin(properties, eq(offers.propertyId, properties.id))
+      .innerJoin(users, eq(offers.clientId, users.id))
+      .where(eq(properties.ownerId, ownerId))
+      .orderBy(desc(offers.createdAt));
+
+    return offersList.map(row => ({
+      ...row.offer,
+      property: row.property,
+      client: row.client
+    }));
+  }
+
+  async acceptOffer(offerId: string): Promise<Offer> {
+    const [offer] = await db
+      .update(offers)
+      .set({ 
+        status: 'accepted' as any,
+        updatedAt: new Date() 
+      })
+      .where(eq(offers.id, offerId))
+      .returning();
+    return offer;
+  }
+
+  async rejectOffer(offerId: string, reason?: string): Promise<Offer> {
+    const [offer] = await db
+      .update(offers)
+      .set({ 
+        status: 'rejected' as any,
+        notes: reason || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(offers.id, offerId))
+      .returning();
+    return offer;
+  }
+
+  async createCounterOffer(offerId: string, counterOfferData: {
+    counterOfferAmount?: string;
+    counterOfferServicesIncluded?: any;
+    counterOfferServicesExcluded?: any;
+    counterOfferNotes?: string;
+    offeredBy: 'client' | 'owner';
+  }): Promise<Offer> {
+    // Get current offer to increment negotiation round and save to history
+    const [currentOffer] = await db.select().from(offers).where(eq(offers.id, offerId));
+    
+    if (!currentOffer) {
+      throw new Error('Offer not found');
+    }
+
+    // Check negotiation round limit (max 3 rounds)
+    const currentRound = currentOffer.negotiationRound || 0;
+    if (currentRound >= 3) {
+      throw new Error('Maximum negotiation rounds (3) reached');
+    }
+
+    // Build negotiation history entry
+    const historyEntry = {
+      round: currentRound + 1,
+      offeredBy: counterOfferData.offeredBy,
+      amount: counterOfferData.counterOfferAmount || currentOffer.counterOfferAmount,
+      servicesIncluded: counterOfferData.counterOfferServicesIncluded || currentOffer.counterOfferServicesIncluded,
+      servicesExcluded: counterOfferData.counterOfferServicesExcluded || currentOffer.counterOfferServicesExcluded,
+      notes: counterOfferData.counterOfferNotes,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Update existing history or create new array
+    const history = Array.isArray(currentOffer.negotiationHistory) 
+      ? [...currentOffer.negotiationHistory as any[], historyEntry]
+      : [historyEntry];
+
+    const [offer] = await db
+      .update(offers)
+      .set({
+        counterOfferAmount: counterOfferData.counterOfferAmount || currentOffer.counterOfferAmount,
+        counterOfferServicesIncluded: counterOfferData.counterOfferServicesIncluded || currentOffer.counterOfferServicesIncluded,
+        counterOfferServicesExcluded: counterOfferData.counterOfferServicesExcluded || currentOffer.counterOfferServicesExcluded,
+        counterOfferNotes: counterOfferData.counterOfferNotes || currentOffer.counterOfferNotes,
+        status: 'countered' as any,
+        negotiationRound: currentRound + 1,
+        lastOfferedBy: counterOfferData.offeredBy,
+        negotiationHistory: history,
+        updatedAt: new Date(),
+      })
+      .where(eq(offers.id, offerId))
+      .returning();
+    
     return offer;
   }
 
