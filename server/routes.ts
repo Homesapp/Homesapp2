@@ -83,6 +83,8 @@ import {
   insertPropertyAgreementSchema,
   insertProviderApplicationSchema,
   insertFeedbackSchema,
+  insertContractTenantInfoSchema,
+  insertContractOwnerInfoSchema,
   updateFeedbackSchema,
   insertRentalCommissionConfigSchema,
   insertAccountantAssignmentSchema,
@@ -10296,6 +10298,320 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating counter offer:", error);
       res.status(400).json({ message: error.message || "Error al crear contraoferta" });
+    }
+  });
+
+  // Contract Routes
+  app.get("/api/contracts/:contractId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      // Verify user has access to this contract (tenant, owner, or admin)
+      const property = await storage.getProperty(contract.propertyId);
+      const user = await storage.getUser(userId);
+      const isAdmin = user && ["master", "admin", "admin_jr"].includes(user.role);
+      
+      if (contract.tenantId !== userId && property?.ownerId !== userId && !isAdmin) {
+        return res.status(403).json({ message: "No tienes permiso para ver este contrato" });
+      }
+
+      // Get additional info
+      const tenantInfo = await storage.getContractTenantInfo(contractId);
+      const ownerInfo = await storage.getContractOwnerInfo(contractId);
+
+      res.json({ contract, tenantInfo, ownerInfo, property });
+    } catch (error) {
+      console.error("Error fetching contract:", error);
+      res.status(500).json({ message: "Error al obtener contrato" });
+    }
+  });
+
+  app.get("/api/contracts/:contractId/tenant-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      // Verify user is the tenant
+      if (contract.tenantId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para ver esta información" });
+      }
+
+      const tenantInfo = await storage.getContractTenantInfo(contractId);
+      res.json(tenantInfo || null);
+    } catch (error) {
+      console.error("Error fetching tenant info:", error);
+      res.status(500).json({ message: "Error al obtener información del inquilino" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/tenant-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      // Verify user is the tenant
+      if (contract.tenantId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para actualizar esta información" });
+      }
+
+      // Validate request body with Zod schema
+      const validationResult = insertContractTenantInfoSchema
+        .omit({ rentalContractId: true })
+        .partial()
+        .safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+
+      // Check if info already exists
+      const existingInfo = await storage.getContractTenantInfo(contractId);
+      
+      let tenantInfo;
+      if (existingInfo) {
+        tenantInfo = await storage.updateContractTenantInfo(contractId, sanitizedData);
+      } else {
+        tenantInfo = await storage.createContractTenantInfo({
+          ...sanitizedData,
+          rentalContractId: contractId
+        });
+      }
+
+      // Update contract status if both forms are complete
+      const ownerInfo = await storage.getContractOwnerInfo(contractId);
+      if (ownerInfo) {
+        await storage.updateRentalContractStatus(contractId, 'pendiente_verificacion');
+        
+        // Notify admin to verify
+        const admins = await storage.getAllAdmins();
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.userId,
+            title: "Contrato Listo para Verificación",
+            message: `El contrato ${contractId} ha sido completado y está listo para verificación.`,
+            category: "contract",
+            relatedEntityType: "rental_contract",
+            relatedEntityId: contractId,
+          });
+        }
+      }
+
+      await createAuditLog(
+        req,
+        existingInfo ? "update" : "create",
+        "contract_tenant_info",
+        contractId,
+        `Información de inquilino ${existingInfo ? 'actualizada' : 'creada'}`
+      );
+
+      res.json(tenantInfo);
+    } catch (error) {
+      console.error("Error saving tenant info:", error);
+      res.status(500).json({ message: "Error al guardar información del inquilino" });
+    }
+  });
+
+  app.get("/api/contracts/:contractId/owner-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify user is the owner
+      if (property?.ownerId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para ver esta información" });
+      }
+
+      const ownerInfo = await storage.getContractOwnerInfo(contractId);
+      res.json(ownerInfo || null);
+    } catch (error) {
+      console.error("Error fetching owner info:", error);
+      res.status(500).json({ message: "Error al obtener información del propietario" });
+    }
+  });
+
+  app.post("/api/contracts/:contractId/owner-info", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      const property = await storage.getProperty(contract.propertyId);
+      
+      // Verify user is the owner
+      if (property?.ownerId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para actualizar esta información" });
+      }
+
+      // Validate request body with Zod schema
+      const validationResult = insertContractOwnerInfoSchema
+        .omit({ rentalContractId: true })
+        .partial()
+        .safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const sanitizedData = sanitizeObject(validationResult.data);
+
+      // Check if info already exists
+      const existingInfo = await storage.getContractOwnerInfo(contractId);
+      
+      let ownerInfo;
+      if (existingInfo) {
+        ownerInfo = await storage.updateContractOwnerInfo(contractId, sanitizedData);
+      } else {
+        ownerInfo = await storage.createContractOwnerInfo({
+          ...sanitizedData,
+          rentalContractId: contractId
+        });
+      }
+
+      // Update contract status if both forms are complete
+      const tenantInfo = await storage.getContractTenantInfo(contractId);
+      if (tenantInfo) {
+        await storage.updateRentalContractStatus(contractId, 'pendiente_verificacion');
+        
+        // Notify admin to verify
+        const admins = await storage.getAllAdmins();
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.userId,
+            title: "Contrato Listo para Verificación",
+            message: `El contrato ${contractId} ha sido completado y está listo para verificación.`,
+            category: "contract",
+            relatedEntityType: "rental_contract",
+            relatedEntityId: contractId,
+          });
+        }
+      }
+
+      await createAuditLog(
+        req,
+        existingInfo ? "update" : "create",
+        "contract_owner_info",
+        contractId,
+        `Información de propietario ${existingInfo ? 'actualizada' : 'creada'}`
+      );
+
+      res.json(ownerInfo);
+    } catch (error) {
+      console.error("Error saving owner info:", error);
+      res.status(500).json({ message: "Error al guardar información del propietario" });
+    }
+  });
+
+  app.patch("/api/contracts/:contractId/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const { verified, notes } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Verify user is admin
+      const user = await storage.getUser(userId);
+      if (!user || !["master", "admin", "admin_jr"].includes(user.role)) {
+        return res.status(403).json({ message: "No tienes permiso para verificar contratos" });
+      }
+      
+      const contract = await storage.getRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contrato no encontrado" });
+      }
+
+      if (contract.status !== 'pendiente_verificacion') {
+        return res.status(400).json({ message: "El contrato no está en estado pendiente de verificación" });
+      }
+
+      if (verified) {
+        // Approve and move to apartado
+        await storage.updateRentalContractStatus(contractId, 'apartado', {
+          apartadoDate: new Date()
+        });
+
+        // Notify tenant and owner to sign
+        await storage.createNotification({
+          userId: contract.tenantId,
+          title: "Contrato Verificado - Firma Digital",
+          message: `Tu contrato ha sido verificado. Por favor firma digitalmente para continuar.`,
+          category: "contract",
+          relatedEntityType: "rental_contract",
+          relatedEntityId: contractId,
+        });
+
+        const property = await storage.getProperty(contract.propertyId);
+        if (property?.ownerId) {
+          await storage.createNotification({
+            userId: property.ownerId,
+            title: "Contrato Verificado - Firma Digital",
+            message: `El contrato ha sido verificado. Por favor firma digitalmente para continuar.`,
+            category: "contract",
+            relatedEntityType: "rental_contract",
+            relatedEntityId: contractId,
+          });
+        }
+      } else {
+        // Reject and move back to draft
+        await storage.updateRentalContractStatus(contractId, 'draft');
+
+        // Notify about rejection
+        await storage.createNotification({
+          userId: contract.tenantId,
+          title: "Contrato Requiere Correcciones",
+          message: `Tu contrato requiere correcciones. ${notes || ''}`,
+          category: "contract",
+          relatedEntityType: "rental_contract",
+          relatedEntityId: contractId,
+        });
+      }
+
+      await createAuditLog(
+        req,
+        "update",
+        "rental_contract",
+        contractId,
+        `Contrato ${verified ? 'verificado' : 'rechazado'} por admin${notes ? ': ' + notes : ''}`
+      );
+
+      const updatedContract = await storage.getRentalContract(contractId);
+      res.json(updatedContract);
+    } catch (error) {
+      console.error("Error verifying contract:", error);
+      res.status(500).json({ message: "Error al verificar contrato" });
     }
   });
 
