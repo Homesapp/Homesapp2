@@ -43,25 +43,23 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Cargando dashboard...</div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Cargando dashboard...</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="heading-admin-dashboard">Dashboard Administrador</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold" data-testid="heading-admin-dashboard">Dashboard Administrador</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Métricas globales y actividades del sistema
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card data-testid="card-total-properties">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Propiedades</CardTitle>

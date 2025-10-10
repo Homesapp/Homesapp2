@@ -91,25 +91,23 @@ export default function OwnerDashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Cargando dashboard...</div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Cargando dashboard...</div>
       </div>
     );
   }
 
   return (
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="heading-owner-dashboard">Dashboard Propietario</h1>
-        <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="heading-owner-dashboard">Dashboard Propietario</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Resumen de tus propiedades y actividades
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card data-testid="card-total-properties">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Propiedades</CardTitle>

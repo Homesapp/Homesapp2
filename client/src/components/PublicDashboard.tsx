@@ -149,7 +149,7 @@ export default function PublicDashboard() {
 
             {/* Advanced Filters */}
             {showFilters && (
-              <div className="mt-4 p-6 bg-card border rounded-lg shadow-sm">
+              <div className="mt-4 p-4 sm:p-6 bg-card border rounded-lg shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t("public.filterPropertyType")}</label>

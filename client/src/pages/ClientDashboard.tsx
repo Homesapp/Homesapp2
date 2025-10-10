@@ -104,19 +104,19 @@ export default function ClientDashboard() {
   }
 
   return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-dashboard-title">
+          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-dashboard-title">
             {t("clientDashboard.welcome")} {user?.firstName || t("clientDashboard.clientFallback")}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             {t("clientDashboard.subtitle")}
           </p>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card data-testid="card-stat-appointments">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("clientDashboard.upcomingAppointments")}</CardTitle>
