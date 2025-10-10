@@ -71,6 +71,14 @@ export default function LawyerDashboard() {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentNotes, setDocumentNotes] = useState("");
 
+  // Helper to safely format dates
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Fecha no disponible";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Fecha inválida";
+    return format(date, "PPP", { locale: es });
+  };
+
   // Fetch contracts ready for legal elaboration (status: firmado)
   const { data: contracts, isLoading } = useQuery<RentalContract[]>({
     queryKey: ["/api/admin/rental-contracts?status=firmado"],
@@ -330,7 +338,7 @@ export default function LawyerDashboard() {
                             {doc.documentName}
                           </p>
                           <p className="text-sm text-muted-foreground" data-testid={`doc-version-${doc.id}`}>
-                            Versión {doc.version} • {format(new Date(doc.uploadedAt), "PPP", { locale: es })}
+                            Versión {doc.version} • {formatDate(doc.uploadedAt)}
                           </p>
                         </div>
                       </div>

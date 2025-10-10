@@ -105,6 +105,14 @@ export default function CheckInManagement() {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("tenant_signed");
 
+  // Helper to safely format dates
+  const formatDate = (dateString: string | null | undefined, formatStr: string = "PPP") => {
+    if (!dateString) return "Fecha no disponible";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Fecha inválida";
+    return format(date, formatStr, { locale: es });
+  };
+
   // Fetch approved contracts ready for check-in
   const { data: approvedContracts, isLoading: isLoadingContracts } = useQuery<RentalContract[]>({
     queryKey: ["/api/admin/rental-contracts"],
@@ -419,13 +427,13 @@ export default function CheckInManagement() {
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-muted-foreground" />
                               <span data-testid={`appointment-date-${appointment.id}`}>
-                                {format(new Date(appointment.scheduledDate), "PPP", { locale: es })}
+                                {formatDate(appointment.scheduledDate)}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-muted-foreground" />
                               <span data-testid={`appointment-time-${appointment.id}`}>
-                                {format(new Date(appointment.scheduledDate), "p", { locale: es })}
+                                {formatDate(appointment.scheduledDate, "p")}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -513,7 +521,7 @@ export default function CheckInManagement() {
                         {getStatusBadge(appointment.status)}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Completado: {appointment.completedAt && format(new Date(appointment.completedAt), "PPP", { locale: es })}
+                        Completado: {formatDate(appointment.completedAt)}
                       </div>
                     </div>
                   ))}

@@ -70,6 +70,14 @@ export default function ContractLegalReview() {
   const [approvalComments, setApprovalComments] = useState("");
   const [discussionMessage, setDiscussionMessage] = useState("");
 
+  // Helper to safely format dates
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Fecha no disponible";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Fecha inválida";
+    return format(date, "PPP", { locale: es });
+  };
+
   // Fetch legal documents
   const { data: legalDocuments, isLoading: isLoadingDocs } = useQuery<LegalDocument[]>({
     queryKey: ["/api/contracts", contractId, "legal-documents"],
@@ -240,7 +248,7 @@ export default function ContractLegalReview() {
                           {doc.documentName}
                         </p>
                         <p className="text-sm text-muted-foreground" data-testid={`doc-version-${doc.id}`}>
-                          Versión {doc.version} • {format(new Date(doc.uploadedAt), "PPP", { locale: es })}
+                          Versión {doc.version} • {formatDate(doc.uploadedAt)}
                         </p>
                         {doc.notes && (
                           <p className="text-sm text-muted-foreground mt-1" data-testid={`doc-notes-${doc.id}`}>
@@ -308,7 +316,7 @@ export default function ContractLegalReview() {
                           {approval.approverRole === "client" ? "Inquilino" : "Propietario"}
                         </p>
                         <p className="text-sm text-muted-foreground" data-testid={`approval-date-${approval.id}`}>
-                          {format(new Date(approval.createdAt), "PPP", { locale: es })}
+                          {formatDate(approval.createdAt)}
                         </p>
                       </div>
                       {getApprovalBadge(approval.status)}
@@ -490,7 +498,7 @@ export default function ContractLegalReview() {
                         {discussion.sender?.fullName} ({discussion.sender?.role})
                       </p>
                       <p className="text-xs text-muted-foreground" data-testid={`discussion-date-${discussion.id}`}>
-                        {format(new Date(discussion.createdAt), "PPp", { locale: es })}
+                        {formatDate(discussion.createdAt)}
                       </p>
                     </div>
                     <p className="text-sm" data-testid={`discussion-message-${discussion.id}`}>
