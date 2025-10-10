@@ -145,6 +145,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
   const ownerActivityGroup = [
     { titleKey: "sidebar.ownerVisits", url: "/owner/appointments", icon: Calendar, roles: ["owner"] },
     { titleKey: "sidebar.ownerActiveRentals", url: "/rentas-activas", icon: Home, roles: ["owner"] },
+    { titleKey: "sidebar.ownerHoa", url: "/owner/hoa", icon: Building, roles: ["owner"] },
   ];
 
   const ownerFinanceGroup = [
@@ -186,6 +187,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.propertyLimitRequests", url: "/admin/property-limit-requests", icon: TrendingUp, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.inspectionReports", url: "/admin/inspection-reports", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.condominiums", url: "/admin/condominiums", icon: Building2, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.hoaManagement", url: "/admin/hoa", icon: Building, roles: ["master", "admin", "management"] },
   ];
 
   const configGroup = [

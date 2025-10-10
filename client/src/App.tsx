@@ -113,6 +113,8 @@ import ContractOwnerForm from "@/pages/ContractOwnerForm";
 import LawyerDashboard from "@/pages/LawyerDashboard";
 import ContractLegalReview from "@/pages/ContractLegalReview";
 import CheckInManagement from "@/pages/CheckInManagement";
+import HoaManagement from "@/pages/HoaManagement";
+import OwnerHoaPortal from "@/pages/OwnerHoaPortal";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -259,6 +261,7 @@ function AuthenticatedApp() {
               <Route path="/owner/appointments" component={OwnerAppointments} />
               <Route path="/owner/offers" component={OwnerOffers} />
               <Route path="/owner/financial-report" component={OwnerFinancialReport} />
+              <Route path="/owner/hoa" component={OwnerHoaPortal} />
               <Route path="/admin/appointments" component={AdminAppointmentManagement} />
               <Route path="/admin/sellers" component={AdminSellerManagement} />
               <Route path="/admin/properties" component={AdminPropertyManagement} />
@@ -271,6 +274,7 @@ function AuthenticatedApp() {
               <Route path="/admin/agreement-templates" component={AdminAgreementTemplates} />
               <Route path="/admin/condominiums/:id" component={CondominiumDetails} />
               <Route path="/admin/condominiums" component={AdminCondominiums} />
+              <Route path="/admin/hoa" component={HoaManagement} />
               <Route path="/admin/chatbot-config" component={AdminChatbotConfig} />
               <Route path="/admin/create-user" component={CreateUser} />
               <Route path="/admin/income" component={AdminIncome} />
