@@ -3814,3 +3814,181 @@ export const ownerReferralsRelations = relations(ownerReferrals, ({ one }) => ({
     relationName: "linkedOwner",
   }),
 }));
+
+// ========================================
+// HOA (Homeowners Association) Module
+// ========================================
+
+// HOA Enums
+export const condominiumIssueStatusEnum = pgEnum("condominium_issue_status", [
+  "pendiente",
+  "en_proceso",
+  "resuelto",
+  "cerrado",
+]);
+
+export const condominiumFeeStatusEnum = pgEnum("condominium_fee_status", [
+  "pendiente",  // Pending payment
+  "pagado",     // Paid
+  "vencido",    // Overdue
+  "cancelado",  // Cancelled
+]);
+
+// Condominium Units - Unidades dentro de un condominio
+export const condominiumUnits = pgTable("condominium_units", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  condominiumId: varchar("condominium_id").notNull().references(() => condominiums.id, { onDelete: "cascade" }),
+  unitNumber: text("unit_number").notNull(),
+  ownerId: varchar("owner_id").references(() => users.id),
+  area: decimal("area", { precision: 10, scale: 2 }), // m² de la unidad
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  parkingSpaces: integer("parking_spaces").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUnit: unique().on(table.condominiumId, table.unitNumber),
+}));
+
+export const insertCondominiumUnitSchema = createInsertSchema(condominiumUnits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCondominiumUnit = z.infer<typeof insertCondominiumUnitSchema>;
+export type CondominiumUnit = typeof condominiumUnits.$inferSelect;
+
+// Condominium Fees - Cuotas de mantenimiento mensual
+export const condominiumFees = pgTable("condominium_fees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  condominiumUnitId: varchar("condominium_unit_id").notNull().references(() => condominiumUnits.id, { onDelete: "cascade" }),
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: condominiumFeeStatusEnum("status").notNull().default("pendiente"),
+  description: text("description"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueFee: unique().on(table.condominiumUnitId, table.month, table.year),
+}));
+
+export const insertCondominiumFeeSchema = createInsertSchema(condominiumFees).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCondominiumFee = z.infer<typeof insertCondominiumFeeSchema>;
+export type CondominiumFee = typeof condominiumFees.$inferSelect;
+
+// Condominium Fee Payments - Pagos de cuotas de mantenimiento
+export const condominiumFeePayments = pgTable("condominium_fee_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  condominiumFeeId: varchar("condominium_fee_id").notNull().references(() => condominiumFees.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: text("payment_method").notNull(), // "efectivo", "transferencia", "tarjeta"
+  paidAt: timestamp("paid_at").notNull(),
+  receiptUrl: text("receipt_url"),
+  notes: text("notes"),
+  registeredById: varchar("registered_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCondominiumFeePaymentSchema = createInsertSchema(condominiumFeePayments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCondominiumFeePayment = z.infer<typeof insertCondominiumFeePaymentSchema>;
+export type CondominiumFeePayment = typeof condominiumFeePayments.$inferSelect;
+
+// Condominium Issues - Incidencias/reportes de áreas comunes
+export const condominiumIssues = pgTable("condominium_issues", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  condominiumId: varchar("condominium_id").notNull().references(() => condominiums.id, { onDelete: "cascade" }),
+  condominiumUnitId: varchar("condominium_unit_id").references(() => condominiumUnits.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category"), // "mantenimiento", "seguridad", "limpieza", "otro"
+  priority: text("priority").notNull().default("media"), // "baja", "media", "alta", "urgente"
+  status: condominiumIssueStatusEnum("status").notNull().default("pendiente"),
+  photos: jsonb("photos").$type<string[]>(),
+  reportedById: varchar("reported_by_id").notNull().references(() => users.id),
+  assignedToId: varchar("assigned_to_id").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCondominiumIssueSchema = createInsertSchema(condominiumIssues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCondominiumIssue = z.infer<typeof insertCondominiumIssueSchema>;
+export type CondominiumIssue = typeof condominiumIssues.$inferSelect;
+
+// HOA Relations
+export const condominiumUnitsRelations = relations(condominiumUnits, ({ one, many }) => ({
+  condominium: one(condominiums, {
+    fields: [condominiumUnits.condominiumId],
+    references: [condominiums.id],
+  }),
+  owner: one(users, {
+    fields: [condominiumUnits.ownerId],
+    references: [users.id],
+  }),
+  fees: many(condominiumFees),
+  issues: many(condominiumIssues),
+}));
+
+export const condominiumFeesRelations = relations(condominiumFees, ({ one, many }) => ({
+  unit: one(condominiumUnits, {
+    fields: [condominiumFees.condominiumUnitId],
+    references: [condominiumUnits.id],
+  }),
+  createdBy: one(users, {
+    fields: [condominiumFees.createdById],
+    references: [users.id],
+  }),
+  payments: many(condominiumFeePayments),
+}));
+
+export const condominiumFeePaymentsRelations = relations(condominiumFeePayments, ({ one }) => ({
+  fee: one(condominiumFees, {
+    fields: [condominiumFeePayments.condominiumFeeId],
+    references: [condominiumFees.id],
+  }),
+  registeredBy: one(users, {
+    fields: [condominiumFeePayments.registeredById],
+    references: [users.id],
+  }),
+}));
+
+export const condominiumIssuesRelations = relations(condominiumIssues, ({ one }) => ({
+  condominium: one(condominiums, {
+    fields: [condominiumIssues.condominiumId],
+    references: [condominiums.id],
+  }),
+  unit: one(condominiumUnits, {
+    fields: [condominiumIssues.condominiumUnitId],
+    references: [condominiumUnits.id],
+  }),
+  reportedBy: one(users, {
+    fields: [condominiumIssues.reportedById],
+    references: [users.id],
+    relationName: "issueReporter",
+  }),
+  assignedTo: one(users, {
+    fields: [condominiumIssues.assignedToId],
+    references: [users.id],
+    relationName: "issueAssignee",
+  }),
+}));
