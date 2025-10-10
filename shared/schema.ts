@@ -201,6 +201,12 @@ export const leadStatusEnum = pgEnum("lead_status", [
   "perdido",
 ]);
 
+export const unitTypeEnum = pgEnum("unit_type", [
+  "departamento",
+  "casa",
+  "estudio",
+]);
+
 export const reviewRatingEnum = pgEnum("review_rating", [
   "1",
   "2",
@@ -1115,8 +1121,8 @@ export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
-  email: varchar("email").notNull(),
-  phone: varchar("phone"),
+  email: varchar("email"), // Ya no es obligatorio
+  phone: varchar("phone").notNull(), // WhatsApp obligatorio
   status: leadStatusEnum("status").notNull().default("nuevo"),
   source: varchar("source"), // web, referido, llamada, evento, etc
   registeredById: varchar("registered_by_id").notNull().references(() => users.id), // Vendedor que registró el lead
@@ -1125,6 +1131,13 @@ export const leads = pgTable("leads", {
   budget: decimal("budget", { precision: 12, scale: 2 }),
   notes: text("notes"),
   propertyInterests: text("property_interests").array().default(sql`ARRAY[]::text[]`),
+  // Campos adicionales para registro completo de leads
+  contractDuration: varchar("contract_duration"), // Duración del contrato (ej: "6 meses", "1 año")
+  moveInDate: varchar("move_in_date"), // Fecha deseada de ingreso (ej: "Noviembre", "finales de octubre")
+  pets: varchar("pets"), // Mascotas (ej: "un perro", "No", "Si")
+  bedrooms: varchar("bedrooms"), // Número de recámaras deseadas (ej: "1/2", "2", "3")
+  areaOfInterest: varchar("area_of_interest"), // Área de interés (ej: "veleta o aldea Zama")
+  unitType: unitTypeEnum("unit_type"), // Tipo de unidad deseada
   emailVerified: boolean("email_verified").notNull().default(false), // Si el lead confirmó su email
   validUntil: timestamp("valid_until").notNull(), // Fecha de expiración del lead (3 meses por defecto)
   createdAt: timestamp("created_at").defaultNow().notNull(),
