@@ -118,6 +118,7 @@ import CheckInManagement from "@/pages/CheckInManagement";
 import HoaManagement from "@/pages/HoaManagement";
 import OwnerHoaPortal from "@/pages/OwnerHoaPortal";
 import PublicOfferForm from "@/pages/PublicOfferForm";
+import AdminOfferManagement from "@/pages/AdminOfferManagement";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -330,6 +331,7 @@ function AuthenticatedApp() {
               <Route path="/admin/tenant-screening" component={AdminTenantScreening} />
               <Route path="/admin/marketing-campaigns" component={AdminMarketingCampaigns} />
               <Route path="/admin/rental-opportunity-requests" component={AdminRentalOpportunityRequests} />
+              <Route path="/admin/offers" component={AdminOfferManagement} />
               <Route path="/ayuda" component={Help} />
               <Route path="/terminos" component={Terms} />
               <Route path="/privacidad" component={Privacy} />

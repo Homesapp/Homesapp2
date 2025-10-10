@@ -172,6 +172,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     { titleKey: "sidebar.adminSellers", url: "/admin/sellers", icon: Users, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.adminTasks", url: "/admin/tasks", icon: ClipboardCheck, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.adminContracts", url: "/admin/contracts", icon: FileText, roles: ["master", "admin", "admin_jr"] },
+    { titleKey: "sidebar.adminOffers", url: "/admin/offers", icon: FileText, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.adminCalendar", url: "/admin/calendario", icon: Calendar, roles: ["master", "admin", "admin_jr"] },
     { titleKey: "sidebar.businessHours", url: "/admin/horarios", icon: Clock, roles: ["master", "admin"] },
     { titleKey: "sidebar.assignProperties", url: "/admin/asignar-propiedades", icon: Building2, roles: ["master", "admin"] },
