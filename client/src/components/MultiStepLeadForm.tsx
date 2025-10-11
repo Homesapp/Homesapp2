@@ -82,7 +82,21 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
 
   // Validación de duplicados
   const phone = form.watch("phone");
-  const { data: duplicateCheck } = useQuery({
+  const { data: duplicateCheck } = useQuery<{
+    isDuplicate: boolean;
+    lead?: {
+      firstName: string;
+      lastName: string;
+      email?: string;
+      budget?: number;
+      createdAt: string;
+      seller?: {
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    };
+  }>({
     queryKey: ["/api/leads/validate-phone", phone],
     enabled: phone?.length >= 10,
   });
@@ -202,7 +216,7 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" placeholder="juan@ejemplo.com" data-testid="input-email" />
+                      <Input {...field} value={field.value || ""} type="email" placeholder="juan@ejemplo.com" data-testid="input-email" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -342,8 +356,8 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
                       className="w-full justify-between"
                       data-testid="button-select-properties"
                     >
-                      {form.watch("propertyInterests")?.length > 0
-                        ? `${form.watch("propertyInterests").length} propiedad${form.watch("propertyInterests").length > 1 ? 'es' : ''} seleccionada${form.watch("propertyInterests").length > 1 ? 's' : ''}`
+                      {(form.watch("propertyInterests")?.length ?? 0) > 0
+                        ? `${form.watch("propertyInterests")?.length} propiedad${(form.watch("propertyInterests")?.length ?? 0) > 1 ? 'es' : ''} seleccionada${(form.watch("propertyInterests")?.length ?? 0) > 1 ? 's' : ''}`
                         : "Seleccionar propiedades..."}
                     </Button>
                   </PopoverTrigger>
@@ -356,6 +370,7 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
                           <CommandItem
                             key={property.id}
                             onSelect={() => {
+                              if (!property?.id) return;
                               const currentValues = form.getValues("propertyInterests") || [];
                               const isSelected = currentValues.includes(property.id);
                               form.setValue(
@@ -368,8 +383,8 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
                             data-testid={`property-option-${property.id}`}
                           >
                             <div className="flex items-center gap-2">
-                              <div className={`h-4 w-4 rounded border ${(form.watch("propertyInterests") || []).includes(property.id) ? 'bg-primary border-primary' : 'border-input'}`}>
-                                {(form.watch("propertyInterests") || []).includes(property.id) && (
+                              <div className={`h-4 w-4 rounded border ${(form.watch("propertyInterests") || []).includes(property?.id || "") ? 'bg-primary border-primary' : 'border-input'}`}>
+                                {(form.watch("propertyInterests") || []).includes(property?.id || "") && (
                                   <CheckCircle2 className="h-4 w-4 text-primary-foreground" />
                                 )}
                               </div>
@@ -381,9 +396,9 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
                     </Command>
                   </PopoverContent>
                 </Popover>
-                {(form.watch("propertyInterests")?.length > 0) && (
+                {((form.watch("propertyInterests")?.length ?? 0) > 0) && (
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {form.watch("propertyInterests").map((propId: string) => {
+                    {form.watch("propertyInterests")?.map((propId: string) => {
                       const property = properties.find((p: any) => p.id === propId);
                       return (
                         <Badge 
@@ -478,6 +493,7 @@ export default function MultiStepLeadForm({ onSubmit, isPending, defaultValues }
                     <FormControl>
                       <Textarea
                         {...field}
+                        value={field.value || ""}
                         placeholder="Información adicional..."
                         data-testid="input-notes"
                         rows={4}
