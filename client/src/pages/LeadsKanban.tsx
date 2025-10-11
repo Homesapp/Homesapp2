@@ -28,6 +28,9 @@ import { type Lead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import GenerateOfferLinkDialog from "@/components/GenerateOfferLinkDialog";
+import { MultiSelectWithManual } from "@/components/MultiSelectWithManual";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -132,11 +135,40 @@ const LEAD_STATUSES = [
   },
 ];
 
-const leadFormSchema = insertLeadSchema.extend({
-  budget: z.string().optional(),
-  email: z.string().optional(), // Email es opcional
-  phone: z.string().min(10, "Teléfono es obligatorio"), // WhatsApp obligatorio
+const leadFormSchema = z.object({
+  firstName: z.string().min(1, "El nombre es obligatorio"),
+  lastName: z.string().min(1, "El apellido es obligatorio"),
+  email: z.string().optional(),
+  phone: z.string().min(10, "El teléfono con lada es obligatorio"),
+  budget: z.string().min(1, "El presupuesto es obligatorio"),
+  source: z.array(z.string()).default([]),
+  contractDuration: z.array(z.string()).default([]),
+  moveInDate: z.array(z.string()).default([]),
+  bedrooms: z.array(z.string()).default([]),
+  zoneOfInterest: z.array(z.string()).default([]),
+  unitType: z.array(z.string()).default([]),
+  pets: z.string().optional(),
+  notes: z.string().optional(),
+  status: z.string().default("nuevo"),
+  registeredById: z.string().optional(),
+  validUntil: z.date().optional(),
 });
+
+// Opciones predefinidas para los multi-select
+const SOURCE_OPTIONS = ["Web", "Referido", "Llamada", "Evento", "Redes Sociales", "WhatsApp"];
+const CONTRACT_DURATION_OPTIONS = ["6 meses", "1 año", "2 años", "3 años o más"];
+const MOVE_IN_DATE_OPTIONS = ["Inmediato", "Próximo mes", "En 2-3 meses", "Más de 3 meses"];
+const BEDROOMS_OPTIONS = ["Studio", "1", "2", "3", "4+"];
+const ZONE_OPTIONS = ["Veleta", "Aldea Zama", "Centro", "Región 15", "Región 8", "Playa"];
+const UNIT_TYPE_OPTIONS = ["Departamento", "Casa", "Estudio", "PH", "Villa"];
+
+// Función para capitalizar primera letra
+const capitalizeFirstLetter = (str: string) => {
+  return str
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
 
 export default function LeadsKanban() {
   const { toast } = useToast();
@@ -146,6 +178,13 @@ export default function LeadsKanban() {
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
   const [selectedLeadForOffer, setSelectedLeadForOffer] = useState<Lead | null>(null);
+  const [phoneValidation, setPhoneValidation] = useState<{
+    isDuplicate: boolean;
+    message?: string;
+    lead?: any;
+    originalSeller?: any;
+  } | null>(null);
+  const [validatingPhone, setValidatingPhone] = useState(false);
   
   useEffect(() => {
     if (!dialogOpen) {
@@ -157,19 +196,19 @@ export default function LeadsKanban() {
   const form = useForm({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
-      first_name: "",
-      last_name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       phone: "",
-      source: "",
+      source: [],
       budget: "",
       notes: "",
-      contractDuration: "",
-      moveInDate: "",
+      contractDuration: [],
+      moveInDate: [],
       pets: "",
-      bedrooms: "",
-      areaOfInterest: "",
-      unitType: undefined,
+      bedrooms: [],
+      zoneOfInterest: [],
+      unitType: [],
       status: "nuevo",
     },
   });
@@ -248,13 +287,42 @@ export default function LeadsKanban() {
     updateLeadStatusMutation.mutate({ id: leadId, status: newStatus });
   };
 
+  // Validar teléfono en tiempo real
+  const validatePhone = async (phone: string) => {
+    if (!phone || phone.length < 10) {
+      setPhoneValidation(null);
+      return;
+    }
+
+    setValidatingPhone(true);
+    try {
+      const response = await fetch(`/api/leads/validate-phone/${encodeURIComponent(phone)}`);
+      const data = await response.json();
+      
+      if (data.isDuplicate) {
+        setPhoneValidation(data);
+      } else {
+        setPhoneValidation(null);
+      }
+    } catch (error) {
+      console.error("Error validating phone:", error);
+      setPhoneValidation(null);
+    } finally {
+      setValidatingPhone(false);
+    }
+  };
+
   const handleSubmit = (data: any) => {
-    const leadData = {
+    // Auto-formateo
+    const formattedData = {
       ...data,
+      firstName: capitalizeFirstLetter(data.firstName.trim()),
+      lastName: capitalizeFirstLetter(data.lastName.trim()),
+      email: data.email ? data.email.toLowerCase().trim() : undefined,
       budget: data.budget ? data.budget.toString() : null,
       propertyInterests: selectedProperties,
     };
-    createLeadMutation.mutate(leadData);
+    createLeadMutation.mutate(formattedData);
   };
 
   const formatCurrency = (value: string) => {
@@ -332,15 +400,16 @@ export default function LeadsKanban() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                {/* Campos obligatorios */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="first_name"
+                    name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nombre</FormLabel>
+                        <FormLabel>Nombre *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-first-name" />
+                          <Input {...field} data-testid="input-first-name" placeholder="Nombre" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -348,55 +417,36 @@ export default function LeadsKanban() {
                   />
                   <FormField
                     control={form.control}
-                    name="last_name"
+                    name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Apellido</FormLabel>
+                        <FormLabel>Apellido *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-last-name" />
+                          <Input {...field} data-testid="input-last-name" placeholder="Apellido" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} data-testid="input-email" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Teléfono</FormLabel>
+                        <FormLabel>Teléfono con lada *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-phone" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="source"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fuente</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="web, referido, etc." data-testid="input-source" />
+                          <Input 
+                            {...field} 
+                            data-testid="input-phone" 
+                            placeholder="+52 984 123 4567"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              validatePhone(e.target.value);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -407,16 +457,87 @@ export default function LeadsKanban() {
                     name="budget"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Presupuesto</FormLabel>
+                        <FormLabel>Presupuesto *</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} data-testid="input-budget" />
+                          <Input type="number" {...field} data-testid="input-budget" placeholder="15000" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                {/* Alerta de duplicado */}
+                {phoneValidation?.isDuplicate && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="space-y-2">
+                      <p className="font-semibold">{phoneValidation.message}</p>
+                      {phoneValidation.lead && (
+                        <div className="text-sm space-y-1">
+                          <p><strong>Nombre:</strong> {phoneValidation.lead.firstName} {phoneValidation.lead.lastName}</p>
+                          <p><strong>Email:</strong> {phoneValidation.lead.email || "No registrado"}</p>
+                          <p><strong>Presupuesto:</strong> ${phoneValidation.lead.budget}</p>
+                          <p><strong>Registrado:</strong> {new Date(phoneValidation.lead.registeredAt).toLocaleDateString('es-MX')}</p>
+                        </div>
+                      )}
+                      {phoneValidation.originalSeller && (
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (phoneValidation.originalSeller?.email) {
+                                window.location.href = `mailto:${phoneValidation.originalSeller.email}`;
+                              }
+                            }}
+                            data-testid="button-contact-seller"
+                          >
+                            Contactar a {phoneValidation.originalSeller.firstName}
+                          </Button>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Campos opcionales */}
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email (opcional)</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} data-testid="input-email" placeholder="ejemplo@email.com" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Multi-select fields */}
                 <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="source"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fuente</FormLabel>
+                        <FormControl>
+                          <MultiSelectWithManual
+                            options={SOURCE_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Seleccionar fuente..."
+                            data-testid="select-source"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="contractDuration"
@@ -424,12 +545,21 @@ export default function LeadsKanban() {
                       <FormItem>
                         <FormLabel>Duración de Contrato</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="6 meses, 1 año" data-testid="input-contract-duration" />
+                          <MultiSelectWithManual
+                            options={CONTRACT_DURATION_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Seleccionar duración..."
+                            data-testid="select-contract-duration"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="moveInDate"
@@ -437,22 +567,13 @@ export default function LeadsKanban() {
                       <FormItem>
                         <FormLabel>Fecha de Ingreso</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Noviembre, finales de octubre" data-testid="input-move-in-date" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="pets"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mascotas</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="un perro, No, Si" data-testid="input-pets" />
+                          <MultiSelectWithManual
+                            options={MOVE_IN_DATE_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Seleccionar fecha..."
+                            data-testid="select-move-in-date"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -465,22 +586,35 @@ export default function LeadsKanban() {
                       <FormItem>
                         <FormLabel>Recámaras</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="1/2, 2, 3" data-testid="input-bedrooms" />
+                          <MultiSelectWithManual
+                            options={BEDROOMS_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Seleccionar recámaras..."
+                            data-testid="select-bedrooms"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="areaOfInterest"
+                    name="zoneOfInterest"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Lugar de Interés</FormLabel>
+                        <FormLabel>Zona de Interés</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="veleta, aldea Zama" data-testid="input-area-interest" />
+                          <MultiSelectWithManual
+                            options={ZONE_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Seleccionar zona..."
+                            data-testid="select-zone-interest"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -493,22 +627,33 @@ export default function LeadsKanban() {
                       <FormItem>
                         <FormLabel>Tipo de Unidad</FormLabel>
                         <FormControl>
-                          <select 
-                            {...field} 
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          <MultiSelectWithManual
+                            options={UNIT_TYPE_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Seleccionar tipo..."
                             data-testid="select-unit-type"
-                          >
-                            <option value="">Seleccionar...</option>
-                            <option value="departamento">Departamento</option>
-                            <option value="casa">Casa</option>
-                            <option value="estudio">Estudio</option>
-                          </select>
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="pets"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mascotas (opcional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="un perro, No, Sí" data-testid="input-pets" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="space-y-2">
                   <FormLabel>Propiedades de Interés</FormLabel>
                   <Popover>
@@ -582,7 +727,11 @@ export default function LeadsKanban() {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="submit" disabled={createLeadMutation.isPending} data-testid="button-submit-lead">
+                  <Button 
+                    type="submit" 
+                    disabled={createLeadMutation.isPending || phoneValidation?.isDuplicate} 
+                    data-testid="button-submit-lead"
+                  >
                     {createLeadMutation.isPending ? "Creando..." : "Crear Lead"}
                   </Button>
                 </DialogFooter>
