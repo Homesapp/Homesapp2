@@ -1088,12 +1088,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : `http://localhost:5000`;
         const resetLink = `${baseUrl}/reset-password?token=${token}`;
         
-        const { sendPasswordResetEmail } = await import("./gmail");
-        await sendPasswordResetEmail(
-          user.email,
-          user.firstName || 'Usuario',
-          resetLink
-        );
+        try {
+          const { sendPasswordResetEmail } = await import("./gmail");
+          await sendPasswordResetEmail(
+            user.email,
+            user.firstName || 'Usuario',
+            resetLink
+          );
+          console.log(`Password reset email sent successfully to ${user.email}`);
+        } catch (emailError) {
+          console.error('Error sending password reset email:', emailError);
+        }
       }
       
       res.json({ message: "Si el email existe, recibirás un enlace de restablecimiento" });
