@@ -63,9 +63,9 @@ The platform employs unified middleware for consistent authentication and automa
 
 ## External Dependencies
 *   Google Calendar API
+*   Gmail API (for transactional emails)
 *   Neon Database (PostgreSQL)
 *   Replit Auth (OpenID Connect)
-*   Resend API
 *   Radix UI
 *   Lucide React
 *   date-fns
@@ -74,3 +74,6 @@ The platform employs unified middleware for consistent authentication and automa
 *   WebSocket (ws)
 *   cookie
 *   OpenAI GPT-5
+
+## Recent Changes (October 2025)
+*   **Email Integration Migration**: Successfully migrated from Resend to Gmail API for all transactional emails including password reset, verification codes, offer links, and notifications. All email functionality now uses the Gmail integration (server/gmail.ts) with proper UTF-8 encoding and error handling.
