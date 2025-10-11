@@ -1089,7 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : `http://localhost:5000`;
         const resetLink = `${baseUrl}/reset-password?token=${token}`;
         
-        const { sendPasswordResetEmail } = await import("./resend");
+        const { sendPasswordResetEmail } = await import("./gmail");
         await sendPasswordResetEmail(
           user.email,
           user.firstName || 'Usuario',
@@ -1169,7 +1169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : `http://localhost:5000`;
       const resetLink = `${baseUrl}/reset-password?token=${token}`;
       
-      const { sendPasswordResetEmail } = await import("./resend");
+      const { sendPasswordResetEmail } = await import("./gmail");
       await sendPasswordResetEmail(
         user.email,
         user.firstName || 'Usuario',
