@@ -13,6 +13,9 @@ interface Integration {
   status: "connected" | "disconnected";
   description: string;
   configFields: string[];
+  connectionUrl?: string;
+  connectorId?: string;
+  isBuiltIn?: boolean;
 }
 
 export default function AdminIntegrationsControl() {
@@ -29,6 +32,24 @@ export default function AdminIntegrationsControl() {
       title: t("adminIntegrations.refreshing"),
       description: t("adminIntegrations.refreshingDescription"),
     });
+  };
+
+  const handleConnect = (integration: Integration) => {
+    if (integration.connectorId) {
+      // Open Replit integrations panel with specific connector
+      const integrationUrl = `https://replit.com/~/cli/integrations/${integration.connectorId.split(':')[1]}`;
+      window.open(integrationUrl, '_blank');
+      toast({
+        title: "Opening integration setup",
+        description: `Configure ${integration.name} in the new tab, then refresh this page.`,
+      });
+    } else {
+      toast({
+        title: "Manual configuration required",
+        description: `Please configure ${integration.name} through environment variables.`,
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -171,11 +192,34 @@ export default function AdminIntegrationsControl() {
                           ))}
                         </div>
                       </div>
-                      {integration.status === "disconnected" && (
+                      {integration.status === "disconnected" && !integration.isBuiltIn && (
                         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3">
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
                             {t("adminIntegrations.configurationRequired")}
                           </p>
+                          <Button 
+                            onClick={() => handleConnect(integration)}
+                            size="sm"
+                            className="w-full"
+                            data-testid={`button-connect-${integration.id}`}
+                          >
+                            <Settings className="h-3 w-3 mr-1" />
+                            {integration.connectorId ? "Configure Integration" : "Setup Instructions"}
+                          </Button>
+                        </div>
+                      )}
+                      {integration.status === "connected" && (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleConnect(integration)}
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            data-testid={`button-manage-${integration.id}`}
+                          >
+                            <Settings className="h-3 w-3 mr-1" />
+                            {integration.isBuiltIn ? "View Configuration" : "Manage"}
+                          </Button>
                         </div>
                       )}
                     </div>

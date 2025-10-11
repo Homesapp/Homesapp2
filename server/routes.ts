@@ -16097,20 +16097,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const integrations = [];
 
-      // Google Calendar
-      const googleCalendarConfigured = !!(
-        process.env.GOOGLE_CALENDAR_CLIENT_ID &&
-        process.env.GOOGLE_CALENDAR_CLIENT_SECRET &&
-        process.env.GOOGLE_CALENDAR_REFRESH_TOKEN
-      );
-      integrations.push({
-        id: "google_calendar",
-        name: "Google Calendar",
-        status: googleCalendarConfigured ? "connected" : "disconnected",
-        description: "Event scheduling and Google Meet integration",
-        configFields: ["GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "GOOGLE_CALENDAR_REFRESH_TOKEN"]
-      });
-
       // OpenAI
       const openAIConfigured = !!process.env.OPENAI_API_KEY;
       integrations.push({
@@ -16131,45 +16117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         configFields: ["GEMINI_API_KEY"]
       });
 
-      // Resend (connector-based)
-      let resendStatus = "disconnected";
-      try {
-        const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-        const xReplitToken = process.env.REPL_IDENTITY
-          ? 'repl ' + process.env.REPL_IDENTITY
-          : process.env.WEB_REPL_RENEWAL
-          ? 'depl ' + process.env.WEB_REPL_RENEWAL
-          : null;
-        
-        if (xReplitToken && hostname) {
-          const connectorData = await fetch(
-            'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-            {
-              headers: {
-                'Accept': 'application/json',
-                'X_REPLIT_TOKEN': xReplitToken
-              }
-            }
-          ).then(res => res.json());
-          
-          if (connectorData.items?.[0]?.settings?.api_key) {
-            resendStatus = "connected";
-          }
-        }
-      } catch (error) {
-        console.error("Error checking Resend status:", error);
-      }
-
-      integrations.push({
-        id: "resend",
-        name: "Resend",
-        status: resendStatus,
-        description: "Primary email delivery service",
-        configFields: ["Replit Connector"]
-      });
-
-      // Gmail (connector-based)
+      // Gmail (connector-based) - Primary email service
       let gmailStatus = "disconnected";
+      let gmailConnectionUrl = "";
       try {
         const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
         const xReplitToken = process.env.REPL_IDENTITY
@@ -16189,9 +16139,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           ).then(res => res.json());
           
-          if (connectorData.items?.[0]?.access_token) {
+          const accessToken = connectorData.items?.[0]?.settings?.access_token || connectorData.items?.[0]?.settings?.oauth?.credentials?.access_token;
+          if (accessToken) {
             gmailStatus = "connected";
           }
+          gmailConnectionUrl = connectorData.items?.[0]?.connector_url || "";
         }
       } catch (error) {
         console.error("Error checking Gmail status:", error);
@@ -16201,8 +16153,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: "gmail",
         name: "Gmail API",
         status: gmailStatus,
-        description: "Backup email delivery service",
-        configFields: ["Replit Connector"]
+        description: "Primary email delivery service for transactional emails",
+        configFields: ["Replit Connector"],
+        connectionUrl: gmailConnectionUrl,
+        connectorId: "connection:conn_google-mail_01K6X65JFWT1MNBAXJ58YB90E7"
+      });
+
+      // Google Calendar (connector-based)
+      let calendarStatus = "disconnected";
+      let calendarConnectionUrl = "";
+      try {
+        const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+        const xReplitToken = process.env.REPL_IDENTITY
+          ? 'repl ' + process.env.REPL_IDENTITY
+          : process.env.WEB_REPL_RENEWAL
+          ? 'depl ' + process.env.WEB_REPL_RENEWAL
+          : null;
+        
+        if (xReplitToken && hostname) {
+          const connectorData = await fetch(
+            'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-calendar',
+            {
+              headers: {
+                'Accept': 'application/json',
+                'X_REPLIT_TOKEN': xReplitToken
+              }
+            }
+          ).then(res => res.json());
+          
+          const accessToken = connectorData.items?.[0]?.settings?.access_token || connectorData.items?.[0]?.settings?.oauth?.credentials?.access_token;
+          if (accessToken) {
+            calendarStatus = "connected";
+          }
+          calendarConnectionUrl = connectorData.items?.[0]?.connector_url || "";
+        }
+      } catch (error) {
+        console.error("Error checking Google Calendar status:", error);
+      }
+
+      integrations.push({
+        id: "google_calendar",
+        name: "Google Calendar",
+        status: calendarStatus,
+        description: "Event scheduling and Google Meet integration for appointments",
+        configFields: ["Replit Connector"],
+        connectionUrl: calendarConnectionUrl,
+        connectorId: "connection:conn_google-calendar_01K6PJRVNHMM6V7V8F6WMG47F5"
+      });
+
+      // PostgreSQL Database
+      const databaseConfigured = !!process.env.DATABASE_URL;
+      integrations.push({
+        id: "database",
+        name: "PostgreSQL Database",
+        status: databaseConfigured ? "connected" : "disconnected",
+        description: "Neon serverless database for data persistence",
+        configFields: ["DATABASE_URL"],
+        isBuiltIn: true
       });
 
       res.json({ integrations });
