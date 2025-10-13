@@ -44,6 +44,7 @@ import AdminPropertyAssignment from "@/pages/AdminPropertyAssignment";
 import AdminAppointmentManagement from "@/pages/AdminAppointmentManagement";
 import AdminSellerManagement from "@/pages/AdminSellerManagement";
 import AdminPropertyManagement from "@/pages/AdminPropertyManagement";
+import AdminContactImport from "@/pages/AdminContactImport";
 import AdminTaskManagement from "@/pages/AdminTaskManagement";
 import AdminIntegrationsControl from "@/pages/AdminIntegrationsControl";
 import AdminContractManagement from "@/pages/AdminContractManagement";
@@ -276,6 +277,7 @@ function AuthenticatedApp() {
               <Route path="/admin/appointments" component={AdminAppointmentManagement} />
               <Route path="/admin/sellers" component={AdminSellerManagement} />
               <Route path="/admin/properties" component={AdminPropertyManagement} />
+              <Route path="/admin/import-contacts" component={AdminContactImport} />
               <Route path="/admin/tasks" component={AdminTaskManagement} />
               <Route path="/admin/integrations" component={AdminIntegrationsControl} />
               <Route path="/admin/contracts" component={AdminContractManagement} />
