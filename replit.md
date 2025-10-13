@@ -22,6 +22,13 @@ Preferred communication style: Simple, everyday language.
     - Fixed TypeScript errors in PropertyFormDialog apiRequest calls (changed from incorrect object parameter format to proper method/url/data format)
     - Updated master admin password to "Homesapp!!" (bcrypt hash: $2b$10$GjxVilmWDxj5FbhNu5QkEu9hVKO8yXqgG9S4WERntfovo6Gx28bd2)
 
+*   **Lead Creation Form Fixes** (October 13, 2025):
+    - Fixed critical issue where "Crear Lead" button was non-functional due to validation errors on backend-managed fields
+    - Updated `insertLeadSchema` to omit `registeredById` and `validUntil` fields (these are now auto-populated by the backend)
+    - Fixed property selector in MultiStepLeadForm to use `/api/properties/search` endpoint and `getPropertyTitle()` helper
+    - Property interests now display correctly with "CONDOMINIO - UNIDAD" format in both selector and selected badges
+    - Changed budget input from `type="number"` to `type="text"` to align with string-based schema validation
+
 ## System Architecture
 The platform is built with a modern web stack, emphasizing a professional, responsive, and accessible user experience with full internationalization.
 
