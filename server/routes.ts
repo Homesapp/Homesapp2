@@ -7834,9 +7834,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/leads", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const currentUser = await storage.getUser(userId);
-      if (!currentUser) {
-        return res.status(404).json({ message: "Usuario no encontrado" });
+      
+      // Handle both admin and regular users
+      let currentUser;
+      if (req.user.adminAuth) {
+        // Admin user - get from admin table
+        const admin = await storage.getAdminById(userId);
+        if (!admin) {
+          return res.status(404).json({ message: "Usuario no encontrado" });
+        }
+        // Normalize admin to user shape for consistent downstream access
+        currentUser = {
+          id: admin.id,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          email: admin.email,
+          role: admin.role || 'admin', // Use admin role or default to 'admin'
+        };
+      } else {
+        // Regular user - get from users table
+        currentUser = await storage.getUser(userId);
+        if (!currentUser) {
+          return res.status(404).json({ message: "Usuario no encontrado" });
+        }
       }
 
       const leadData = req.body;
