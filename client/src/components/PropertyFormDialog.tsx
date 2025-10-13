@@ -276,10 +276,8 @@ export function PropertyFormDialog({
         setSelectedCondoId(value);
       } else {
         // New condominium name - create it
-        const response = await apiRequest<Condominium>("/api/condominiums/ensure", {
-          method: "POST",
-          body: JSON.stringify({ name: value }),
-        });
+        const res = await apiRequest("POST", "/api/condominiums/ensure", { name: value });
+        const response = await res.json() as Condominium;
         
         form.setValue("condominiumId", response.id);
         setSelectedCondoId(response.id);
@@ -324,10 +322,7 @@ export function PropertyFormDialog({
         form.setValue("unitNumber", value);
       } else {
         // New unit number - create it
-        await apiRequest(`/api/condominiums/${selectedCondoId}/units/ensure`, {
-          method: "POST",
-          body: JSON.stringify({ unitNumber: value }),
-        });
+        await apiRequest("POST", `/api/condominiums/${selectedCondoId}/units/ensure`, { unitNumber: value });
         
         form.setValue("unitNumber", value);
         
@@ -362,10 +357,7 @@ export function PropertyFormDialog({
         form.setValue("location", value);
       } else {
         // New colony name - create it
-        await apiRequest<Colony>("/api/colonies/ensure", {
-          method: "POST",
-          body: JSON.stringify({ name: value }),
-        });
+        await apiRequest("POST", "/api/colonies/ensure", { name: value });
         
         form.setValue("location", value);
         
@@ -573,6 +565,7 @@ export function PropertyFormDialog({
                           className="min-h-[100px]"
                           data-testid="input-description"
                           {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -726,6 +719,7 @@ export function PropertyFormDialog({
                             placeholder="120"
                             data-testid="input-area"
                             {...field}
+                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
