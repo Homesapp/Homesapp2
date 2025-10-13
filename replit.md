@@ -102,3 +102,11 @@ The platform employs unified middleware for consistent authentication and automa
     - Enables automated tests to create admin users without manual approval workflow
     - Security: Role assignment from claims ONLY works in development mode, production remains unchanged
     - Architect-reviewed and confirmed safe with no security implications
+*   **Enhanced Google Sign-In UX (October 2025)**: Improved authentication user experience with prominent Google login buttons:
+    - Added visible "Continuar con Google" button on Landing page (client/src/pages/Landing.tsx) linking to /api/login
+    - Enhanced Login page with prominent Google login button replacing subtle text link
+    - Implemented visual separator and button-based design for better UX
+    - Added Google icon SVG to both buttons for visual clarity
+    - Full i18n support: Added translations for "landing.googleSignIn" and "login.googleSignIn" (ES/EN)
+    - Testing confirmed: OIDC flow works correctly (/api/login → /api/callback → app root)
+    - **Production Note**: Replit Auth (including Google login) works automatically in published apps without additional configuration
