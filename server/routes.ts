@@ -3875,15 +3875,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/properties/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
       const property = await storage.getProperty(id);
 
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
 
-      if (!user || (property.ownerId !== userId && !["master", "admin", "admin_jr"].includes(user.role))) {
+      // Handle both admin and regular user sessions
+      let isAuthorized = false;
+      
+      if (req.session?.adminUser) {
+        // Admin user session - check admin privileges
+        const adminRole = req.session.adminUser.role;
+        isAuthorized = ["master", "admin", "admin_jr"].includes(adminRole);
+      } else if (req.user?.claims?.sub) {
+        // Regular user session
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        
+        if (user) {
+          // User can edit if they own the property or have admin privileges
+          isAuthorized = property.ownerId === userId || ["master", "admin", "admin_jr"].includes(user.role);
+        }
+      }
+
+      if (!isAuthorized) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -3914,15 +3930,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/properties/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
       const property = await storage.getProperty(id);
 
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
 
-      if (!user || (property.ownerId !== userId && !["master", "admin"].includes(user.role))) {
+      // Handle both admin and regular user sessions
+      let isAuthorized = false;
+      
+      if (req.session?.adminUser) {
+        // Admin user session - check admin privileges (only master and admin can delete)
+        const adminRole = req.session.adminUser.role;
+        isAuthorized = ["master", "admin"].includes(adminRole);
+      } else if (req.user?.claims?.sub) {
+        // Regular user session
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        
+        if (user) {
+          // User can delete if they own the property or have admin privileges
+          isAuthorized = property.ownerId === userId || ["master", "admin"].includes(user.role);
+        }
+      }
+
+      if (!isAuthorized) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
