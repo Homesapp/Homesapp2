@@ -17530,6 +17530,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // Contact Import Routes (Admin Only)
+  // ========================================
+
+  // Parse CSV file and return parsed contacts with property matches
+  app.post("/api/admin/contacts/parse-csv", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { csvData } = req.body;
+      
+      if (!csvData || !Array.isArray(csvData)) {
+        return res.status(400).json({ message: "Datos CSV inválidos" });
+      }
+
+      const Papa = await import('papaparse');
+      const { parseContactRow, isValidContact, normalizePhoneNumber } = await import('./utils/contactParser.js');
+
+      // Parse CSV rows
+      const parsedContacts = csvData.map((row: any) => parseContactRow(row));
+
+      // Get all properties for matching
+      const allProperties = await storage.getProperties({ includeInactive: true });
+
+      // Match contacts with properties
+      const contactsWithMatches = parsedContacts.map((contact: any) => {
+        if (!contact.parseSuccess) {
+          return {
+            ...contact,
+            matchedProperty: null,
+            matchConfidence: 0,
+          };
+        }
+
+        // Try to find matching property by condominium name + unit number
+        const matches = allProperties.filter((prop: any) => {
+          const condoNameMatch = prop.condoName?.toLowerCase().includes(contact.condominiumName.toLowerCase()) ||
+                                contact.condominiumName.toLowerCase().includes(prop.condoName?.toLowerCase() || '');
+          const unitMatch = prop.unitNumber?.toLowerCase() === contact.unitNumber.toLowerCase();
+          
+          return condoNameMatch && unitMatch;
+        });
+
+        let matchedProperty = null;
+        let matchConfidence = 0;
+
+        if (matches.length === 1) {
+          matchedProperty = matches[0];
+          matchConfidence = 100;
+        } else if (matches.length > 1) {
+          matchedProperty = matches[0];
+          matchConfidence = 50; // Multiple matches, uncertain
+        }
+
+        return {
+          ...contact,
+          phoneNumber: contact.phoneNumber ? normalizePhoneNumber(contact.phoneNumber) : undefined,
+          matchedProperty,
+          matchConfidence,
+        };
+      });
+
+      // Separate valid and invalid contacts
+      const validContacts = contactsWithMatches.filter((c: any) => c.parseSuccess);
+      const invalidContacts = contactsWithMatches.filter((c: any) => !c.parseSuccess);
+
+      res.json({
+        total: contactsWithMatches.length,
+        valid: validContacts.length,
+        invalid: invalidContacts.length,
+        contacts: contactsWithMatches,
+        summary: {
+          autoMatched: validContacts.filter((c: any) => c.matchConfidence === 100).length,
+          partialMatches: validContacts.filter((c: any) => c.matchConfidence > 0 && c.matchConfidence < 100).length,
+          noMatches: validContacts.filter((c: any) => c.matchConfidence === 0).length,
+        }
+      });
+
+      await createAuditLog(
+        req,
+        "create",
+        "contact_import",
+        "csv_parse",
+        `Parsed ${contactsWithMatches.length} contacts from CSV`
+      );
+
+    } catch (error: any) {
+      console.error("Error parsing CSV:", error);
+      res.status(500).json({ message: error.message || "Error al procesar CSV" });
+    }
+  });
+
+  // Batch update properties with owner contact data
+  app.post("/api/admin/contacts/batch-update", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { updates } = req.body;
+      
+      if (!updates || !Array.isArray(updates)) {
+        return res.status(400).json({ message: "Datos de actualización inválidos" });
+      }
+
+      const results = {
+        success: 0,
+        failed: 0,
+        errors: [] as any[],
+      };
+
+      for (const update of updates) {
+        try {
+          const { propertyId, ownerFirstName, ownerLastName, ownerPhone, ownerEmail, referredByName, referredByLastName, referredByPhone, referredByEmail } = update;
+
+          if (!propertyId) {
+            results.failed++;
+            results.errors.push({ update, error: "Missing property ID" });
+            continue;
+          }
+
+          await storage.updateProperty(propertyId, {
+            ownerFirstName,
+            ownerLastName,
+            ownerPhone,
+            ownerEmail: ownerEmail || null,
+            referredByName: referredByName || null,
+            referredByLastName: referredByLastName || null,
+            referredByPhone: referredByPhone || null,
+            referredByEmail: referredByEmail || null,
+          });
+
+          results.success++;
+        } catch (error: any) {
+          results.failed++;
+          results.errors.push({ update, error: error.message });
+        }
+      }
+
+      await createAuditLog(
+        req,
+        "update",
+        "contact_import",
+        "batch_update",
+        `Batch updated ${results.success} properties with owner contact data`
+      );
+
+      res.json(results);
+
+    } catch (error: any) {
+      console.error("Error batch updating contacts:", error);
+      res.status(500).json({ message: error.message || "Error al actualizar contactos" });
+    }
+  });
+
   const httpServer = createServer(app);
   const sessionMiddleware = getSession();
   
