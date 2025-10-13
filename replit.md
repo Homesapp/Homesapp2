@@ -29,6 +29,15 @@ Preferred communication style: Simple, everyday language.
     - Property interests now display correctly with "CONDOMINIO - UNIDAD" format in both selector and selected badges
     - Changed budget input from `type="number"` to `type="text"` to align with string-based schema validation
 
+*   **Lead Edit and Delete Functionality** (October 13, 2025):
+    - Added Edit and Delete buttons to Lead Details dialog header for quick access to lead management
+    - Implemented updateLeadMutation with proper state management and cache invalidation
+    - Implemented deleteLeadMutation with AlertDialog confirmation flow to prevent accidental deletions
+    - Modified MultiStepLeadForm to support edit mode via defaultValues prop - preserves all fields including status, pets, and multi-select arrays
+    - Fixed POST /api/leads endpoint to work with admin sessions by normalizing admin user objects (from storage.getAdminById) to match regular user shape
+    - Edit dialog title dynamically changes between "Crear Nuevo Lead" and "Editar Lead" based on context
+    - All interactive elements have proper data-testid attributes for testing (button-edit-lead, button-delete-lead, dialog-delete-confirmation)
+
 ## System Architecture
 The platform is built with a modern web stack, emphasizing a professional, responsive, and accessible user experience with full internationalization.
 
