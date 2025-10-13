@@ -135,6 +135,8 @@ export async function setupAuth(app: Express) {
       passport.use(strategy);
     }
 
+    // Note: serializeUser/deserializeUser are shared between Replit Auth and Google OAuth
+    // They are defined here but work for both strategies
     passport.serializeUser((user: Express.User, cb) => cb(null, user));
     passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
@@ -226,8 +228,14 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
     }
   }
 
-  // Check if user is authenticated via Replit Auth
+  // Check if user is authenticated via Google OAuth
   const user = req.user as any;
+  if (req.isAuthenticated() && user?.googleAuth) {
+    // Google OAuth session - no token refresh needed
+    return next();
+  }
+
+  // Check if user is authenticated via Replit Auth
   if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
