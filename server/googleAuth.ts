@@ -11,14 +11,16 @@ export function setupGoogleAuth(app: Express) {
   }
 
   // Build the full callback URL
-  // In development, use REPLIT_DEV_DOMAIN. In production, use first domain from REPLIT_DOMAINS
+  // Priority: REPLIT_DEV_DOMAIN (dev) > REPLIT_DOMAINS (production)
   let callbackURL: string;
   
-  if (process.env.NODE_ENV === 'production' && process.env.REPLIT_DOMAINS) {
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    // Development environment
+    callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`;
+  } else if (process.env.REPLIT_DOMAINS) {
+    // Production environment (published app)
     const domain = process.env.REPLIT_DOMAINS.split(',')[0];
     callbackURL = `https://${domain}/auth/google/callback`;
-  } else if (process.env.REPLIT_DEV_DOMAIN) {
-    callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`;
   } else {
     // Fallback for local development
     callbackURL = "http://localhost:5000/auth/google/callback";

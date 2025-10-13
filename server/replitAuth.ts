@@ -40,7 +40,8 @@ export function getSession() {
       httpOnly: true,
       // Use secure cookies in production or on Replit (which uses HTTPS even in dev)
       secure: process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DOMAINS,
-      sameSite: 'strict',
+      // Use 'lax' to allow OAuth callbacks (cookies sent on top-level navigation from external sites like Google)
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
