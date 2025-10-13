@@ -16,7 +16,7 @@ import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PropertyFormDialog } from "@/components/PropertyFormDialog";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 
 type AccessInfo = 
   | {
@@ -70,7 +70,7 @@ type PropertyStats = {
 export default function AdminPropertyManagement() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
@@ -908,7 +908,7 @@ export default function AdminPropertyManagement() {
                           data-testid={`button-schedule-${property.id}`}
                           size="sm"
                           variant="outline"
-                          onClick={() => navigate(`/admin/appointments/new?propertyId=${property.id}`)}
+                          onClick={() => setLocation(`/admin/appointments/new?propertyId=${property.id}`)}
                         >
                           <Calendar className="w-4 h-4 mr-2" />
                           Agendar
