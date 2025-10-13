@@ -36,6 +36,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface PropertyFormDialogProps {
   open: boolean;
@@ -257,6 +259,93 @@ export function PropertyFormDialog({
     form.setValue("images", updatedFiles.map(f => f.data));
   };
 
+  // Handle condominium selection/creation
+  const handleCondominiumChange = async (value: string) => {
+    try {
+      // Check if it's an existing ID or a new name
+      const existingCondo = condominiums.find(c => c.id === value);
+      
+      if (existingCondo) {
+        // Existing condominium selected
+        form.setValue("condominiumId", value);
+        setSelectedCondoId(value);
+      } else {
+        // New condominium name - create it
+        const response = await apiRequest<Condominium>("/api/condominiums/ensure", {
+          method: "POST",
+          body: JSON.stringify({ name: value }),
+        });
+        
+        form.setValue("condominiumId", response.id);
+        setSelectedCondoId(response.id);
+        
+        // Invalidate condominiums cache to refresh the list
+        await queryClient.invalidateQueries({ 
+          queryKey: ["/api/condominiums/approved"] 
+        });
+        
+        toast({
+          title: "Condominio agregado",
+          description: `"${value}" ha sido agregado correctamente.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error handling condominium:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo procesar el condominio.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle unit selection/creation
+  const handleUnitChange = async (value: string) => {
+    try {
+      if (!selectedCondoId) {
+        toast({
+          title: "Error",
+          description: "Primero selecciona un condominio.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if it's an existing unit or a new number
+      const existingUnit = units.find(u => u.unitNumber === value);
+      
+      if (existingUnit) {
+        // Existing unit selected
+        form.setValue("unitNumber", value);
+      } else {
+        // New unit number - create it
+        await apiRequest(`/api/condominiums/${selectedCondoId}/units/ensure`, {
+          method: "POST",
+          body: JSON.stringify({ unitNumber: value }),
+        });
+        
+        form.setValue("unitNumber", value);
+        
+        // Invalidate units cache to refresh the list
+        await queryClient.invalidateQueries({ 
+          queryKey: ["/api/condominiums", selectedCondoId, "units"] 
+        });
+        
+        toast({
+          title: "Unidad agregada",
+          description: `Unidad "${value}" ha sido agregada correctamente.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error handling unit:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo procesar la unidad.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const onSubmit = async (data: InsertProperty) => {
     try {
       if (mode === "edit" && property) {
@@ -388,26 +477,18 @@ export function PropertyFormDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Condominio *</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          setSelectedCondoId(value);
-                        }}
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-condominium">
-                            <SelectValue placeholder="Seleccionar condominio" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {condominiums.map((condo) => (
-                            <SelectItem key={condo.id} value={condo.id}>
-                              {condo.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CreatableCombobox
+                          value={field.value || ""}
+                          onValueChange={handleCondominiumChange}
+                          options={condominiums.map(c => ({ id: c.id, label: c.name }))}
+                          placeholder="Seleccionar o escribir condominio..."
+                          emptyText="No se encontraron condominios."
+                          createText="Crear"
+                          searchPlaceholder="Buscar o escribir nuevo..."
+                          testId="select-condominium"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -419,24 +500,19 @@ export function PropertyFormDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Número de Unidad *</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ""}
-                        disabled={!selectedCondoId}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-unit-number">
-                            <SelectValue placeholder={selectedCondoId ? "Seleccionar unidad" : "Primero selecciona un condominio"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {units.map((unit) => (
-                            <SelectItem key={unit.id} value={unit.unitNumber}>
-                              {unit.unitNumber}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CreatableCombobox
+                          value={field.value || ""}
+                          onValueChange={handleUnitChange}
+                          options={units.map(u => ({ id: u.unitNumber, label: u.unitNumber }))}
+                          placeholder={selectedCondoId ? "Seleccionar o escribir unidad..." : "Primero selecciona un condominio"}
+                          emptyText="No se encontraron unidades."
+                          createText="Crear"
+                          searchPlaceholder="Buscar o escribir nueva..."
+                          disabled={!selectedCondoId}
+                          testId="select-unit-number"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
