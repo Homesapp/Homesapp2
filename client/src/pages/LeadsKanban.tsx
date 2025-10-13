@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Plus,
   Mail,
@@ -24,6 +27,8 @@ import {
   Eye,
   Send,
   X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { type Lead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -187,6 +192,10 @@ export default function LeadsKanban() {
     originalSeller?: any;
   } | null>(null);
   const [validatingPhone, setValidatingPhone] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(true);
+  const [showFunnel, setShowFunnel] = useState(true);
+  const [selectedLeadDetails, setSelectedLeadDetails] = useState<Lead | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
   useEffect(() => {
     if (!dialogOpen) {
@@ -407,8 +416,20 @@ export default function LeadsKanban() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card data-testid="metric-total-leads">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-semibold">Métricas Generales</h2>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowMetrics(!showMetrics)}
+          data-testid="button-toggle-metrics"
+        >
+          {showMetrics ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+      {showMetrics && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card data-testid="metric-total-leads">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
             <User className="h-4 w-4 text-muted-foreground" />
@@ -461,10 +482,23 @@ export default function LeadsKanban() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Sales Funnel Visualization */}
-      <Card data-testid="sales-funnel-chart">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-semibold">Embudo de Ventas</h2>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowFunnel(!showFunnel)}
+          data-testid="button-toggle-funnel"
+        >
+          {showFunnel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+      {showFunnel && (
+        <Card data-testid="sales-funnel-chart">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -549,6 +583,7 @@ export default function LeadsKanban() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
@@ -586,7 +621,7 @@ export default function LeadsKanban() {
                   </div>
                   <p className="text-xs text-white/80 mt-1">{status.description}</p>
                 </CardHeader>
-                <CardContent className="p-3 space-y-3 min-h-[500px]" data-testid={`content-${status.value}`}>
+                <CardContent className="p-3 space-y-3 max-h-[600px] overflow-y-auto" data-testid={`content-${status.value}`}>
                   {leadsInStatus.map((lead) => {
                     const leadAppointments = getLeadAppointments(lead.id);
                     const leadOffers = getLeadOffers(lead.id);
@@ -715,10 +750,8 @@ export default function LeadsKanban() {
                               className="w-full text-xs gap-1"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toast({
-                                  title: "Función en desarrollo",
-                                  description: "La vista detallada del lead estará disponible próximamente",
-                                });
+                                setSelectedLeadDetails(lead);
+                                setDetailsDialogOpen(true);
                               }}
                               data-testid={`button-view-details-${lead.id}`}
                             >
@@ -748,6 +781,224 @@ export default function LeadsKanban() {
             phone: selectedLeadForOffer.phone || "",
           }}
         />
+      )}
+
+      {/* Lead Details Dialog */}
+      {selectedLeadDetails && (
+        <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh]" data-testid="dialog-lead-details">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">
+                Detalles del Lead: {selectedLeadDetails.firstName} {selectedLeadDetails.lastName}
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
+              <div className="space-y-6">
+                {/* Información General */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Información General
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Fecha de Creación</p>
+                      <p className="font-medium" data-testid="text-created-at">
+                        {format(new Date(selectedLeadDetails.createdAt), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="font-medium">{selectedLeadDetails.email || "No proporcionado"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Teléfono</p>
+                      <p className="font-medium">{selectedLeadDetails.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Presupuesto</p>
+                      <p className="font-medium">{formatCurrency(selectedLeadDetails.budget)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Válido Hasta</p>
+                      <p className="font-medium">
+                        {format(new Date(selectedLeadDetails.validUntil), "d 'de' MMMM, yyyy", { locale: es })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tiempo para Liberación</p>
+                      <p className="font-medium">
+                        {Math.max(0, Math.ceil((new Date(selectedLeadDetails.validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} días
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Vendedor Asignado */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Vendedor Asignado
+                  </h3>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Registrado por:</p>
+                    <p className="font-medium">
+                      {sellers?.find((s: any) => s.id === selectedLeadDetails.registeredById)?.fullName || "No asignado"}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Estado Actual */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Estado Actual</h3>
+                  <div className="flex items-center gap-4">
+                    <Select
+                      value={selectedLeadDetails.status}
+                      onValueChange={(newStatus) => {
+                        updateLeadStatusMutation.mutate({ 
+                          id: selectedLeadDetails.id, 
+                          status: newStatus 
+                        });
+                        setSelectedLeadDetails({ ...selectedLeadDetails, status: newStatus as any });
+                      }}
+                    >
+                      <SelectTrigger className="w-[280px]" data-testid="select-lead-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LEAD_STATUSES.map((status) => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Preferencias del Lead */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Preferencias</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {selectedLeadDetails.bedrooms && selectedLeadDetails.bedrooms.length > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Recámaras</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {selectedLeadDetails.bedrooms.map((bed, i) => (
+                            <Badge key={i} variant="secondary">{bed}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedLeadDetails.zoneOfInterest && selectedLeadDetails.zoneOfInterest.length > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Zonas de Interés</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {selectedLeadDetails.zoneOfInterest.map((zone, i) => (
+                            <Badge key={i} variant="secondary">{zone}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedLeadDetails.contractDuration && selectedLeadDetails.contractDuration.length > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Duración del Contrato</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {selectedLeadDetails.contractDuration.map((dur, i) => (
+                            <Badge key={i} variant="secondary">{dur}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {selectedLeadDetails.notes && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Notas</p>
+                      <p className="mt-1 p-3 bg-muted rounded-md">{selectedLeadDetails.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Citas */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Citas ({getLeadAppointments(selectedLeadDetails.id).length})
+                  </h3>
+                  {getLeadAppointments(selectedLeadDetails.id).length > 0 ? (
+                    <div className="space-y-2">
+                      {getLeadAppointments(selectedLeadDetails.id).map((apt: any) => (
+                        <Card key={apt.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <p className="font-medium">{format(new Date(apt.date), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Tipo: {apt.type === "rental_showing" ? "Visita de Renta" : "Otra"}
+                                </p>
+                                {apt.propertyId && (
+                                  <p className="text-sm text-muted-foreground">
+                                    Propiedad: {getPropertyTitle(properties.find((p: any) => p.id === apt.propertyId)) || "N/A"}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge variant={new Date(apt.date) > new Date() ? "default" : "secondary"}>
+                                {new Date(apt.date) > new Date() ? "Próxima" : "Completada"}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay citas registradas</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Ofertas */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Ofertas ({getLeadOffers(selectedLeadDetails.id).length})
+                  </h3>
+                  {getLeadOffers(selectedLeadDetails.id).length > 0 ? (
+                    <div className="space-y-2">
+                      {getLeadOffers(selectedLeadDetails.id).map((offer: any) => (
+                        <Card key={offer.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <p className="font-medium">
+                                  {format(new Date(offer.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Estado: {offer.status}
+                                </p>
+                              </div>
+                              <Badge>{offer.status}</Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay ofertas enviadas</p>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

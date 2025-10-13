@@ -26,6 +26,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, Link as LinkIcon, Mail, MessageCircle, Copy, Check, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { getPropertyTitle } from "@/lib/propertyHelpers";
 
 const emailFormSchema = z.object({
   clientEmail: z.string().email("Email inválido"),
@@ -152,7 +153,7 @@ export default function GenerateOfferLinkDialog({ trigger, open: externalOpen, o
 
   const getWhatsAppMessage = () => {
     if (!generatedToken?.property) return "";
-    const propertyTitle = generatedToken.property.title || "esta propiedad";
+    const propertyTitle = getPropertyTitle(generatedToken.property);
     const offerLink = getOfferLink();
     return `¡Hola! 👋
 
@@ -221,7 +222,7 @@ El proceso es rápido y sencillo. Solo necesitas completar tus datos y la inform
                   ) : (
                     properties?.map((property: any) => (
                       <SelectItem key={property.id} value={property.id}>
-                        {property.title || property.address || property.id}
+                        {getPropertyTitle(property)}
                       </SelectItem>
                     ))
                   )}
@@ -245,7 +246,7 @@ El proceso es rápido y sencillo. Solo necesitas completar tus datos y la inform
               <div className="space-y-2">
                 <p className="text-sm font-medium">Propiedad:</p>
                 <p className="text-sm text-muted-foreground">
-                  {generatedToken.property?.title || "Sin título"}
+                  {getPropertyTitle(generatedToken.property)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Válido hasta: {new Date(generatedToken.expiresAt).toLocaleString("es-MX")}
