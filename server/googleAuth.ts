@@ -10,12 +10,21 @@ export function setupGoogleAuth(app: Express) {
     return;
   }
 
-  // Get the callback URL based on environment
-  const getCallbackURL = (req: any) => {
-    const protocol = req.protocol;
-    const host = req.get('host');
-    return `${protocol}://${host}/auth/google/callback`;
-  };
+  // Build the full callback URL
+  // In development, use REPLIT_DEV_DOMAIN. In production, use first domain from REPLIT_DOMAINS
+  let callbackURL: string;
+  
+  if (process.env.NODE_ENV === 'production' && process.env.REPLIT_DOMAINS) {
+    const domain = process.env.REPLIT_DOMAINS.split(',')[0];
+    callbackURL = `https://${domain}/auth/google/callback`;
+  } else if (process.env.REPLIT_DEV_DOMAIN) {
+    callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`;
+  } else {
+    // Fallback for local development
+    callbackURL = "http://localhost:5000/auth/google/callback";
+  }
+
+  console.log(`Google OAuth callback URL: ${callbackURL}`);
 
   // Configure Google OAuth Strategy
   passport.use(
@@ -23,7 +32,7 @@ export function setupGoogleAuth(app: Express) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/auth/google/callback",
+        callbackURL: callbackURL,
         passReqToCallback: true,
       },
       async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
