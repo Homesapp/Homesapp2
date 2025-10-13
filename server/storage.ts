@@ -4572,6 +4572,22 @@ export class DatabaseStorage implements IStorage {
     // Create the property
     const [property] = await db.insert(properties).values(propertyData as any).returning();
     
+    // Save owner documents if provided
+    const ownerData = draft.ownerData as any;
+    if (ownerData?.documents && Array.isArray(ownerData.documents) && ownerData.documents.length > 0) {
+      for (const doc of ownerData.documents) {
+        await this.createPropertyDocument({
+          propertyId: property.id,
+          type: doc.type,
+          url: doc.url,
+          name: doc.name,
+          category: this.getDocumentCategory(doc.type),
+          uploadedBy: draft.userId,
+          verified: false, // Admin will verify later
+        });
+      }
+    }
+    
     // Update draft status to approved and link to created property
     await this.updatePropertySubmissionDraft(id, { 
       status: "approved",
@@ -4582,6 +4598,30 @@ export class DatabaseStorage implements IStorage {
     });
     
     return property;
+  }
+
+  // Helper method to determine document category based on type
+  private getDocumentCategory(type: string): string {
+    // Persona Física documents
+    const personaFisicaDocs = [
+      "ife_ine_frente", "ife_ine_reverso", "pasaporte", "legal_estancia",
+      "escrituras", "contrato_compraventa", "fideicomiso",
+      "recibo_agua", "recibo_luz", "recibo_internet",
+      "reglas_internas", "reglamento_condominio", "comprobante_no_adeudo"
+    ];
+    
+    // Persona Moral documents
+    const personaMoralDocs = [
+      "acta_constitutiva", "poder_notarial", "identificacion_representante"
+    ];
+    
+    if (personaFisicaDocs.includes(type)) {
+      return "persona_fisica";
+    } else if (personaMoralDocs.includes(type)) {
+      return "persona_moral";
+    } else {
+      return "optional";
+    }
   }
 
   // Property Agreement operations

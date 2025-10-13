@@ -89,6 +89,7 @@ export function draftToPropertyData(draft: PropertySubmissionDraft, adminId: str
   const media = draft.media as any || {};
   const commercialTerms = draft.commercialTerms as any || {};
   const servicesInfo = draft.servicesInfo as any || {};
+  const ownerData = draft.ownerData as any || {};
 
   // Transform included services
   const includedServices = transformServicesInfo(servicesInfo);
@@ -155,6 +156,18 @@ export function draftToPropertyData(draft: PropertySubmissionDraft, adminId: str
     
     // Commercial terms
     allowsSubleasing: commercialTerms.allowsSubleasing || false,
+    
+    // Owner private data
+    ownerFirstName: ownerData.ownerFirstName,
+    ownerLastName: ownerData.ownerLastName,
+    ownerPhone: ownerData.ownerPhone,
+    ownerEmail: ownerData.ownerEmail || null,
+    
+    // Referral data (if provided)
+    referredByName: ownerData.hasReferral ? ownerData.referredByName : null,
+    referredByLastName: ownerData.hasReferral ? ownerData.referredByLastName : null,
+    referredByPhone: ownerData.hasReferral ? ownerData.referredByPhone : null,
+    referredByEmail: ownerData.hasReferral ? (ownerData.referredByEmail || null) : null,
   };
 
   return propertyData;
