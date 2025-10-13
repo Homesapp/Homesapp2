@@ -11,6 +11,7 @@ import { requireResourceOwnership } from "./middleware/resourceOwnership";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendOfferLinkEmail } from "./gmail";
+import { setupGoogleAuth } from "./googleAuth";
 import { generateOfferPDF } from "./pdfGenerator";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
 import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter, propertySubmissionLimiter } from "./rateLimiters";
@@ -282,6 +283,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupAuth(app);
+  
+  // Setup Google OAuth direct login
+  setupGoogleAuth(app);
   
   // Initialize business hours with default values if not exists
   await storage.initializeBusinessHours();
