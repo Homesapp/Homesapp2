@@ -29,6 +29,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { type Lead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -40,6 +42,16 @@ import MultiStepLeadForm from "@/components/MultiStepLeadForm";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -198,10 +210,13 @@ export default function LeadsKanban() {
   const [showFunnel, setShowFunnel] = useState(true);
   const [selectedLeadDetails, setSelectedLeadDetails] = useState<Lead | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
   
   useEffect(() => {
     if (!dialogOpen) {
       form.reset();
+      setEditingLead(null);
     }
   }, [dialogOpen]);
   
@@ -287,6 +302,42 @@ export default function LeadsKanban() {
     },
   });
 
+  const updateLeadMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await apiRequest("PATCH", `/api/leads/${id}`, data);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({ title: "Lead actualizado exitosamente" });
+      setDialogOpen(false);
+      setEditingLead(null);
+    },
+    onError: (error: any) => {
+      const errorData = error?.response?.data || error;
+      toast({ 
+        title: "Error al actualizar lead", 
+        description: errorData.message || "Inténtalo de nuevo",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/leads/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({ title: "Lead eliminado exitosamente" });
+      setDetailsDialogOpen(false);
+      setDeleteDialogOpen(false);
+    },
+    onError: () => {
+      toast({ title: "Error al eliminar lead", variant: "destructive" });
+    },
+  });
+
   const handleDragStart = (e: DragEvent, leadId: string) => {
     e.dataTransfer.setData("leadId", leadId);
   };
@@ -335,7 +386,12 @@ export default function LeadsKanban() {
       email: data.email ? data.email.toLowerCase().trim() : undefined,
       budget: data.budget ? data.budget.toString() : null,
     };
-    createLeadMutation.mutate(formattedData);
+    
+    if (editingLead) {
+      updateLeadMutation.mutate({ id: editingLead.id, data: formattedData });
+    } else {
+      createLeadMutation.mutate(formattedData);
+    }
   };
 
   const formatCurrency = (value: string) => {
@@ -409,11 +465,28 @@ export default function LeadsKanban() {
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Crear Nuevo Lead</DialogTitle>
+              <DialogTitle>{editingLead ? "Editar Lead" : "Crear Nuevo Lead"}</DialogTitle>
             </DialogHeader>
             <MultiStepLeadForm
               onSubmit={handleSubmit}
-              isPending={createLeadMutation.isPending}
+              isPending={createLeadMutation.isPending || updateLeadMutation.isPending}
+              defaultValues={editingLead ? {
+                firstName: editingLead.firstName,
+                lastName: editingLead.lastName,
+                email: editingLead.email || "",
+                phone: editingLead.phone,
+                budget: editingLead.budget || "",
+                source: editingLead.source || [],
+                contractDuration: editingLead.contractDuration || [],
+                moveInDate: editingLead.moveInDate || [],
+                pets: editingLead.pets || "",
+                bedrooms: editingLead.bedrooms || [],
+                zoneOfInterest: editingLead.zoneOfInterest || [],
+                unitType: editingLead.unitType || [],
+                propertyInterests: editingLead.propertyInterests || [],
+                notes: editingLead.notes || "",
+                status: editingLead.status,
+              } : undefined}
             />
           </DialogContent>
         </Dialog>
@@ -792,9 +865,38 @@ export default function LeadsKanban() {
         <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh]" data-testid="dialog-lead-details">
             <DialogHeader>
-              <DialogTitle className="text-2xl">
-                Detalles del Lead: {selectedLeadDetails.firstName} {selectedLeadDetails.lastName}
-              </DialogTitle>
+              <div className="flex items-center justify-between gap-4">
+                <DialogTitle className="text-2xl">
+                  Detalles del Lead: {selectedLeadDetails.firstName} {selectedLeadDetails.lastName}
+                </DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingLead(selectedLeadDetails);
+                      setDetailsDialogOpen(false);
+                      setDialogOpen(true);
+                    }}
+                    data-testid="button-edit-lead"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      setLeadToDelete(selectedLeadDetails);
+                      setDeleteDialogOpen(true);
+                    }}
+                    data-testid="button-delete-lead"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </Button>
+                </div>
+              </div>
             </DialogHeader>
             <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
               <div className="space-y-6">
@@ -1038,6 +1140,35 @@ export default function LeadsKanban() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el lead de{" "}
+              <strong>{leadToDelete?.firstName} {leadToDelete?.lastName}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (leadToDelete) {
+                  deleteLeadMutation.mutate(leadToDelete.id);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
