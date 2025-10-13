@@ -1159,6 +1159,8 @@ export const insertLeadSchema = createInsertSchema(leads)
     createdAt: true,
     updatedAt: true,
     emailVerified: true,
+    registeredById: true,
+    validUntil: true,
   })
   .extend({
     firstName: z.string().min(1, "El nombre es obligatorio"),
