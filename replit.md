@@ -84,3 +84,21 @@ The platform employs unified middleware for consistent authentication and automa
     - Documents automatically categorized (persona_fisica/persona_moral/optional) and saved to propertyDocuments table when admin approves submission
     - Data transformer (draftToPropertyData) maps owner/referral fields from draft.ownerData to property columns
     - Enhanced approvePropertySubmissionDraft method handles document persistence with proper categorization
+*   **CSV Contact Import System**: Complete bulk contact import functionality for efficient owner data management:
+    - Intelligent contact parser (server/utils/contactParser.ts) supporting two formats:
+      * Standard CSV: "Nombre,Teléfono,Email,Condominio,Unidad"
+      * Smart format: "Juan Pérez dueño Aldea Zama 101 ref María González" (extracts owner, property, and optional referral)
+    - Admin page at /admin/import-contacts with CSV upload, preview table, and batch update
+    - Backend endpoints: POST /api/admin/contacts/parse-csv (parsing + auto-match), POST /api/admin/contacts/batch-update (bulk property updates)
+    - Automatic property matching by condominium name + unit number
+    - Manual property assignment via dropdown for unmatched contacts
+    - Inline editing of contact data before confirmation
+    - Updates properties table: ownerFirstName, ownerLastName, ownerWhatsapp, ownerEmail
+    - Integrated into admin sidebar under "Propiedades" group with full i18n support
+*   **OIDC Authorization Enhancement (Development Mode)**: Improved testing infrastructure for automated role assignment:
+    - Modified upsertUser in server/replitAuth.ts to extract roles from OIDC claims when NODE_ENV=development
+    - Updated upsertUserSchema in shared/schema.ts to include optional role field with enum validation
+    - Enhanced storage.upsertUser to persist role from OIDC claims during user creation
+    - Enables automated tests to create admin users without manual approval workflow
+    - Security: Role assignment from claims ONLY works in development mode, production remains unchanged
+    - Architect-reviewed and confirmed safe with no security implications
