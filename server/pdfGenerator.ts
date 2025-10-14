@@ -15,53 +15,85 @@ export async function generateOfferPDF(offerData: any, property: any): Promise<B
 
       const primaryColor = '#3b82f6';
       const secondaryColor = '#64748b';
-      const accentColor = '#f59e0b';
+      const accentColor = '#10b981';
+      const bgColor = '#f8fafc';
+      const borderColor = '#e2e8f0';
 
-      doc.fontSize(28)
-        .fillColor(primaryColor)
-        .text('HomesApp', 50, 50);
+      // Header with background
+      doc.rect(0, 0, 595, 120)
+        .fillColor('#1e40af')
+        .fill();
 
-      doc.fontSize(12)
-        .fillColor(secondaryColor)
-        .text('Tulum Rental Homes ™', 50, 85);
-
-      doc.moveTo(50, 110)
-        .lineTo(545, 110)
-        .strokeColor('#e2e8f0')
-        .stroke();
-
-      doc.fontSize(20)
-        .fillColor('#1e293b')
-        .text('Oferta de Renta', 50, 130);
-
-      doc.fontSize(11)
-        .fillColor(secondaryColor)
-        .text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })}`, 50, 165);
-
-      let yPosition = 200;
+      doc.fontSize(32)
+        .fillColor('#ffffff')
+        .text('HomesApp', 50, 35);
 
       doc.fontSize(14)
-        .fillColor(primaryColor)
-        .text('Propiedad', 50, yPosition);
-      
-      yPosition += 25;
-      doc.fontSize(11)
+        .fillColor('#bfdbfe')
+        .text('Tulum Rental Homes ™', 50, 75);
+
+      // Title Section
+      doc.fontSize(24)
         .fillColor('#1e293b')
-        .text(`${property.title || 'Sin título'}`, 50, yPosition);
+        .text('Oferta de Renta', 50, 150);
+
+      doc.fontSize(10)
+        .fillColor(secondaryColor)
+        .text(`Generada el ${new Date().toLocaleDateString('es-MX', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`, 50, 185);
+
+      doc.moveTo(50, 210)
+        .lineTo(545, 210)
+        .strokeColor(borderColor)
+        .lineWidth(2)
+        .stroke();
+
+      let yPosition = 230;
+
+      // Property Section with background box
+      doc.rect(50, yPosition - 5, 495, 90)
+        .fillColor(bgColor)
+        .fill();
+
+      doc.fontSize(16)
+        .fillColor(primaryColor)
+        .text('📍 Propiedad', 60, yPosition + 5);
+      
+      yPosition += 30;
+      doc.fontSize(12)
+        .fillColor('#1e293b')
+        .font('Helvetica-Bold')
+        .text(`${property.title || 'Sin título'}`, 60, yPosition);
       
       yPosition += 20;
       doc.fontSize(10)
+        .font('Helvetica')
         .fillColor(secondaryColor)
-        .text(`${property.address || 'Dirección no disponible'}`, 50, yPosition);
+        .text(`${property.address || 'Dirección no disponible'}`, 60, yPosition);
 
-      yPosition += 40;
-      doc.fontSize(14)
+      if (property.monthlyRentPrice) {
+        yPosition += 18;
+        doc.fontSize(10)
+          .fillColor(secondaryColor)
+          .text('Renta mensual solicitada: ', 60, yPosition, { continued: true })
+          .fontSize(11)
+          .fillColor(accentColor)
+          .font('Helvetica-Bold')
+          .text(`$${property.monthlyRentPrice.toLocaleString()} ${property.currency || 'USD'}`);
+        doc.font('Helvetica');
+      }
+
+      yPosition += 50;
+
+      // Client Information Section
+      doc.fontSize(16)
         .fillColor(primaryColor)
-        .text('Información del Solicitante', 50, yPosition);
+        .text('👤 Información del Solicitante', 50, yPosition);
 
       yPosition += 25;
       const clientInfo = [
@@ -74,83 +106,136 @@ export async function generateOfferPDF(offerData: any, property: any): Promise<B
 
       clientInfo.forEach(({ label, value }) => {
         if (value) {
-          doc.fontSize(10)
+          doc.fontSize(9)
             .fillColor(secondaryColor)
             .text(`${label}:`, 50, yPosition);
           
-          doc.fillColor('#1e293b')
+          doc.fontSize(10)
+            .fillColor('#1e293b')
+            .font('Helvetica-Bold')
             .text(value, 180, yPosition);
           
-          yPosition += 18;
+          doc.font('Helvetica');
+          yPosition += 20;
         }
       });
 
-      yPosition += 20;
-      doc.fontSize(14)
-        .fillColor(primaryColor)
-        .text('Detalles de la Oferta', 50, yPosition);
+      yPosition += 15;
 
-      yPosition += 25;
+      // Offer Details Section with highlight box
+      doc.rect(50, yPosition - 5, 495, 120)
+        .fillColor('#ecfdf5')
+        .fill();
+
+      doc.fontSize(16)
+        .fillColor(accentColor)
+        .text('💰 Detalles de la Oferta', 60, yPosition + 5);
+
+      yPosition += 30;
       const offerDetails = [
-        { label: 'Renta mensual ofertada', value: offerData.monthlyRent ? `$${offerData.monthlyRent} ${offerData.currency || 'USD'}` : 'No especificado' },
+        { 
+          label: 'Renta mensual ofertada', 
+          value: offerData.monthlyRent ? `$${parseFloat(offerData.monthlyRent).toLocaleString()} ${offerData.currency || 'USD'}` : 'No especificado',
+          highlight: true
+        },
+        { label: 'Tipo de uso', value: offerData.usageType === 'vivienda' ? 'Vivienda' : 'Subarrendamiento' },
         { label: 'Duración del contrato', value: offerData.contractDuration || 'No especificado' },
-        { label: 'Fecha de ingreso deseada', value: offerData.moveInDate ? new Date(offerData.moveInDate).toLocaleDateString('es-MX') : 'No especificada' },
+        { label: 'Fecha de ingreso', value: offerData.moveInDate ? new Date(offerData.moveInDate).toLocaleDateString('es-MX') : 'No especificada' },
         { label: 'Número de ocupantes', value: offerData.numberOfOccupants || 'No especificado' },
       ];
 
-      offerDetails.forEach(({ label, value }) => {
-        doc.fontSize(10)
+      offerDetails.forEach(({ label, value, highlight }) => {
+        doc.fontSize(9)
           .fillColor(secondaryColor)
-          .text(`${label}:`, 50, yPosition);
+          .text(`${label}:`, 60, yPosition);
         
-        doc.fillColor('#1e293b')
-          .text(value, 180, yPosition);
+        doc.fontSize(highlight ? 12 : 10)
+          .fillColor(highlight ? accentColor : '#1e293b')
+          .font(highlight ? 'Helvetica-Bold' : 'Helvetica')
+          .text(value, 200, yPosition - (highlight ? 1 : 0));
         
-        yPosition += 18;
+        doc.font('Helvetica');
+        yPosition += 20;
       });
 
-      if (offerData.services && offerData.services.length > 0) {
-        yPosition += 20;
-        doc.fontSize(14)
+      yPosition += 20;
+
+      // Services Section
+      if ((offerData.offeredServices && offerData.offeredServices.length > 0) || 
+          (offerData.propertyRequiredServices && offerData.propertyRequiredServices.length > 0)) {
+        
+        doc.fontSize(16)
           .fillColor(primaryColor)
-          .text('Servicios Solicitados', 50, yPosition);
+          .text('🏠 Servicios', 50, yPosition);
 
         yPosition += 25;
-        offerData.services.forEach((service: string) => {
-          doc.fontSize(10)
-            .fillColor('#1e293b')
-            .text(`• ${service}`, 70, yPosition);
+
+        if (offerData.offeredServices && offerData.offeredServices.length > 0) {
+          doc.fontSize(11)
+            .fillColor(secondaryColor)
+            .text('Servicios que el cliente ofrece pagar:', 50, yPosition);
+          
           yPosition += 18;
-        });
+          offerData.offeredServices.forEach((service: string) => {
+            doc.fontSize(10)
+              .fillColor('#1e293b')
+              .text(`✓ ${service}`, 70, yPosition);
+            yPosition += 16;
+          });
+          yPosition += 10;
+        }
+
+        if (offerData.propertyRequiredServices && offerData.propertyRequiredServices.length > 0) {
+          doc.fontSize(11)
+            .fillColor(secondaryColor)
+            .text('Servicios requeridos por el propietario:', 50, yPosition);
+          
+          yPosition += 18;
+          offerData.propertyRequiredServices.forEach((service: string) => {
+            doc.fontSize(10)
+              .fillColor('#1e293b')
+              .text(`• ${service}`, 70, yPosition);
+            yPosition += 16;
+          });
+        }
+
+        yPosition += 15;
       }
 
+      // Pets Section
       if (offerData.pets) {
-        yPosition += 20;
-        doc.fontSize(14)
+        doc.fontSize(16)
           .fillColor(primaryColor)
-          .text('Mascotas', 50, yPosition);
+          .text('🐾 Mascotas', 50, yPosition);
 
         yPosition += 25;
         doc.fontSize(10)
           .fillColor('#1e293b')
+          .font('Helvetica-Bold')
           .text(offerData.pets === 'yes' ? 'Sí, tiene mascotas' : 'No tiene mascotas', 50, yPosition);
         
+        doc.font('Helvetica');
+        
         if (offerData.pets === 'yes' && offerData.petDetails) {
-          yPosition += 18;
-          doc.fillColor(secondaryColor)
+          yPosition += 20;
+          doc.fontSize(9)
+            .fillColor(secondaryColor)
             .text('Detalles:', 50, yPosition);
-          yPosition += 18;
-          doc.fillColor('#1e293b')
+          yPosition += 16;
+          doc.fontSize(10)
+            .fillColor('#1e293b')
             .text(offerData.petDetails, 50, yPosition, { width: 495 });
-          yPosition += 35;
+          yPosition += Math.ceil(offerData.petDetails.length / 80) * 14 + 10;
         }
+
+        yPosition += 15;
       }
 
+      // Additional Comments
       if (offerData.additionalComments) {
-        yPosition += 20;
-        doc.fontSize(14)
+        doc.fontSize(16)
           .fillColor(primaryColor)
-          .text('Comentarios Adicionales', 50, yPosition);
+          .text('💬 Comentarios Adicionales', 50, yPosition);
 
         yPosition += 25;
         doc.fontSize(10)
@@ -158,13 +243,26 @@ export async function generateOfferPDF(offerData: any, property: any): Promise<B
           .text(offerData.additionalComments, 50, yPosition, { width: 495 });
       }
 
-      doc.moveDown(3);
+      // Footer
+      doc.rect(0, doc.page.height - 60, 595, 60)
+        .fillColor('#f1f5f9')
+        .fill();
+
       doc.fontSize(8)
         .fillColor(secondaryColor)
         .text(
-          'Este documento es una oferta de renta generada automáticamente. HomesApp se reserva el derecho de aprobar o rechazar ofertas.',
+          'Este documento es una oferta de renta generada automáticamente por HomesApp.',
           50,
-          doc.page.height - 80,
+          doc.page.height - 45,
+          { width: 495, align: 'center' }
+        );
+      
+      doc.fontSize(7)
+        .fillColor(secondaryColor)
+        .text(
+          'HomesApp se reserva el derecho de aprobar o rechazar ofertas según políticas internas.',
+          50,
+          doc.page.height - 25,
           { width: 495, align: 'center' }
         );
 
