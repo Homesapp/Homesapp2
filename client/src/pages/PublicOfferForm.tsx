@@ -13,7 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Home, CheckCircle2, AlertCircle, Upload, X, Pen } from "lucide-react";
+import { Loader2, Home, CheckCircle2, AlertCircle, Upload, X, Pen, ChevronLeft, ChevronRight } from "lucide-react";
+import logoPath from "@assets/H mes (500 x 300 px)_1759672952263.png";
 
 const offerFormSchema = z.object({
   fullName: z.string().min(2, "Nombre completo es requerido"),
@@ -366,32 +367,90 @@ export default function PublicOfferForm() {
     { id: "mantenimiento", label: "Mantenimiento" },
   ];
 
+  const propertyPhotos = property?.photos || [];
+  const displayPhotos = propertyPhotos.slice(0, 5);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        {/* Header with Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">HomesApp</h1>
+          <img 
+            src={logoPath} 
+            alt="HomesApp Logo" 
+            className="h-20 mx-auto mb-4"
+            data-testid="img-homesapp-logo"
+          />
           <p className="text-sm text-slate-600 dark:text-slate-400">Tulum Rental Homes ™</p>
         </div>
 
+        {/* Property Information Card */}
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Home className="h-6 w-6 text-primary" />
-              <CardTitle>Oferta de Renta</CardTitle>
+              <CardTitle className="text-2xl">Oferta de Renta</CardTitle>
             </div>
-            <CardDescription>{property?.title || "Propiedad"}</CardDescription>
+            <CardDescription className="text-lg">{property?.title || "Propiedad"}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Dirección:</strong> {property?.address || "No disponible"}
-              </p>
-              {property?.monthlyRentPrice && (
-                <p className="text-sm text-blue-900 dark:text-blue-100 mt-2">
-                  <strong>Renta publicada:</strong> ${property.monthlyRentPrice} {property.currency || "USD"}/mes
-                </p>
-              )}
+          <CardContent className="space-y-6">
+            {/* Photo Gallery */}
+            {displayPhotos.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Fotos de la Propiedad</h3>
+                <div className="flex gap-2 overflow-x-auto pb-2" data-testid="gallery-property-photos">
+                  {displayPhotos.map((photo, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-32 h-24 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700"
+                    >
+                      <img
+                        src={photo}
+                        alt={`Propiedad ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        data-testid={`img-property-${index}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Property Details - Prominent Display */}
+            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 rounded-lg p-6">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Dirección</p>
+                  <p className="text-base font-semibold text-foreground">{property?.address || "No disponible"}</p>
+                </div>
+                
+                {property?.monthlyRentPrice && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Renta Mensual Solicitada por el Propietario</p>
+                    <p className="text-3xl font-bold text-primary">
+                      ${property.monthlyRentPrice.toLocaleString()} {property.currency || "USD"}
+                      <span className="text-base font-normal text-muted-foreground">/mes</span>
+                    </p>
+                  </div>
+                )}
+
+                {propertyRequiredServices.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Servicios que el Propietario Requiere que Pagues</p>
+                    <div className="flex flex-wrap gap-2">
+                      {propertyRequiredServices.map((service: string) => (
+                        <span
+                          key={service}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary border border-primary/30"
+                          data-testid={`badge-required-service-${service}`}
+                        >
+                          {availableServices.find(s => s.id === service)?.label || service}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
