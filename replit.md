@@ -6,6 +6,46 @@ HomesApp is a comprehensive SaaS platform designed for real estate property mana
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Updates (October 14, 2025)
+
+### Production URL Fix
+*   **Issue Resolved**: Fixed incorrect URL generation for offer links and rental form links in production environment
+    - **Problem**: Backend was using incorrect environment variable `REPL_SLUG` which was causing malformed URLs in production
+    - **Solution**: Updated to use `REPLIT_DOMAINS` environment variable as per Replit documentation
+    - **Affected Endpoints**: 
+      - POST `/api/offer-tokens/:id/send-email` - Now generates correct offer links in production
+      - POST `/api/rental-form-tokens/:id/send-email` - Now generates correct rental form links in production
+    - **Implementation**: Changed from `process.env.REPL_SLUG` to `process.env.REPLIT_DOMAINS?.split(',')[0]` for production URL base
+    - **Fallback**: Added fallback to 'app.replit.dev' if REPLIT_DOMAINS is not available
+    - **Impact**: All generated links (offer tokens and rental form tokens) will now have correct production URLs
+
+### Admin CRM Lead Management Enhancements
+*   **Lead Reassignment System**: Complete workflow for admin to reassign leads between sellers
+    - PATCH `/api/leads/:id/reassign` endpoint (admin/master/admin_jr only)
+    - Reassignment dialog with seller selection dropdown
+    - Real-time cache invalidation for immediate UI updates
+    - Automatic closure of lead details dialog after reassignment
+*   **Enhanced Lead Details Dialog** (Admin-only features):
+    - **Reassign Button**: Allows admin to transfer lead ownership to another seller
+    - **Delete Button**: Restricted to admin roles only (sellers cannot delete leads)
+    - **Historial de Citas**: Full appointment history using `/api/leads/:id/appointments` endpoint
+    - **Propiedades Ofrecidas**: Complete list of properties offered to lead using `/api/leads/:leadId/offered-properties` endpoint
+    - Loading states for async data fetching
+    - Proper cache invalidation after mutations
+*   **Lead Card Visual Improvements**:
+    - Seller badge displayed on each lead card (visible to admin only)
+    - Shows assigned seller name for easy identification
+    - Consistent styling with platform design system
+*   **Backend Security**:
+    - DELETE `/api/leads/:id` - requireRole(["master", "admin", "admin_jr"])
+    - PATCH `/api/leads/:id/reassign` - requireRole(["master", "admin", "admin_jr"])
+    - GET `/api/leads/:id/appointments` - requireRole(["master", "admin", "admin_jr", "seller", "management"])
+    - GET `/api/leads/:leadId/offered-properties` - requireRole(["seller", "master", "admin", "management"])
+*   **Query Optimization**:
+    - Per-lead queries only execute when details dialog is open
+    - Efficient cache invalidation on reassignment, appointments, and offers
+    - Proper TanStack Query key structure for consistent fetching and invalidation
+
 ## System Architecture
 The platform is built on a modern web stack, prioritizing a professional, responsive, accessible, and internationalized user experience.
 

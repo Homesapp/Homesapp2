@@ -12269,7 +12269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build offer link
       const baseUrl = process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.REPL_SLUG}.replit.app`
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'app.replit.dev'}`
         : 'http://localhost:5000';
       const offerLink = `${baseUrl}/offer/${offerToken.token}`;
 
@@ -12515,7 +12515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build rental form link
       const baseUrl = process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.REPL_SLUG}.replit.app`
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'app.replit.dev'}`
         : 'http://localhost:5000';
       const rentalFormLink = `${baseUrl}/rental-form/${rentalFormToken.token}`;
 
