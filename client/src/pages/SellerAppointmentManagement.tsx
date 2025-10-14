@@ -425,7 +425,7 @@ export default function SellerAppointmentManagement() {
           <DialogHeader>
             <DialogTitle>Nueva Cita con Lead</DialogTitle>
             <DialogDescription>
-              Crea una cita con uno de tus leads registrados
+              Crea una cita con uno de tus leads
             </DialogDescription>
           </DialogHeader>
 
@@ -437,7 +437,7 @@ export default function SellerAppointmentManagement() {
                   <SelectValue placeholder="Selecciona un lead" />
                 </SelectTrigger>
                 <SelectContent>
-                  {registeredLeads.map((lead) => (
+                  {leads.map((lead) => (
                     <SelectItem key={lead.id} value={lead.id}>
                       {lead.firstName} {lead.lastName} ({lead.email})
                     </SelectItem>
