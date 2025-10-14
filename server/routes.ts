@@ -12246,8 +12246,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Propiedad no encontrada" });
       }
 
-      // Generate unique token
-      const token = crypto.randomBytes(32).toString('hex');
+      // Generate unique token (16 characters - suficiente para enlaces temporales)
+      const token = crypto.randomBytes(8).toString('hex');
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour expiration
 
