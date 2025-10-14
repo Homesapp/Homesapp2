@@ -6,7 +6,9 @@ HomesApp is a comprehensive SaaS platform for real estate property management in
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Performance Optimizations (October 14, 2025)
+## Recent Updates (October 14, 2025)
+
+### Performance Optimizations
 *   **PublicDashboard Loading Speed**: Implemented comprehensive optimizations to reduce initial page load time
     - Added `limit` parameter to `/api/properties/search` endpoint (backend support in routes.ts and storage.ts)
     - PublicDashboard now loads only 12 properties instead of entire dataset using `limit=12` query parameter
@@ -17,6 +19,25 @@ Preferred communication style: Simple, everyday language.
     - Composite index: `(published, featured, rating)` for optimized public property searches
     - Indexes verified in production database using pg_indexes query
 *   **Performance Results**: Initial property search reduced from ~800ms to ~470ms, with subsequent cached requests at ~117ms
+
+### Lead Status Automation & Offer Management Fixes
+*   **Automatic Lead Status Progression**: Implemented automatic lead status updates in offer workflow
+    - Added `leadId` field to `offer_tokens` table to track lead associations
+    - When seller generates offer link for a lead → status automatically updates to `"oferta_enviada"`
+    - When client submits completed offer → status automatically updates to `"en_negociacion"`
+    - Backend validates lead existence before status updates
+    - Cache invalidation ensures UI updates reflect status changes immediately
+*   **Admin Offer Management Display**: Fixed critical issues with offer data display in admin panel
+    - Corrected field mapping to match PublicOfferForm schema (fullName, email, phone, nationality, occupation, usageType, monthlyRent, currency, contractDuration, moveInDate, numberOfOccupants, pets, petDetails, etc.)
+    - Fixed tab filtering logic for Pendientes/Completadas/Expiradas categories
+    - Added complete offer information display including:
+      - Tipo de uso (vivienda/subarrendamiento)
+      - Costo de contrato and depósito de seguridad
+      - Servicios ofrecidos and servicios requeridos
+      - Firma digital visualization
+      - Submission timestamp
+      - Pet photos gallery when applicable
+    - All fields now display with proper fallback values ("No especificado") for missing data
 
 ## System Architecture
 The platform is built with a modern web stack, emphasizing a professional, responsive, and accessible user experience with full internationalization.
