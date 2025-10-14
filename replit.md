@@ -56,6 +56,61 @@ Preferred communication style: Simple, everyday language.
     - Professional footer with disclaimers and branding
     - Comprehensive data display including all offer fields, services breakdown, and pet information
 
+### Tenant Rental Application Form System (NEW)
+*   **Complete Workflow Implementation**: Full-featured tenant rental application system integrated with leads workflow
+    - Activates when leads reach "en_negociacion" status
+    - "Enviar Formato de Renta" button appears in LeadsKanban for eligible leads
+    - Generates temporary 24-hour secure links for tenant form submission
+    - Multi-channel sharing via email and WhatsApp with customizable messages
+*   **GenerateRentalFormLinkDialog Component**: Token-based link generation with sharing capabilities
+    - Creates unique tokens with 24-hour expiration
+    - Associates tokens with specific property and lead for tracking
+    - Email/WhatsApp sharing with pre-filled messages
+    - Copy-to-clipboard functionality for manual sharing
+*   **PublicRentalForm (Multi-Step Form)**: Comprehensive tenant application form accessible via temporary links
+    - **Step 1 - General Data**: Full name, contact info (email, WhatsApp, alternate phone), address, nationality, age, marital status, time in Tulum
+    - **Step 2 - Employment Info**: Job position, company name, workplace address, monthly income, company tenure
+    - **Step 3 - Rental Details**: Check-in date, number of tenants, payment method preference, pet information
+    - **Step 4 - Terms & Submission**: Terms acceptance checkbox, digital signature capture, final review
+    - Token validation on load (expired/used checks)
+    - Property information display for context
+    - Form state persistence across steps
+    - Comprehensive validation with Zod schemas
+*   **Backend API Endpoints**:
+    - POST `/api/rental-form-tokens` - Create new token for property/lead
+    - GET `/api/rental-form-tokens/:token/validate` - Validate token (public route)
+    - POST `/api/rental-form-tokens/:token/submit` - Submit completed form (public route)
+    - POST `/api/rental-form-tokens/:id/send-email` - Resend link via email
+    - GET `/api/rental-form-tokens` - List all tokens (admin only)
+    - GET `/api/rental-forms` - Get all submissions with filtering (admin only)
+    - PATCH `/api/rental-forms/:id/review` - Approve/reject submission (admin only)
+*   **AdminRentalFormManagement Page**: Complete admin interface for reviewing tenant applications
+    - Dashboard with statistics (Pendientes, En Revisión, Aprobados, Rechazados)
+    - Tabbed interface for filtering by status
+    - Detailed submission cards showing: tenant info, employment details, rental preferences, submission timestamp
+    - Full details modal displaying all form data
+    - Approve/Reject workflow with admin notes capability
+    - Property and lead association tracking
+*   **Database Schema** (4 new tables created via SQL):
+    - `tenant_rental_form_tokens`: Manages temporary links (token, propertyId, leadId, expiresAt, isUsed, createdBy)
+    - `tenant_rental_forms`: Stores submitted applications (all tenant data fields, status, reviewedBy, reviewedAt, adminNotes)
+    - `owner_document_tokens`: Reserved for future owner document collection workflow
+    - `owner_document_submissions`: Reserved for future owner document workflow
+*   **Security & Validation**:
+    - Token expiration enforced (24 hours)
+    - Single-use token validation (cannot resubmit after use)
+    - Admin-only routes protected with role-based middleware (admin, master, admin_jr)
+    - Public routes properly isolated (validate, submit)
+    - Lead association tracking for workflow continuity
+*   **Workflow Integration**:
+    - Lead status remains "en_negociacion" throughout tenant application process
+    - After admin approval, workflow continues to contract elaboration phase
+    - Audit logging for all admin actions (approval, rejection)
+    - Cache invalidation ensures real-time UI updates
+*   **Routes**:
+    - Public form: `/rental-form/:token` (no authentication required)
+    - Admin management: `/admin/rental-forms` (admin roles only)
+
 ## System Architecture
 The platform is built with a modern web stack, emphasizing a professional, responsive, and accessible user experience with full internationalization.
 

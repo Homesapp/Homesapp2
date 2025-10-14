@@ -12368,13 +12368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(tenantRentalFormTokens.id, rentalFormToken.id));
 
-      // Update lead status to 'documentos_enviados' if leadId exists
-      if (rentalFormToken.leadId) {
-        await db
-          .update(leads)
-          .set({ status: 'documentos_enviados' })
-          .where(eq(leads.id, rentalFormToken.leadId));
-      }
+      // Note: Lead status remains "en_negociacion" after form submission
+      // Admin will review the form and then proceed to contract elaboration
 
       res.json({
         success: true,
@@ -12549,13 +12544,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(tenantRentalForms.id, id));
 
-      // If approved, update lead status to 'documentos_aprobados'
-      if (status === "aprobado" && rentalForm.leadId) {
-        await db
-          .update(leads)
-          .set({ status: "documentos_aprobados" })
-          .where(eq(leads.id, rentalForm.leadId));
-      }
+      // Note: Lead status remains "en_negociacion" after approval
+      // Status will change to "contrato_firmado" when contract is actually signed
 
       await createAuditLog(
         req,
