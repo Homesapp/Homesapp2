@@ -39,6 +39,23 @@ Preferred communication style: Simple, everyday language.
       - Pet photos gallery when applicable
     - All fields now display with proper fallback values ("No especificado") for missing data
 
+### Public Offer Form & PDF Enhancements
+*   **PublicOfferForm Visual Improvements**: Enhanced user experience for clients receiving offer links
+    - Added HomesApp logo in header for professional branding
+    - Implemented horizontal scrollable photo gallery displaying up to 5 property photos
+    - Created prominent display card with gradient background showing:
+      - Property address
+      - Monthly rent amount (large, bold, primary color)
+      - Required services from property owner (displayed as badges)
+    - Improved visual hierarchy and information accessibility for clients
+*   **PDF Generation Enhancements**: Professional document styling for offer PDFs
+    - Enhanced header with blue gradient background and HomesApp branding
+    - Added visual sections with background colors (gray for property info, green for offer details)
+    - Improved typography with bold text highlighting key information (monthly rent, client name, etc.)
+    - Structured sections with clear uppercase labels: PROPIEDAD, INFORMACIÓN DEL SOLICITANTE, DETALLES DE LA OFERTA, SERVICIOS, MASCOTAS, COMENTARIOS ADICIONALES
+    - Professional footer with disclaimers and branding
+    - Comprehensive data display including all offer fields, services breakdown, and pet information
+
 ## System Architecture
 The platform is built with a modern web stack, emphasizing a professional, responsive, and accessible user experience with full internationalization.
 
