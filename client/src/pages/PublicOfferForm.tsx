@@ -399,7 +399,7 @@ export default function PublicOfferForm() {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Fotos de la Propiedad</h3>
                 <div className="flex gap-2 overflow-x-auto pb-2" data-testid="gallery-property-photos">
-                  {displayPhotos.map((photo, index) => (
+                  {displayPhotos.map((photo: string, index: number) => (
                     <div
                       key={index}
                       className="flex-shrink-0 w-32 h-24 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700"
@@ -879,7 +879,7 @@ export default function PublicOfferForm() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Firma Digital</h3>
                   <div className="space-y-2">
-                    <FormLabel>Firma aquí *</FormLabel>
+                    <FormLabel>Firma aquí (Opcional)</FormLabel>
                     <div className="border-2 border-slate-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-800">
                       <canvas
                         ref={canvasRef}
@@ -914,14 +914,14 @@ export default function PublicOfferForm() {
                         </p>
                       )}
                     </div>
-                    <FormDescription>Dibuja tu firma en el espacio de arriba</FormDescription>
+                    <FormDescription>Dibuja tu firma en el espacio de arriba (opcional - puedes enviar sin firmar)</FormDescription>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={submitOfferMutation.isPending || !hasSignature}
+                  disabled={submitOfferMutation.isPending}
                   data-testid="button-submit-offer"
                 >
                   {submitOfferMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
