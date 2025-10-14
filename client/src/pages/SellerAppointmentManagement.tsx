@@ -103,7 +103,9 @@ export default function SellerAppointmentManagement() {
   const createAppointmentMutation = useMutation({
     mutationFn: async (data: {
       leadId: string;
-      propertyId: string;
+      propertyId?: string;
+      condominiumName?: string;
+      unitNumber?: string;
       date: string;
       type: string;
       notes?: string;
