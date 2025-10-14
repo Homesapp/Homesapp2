@@ -9179,21 +9179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const { leadId, propertyId, condominiumName, unitNumber, date, type, notes } = req.body;
 
-      // DEBUG: Log what we received
-      console.log("📋 CREATE APPOINTMENT REQUEST:", {
-        leadId,
-        propertyId,
-        condominiumName,
-        unitNumber,
-        date,
-        type,
-        notes,
-        fullBody: req.body
-      });
-
       // Validate required fields
       if (!leadId || !date || !type) {
-        console.log("❌ VALIDATION FAILED:", { leadId: !!leadId, date: !!date, type: !!type });
         return res.status(400).json({ message: "Lead, fecha y tipo son requeridos" });
       }
 
@@ -9350,16 +9337,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${user?.role} aprobó cita directamente`
       );
 
-      // Notify client
-      await storage.createNotification({
-        userId: appointment.clientId,
-        type: "appointment",
-        title: "Cita Aprobada",
-        message: `Tu cita ha sido aprobada`,
-        relatedEntityType: "appointment",
-        relatedEntityId: appointment.id,
-        priority: "high",
-      });
+      // Notify client (only if they have a user account)
+      if (appointment.clientId) {
+        await storage.createNotification({
+          userId: appointment.clientId,
+          type: "appointment",
+          title: "Cita Aprobada",
+          message: `Tu cita ha sido aprobada`,
+          relatedEntityType: "appointment",
+          relatedEntityId: appointment.id,
+          priority: "high",
+        });
+      }
 
       res.json(updated);
     } catch (error: any) {
@@ -9403,16 +9392,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${user?.role} canceló cita${reason ? `: ${reason}` : ""}`
       );
 
-      // Notify client
-      await storage.createNotification({
-        userId: appointment.clientId,
-        type: "appointment",
-        title: "Cita Cancelada",
-        message: `Tu cita ha sido cancelada${reason ? `: ${reason}` : ""}`,
-        relatedEntityType: "appointment",
-        relatedEntityId: appointment.id,
-        priority: "high",
-      });
+      // Notify client (only if they have a user account)
+      if (appointment.clientId) {
+        await storage.createNotification({
+          userId: appointment.clientId,
+          type: "appointment",
+          title: "Cita Cancelada",
+          message: `Tu cita ha sido cancelada${reason ? `: ${reason}` : ""}`,
+          relatedEntityType: "appointment",
+          relatedEntityId: appointment.id,
+          priority: "high",
+        });
+      }
 
       res.json(updated);
     } catch (error: any) {
@@ -9454,16 +9445,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${user?.role} reprogramó cita de ${oldDate.toLocaleDateString()} a ${new Date(newDate).toLocaleDateString()}`
       );
 
-      // Notify client
-      await storage.createNotification({
-        userId: appointment.clientId,
-        type: "appointment",
-        title: "Cita Reprogramada",
-        message: `Tu cita ha sido reprogramada para el ${new Date(newDate).toLocaleDateString()}`,
-        relatedEntityType: "appointment",
-        relatedEntityId: appointment.id,
-        priority: "high",
-      });
+      // Notify client (only if they have a user account)
+      if (appointment.clientId) {
+        await storage.createNotification({
+          userId: appointment.clientId,
+          type: "appointment",
+          title: "Cita Reprogramada",
+          message: `Tu cita ha sido reprogramada para el ${new Date(newDate).toLocaleDateString()}`,
+          relatedEntityType: "appointment",
+          relatedEntityId: appointment.id,
+          priority: "high",
+        });
+      }
 
       res.json(updated);
     } catch (error: any) {
