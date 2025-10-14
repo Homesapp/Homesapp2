@@ -4223,6 +4223,7 @@ export const offerTokens = pgTable("offer_tokens", {
     trabajoPosicion?: string;
     companiaTrabaja?: string;
     tieneMascotas?: string;
+    petPhotos?: string[]; // URLs de fotos de mascotas
     ingresoMensualPromedio?: string;
     numeroInquilinos?: number;
     tieneGarante?: string;
@@ -4231,10 +4232,16 @@ export const offerTokens = pgTable("offer_tokens", {
     rentaOfertada?: number;
     rentasAdelantadas?: number;
     fechaIngreso?: string;
+    fechaSalida?: string; // Para contratos personalizados
     duracionContrato?: string;
+    contractCost?: number; // 2500 para vivienda, 3800 para subarrendamiento
+    securityDeposit?: number; // 1 o 2 meses según tipo de uso
     serviciosIncluidos?: string;
     serviciosNoIncluidos?: string;
+    propertyRequiredServices?: string[]; // Servicios que requiere el propietario
+    offeredServices?: string[]; // Servicios que el cliente ofrece pagar
     pedidoEspecial?: string;
+    signature?: string; // Base64 de la firma
     // Metadata
     submittedAt?: string;
     clientEmail?: string;

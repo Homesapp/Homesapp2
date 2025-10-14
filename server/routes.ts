@@ -11981,6 +11981,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload pet photos for offer (public route)
+  app.post("/api/offer-tokens/:token/upload-pet-photos", upload.array('petPhotos', 3), async (req: any, res) => {
+    try {
+      const { token } = req.params;
+      
+      // Validate token exists
+      const [offerToken] = await db
+        .select()
+        .from(offerTokens)
+        .where(eq(offerTokens.token, token))
+        .limit(1);
+
+      if (!offerToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(offerToken.expiresAt)) {
+        return res.status(410).json({ message: "Este enlace ha expirado" });
+      }
+
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: "No se subieron archivos" });
+      }
+
+      // Generate URLs for uploaded files
+      const photoUrls = (req.files as Express.Multer.File[]).map(file => {
+        return `/attached_assets/stock_images/${file.filename}`;
+      });
+
+      res.json({ 
+        message: "Fotos subidas exitosamente",
+        urls: photoUrls 
+      });
+    } catch (error) {
+      console.error("Error uploading pet photos:", error);
+      res.status(500).json({ message: "Error al subir fotos" });
+    }
+  });
+
   // Submit offer via token (public route)
   app.post("/api/offer-tokens/:token/submit", async (req, res) => {
     try {
