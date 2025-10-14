@@ -27,11 +27,18 @@ const offerFormSchema = z.object({
   contractDuration: z.string().min(1, "Duración del contrato es requerida"),
   moveInDate: z.string().min(1, "Fecha de ingreso es requerida"),
   moveOutDate: z.string().optional(),
+  customContractDates: z.object({
+    start: z.string(),
+    end: z.string(),
+  }).optional(),
+  contractCost: z.number().optional(),
+  securityDeposit: z.number().optional(),
   numberOfOccupants: z.string().min(1, "Número de ocupantes es requerido"),
   pets: z.string().min(1, "Información sobre mascotas es requerida"),
   petDetails: z.string().optional(),
   petPhotos: z.array(z.string()).optional(),
   offeredServices: z.array(z.string()).optional(),
+  propertyRequiredServices: z.array(z.string()).optional(),
   additionalComments: z.string().optional(),
   signature: z.string().optional(),
 });
@@ -76,11 +83,15 @@ export default function PublicOfferForm() {
       contractDuration: "12 meses",
       moveInDate: "",
       moveOutDate: "",
+      customContractDates: undefined,
+      contractCost: 2500,
+      securityDeposit: 0,
       numberOfOccupants: "1",
       pets: "no",
       petDetails: "",
       petPhotos: [],
       offeredServices: [],
+      propertyRequiredServices: [],
       additionalComments: "",
       signature: "",
     },
@@ -89,11 +100,41 @@ export default function PublicOfferForm() {
   const usageType = form.watch("usageType");
   const contractDuration = form.watch("contractDuration");
   const monthlyRent = parseFloat(form.watch("monthlyRent") || "0");
+  const moveInDate = form.watch("moveInDate");
+  const moveOutDate = form.watch("moveOutDate");
 
   // Calculate contract costs based on usage type
   const contractCost = usageType === "vivienda" ? 2500 : 3800;
   const securityDepositMonths = usageType === "vivienda" ? 1 : 2;
   const securityDeposit = monthlyRent * securityDepositMonths;
+
+  // Update form values when costs change
+  useEffect(() => {
+    form.setValue("contractCost", contractCost);
+  }, [contractCost, form]);
+
+  useEffect(() => {
+    form.setValue("securityDeposit", securityDeposit);
+  }, [securityDeposit, form]);
+
+  // Update customContractDates when duration is personalizado
+  useEffect(() => {
+    if (contractDuration === "personalizado" && moveInDate && moveOutDate) {
+      form.setValue("customContractDates", {
+        start: moveInDate,
+        end: moveOutDate,
+      });
+    } else {
+      form.setValue("customContractDates", undefined);
+    }
+  }, [contractDuration, moveInDate, moveOutDate, form]);
+
+  // Set property required services when property data loads
+  useEffect(() => {
+    if (property?.includedServices) {
+      form.setValue("propertyRequiredServices", property.includedServices);
+    }
+  }, [property, form]);
 
   const uploadPetPhotosMutation = useMutation({
     mutationFn: async (files: FileList) => {
@@ -213,12 +254,17 @@ export default function PublicOfferForm() {
 
   const submitOfferMutation = useMutation({
     mutationFn: async (data: OfferFormValues) => {
-      const response = await apiRequest("POST", `/api/offer-tokens/${token}/submit`, {
+      // Ensure all calculated values are included
+      const submissionData = {
         ...data,
         petPhotos: petPhotoUrls,
-        contractCost,
-        securityDeposit,
-      });
+        contractCost: data.contractCost || contractCost,
+        securityDeposit: data.securityDeposit || securityDeposit,
+        customContractDates: data.customContractDates,
+        propertyRequiredServices: data.propertyRequiredServices,
+      };
+      
+      const response = await apiRequest("POST", `/api/offer-tokens/${token}/submit`, submissionData);
       return response.json();
     },
     onSuccess: () => {
