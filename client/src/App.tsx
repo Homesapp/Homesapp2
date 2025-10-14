@@ -249,6 +249,10 @@ function AuthenticatedApp() {
           </header>
           <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
             <Switch>
+              {/* Public form routes - available even when authenticated */}
+              <Route path="/offer/:token" component={PublicOfferForm} />
+              <Route path="/rental-form/:token" component={PublicRentalForm} />
+              
               <Route path="/" component={getHomeDashboard()} />
               <Route path="/mis-citas" component={Appointments} />
               <Route path="/buscar-propiedades" component={PropertySearch} />
