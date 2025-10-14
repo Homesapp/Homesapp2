@@ -82,9 +82,6 @@ export default function SellerAppointmentManagement() {
     queryKey: ["/api/leads"],
   });
 
-  // Filter only leads that have userId (registered users)
-  const registeredLeads = leads.filter(lead => lead.userId);
-
   // Fetch published properties
   const { data: properties = [], isLoading: loadingProperties } = useQuery<Property[]>({
     queryKey: ["/api/properties/search"],
@@ -292,18 +289,18 @@ export default function SellerAppointmentManagement() {
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
           data-testid="button-create-appointment"
-          disabled={registeredLeads.length === 0 || publishedProperties.length === 0}
+          disabled={leads.length === 0 || publishedProperties.length === 0}
         >
           <Plus className="h-4 w-4 mr-2" />
           Nueva Cita
         </Button>
       </div>
 
-      {registeredLeads.length === 0 && (
+      {leads.length === 0 && (
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-center">
-              No tienes leads registrados como usuarios. Los leads deben estar registrados antes de crear citas.
+              No tienes leads creados. Crea al menos un lead antes de agendar citas.
             </p>
           </CardContent>
         </Card>
