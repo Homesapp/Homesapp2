@@ -102,6 +102,7 @@ export function PropertyFormDialog({
       managementId: undefined,
       active: true,
       accessInfo: undefined,
+      includedServices: undefined,
       referralPercent: "20.00",
     },
   });
@@ -147,6 +148,7 @@ export function PropertyFormDialog({
         managementId: property.managementId || undefined,
         active: property.active,
         accessInfo: accessInfo || undefined,
+        includedServices: property.includedServices || undefined,
         // Owner private data
         ownerFirstName: property.ownerFirstName || "",
         ownerLastName: property.ownerLastName || "",
@@ -177,6 +179,7 @@ export function PropertyFormDialog({
         area: "0",
         location: "",
         condominiumId: "",
+        includedServices: undefined,
         unitNumber: "",
         status: "rent",
         amenities: [],
