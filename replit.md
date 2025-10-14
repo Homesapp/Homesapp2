@@ -65,6 +65,13 @@ Preferred communication style: Simple, everyday language.
     - System now allows creating appointments with ALL leads (both registered and unregistered), aligning with backend schema that supports nullable `clientId`
     - Updated UI messaging: "No tienes leads creados" instead of misleading "No tienes leads registrados como usuarios"
     - All seller appointment actions (create, approve, cancel, reschedule) now function properly with correct HTTP requests
+    - **Property Display Fix**: Fixed property selector to use `getPropertyTitle()` helper instead of non-existent `title` field
+    - **Manual Property Entry**: Implemented dual-mode property selection:
+      - "Propiedad Registrada": Select from published properties dropdown
+      - "Entrada Manual": Enter condominium name and unit number directly for properties not yet in system
+    - Updated POST `/api/seller/appointments/create-with-lead` endpoint to accept `condominiumName` and `unitNumber` fields
+    - Backend validates either `propertyId` OR (`condominiumName` + `unitNumber`) - one must be provided
+    - Appointments can now be created without registered properties, supporting early-stage lead engagement
 
 ## System Architecture
 The platform is built with a modern web stack, emphasizing a professional, responsive, and accessible user experience with full internationalization.
