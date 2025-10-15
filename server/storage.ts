@@ -29,6 +29,7 @@ import {
   roleRequests,
   favorites,
   leads,
+  leadHistory,
   leadPropertyOffers,
   systemConfig,
   rentalApplications,
@@ -131,6 +132,8 @@ import {
   type InsertFavorite,
   type Lead,
   type InsertLead,
+  type LeadHistory,
+  type InsertLeadHistory,
   type LeadPropertyOffer,
   type InsertLeadPropertyOffer,
   type SystemConfig,
@@ -597,6 +600,7 @@ export interface IStorage {
   getLead(id: string): Promise<Lead | undefined>;
   getLeadByEmail(email: string): Promise<Lead | undefined>;
   getLeads(filters?: { status?: string; assignedToId?: string; registeredById?: string }): Promise<Lead[]>;
+  getLeadsForSeller(sellerId: string, filters?: { status?: string; assignedToId?: string }): Promise<Lead[]>;
   getActiveLead(email: string): Promise<Lead | undefined>; // Get non-expired lead by email
   getActiveLeadByPhone(phone: string): Promise<Lead | undefined>; // Get non-expired lead by phone
   createLead(lead: InsertLead): Promise<Lead>;
@@ -604,6 +608,10 @@ export interface IStorage {
   updateLeadStatus(id: string, status: string): Promise<Lead>;
   verifyLeadEmail(leadId: string): Promise<Lead>;
   deleteLead(id: string): Promise<void>;
+  
+  // Lead History operations
+  createLeadHistory(historyData: InsertLeadHistory): Promise<LeadHistory>;
+  getLeadHistory(leadId: string): Promise<LeadHistory[]>;
   
   // Lead Property Offer operations
   getLeadPropertyOffer(id: string): Promise<LeadPropertyOffer | undefined>;
@@ -3684,6 +3692,20 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLead(id: string): Promise<void> {
     await db.delete(leads).where(eq(leads.id, id));
+  }
+
+  // Lead History operations
+  async createLeadHistory(historyData: InsertLeadHistory): Promise<LeadHistory> {
+    const [history] = await db.insert(leadHistory).values(historyData).returning();
+    return history;
+  }
+
+  async getLeadHistory(leadId: string): Promise<LeadHistory[]> {
+    return await db
+      .select()
+      .from(leadHistory)
+      .where(eq(leadHistory.leadId, leadId))
+      .orderBy(desc(leadHistory.createdAt));
   }
   
   // Lead Property Offer operations

@@ -1178,6 +1178,27 @@ export const insertLeadSchema = createInsertSchema(leads)
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
 
+// Lead History - audit log de cambios en leads
+export const leadHistory = pgTable("lead_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  action: varchar("action").notNull(), // "created", "updated", "status_changed", "assigned", "deleted"
+  field: varchar("field"), // Campo que cambió (ej: "status", "assignedToId")
+  oldValue: text("old_value"), // Valor anterior
+  newValue: text("new_value"), // Valor nuevo
+  userId: varchar("user_id").notNull().references(() => users.id), // Usuario que realizó el cambio
+  description: text("description"), // Descripción del cambio
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLeadHistorySchema = createInsertSchema(leadHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLeadHistory = z.infer<typeof insertLeadHistorySchema>;
+export type LeadHistory = typeof leadHistory.$inferSelect;
+
 // Lead Property Offers - tracking de propiedades ofrecidas a cada lead
 export const leadPropertyOffers = pgTable("lead_property_offers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

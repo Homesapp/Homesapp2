@@ -8070,6 +8070,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedLead = await storage.updateLeadStatus(id, status);
       
+      // Register status change in lead history
+      await storage.createLeadHistory({
+        leadId: id,
+        action: "status_changed",
+        field: "status",
+        oldValue: existingLead.status,
+        newValue: status,
+        userId: userId,
+        description: `Estado cambió de "${existingLead.status}" a "${status}"`,
+      });
+      
       await createAuditLog(req, "update", "lead", id, `Estado de lead actualizado a: ${status}`);
       
       // Recalculate lead score after status change
@@ -8105,6 +8116,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating lead status:", error);
       res.status(400).json({ message: error.message || "Failed to update lead status" });
+    }
+  });
+
+  // Get lead history
+  app.get("/api/leads/:id/history", isAuthenticated, requireRole(["master", "admin", "admin_jr", "seller", "management"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const lead = await storage.getLead(id);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      // Sellers can only view history of their own leads
+      if (currentUser.role === "seller" && lead.registeredById !== userId && lead.assignedToId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para ver el historial de este lead" });
+      }
+      
+      const history = await storage.getLeadHistory(id);
+      
+      // Enrich history with user info
+      const enrichedHistory = await Promise.all(
+        history.map(async (entry) => {
+          const user = await storage.getUser(entry.userId);
+          return {
+            ...entry,
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedHistory);
+    } catch (error) {
+      console.error("Error fetching lead history:", error);
+      res.status(500).json({ message: "Failed to fetch lead history" });
     }
   });
 
