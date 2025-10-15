@@ -51,8 +51,8 @@ const rentalFormSchema = z.object({
   desiredCondoUnit: z.string().optional(),
   
   // Referencias del Arrendamiento Anterior
+  previousLandlordName: z.string().optional(),
   previousLandlordPhone: z.string().optional(),
-  previousCondoUnit: z.string().optional(),
   previousAddress: z.string().optional(),
   previousTenancy: z.string().optional(),
   
@@ -573,22 +573,22 @@ export default function PublicRentalForm() {
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="previousLandlordPhone">N° Teléfono Celular del Arrendador Anterior</Label>
+                      <Label htmlFor="previousLandlordName">Nombre del Arrendador Anterior</Label>
+                      <Input
+                        id="previousLandlordName"
+                        {...form.register("previousLandlordName")}
+                        placeholder="María González"
+                        data-testid="input-previous-landlord-name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="previousLandlordPhone">N° Teléfono Celular</Label>
                       <Input
                         id="previousLandlordPhone"
                         {...form.register("previousLandlordPhone")}
                         placeholder="+52 123 456 7890"
                         data-testid="input-previous-landlord-phone"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="previousCondoUnit">Condominio y Unidad</Label>
-                      <Input
-                        id="previousCondoUnit"
-                        {...form.register("previousCondoUnit")}
-                        placeholder="Condominio - Unidad"
-                        data-testid="input-previous-condo-unit"
                       />
                     </div>
 
