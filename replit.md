@@ -178,6 +178,25 @@ The platform features a comprehensive public rental form accessible via secure t
 ### Pending Features:
 - Document upload functionality for tenant and guarantor (INE/Pasaporte, comprobante domicilio, solvencia económica)
 
+### Integer Overflow Protection (October 15, 2025):
+**Critical Bug Fix - Defense in Depth Validation:**
+- **Issue:** Database constraint error "value out of range for type integer" when submitting rental forms
+- **Root Cause:** No validation on integer fields (age, numberOfTenants, guarantorAge) allowing values exceeding PostgreSQL int32 range (2,147,483,647)
+- **Solution Implemented:**
+  1. **Frontend Layer:** Zod schema validation with min/max constraints + HTML input attributes
+     - age: 18-150 years
+     - numberOfTenants: 1-20
+     - guarantorAge: 18-150 years
+  2. **Backend Layer:** Server-side validation using `Number.isFinite()` + range checks
+     - Rejects NaN, Infinity, and non-numeric strings
+     - Uses `Math.floor()` to ensure integer storage
+     - Returns 400 Bad Request with user-friendly error messages
+- **Attack Prevention:** Validated against malicious payloads:
+  - ✅ NaN attack (age="invalid_string") → 400 rejected
+  - ✅ Huge number attack (age=999999999999) → 400 rejected
+  - ✅ Decimal values (25.7) → 200 OK with floored integers (25)
+- **Result:** Production-ready validation protecting both UI and direct API access
+
 ### Recent Fixes:
 1. Fixed field name mismatch (termsAccepted → acceptedTerms)
 2. Added missing database columns via direct SQL (drizzle-kit timeout issues)
@@ -185,3 +204,4 @@ The platform features a comprehensive public rental form accessible via secure t
 4. Removed all debugging logs that exposed tenant PII
 5. Expanded to 8-step form with all required fields
 6. Fixed field mapping (previousCondoUnit → previousLandlordName)
+7. Fixed integer overflow vulnerability with defense-in-depth validation (frontend + backend)
