@@ -129,13 +129,13 @@ export default function PublicRentalForm() {
     onSuccess: () => {
       setSubmitted(true);
       toast({
-        title: "Formulario enviado exitosamente",
-        description: "Revisaremos tu solicitud en las próximas 48-72 horas.",
+        title: text.successTitle,
+        description: text.successDescription,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error al enviar formulario",
+        title: text.errorTitle,
         description: error.message,
         variant: "destructive",
       });
@@ -148,8 +148,8 @@ export default function PublicRentalForm() {
     },
     (errors) => {
       toast({
-        title: "Error de validación",
-        description: "Por favor revisa los campos del formulario",
+        title: text.errorTitle,
+        description: text.validationError,
         variant: "destructive",
       });
     }
@@ -166,6 +166,240 @@ export default function PublicRentalForm() {
       setCurrentStep(currentStep - 1);
     }
   };
+
+  // Translation object
+  const t = {
+    es: {
+      title: "Formato de Renta de Inquilino",
+      stepOf: "Paso",
+      of: "de",
+      complete: "completo",
+      next: "Siguiente",
+      previous: "Anterior",
+      submit: "Enviar Formulario",
+      loading: "Cargando...",
+      submitting: "Enviando...",
+      
+      // Step titles
+      step1: "Datos Personales",
+      step2: "Información Laboral",
+      step3: "Detalles de Renta",
+      step4: "Referencias de Arrendamiento Anterior",
+      step5: "Referencias Laborales",
+      step6: "Referencias Personales",
+      step7: "Datos del Garante (Opcional)",
+      step8: "Términos y Condiciones",
+      
+      // Step 1 labels
+      fullName: "Nombre Completo",
+      email: "Email",
+      whatsapp: "WhatsApp",
+      cellphone: "Celular Alternativo",
+      nationality: "Nacionalidad",
+      age: "Edad",
+      maritalStatus: "Estado Civil",
+      timeInTulum: "Tiempo en Tulum",
+      address: "Dirección Actual",
+      idType: "Tipo de Identificación",
+      idNumber: "Número de Identificación",
+      
+      // Step 2 labels
+      jobPosition: "Puesto de Trabajo",
+      companyName: "Nombre de la Empresa",
+      workplaceAddress: "Dirección del Lugar de Trabajo",
+      monthlyIncome: "Ingreso Mensual",
+      companyTenure: "Antigüedad en la Empresa",
+      
+      // Step 3 labels
+      checkInDate: "Fecha de Entrada",
+      numberOfTenants: "Número de Inquilinos",
+      paymentMethod: "Método de Pago",
+      hasPets: "¿Tienes mascotas?",
+      petDetails: "Detalles de Mascotas",
+      desiredProperty: "Propiedad Deseada",
+      desiredCondoUnit: "Unidad de Condominio Deseada",
+      
+      // Step 4 labels
+      previousLandlord: "Nombre del Arrendador Anterior",
+      previousLandlordPhone: "Teléfono del Arrendador Anterior",
+      previousAddress: "Dirección Anterior",
+      previousTenancy: "Tiempo de Arrendamiento",
+      
+      // Step 5 labels
+      directSupervisor: "Nombre del Supervisor Directo",
+      companyNameAddress: "Nombre y Dirección de la Empresa",
+      companyLandline: "Teléfono Fijo de la Empresa",
+      supervisorCellphone: "Celular del Supervisor",
+      
+      // Step 6 labels
+      reference1Name: "Nombre de Referencia",
+      reference1Address: "Dirección de Referencia",
+      reference1Landline: "Teléfono Fijo",
+      reference1Cellphone: "Celular",
+      
+      // Step 7 labels
+      applyWithGuarantor: "Aplicaré con Garante/Aval",
+      guarantorFullName: "Nombre Completo del Garante",
+      guarantorAddress: "Dirección del Garante",
+      guarantorBirthDatePlace: "Fecha y Lugar de Nacimiento",
+      guarantorNationality: "Nacionalidad",
+      guarantorAge: "Edad",
+      guarantorTimeInTulum: "Tiempo en Tulum",
+      guarantorJobPosition: "Puesto de Trabajo",
+      guarantorCompanyName: "Nombre de la Empresa",
+      guarantorWorkAddress: "Dirección de Trabajo",
+      guarantorWorkPhone: "Teléfono de Trabajo",
+      guarantorMaritalStatus: "Estado Civil",
+      guarantorLandline: "Teléfono Fijo",
+      guarantorCellphone: "Celular",
+      guarantorEmail: "Email",
+      guarantorIdNumber: "Número de Identificación",
+      
+      // Marital status options
+      single: "Soltero/a",
+      married: "Casado/a",
+      divorced: "Divorciado/a",
+      widowed: "Viudo/a",
+      civilUnion: "Unión Libre",
+      
+      // ID type options
+      ine: "INE",
+      passport: "Pasaporte",
+      driverLicense: "Licencia de Conducir",
+      
+      // Payment method options
+      transfer: "Transferencia",
+      cash: "Efectivo",
+      check: "Cheque",
+      
+      // Placeholders
+      selectOption: "Selecciona...",
+      
+      // Success/Error messages
+      successTitle: "¡Formulario Enviado!",
+      successDescription: "Revisaremos tu solicitud en las próximas 48-72 horas.",
+      errorTitle: "Error al enviar formulario",
+      validationError: "Por favor revisa los campos del formulario",
+      
+      required: "*"
+    },
+    en: {
+      title: "Tenant Rental Application Form",
+      stepOf: "Step",
+      of: "of",
+      complete: "complete",
+      next: "Next",
+      previous: "Previous",
+      submit: "Submit Application",
+      loading: "Loading...",
+      submitting: "Submitting...",
+      
+      // Step titles
+      step1: "Personal Information",
+      step2: "Employment Information",
+      step3: "Rental Details",
+      step4: "Previous Rental References",
+      step5: "Work References",
+      step6: "Personal References",
+      step7: "Guarantor/Co-Signer Information (Optional)",
+      step8: "Terms and Conditions",
+      
+      // Step 1 labels
+      fullName: "Full Name",
+      email: "Email",
+      whatsapp: "WhatsApp",
+      cellphone: "Alternative Cellphone",
+      nationality: "Nationality",
+      age: "Age",
+      maritalStatus: "Marital Status",
+      timeInTulum: "Time in Tulum",
+      address: "Current Address",
+      idType: "ID Type",
+      idNumber: "ID Number",
+      
+      // Step 2 labels
+      jobPosition: "Job Position",
+      companyName: "Company Name",
+      workplaceAddress: "Workplace Address",
+      monthlyIncome: "Monthly Income",
+      companyTenure: "Company Tenure",
+      
+      // Step 3 labels
+      checkInDate: "Check-in Date",
+      numberOfTenants: "Number of Tenants",
+      paymentMethod: "Payment Method",
+      hasPets: "Do you have pets?",
+      petDetails: "Pet Details",
+      desiredProperty: "Desired Property",
+      desiredCondoUnit: "Desired Condo Unit",
+      
+      // Step 4 labels
+      previousLandlord: "Previous Landlord Name",
+      previousLandlordPhone: "Previous Landlord Phone",
+      previousAddress: "Previous Address",
+      previousTenancy: "Tenancy Duration",
+      
+      // Step 5 labels
+      directSupervisor: "Direct Supervisor Name",
+      companyNameAddress: "Company Name and Address",
+      companyLandline: "Company Landline",
+      supervisorCellphone: "Supervisor Cellphone",
+      
+      // Step 6 labels
+      reference1Name: "Reference Name",
+      reference1Address: "Reference Address",
+      reference1Landline: "Landline",
+      reference1Cellphone: "Cellphone",
+      
+      // Step 7 labels
+      applyWithGuarantor: "I will apply with a Guarantor/Co-Signer",
+      guarantorFullName: "Guarantor Full Name",
+      guarantorAddress: "Guarantor Address",
+      guarantorBirthDatePlace: "Birth Date and Place",
+      guarantorNationality: "Nationality",
+      guarantorAge: "Age",
+      guarantorTimeInTulum: "Time in Tulum",
+      guarantorJobPosition: "Job Position",
+      guarantorCompanyName: "Company Name",
+      guarantorWorkAddress: "Work Address",
+      guarantorWorkPhone: "Work Phone",
+      guarantorMaritalStatus: "Marital Status",
+      guarantorLandline: "Landline",
+      guarantorCellphone: "Cellphone",
+      guarantorEmail: "Email",
+      guarantorIdNumber: "ID Number",
+      
+      // Marital status options
+      single: "Single",
+      married: "Married",
+      divorced: "Divorced",
+      widowed: "Widowed",
+      civilUnion: "Civil Union",
+      
+      // ID type options
+      ine: "INE (Voter ID)",
+      passport: "Passport",
+      driverLicense: "Driver's License",
+      
+      // Payment method options
+      transfer: "Transfer",
+      cash: "Cash",
+      check: "Check",
+      
+      // Placeholders
+      selectOption: "Select...",
+      
+      // Success/Error messages
+      successTitle: "Application Submitted!",
+      successDescription: "We will review your application within 48-72 hours.",
+      errorTitle: "Error submitting application",
+      validationError: "Please review the form fields",
+      
+      required: "*"
+    }
+  };
+
+  const text = language === "es" ? t.es : t.en;
 
   if (isValidating) {
     return (
@@ -243,7 +477,7 @@ export default function PublicRentalForm() {
                 <Building2 className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1">
-                <CardTitle className="text-2xl">Formato de Renta de Inquilino</CardTitle>
+                <CardTitle className="text-2xl">{text.title}</CardTitle>
                 <CardDescription>
                   {property && getPropertyTitle(property)}
                 </CardDescription>
@@ -274,8 +508,8 @@ export default function PublicRentalForm() {
         {/* Progress Bar */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Paso {currentStep} de {totalSteps}</span>
-            <span>{Math.round(progress)}% completo</span>
+            <span>{text.stepOf} {currentStep} {text.of} {totalSteps}</span>
+            <span>{Math.round(progress)}% {text.complete}</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
@@ -285,14 +519,14 @@ export default function PublicRentalForm() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {currentStep === 1 && "Datos Personales"}
-                {currentStep === 2 && "Información Laboral"}
-                {currentStep === 3 && "Detalles de Renta"}
-                {currentStep === 4 && "Referencias de Arrendamiento Anterior"}
-                {currentStep === 5 && "Referencias Laborales"}
-                {currentStep === 6 && "Referencias Personales"}
-                {currentStep === 7 && "Datos del Garante (Opcional)"}
-                {currentStep === 8 && "Términos y Condiciones"}
+                {currentStep === 1 && text.step1}
+                {currentStep === 2 && text.step2}
+                {currentStep === 3 && text.step3}
+                {currentStep === 4 && text.step4}
+                {currentStep === 5 && text.step5}
+                {currentStep === 6 && text.step6}
+                {currentStep === 7 && text.step7}
+                {currentStep === 8 && text.step8}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -301,7 +535,7 @@ export default function PublicRentalForm() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Nombre Completo *</Label>
+                      <Label htmlFor="fullName">{text.fullName} {text.required}</Label>
                       <Input
                         id="fullName"
                         {...form.register("fullName")}
@@ -314,7 +548,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
+                      <Label htmlFor="email">{text.email} {text.required}</Label>
                       <Input
                         id="email"
                         type="email"
@@ -328,7 +562,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="whatsappNumber">WhatsApp *</Label>
+                      <Label htmlFor="whatsappNumber">{text.whatsapp} {text.required}</Label>
                       <Input
                         id="whatsappNumber"
                         {...form.register("whatsappNumber")}
@@ -341,7 +575,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="cellphone">Celular Alternativo</Label>
+                      <Label htmlFor="cellphone">{text.cellphone}</Label>
                       <Input
                         id="cellphone"
                         {...form.register("cellphone")}
@@ -351,7 +585,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="nationality">Nacionalidad</Label>
+                      <Label htmlFor="nationality">{text.nationality}</Label>
                       <Input
                         id="nationality"
                         {...form.register("nationality")}
@@ -361,7 +595,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="age">Edad</Label>
+                      <Label htmlFor="age">{text.age}</Label>
                       <Input
                         id="age"
                         type="number"
@@ -377,23 +611,23 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="maritalStatus">Estado Civil</Label>
+                      <Label htmlFor="maritalStatus">{text.maritalStatus}</Label>
                       <Select onValueChange={(value) => form.setValue("maritalStatus", value)}>
                         <SelectTrigger id="maritalStatus" data-testid="select-marital-status">
-                          <SelectValue placeholder="Selecciona..." />
+                          <SelectValue placeholder={text.selectOption} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="soltero">Soltero/a</SelectItem>
-                          <SelectItem value="casado">Casado/a</SelectItem>
-                          <SelectItem value="divorciado">Divorciado/a</SelectItem>
-                          <SelectItem value="viudo">Viudo/a</SelectItem>
-                          <SelectItem value="union_libre">Unión Libre</SelectItem>
+                          <SelectItem value="soltero">{text.single}</SelectItem>
+                          <SelectItem value="casado">{text.married}</SelectItem>
+                          <SelectItem value="divorciado">{text.divorced}</SelectItem>
+                          <SelectItem value="viudo">{text.widowed}</SelectItem>
+                          <SelectItem value="union_libre">{text.civilUnion}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="timeInTulum">Tiempo en Tulum</Label>
+                      <Label htmlFor="timeInTulum">{text.timeInTulum}</Label>
                       <Input
                         id="timeInTulum"
                         {...form.register("timeInTulum")}
@@ -404,7 +638,7 @@ export default function PublicRentalForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address">Dirección Actual</Label>
+                    <Label htmlFor="address">{text.address}</Label>
                     <Textarea
                       id="address"
                       {...form.register("address")}
@@ -416,10 +650,10 @@ export default function PublicRentalForm() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="idType">Tipo de Identificación</Label>
+                      <Label htmlFor="idType">{text.idType}</Label>
                       <Select onValueChange={(value) => form.setValue("idType", value)}>
                         <SelectTrigger id="idType" data-testid="select-id-type">
-                          <SelectValue placeholder="Selecciona..." />
+                          <SelectValue placeholder={text.selectOption} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="ine">INE</SelectItem>
@@ -430,7 +664,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="idNumber">Número de Identificación</Label>
+                      <Label htmlFor="idNumber">{text.idNumber}</Label>
                       <Input
                         id="idNumber"
                         {...form.register("idNumber")}
@@ -447,7 +681,7 @@ export default function PublicRentalForm() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="jobPosition">Puesto Laboral</Label>
+                      <Label htmlFor="jobPosition">{text.jobPosition}</Label>
                       <Input
                         id="jobPosition"
                         {...form.register("jobPosition")}
@@ -457,7 +691,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="companyName">Empresa</Label>
+                      <Label htmlFor="companyName">{text.companyName}</Label>
                       <Input
                         id="companyName"
                         {...form.register("companyName")}
@@ -467,7 +701,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="monthlyIncome">Ingreso Mensual</Label>
+                      <Label htmlFor="monthlyIncome">{text.monthlyIncome}</Label>
                       <Input
                         id="monthlyIncome"
                         {...form.register("monthlyIncome")}
@@ -477,7 +711,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="companyTenure">Antigüedad en la Empresa</Label>
+                      <Label htmlFor="companyTenure">{text.companyTenure}</Label>
                       <Input
                         id="companyTenure"
                         {...form.register("companyTenure")}
@@ -488,7 +722,7 @@ export default function PublicRentalForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="workplaceAddress">Dirección del Trabajo</Label>
+                    <Label htmlFor="workplaceAddress">{text.workplaceAddress}</Label>
                     <Textarea
                       id="workplaceAddress"
                       {...form.register("workplaceAddress")}
@@ -505,7 +739,7 @@ export default function PublicRentalForm() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="checkInDate">Fecha de Entrada Deseada</Label>
+                      <Label htmlFor="checkInDate">{text.checkInDate}</Label>
                       <Input
                         id="checkInDate"
                         type="date"
@@ -515,7 +749,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="numberOfTenants">Número de Inquilinos</Label>
+                      <Label htmlFor="numberOfTenants">{text.numberOfTenants}</Label>
                       <Input
                         id="numberOfTenants"
                         type="number"
@@ -531,15 +765,15 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="paymentMethod">Método de Pago Preferido</Label>
+                      <Label htmlFor="paymentMethod">{text.paymentMethod}</Label>
                       <Select onValueChange={(value) => form.setValue("paymentMethod", value)}>
                         <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
-                          <SelectValue placeholder="Selecciona..." />
+                          <SelectValue placeholder={text.selectOption} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="cheque">Cheque</SelectItem>
+                          <SelectItem value="transferencia">{text.transfer}</SelectItem>
+                          <SelectItem value="efectivo">{text.cash}</SelectItem>
+                          <SelectItem value="cheque">{text.check}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -554,13 +788,13 @@ export default function PublicRentalForm() {
                         data-testid="checkbox-has-pets"
                       />
                       <Label htmlFor="hasPets" className="cursor-pointer">
-                        Tengo mascotas
+                        {text.hasPets}
                       </Label>
                     </div>
 
                     {form.watch("hasPets") && (
                       <div className="space-y-2">
-                        <Label htmlFor="petDetails">Detalles de las Mascotas</Label>
+                        <Label htmlFor="petDetails">{text.petDetails}</Label>
                         <Textarea
                           id="petDetails"
                           {...form.register("petDetails")}
@@ -582,7 +816,7 @@ export default function PublicRentalForm() {
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="previousLandlordName">Nombre del Arrendador Anterior</Label>
+                      <Label htmlFor="previousLandlordName">{text.previousLandlord}</Label>
                       <Input
                         id="previousLandlordName"
                         {...form.register("previousLandlordName")}
@@ -592,7 +826,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="previousLandlordPhone">N° Teléfono Celular</Label>
+                      <Label htmlFor="previousLandlordPhone">{text.previousLandlordPhone}</Label>
                       <Input
                         id="previousLandlordPhone"
                         {...form.register("previousLandlordPhone")}
@@ -602,7 +836,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="previousTenancy">Antigüedad como Inquilino</Label>
+                      <Label htmlFor="previousTenancy">{text.previousTenancy}</Label>
                       <Input
                         id="previousTenancy"
                         {...form.register("previousTenancy")}
@@ -613,7 +847,7 @@ export default function PublicRentalForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="previousAddress">Dirección del Arrendamiento Anterior</Label>
+                    <Label htmlFor="previousAddress">{text.previousAddress}</Label>
                     <Textarea
                       id="previousAddress"
                       {...form.register("previousAddress")}
@@ -633,7 +867,7 @@ export default function PublicRentalForm() {
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="directSupervisorName">Nombre de Jefe Directo</Label>
+                      <Label htmlFor="directSupervisorName">{text.directSupervisor}</Label>
                       <Input
                         id="directSupervisorName"
                         {...form.register("directSupervisorName")}
@@ -643,7 +877,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="companyLandline">N° Teléfono Fijo de la Empresa</Label>
+                      <Label htmlFor="companyLandline">{text.companyLandline}</Label>
                       <Input
                         id="companyLandline"
                         {...form.register("companyLandline")}
@@ -653,7 +887,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="supervisorCellphone">N° Celular del Encargado</Label>
+                      <Label htmlFor="supervisorCellphone">{text.supervisorCellphone}</Label>
                       <Input
                         id="supervisorCellphone"
                         {...form.register("supervisorCellphone")}
@@ -664,7 +898,7 @@ export default function PublicRentalForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="companyNameAddress">Nombre y Dirección de la Empresa</Label>
+                    <Label htmlFor="companyNameAddress">{text.companyNameAddress}</Label>
                     <Textarea
                       id="companyNameAddress"
                       {...form.register("companyNameAddress")}
@@ -684,7 +918,7 @@ export default function PublicRentalForm() {
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="reference1Name">Nombre</Label>
+                      <Label htmlFor="reference1Name">{text.reference1Name}</Label>
                       <Input
                         id="reference1Name"
                         {...form.register("reference1Name")}
@@ -694,7 +928,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="reference1Landline">N° Teléfono Fijo</Label>
+                      <Label htmlFor="reference1Landline">{text.reference1Landline}</Label>
                       <Input
                         id="reference1Landline"
                         {...form.register("reference1Landline")}
@@ -704,7 +938,7 @@ export default function PublicRentalForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="reference1Cellphone">N° Teléfono Celular</Label>
+                      <Label htmlFor="reference1Cellphone">{text.reference1Cellphone}</Label>
                       <Input
                         id="reference1Cellphone"
                         {...form.register("reference1Cellphone")}
@@ -715,7 +949,7 @@ export default function PublicRentalForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="reference1Address">Dirección</Label>
+                    <Label htmlFor="reference1Address">{text.reference1Address}</Label>
                     <Textarea
                       id="reference1Address"
                       {...form.register("reference1Address")}
@@ -739,7 +973,7 @@ export default function PublicRentalForm() {
                     />
                     <div>
                       <Label htmlFor="hasGuarantor" className="cursor-pointer font-semibold">
-                        Aplicaré con Garante o Co-Signer
+                        {text.applyWithGuarantor}
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
                         Si cuentas con un garante o co-signer, marca esta casilla y completa la información a continuación
@@ -753,7 +987,7 @@ export default function PublicRentalForm() {
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorFullName">Nombre Completo</Label>
+                          <Label htmlFor="guarantorFullName">{text.guarantorFullName}</Label>
                           <Input
                             id="guarantorFullName"
                             {...form.register("guarantorFullName")}
@@ -763,7 +997,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorEmail">Correo Electrónico</Label>
+                          <Label htmlFor="guarantorEmail">{text.guarantorEmail}</Label>
                           <Input
                             id="guarantorEmail"
                             type="email"
@@ -774,7 +1008,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorBirthDatePlace">Fecha y Lugar de Nacimiento</Label>
+                          <Label htmlFor="guarantorBirthDatePlace">{text.guarantorBirthDatePlace}</Label>
                           <Input
                             id="guarantorBirthDatePlace"
                             {...form.register("guarantorBirthDatePlace")}
@@ -784,7 +1018,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorNationality">Nacionalidad</Label>
+                          <Label htmlFor="guarantorNationality">{text.guarantorNationality}</Label>
                           <Input
                             id="guarantorNationality"
                             {...form.register("guarantorNationality")}
@@ -794,7 +1028,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorAge">Edad</Label>
+                          <Label htmlFor="guarantorAge">{text.guarantorAge}</Label>
                           <Input
                             id="guarantorAge"
                             type="number"
@@ -810,7 +1044,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorTimeInTulum">Tiempo Residiendo en Tulum</Label>
+                          <Label htmlFor="guarantorTimeInTulum">{text.guarantorTimeInTulum}</Label>
                           <Input
                             id="guarantorTimeInTulum"
                             {...form.register("guarantorTimeInTulum")}
@@ -820,7 +1054,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorJobPosition">Trabajo / Posición</Label>
+                          <Label htmlFor="guarantorJobPosition">{text.guarantorJobPosition}</Label>
                           <Input
                             id="guarantorJobPosition"
                             {...form.register("guarantorJobPosition")}
@@ -830,7 +1064,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorCompanyName">Empresa para la que Trabaja</Label>
+                          <Label htmlFor="guarantorCompanyName">{text.guarantorCompanyName}</Label>
                           <Input
                             id="guarantorCompanyName"
                             {...form.register("guarantorCompanyName")}
@@ -840,7 +1074,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorWorkPhone">Teléfono del Trabajo</Label>
+                          <Label htmlFor="guarantorWorkPhone">{text.guarantorWorkPhone}</Label>
                           <Input
                             id="guarantorWorkPhone"
                             {...form.register("guarantorWorkPhone")}
@@ -850,23 +1084,23 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorMaritalStatus">Estado Civil</Label>
+                          <Label htmlFor="guarantorMaritalStatus">{text.guarantorMaritalStatus}</Label>
                           <Select onValueChange={(value) => form.setValue("guarantorMaritalStatus", value)}>
                             <SelectTrigger id="guarantorMaritalStatus" data-testid="select-guarantor-marital-status">
-                              <SelectValue placeholder="Selecciona..." />
+                              <SelectValue placeholder={text.selectOption} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="soltero">Soltero/a</SelectItem>
-                              <SelectItem value="casado">Casado/a</SelectItem>
-                              <SelectItem value="divorciado">Divorciado/a</SelectItem>
-                              <SelectItem value="viudo">Viudo/a</SelectItem>
-                              <SelectItem value="union_libre">Unión Libre</SelectItem>
+                              <SelectItem value="soltero">{text.single}</SelectItem>
+                              <SelectItem value="casado">{text.married}</SelectItem>
+                              <SelectItem value="divorciado">{text.divorced}</SelectItem>
+                              <SelectItem value="viudo">{text.widowed}</SelectItem>
+                              <SelectItem value="union_libre">{text.civilUnion}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorLandline">Teléfono Fijo</Label>
+                          <Label htmlFor="guarantorLandline">{text.guarantorLandline}</Label>
                           <Input
                             id="guarantorLandline"
                             {...form.register("guarantorLandline")}
@@ -876,7 +1110,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorCellphone">Teléfono Celular</Label>
+                          <Label htmlFor="guarantorCellphone">{text.guarantorCellphone}</Label>
                           <Input
                             id="guarantorCellphone"
                             {...form.register("guarantorCellphone")}
@@ -886,7 +1120,7 @@ export default function PublicRentalForm() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="guarantorIdNumber">Número de Identificación o Pasaporte</Label>
+                          <Label htmlFor="guarantorIdNumber">{text.guarantorIdNumber}</Label>
                           <Input
                             id="guarantorIdNumber"
                             {...form.register("guarantorIdNumber")}
@@ -897,7 +1131,7 @@ export default function PublicRentalForm() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="guarantorAddress">Dirección</Label>
+                        <Label htmlFor="guarantorAddress">{text.guarantorAddress}</Label>
                         <Textarea
                           id="guarantorAddress"
                           {...form.register("guarantorAddress")}
@@ -908,7 +1142,7 @@ export default function PublicRentalForm() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="guarantorWorkAddress">Dirección del Trabajo</Label>
+                        <Label htmlFor="guarantorWorkAddress">{text.guarantorWorkAddress}</Label>
                         <Textarea
                           id="guarantorWorkAddress"
                           {...form.register("guarantorWorkAddress")}
@@ -1075,7 +1309,7 @@ export default function PublicRentalForm() {
                 disabled={currentStep === 1}
                 data-testid="button-prev"
               >
-                Anterior
+                {text.previous}
               </Button>
 
               {currentStep < totalSteps ? (
@@ -1084,7 +1318,7 @@ export default function PublicRentalForm() {
                   onClick={nextStep}
                   data-testid="button-next"
                 >
-                  Siguiente
+                  {text.next}
                 </Button>
               ) : (
                 <Button
@@ -1093,7 +1327,7 @@ export default function PublicRentalForm() {
                   data-testid="button-submit"
                 >
                   {submitMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Enviar Formulario
+                  {text.submit}
                 </Button>
               )}
             </CardContent>
