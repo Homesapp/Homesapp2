@@ -109,6 +109,7 @@ export default function Referrals() {
   }
 
   const hasBankInfo = user?.bankAccountName && user?.bankAccountNumber;
+  const isSeller = user?.role === "seller";
 
   return (
     <div className="space-y-6">
@@ -117,7 +118,10 @@ export default function Referrals() {
           {t("referrals.title", "Red de Referidos")}
         </h1>
         <p className="text-secondary-foreground mt-2" data-testid="text-referrals-description">
-          {t("referrals.description", "Recomienda clientes y propietarios y gana comisiones")}
+          {isSeller 
+            ? "Recomienda propietarios y gana 20% de comisión por propiedad referida"
+            : t("referrals.description", "Recomienda clientes y propietarios y gana comisiones")
+          }
         </p>
       </div>
 
@@ -187,15 +191,17 @@ export default function Referrals() {
         </Card>
       </div>
 
-      <Tabs defaultValue="clients" className="space-y-4">
+      <Tabs defaultValue={isSeller ? "owners" : "clients"} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="clients" data-testid="tab-client-referrals">
-            <Users className="h-4 w-4 mr-2" />
-            {t("referrals.clientReferrals", "Referidos de Clientes")}
-            <Badge variant="secondary" className="ml-2">
-              {clientReferrals.length}
-            </Badge>
-          </TabsTrigger>
+          {!isSeller && (
+            <TabsTrigger value="clients" data-testid="tab-client-referrals">
+              <Users className="h-4 w-4 mr-2" />
+              {t("referrals.clientReferrals", "Referidos de Clientes")}
+              <Badge variant="secondary" className="ml-2">
+                {clientReferrals.length}
+              </Badge>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="owners" data-testid="tab-owner-referrals">
             <Home className="h-4 w-4 mr-2" />
             {t("referrals.ownerReferrals", "Referidos de Propietarios")}
@@ -210,24 +216,26 @@ export default function Referrals() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="clients" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold">
-                {t("referrals.clientReferrals", "Referidos de Clientes")}
-              </h2>
-              <p className="text-sm text-secondary-foreground">
-                {t("referrals.clientReferralsDesc", "Recomienda personas que buscan rentar propiedades")}
-              </p>
+        {!isSeller && (
+          <TabsContent value="clients" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {t("referrals.clientReferrals", "Referidos de Clientes")}
+                </h2>
+                <p className="text-sm text-secondary-foreground">
+                  {t("referrals.clientReferralsDesc", "Recomienda personas que buscan rentar propiedades")}
+                </p>
+              </div>
+              <Button onClick={() => setShowClientDialog(true)} data-testid="button-add-client-referral">
+                <Plus className="h-4 w-4 mr-2" />
+                {t("referrals.addClientReferral", "Agregar Referido")}
+              </Button>
             </div>
-            <Button onClick={() => setShowClientDialog(true)} data-testid="button-add-client-referral">
-              <Plus className="h-4 w-4 mr-2" />
-              {t("referrals.addClientReferral", "Agregar Referido")}
-            </Button>
-          </div>
 
-          <ReferralsList type="client" referrals={clientReferrals} />
-        </TabsContent>
+            <ReferralsList type="client" referrals={clientReferrals} />
+          </TabsContent>
+        )}
 
         <TabsContent value="owners" className="space-y-4">
           <div className="flex justify-between items-center">
@@ -253,10 +261,12 @@ export default function Referrals() {
         </TabsContent>
       </Tabs>
 
-      <CreateClientReferralDialog
-        open={showClientDialog}
-        onOpenChange={setShowClientDialog}
-      />
+      {!isSeller && (
+        <CreateClientReferralDialog
+          open={showClientDialog}
+          onOpenChange={setShowClientDialog}
+        />
+      )}
 
       <CreateOwnerReferralDialog
         open={showOwnerDialog}

@@ -33,6 +33,7 @@ Key features include:
 *   **AI-Powered Capabilities**: Predictive analytics, automated legal document generation, intelligent tenant screening, and a virtual assistant (MARCO) powered by OpenAI GPT-4.
 *   **CRM Lead Management System**: Kanban-style lead management with a 10-stage rental pipeline, multi-step lead creation, and quick actions, with advanced table view features.
 *   **Operational Efficiency**: Marketing automation, preventive maintenance scheduling, enhanced referral tracking, and comprehensive admin CRUD systems.
+*   **Referral System**: Sellers can refer property owners and earn 20% commission per referred property. Sellers **cannot** refer clients. Referral tracking includes verification workflows, status management, and commission calculation.
 *   **User Experience**: Airbnb-style role switching, full i18n support, real-time chat, granular email notification preferences, and auto-logout security.
 
 ## External Dependencies

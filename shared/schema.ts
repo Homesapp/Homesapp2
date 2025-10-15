@@ -2937,7 +2937,7 @@ export type ProviderApplication = typeof providerApplications.$inferSelect;
 export const referralConfig = pgTable("referral_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientReferralCommissionPercent: decimal("client_referral_commission_percent", { precision: 5, scale: 2 }).notNull().default("5.00"),
-  ownerReferralCommissionPercent: decimal("owner_referral_commission_percent", { precision: 5, scale: 2 }).notNull().default("10.00"),
+  ownerReferralCommissionPercent: decimal("owner_referral_commission_percent", { precision: 5, scale: 2 }).notNull().default("20.00"), // Vendedores ganan 20% por propiedad referida
   updatedBy: varchar("updated_by").references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

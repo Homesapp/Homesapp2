@@ -10919,7 +10919,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/referrals/clients", isAuthenticated, async (req: any, res) => {
+  // NOTA: Los vendedores NO pueden referir clientes, solo pueden referir propietarios
+  // Este endpoint está restringido solo para administradores
+  app.post("/api/referrals/clients", isAuthenticated, requireFullAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
