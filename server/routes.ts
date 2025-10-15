@@ -12227,15 +12227,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tokens = await query;
 
-      // Enrich with property and creator info
+      // Enrich with property, creator, and lead info
       const enrichedTokens = await Promise.all(
         tokens.map(async (token) => {
           const property = await storage.getProperty(token.propertyId);
           const creator = await storage.getUser(token.createdBy);
+          let lead = null;
+          if (token.leadId) {
+            lead = await storage.getLead(token.leadId);
+          }
           return {
             ...token,
             property,
             creator,
+            lead,
           };
         })
       );
@@ -12244,6 +12249,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching offer tokens:", error);
       res.status(500).json({ message: "Error al obtener tokens de oferta" });
+    }
+  });
+
+  // Delete offer token (admins only)
+  app.delete("/api/offer-tokens/:id", isAuthenticated, requireRole(["admin", "master", "admin_jr"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Check if token exists
+      const [existingToken] = await db
+        .select()
+        .from(offerTokens)
+        .where(eq(offerTokens.id, id))
+        .limit(1);
+
+      if (!existingToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+
+      // Delete the token
+      await db
+        .delete(offerTokens)
+        .where(eq(offerTokens.id, id));
+
+      res.json({ message: "Link eliminado exitosamente" });
+    } catch (error) {
+      console.error("Error deleting offer token:", error);
+      res.status(500).json({ message: "Error al eliminar link" });
     }
   });
 

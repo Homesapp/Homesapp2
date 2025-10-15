@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +19,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Download, FileText, Clock, CheckCircle2, Mail, User } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Download, FileText, Clock, CheckCircle2, Mail, User, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function AdminOfferManagement() {
+  const { toast } = useToast();
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | "used" | "pending">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "used" | "pending" | "expired">("all");
+  const [offerToDelete, setOfferToDelete] = useState<any>(null);
 
   const { data: offers, isLoading } = useQuery({
     queryKey: ["/api/offer-tokens", statusFilter],
@@ -38,6 +52,27 @@ export default function AdminOfferManagement() {
       return response.json();
     },
     enabled: true,
+  });
+
+  const deleteOfferMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/offer-tokens/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/offer-tokens"] });
+      toast({
+        title: "Link eliminado",
+        description: "El link de oferta ha sido eliminado exitosamente.",
+      });
+      setOfferToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al eliminar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const handleDownloadPDF = async (offerId: string) => {
@@ -87,6 +122,7 @@ export default function AdminOfferManagement() {
   const getFilteredOffers = () => {
     if (statusFilter === "pending") return pendingOffers;
     if (statusFilter === "used") return completedOffers;
+    if (statusFilter === "expired") return expiredOffers;
     return offers || [];
   };
 
@@ -156,6 +192,9 @@ export default function AdminOfferManagement() {
             <TabsTrigger value="used" data-testid="tab-completed-offers">
               Completadas ({completedOffers.length})
             </TabsTrigger>
+            <TabsTrigger value="expired" data-testid="tab-expired-offers">
+              Expiradas ({expiredOffers.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value={statusFilter} className="mt-6">
@@ -175,7 +214,8 @@ export default function AdminOfferManagement() {
                   <div className="text-center py-8 text-muted-foreground">
                     {statusFilter === "all" ? "No hay ofertas registradas" : 
                      statusFilter === "pending" ? "No hay ofertas pendientes" : 
-                     "No hay ofertas completadas"}
+                     statusFilter === "used" ? "No hay ofertas completadas" :
+                     "No hay ofertas expiradas"}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -183,6 +223,7 @@ export default function AdminOfferManagement() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Propiedad</TableHead>
+                          <TableHead>Lead</TableHead>
                           <TableHead>Creado por</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead>Fecha creación</TableHead>
@@ -198,6 +239,20 @@ export default function AdminOfferManagement() {
                               <div className="text-xs text-muted-foreground">
                                 {offer.property?.address}
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {offer.lead ? (
+                                <div>
+                                  <div className="font-medium">
+                                    {offer.lead.firstName} {offer.lead.lastName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {offer.lead.email}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">Sin lead</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -242,6 +297,14 @@ export default function AdminOfferManagement() {
                                     Esperando respuesta
                                   </Badge>
                                 )}
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setOfferToDelete(offer)}
+                                  data-testid={`button-delete-${offer.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -438,6 +501,41 @@ export default function AdminOfferManagement() {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!offerToDelete} onOpenChange={() => setOfferToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar link de oferta?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. El link será eliminado permanentemente.
+                {offerToDelete?.lead && (
+                  <div className="mt-2 p-2 bg-muted rounded text-sm">
+                    Lead: {offerToDelete.lead.firstName} {offerToDelete.lead.lastName}
+                  </div>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteOfferMutation.mutate(offerToDelete?.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete"
+              >
+                {deleteOfferMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
