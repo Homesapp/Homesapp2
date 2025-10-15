@@ -19,6 +19,7 @@ import { getPropertyTitle } from "@/lib/propertyHelpers";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
 const rentalFormSchema = z.object({
+  // Datos Personales
   fullName: z.string().min(2, "Nombre completo es requerido"),
   address: z.string().optional(),
   nationality: z.string().optional(),
@@ -48,6 +49,46 @@ const rentalFormSchema = z.object({
   petDetails: z.string().optional(),
   desiredProperty: z.string().optional(),
   desiredCondoUnit: z.string().optional(),
+  
+  // Referencias del Arrendamiento Anterior
+  previousLandlordPhone: z.string().optional(),
+  previousCondoUnit: z.string().optional(),
+  previousAddress: z.string().optional(),
+  previousTenancy: z.string().optional(),
+  
+  // Referencias Laborales
+  directSupervisorName: z.string().optional(),
+  companyNameAddress: z.string().optional(),
+  companyLandline: z.string().optional(),
+  supervisorCellphone: z.string().optional(),
+  
+  // Referencias Personales
+  reference1Name: z.string().optional(),
+  reference1Address: z.string().optional(),
+  reference1Landline: z.string().optional(),
+  reference1Cellphone: z.string().optional(),
+  
+  // Datos del Garante
+  hasGuarantor: z.boolean().default(false),
+  guarantorFullName: z.string().optional(),
+  guarantorAddress: z.string().optional(),
+  guarantorBirthDatePlace: z.string().optional(),
+  guarantorNationality: z.string().optional(),
+  guarantorAge: z.preprocess((val) => {
+    const num = Number(val);
+    return isNaN(num) ? undefined : num;
+  }, z.number().optional()),
+  guarantorTimeInTulum: z.string().optional(),
+  guarantorJobPosition: z.string().optional(),
+  guarantorCompanyName: z.string().optional(),
+  guarantorWorkAddress: z.string().optional(),
+  guarantorWorkPhone: z.string().optional(),
+  guarantorMaritalStatus: z.string().optional(),
+  guarantorLandline: z.string().optional(),
+  guarantorCellphone: z.string().optional(),
+  guarantorEmail: z.string().optional(),
+  guarantorIdNumber: z.string().optional(),
+  
   acceptedTerms: z.boolean().refine(val => val === true, "Debes aceptar los términos y condiciones"),
 });
 
@@ -59,7 +100,7 @@ export default function PublicRentalForm() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
-  const totalSteps = 4;
+  const totalSteps = 8; // 8 steps without documents (will implement file upload separately)
 
   const { data: tokenData, isLoading: isValidating, error: validationError } = useQuery({
     queryKey: [`/api/rental-form-tokens/${token}/validate`],
@@ -73,6 +114,7 @@ export default function PublicRentalForm() {
       whatsappNumber: "",
       email: "",
       hasPets: false,
+      hasGuarantor: false,
       acceptedTerms: false,
     },
   });
@@ -244,7 +286,11 @@ export default function PublicRentalForm() {
                 {currentStep === 1 && "Datos Personales"}
                 {currentStep === 2 && "Información Laboral"}
                 {currentStep === 3 && "Detalles de Renta"}
-                {currentStep === 4 && "Términos y Condiciones"}
+                {currentStep === 4 && "Referencias de Arrendamiento Anterior"}
+                {currentStep === 5 && "Referencias Laborales"}
+                {currentStep === 6 && "Referencias Personales"}
+                {currentStep === 7 && "Datos del Garante (Opcional)"}
+                {currentStep === 8 && "Términos y Condiciones"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -519,8 +565,351 @@ export default function PublicRentalForm() {
                 </div>
               )}
 
-              {/* Step 4: Terms and Conditions */}
+              {/* Step 4: Referencias de Arrendamiento Anterior */}
               {currentStep === 4 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Proporciona información sobre tu arrendamiento anterior
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="previousLandlordPhone">N° Teléfono Celular del Arrendador Anterior</Label>
+                      <Input
+                        id="previousLandlordPhone"
+                        {...form.register("previousLandlordPhone")}
+                        placeholder="+52 123 456 7890"
+                        data-testid="input-previous-landlord-phone"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="previousCondoUnit">Condominio y Unidad</Label>
+                      <Input
+                        id="previousCondoUnit"
+                        {...form.register("previousCondoUnit")}
+                        placeholder="Condominio - Unidad"
+                        data-testid="input-previous-condo-unit"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="previousTenancy">Antigüedad como Inquilino</Label>
+                      <Input
+                        id="previousTenancy"
+                        {...form.register("previousTenancy")}
+                        placeholder="6 meses"
+                        data-testid="input-previous-tenancy"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="previousAddress">Dirección del Arrendamiento Anterior</Label>
+                    <Textarea
+                      id="previousAddress"
+                      {...form.register("previousAddress")}
+                      placeholder="Dirección completa del arrendamiento anterior"
+                      rows={2}
+                      data-testid="textarea-previous-address"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Referencias Laborales */}
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Proporciona información de tu supervisor o jefe directo
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="directSupervisorName">Nombre de Jefe Directo</Label>
+                      <Input
+                        id="directSupervisorName"
+                        {...form.register("directSupervisorName")}
+                        placeholder="María García López"
+                        data-testid="input-supervisor-name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="companyLandline">N° Teléfono Fijo de la Empresa</Label>
+                      <Input
+                        id="companyLandline"
+                        {...form.register("companyLandline")}
+                        placeholder="998 123 4567"
+                        data-testid="input-company-landline"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="supervisorCellphone">N° Celular del Encargado</Label>
+                      <Input
+                        id="supervisorCellphone"
+                        {...form.register("supervisorCellphone")}
+                        placeholder="+52 123 456 7890"
+                        data-testid="input-supervisor-cellphone"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="companyNameAddress">Nombre y Dirección de la Empresa</Label>
+                    <Textarea
+                      id="companyNameAddress"
+                      {...form.register("companyNameAddress")}
+                      placeholder="Nombre completo de la empresa y su dirección"
+                      rows={2}
+                      data-testid="textarea-company-name-address"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 6: Referencias Personales */}
+              {currentStep === 6 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Proporciona al menos una referencia personal no laboral
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reference1Name">Nombre</Label>
+                      <Input
+                        id="reference1Name"
+                        {...form.register("reference1Name")}
+                        placeholder="Carlos Rodríguez"
+                        data-testid="input-reference1-name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reference1Landline">N° Teléfono Fijo</Label>
+                      <Input
+                        id="reference1Landline"
+                        {...form.register("reference1Landline")}
+                        placeholder="998 123 4567"
+                        data-testid="input-reference1-landline"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reference1Cellphone">N° Teléfono Celular</Label>
+                      <Input
+                        id="reference1Cellphone"
+                        {...form.register("reference1Cellphone")}
+                        placeholder="+52 123 456 7890"
+                        data-testid="input-reference1-cellphone"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reference1Address">Dirección</Label>
+                    <Textarea
+                      id="reference1Address"
+                      {...form.register("reference1Address")}
+                      placeholder="Dirección completa de la referencia personal"
+                      rows={2}
+                      data-testid="textarea-reference1-address"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 7: Datos del Garante */}
+              {currentStep === 7 && (
+                <div className="space-y-6">
+                  <div className="flex items-start space-x-2 p-4 border rounded-lg">
+                    <Checkbox
+                      id="hasGuarantor"
+                      checked={form.watch("hasGuarantor")}
+                      onCheckedChange={(checked) => form.setValue("hasGuarantor", checked as boolean)}
+                      data-testid="checkbox-has-guarantor"
+                    />
+                    <div>
+                      <Label htmlFor="hasGuarantor" className="cursor-pointer font-semibold">
+                        Aplicaré con Garante o Co-Signer
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Si cuentas con un garante o co-signer, marca esta casilla y completa la información a continuación
+                      </p>
+                    </div>
+                  </div>
+
+                  {form.watch("hasGuarantor") && (
+                    <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                      <h4 className="font-semibold">Información del Garante</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorFullName">Nombre Completo</Label>
+                          <Input
+                            id="guarantorFullName"
+                            {...form.register("guarantorFullName")}
+                            placeholder="Pedro Sánchez Morales"
+                            data-testid="input-guarantor-full-name"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorEmail">Correo Electrónico</Label>
+                          <Input
+                            id="guarantorEmail"
+                            type="email"
+                            {...form.register("guarantorEmail")}
+                            placeholder="pedro@ejemplo.com"
+                            data-testid="input-guarantor-email"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorBirthDatePlace">Fecha y Lugar de Nacimiento</Label>
+                          <Input
+                            id="guarantorBirthDatePlace"
+                            {...form.register("guarantorBirthDatePlace")}
+                            placeholder="01/01/1980 - Ciudad de México"
+                            data-testid="input-guarantor-birth-date-place"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorNationality">Nacionalidad</Label>
+                          <Input
+                            id="guarantorNationality"
+                            {...form.register("guarantorNationality")}
+                            placeholder="Mexicana"
+                            data-testid="input-guarantor-nationality"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorAge">Edad</Label>
+                          <Input
+                            id="guarantorAge"
+                            type="number"
+                            {...form.register("guarantorAge", { valueAsNumber: true })}
+                            placeholder="45"
+                            data-testid="input-guarantor-age"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorTimeInTulum">Tiempo Residiendo en Tulum</Label>
+                          <Input
+                            id="guarantorTimeInTulum"
+                            {...form.register("guarantorTimeInTulum")}
+                            placeholder="2 años"
+                            data-testid="input-guarantor-time-in-tulum"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorJobPosition">Trabajo / Posición</Label>
+                          <Input
+                            id="guarantorJobPosition"
+                            {...form.register("guarantorJobPosition")}
+                            placeholder="Director Comercial"
+                            data-testid="input-guarantor-job-position"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorCompanyName">Empresa para la que Trabaja</Label>
+                          <Input
+                            id="guarantorCompanyName"
+                            {...form.register("guarantorCompanyName")}
+                            placeholder="Empresa ABC S.A."
+                            data-testid="input-guarantor-company-name"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorWorkPhone">Teléfono del Trabajo</Label>
+                          <Input
+                            id="guarantorWorkPhone"
+                            {...form.register("guarantorWorkPhone")}
+                            placeholder="998 123 4567"
+                            data-testid="input-guarantor-work-phone"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorMaritalStatus">Estado Civil</Label>
+                          <Select onValueChange={(value) => form.setValue("guarantorMaritalStatus", value)}>
+                            <SelectTrigger id="guarantorMaritalStatus" data-testid="select-guarantor-marital-status">
+                              <SelectValue placeholder="Selecciona..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="soltero">Soltero/a</SelectItem>
+                              <SelectItem value="casado">Casado/a</SelectItem>
+                              <SelectItem value="divorciado">Divorciado/a</SelectItem>
+                              <SelectItem value="viudo">Viudo/a</SelectItem>
+                              <SelectItem value="union_libre">Unión Libre</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorLandline">Teléfono Fijo</Label>
+                          <Input
+                            id="guarantorLandline"
+                            {...form.register("guarantorLandline")}
+                            placeholder="998 123 4567"
+                            data-testid="input-guarantor-landline"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorCellphone">Teléfono Celular</Label>
+                          <Input
+                            id="guarantorCellphone"
+                            {...form.register("guarantorCellphone")}
+                            placeholder="+52 123 456 7890"
+                            data-testid="input-guarantor-cellphone"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="guarantorIdNumber">Número de Identificación o Pasaporte</Label>
+                          <Input
+                            id="guarantorIdNumber"
+                            {...form.register("guarantorIdNumber")}
+                            placeholder="INE o Pasaporte"
+                            data-testid="input-guarantor-id-number"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="guarantorAddress">Dirección</Label>
+                        <Textarea
+                          id="guarantorAddress"
+                          {...form.register("guarantorAddress")}
+                          placeholder="Dirección completa del garante"
+                          rows={2}
+                          data-testid="textarea-guarantor-address"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="guarantorWorkAddress">Dirección del Trabajo</Label>
+                        <Textarea
+                          id="guarantorWorkAddress"
+                          {...form.register("guarantorWorkAddress")}
+                          placeholder="Dirección completa del lugar de trabajo"
+                          rows={2}
+                          data-testid="textarea-guarantor-work-address"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 8: Terms and Conditions */}
+              {currentStep === 8 && (
                 <div className="space-y-6">
                   <div className="p-6 border rounded-lg bg-muted/30 max-h-96 overflow-y-auto">
                     <h3 className="font-semibold text-lg mb-4">Términos y Condiciones</h3>
