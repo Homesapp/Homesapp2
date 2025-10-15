@@ -8,6 +8,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 15, 2025)
 
+### Lead Visibility Fix for Sellers
+*   **Issue - Sellers Not Seeing Assigned Leads**: Fixed critical bug where sellers couldn't see leads assigned to them by admins
+    - **Problem**: Sellers only saw leads they registered themselves (registeredById = sellerId), but couldn't see leads assigned to them by admins (assignedToId = sellerId)
+    - **Symptom**: Dashboard showed "1 lead" count but lead wasn't visible in Kanban board
+    - **Root Cause**: GET `/api/leads` only filtered by registeredById for sellers, ignoring assignedToId
+    - **Solution**: 
+      - Created new `storage.getLeadsForSeller(sellerId, filters)` function
+      - Function returns leads where `registeredById = sellerId OR assignedToId = sellerId`
+      - Updated GET `/api/leads` to use new function for seller role
+      - Updated GET `/api/leads/:id` to allow access to assigned leads
+    - **Impact**: Sellers now see both:
+      1. Leads they registered themselves
+      2. Leads assigned to them by admins
+    - **Files**: `server/routes.ts`, `server/storage.ts`
+
 ### Admin Offer Management Enhancements
 *   **Lead Information Display**: Enhanced offer token management with lead visibility
     - **Backend Enhancement**: GET `/api/offer-tokens` now enriches each token with lead data (firstName, lastName, email) when leadId exists
