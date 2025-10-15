@@ -274,12 +274,55 @@ export default function PublicRentalForm() {
       
       // Placeholders
       selectOption: "Selecciona...",
+      placeholderFullName: "Juan Pérez García",
+      placeholderEmail: "juan@ejemplo.com",
+      placeholderPhone: "+52 123 456 7890",
+      placeholderNationality: "Mexicana",
+      placeholderTimeInTulum: "6 meses",
+      placeholderAddress: "Calle, colonia, ciudad, estado, CP",
+      placeholderIdNumber: "1234567890123",
+      placeholderJobPosition: "Gerente de Ventas",
+      placeholderCompanyName: "Empresa S.A. de C.V.",
+      placeholderCompanyTenure: "2 años",
+      placeholderWorkplaceAddress: "Dirección completa del lugar de trabajo",
+      placeholderPetDetails: "Tipo, raza, tamaño, cantidad, edad, etc.",
+      placeholderPreviousLandlordName: "María González",
+      placeholderPreviousAddress: "Dirección completa del arrendamiento anterior",
+      placeholderSupervisorName: "María García López",
+      placeholderCompanyLandline: "998 123 4567",
+      placeholderCompanyNameAddress: "Nombre completo de la empresa y su dirección",
+      placeholderReferenceName: "Carlos Rodríguez",
+      placeholderReferenceAddress: "Dirección completa de la referencia personal",
+      placeholderGuarantorFullName: "Pedro Sánchez Morales",
+      placeholderGuarantorEmail: "pedro@ejemplo.com",
+      placeholderGuarantorBirthDatePlace: "01/01/1980 - Ciudad de México",
+      placeholderGuarantorTimeInTulum: "2 años",
+      placeholderGuarantorJobPosition: "Director Comercial",
+      placeholderGuarantorCompanyName: "Empresa ABC S.A.",
+      placeholderGuarantorIdNumber: "INE o Pasaporte",
+      placeholderGuarantorAddress: "Dirección completa del garante",
+      placeholderGuarantorWorkAddress: "Dirección de trabajo del garante",
       
       // Success/Error messages
       successTitle: "¡Formulario Enviado!",
       successDescription: "Revisaremos tu solicitud en las próximas 48-72 horas.",
       errorTitle: "Error al enviar formulario",
       validationError: "Por favor revisa los campos del formulario",
+      
+      // Loading and error states
+      validatingLink: "Validando enlace...",
+      invalidLink: "Enlace Inválido",
+      linkExpired: "Este enlace ha expirado o no es válido.",
+      goHome: "Ir al Inicio",
+      formSubmittedTitle: "¡Formulario Enviado!",
+      formSubmittedDescription: "Tu solicitud de renta ha sido enviada exitosamente. Revisaremos tu información y nos pondremos en contacto contigo en las próximas 48-72 horas.",
+      notificationMessage: "Te enviaremos una notificación por email y WhatsApp cuando tengamos una respuesta.",
+      acceptTermsLabel: "Acepto los términos y condiciones anteriores y confirmo que toda la información proporcionada es verdadera y correcta. *",
+      
+      // Property info labels
+      monthlyRent: "Renta Mensual",
+      bedroomsBathrooms: "Recámaras / Baños",
+      location: "Ubicación",
       
       required: "*"
     },
@@ -388,12 +431,55 @@ export default function PublicRentalForm() {
       
       // Placeholders
       selectOption: "Select...",
+      placeholderFullName: "John Smith",
+      placeholderEmail: "john@example.com",
+      placeholderPhone: "+52 123 456 7890",
+      placeholderNationality: "Mexican",
+      placeholderTimeInTulum: "6 months",
+      placeholderAddress: "Street, neighborhood, city, state, ZIP",
+      placeholderIdNumber: "1234567890123",
+      placeholderJobPosition: "Sales Manager",
+      placeholderCompanyName: "Company Inc.",
+      placeholderCompanyTenure: "2 years",
+      placeholderWorkplaceAddress: "Complete workplace address",
+      placeholderPetDetails: "Type, breed, size, quantity, age, etc.",
+      placeholderPreviousLandlordName: "Mary Johnson",
+      placeholderPreviousAddress: "Complete address of previous rental",
+      placeholderSupervisorName: "Mary Garcia",
+      placeholderCompanyLandline: "998 123 4567",
+      placeholderCompanyNameAddress: "Full company name and address",
+      placeholderReferenceName: "Charles Rodriguez",
+      placeholderReferenceAddress: "Complete personal reference address",
+      placeholderGuarantorFullName: "Peter Williams",
+      placeholderGuarantorEmail: "peter@example.com",
+      placeholderGuarantorBirthDatePlace: "01/01/1980 - Mexico City",
+      placeholderGuarantorTimeInTulum: "2 years",
+      placeholderGuarantorJobPosition: "Commercial Director",
+      placeholderGuarantorCompanyName: "ABC Company Inc.",
+      placeholderGuarantorIdNumber: "Voter ID or Passport",
+      placeholderGuarantorAddress: "Complete guarantor address",
+      placeholderGuarantorWorkAddress: "Guarantor work address",
       
       // Success/Error messages
       successTitle: "Application Submitted!",
       successDescription: "We will review your application within 48-72 hours.",
       errorTitle: "Error submitting application",
       validationError: "Please review the form fields",
+      
+      // Loading and error states
+      validatingLink: "Validating link...",
+      invalidLink: "Invalid Link",
+      linkExpired: "This link has expired or is invalid.",
+      goHome: "Go Home",
+      formSubmittedTitle: "Application Submitted!",
+      formSubmittedDescription: "Your rental application has been successfully submitted. We will review your information and contact you within 48-72 hours.",
+      notificationMessage: "We will send you a notification via email and WhatsApp when we have a response.",
+      acceptTermsLabel: "I accept the above terms and conditions and confirm that all information provided is true and correct. *",
+      
+      // Property info labels
+      monthlyRent: "Monthly Rent",
+      bedroomsBathrooms: "Bedrooms / Bathrooms",
+      location: "Location",
       
       required: "*"
     }
@@ -407,7 +493,7 @@ export default function PublicRentalForm() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Validando enlace...</p>
+            <p className="text-muted-foreground">{text.validatingLink}</p>
           </CardContent>
         </Card>
       </div>
@@ -421,15 +507,15 @@ export default function PublicRentalForm() {
           <CardHeader>
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-6 w-6" />
-              <CardTitle>Enlace Inválido</CardTitle>
+              <CardTitle>{text.invalidLink}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
-              {(validationError as any)?.message || "Este enlace ha expirado o no es válido."}
+              {(validationError as any)?.message || text.linkExpired}
             </p>
             <Button onClick={() => setLocation("/")} className="w-full">
-              Ir al Inicio
+              {text.goHome}
             </Button>
           </CardContent>
         </Card>
@@ -444,18 +530,18 @@ export default function PublicRentalForm() {
           <CardHeader>
             <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
               <CheckCircle2 className="h-6 w-6" />
-              <CardTitle>¡Formulario Enviado!</CardTitle>
+              <CardTitle>{text.formSubmittedTitle}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
-              Tu solicitud de renta ha sido enviada exitosamente. Revisaremos tu información y nos pondremos en contacto contigo en las próximas 48-72 horas.
+              {text.formSubmittedDescription}
             </p>
             <p className="text-sm text-muted-foreground">
-              Te enviaremos una notificación por email y WhatsApp cuando tengamos una respuesta.
+              {text.notificationMessage}
             </p>
             <Button onClick={() => setLocation("/")} className="w-full">
-              Ir al Inicio
+              {text.goHome}
             </Button>
           </CardContent>
         </Card>
@@ -489,15 +575,15 @@ export default function PublicRentalForm() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div>
-                  <p className="text-sm text-muted-foreground">Renta Mensual</p>
+                  <p className="text-sm text-muted-foreground">{text.monthlyRent}</p>
                   <p className="font-semibold text-lg">${property.price} {property.currency}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Recámaras / Baños</p>
+                  <p className="text-sm text-muted-foreground">{text.bedroomsBathrooms}</p>
                   <p className="font-semibold">{property.bedrooms} / {property.bathrooms}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Ubicación</p>
+                  <p className="text-sm text-muted-foreground">{text.location}</p>
                   <p className="font-semibold text-sm">{property.location}</p>
                 </div>
               </div>
@@ -539,7 +625,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="fullName"
                         {...form.register("fullName")}
-                        placeholder="Juan Pérez García"
+                        placeholder={text.placeholderFullName}
                         data-testid="input-full-name"
                       />
                       {form.formState.errors.fullName && (
@@ -553,7 +639,7 @@ export default function PublicRentalForm() {
                         id="email"
                         type="email"
                         {...form.register("email")}
-                        placeholder="juan@ejemplo.com"
+                        placeholder={text.placeholderEmail}
                         data-testid="input-email"
                       />
                       {form.formState.errors.email && (
@@ -566,7 +652,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="whatsappNumber"
                         {...form.register("whatsappNumber")}
-                        placeholder="+52 123 456 7890"
+                        placeholder={text.placeholderPhone}
                         data-testid="input-whatsapp"
                       />
                       {form.formState.errors.whatsappNumber && (
@@ -579,7 +665,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="cellphone"
                         {...form.register("cellphone")}
-                        placeholder="+52 123 456 7890"
+                        placeholder={text.placeholderPhone}
                         data-testid="input-cellphone"
                       />
                     </div>
@@ -589,7 +675,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="nationality"
                         {...form.register("nationality")}
-                        placeholder="Mexicana"
+                        placeholder={text.placeholderNationality}
                         data-testid="input-nationality"
                       />
                     </div>
@@ -631,7 +717,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="timeInTulum"
                         {...form.register("timeInTulum")}
-                        placeholder="6 meses"
+                        placeholder={text.placeholderTimeInTulum}
                         data-testid="input-time-in-tulum"
                       />
                     </div>
@@ -642,7 +728,7 @@ export default function PublicRentalForm() {
                     <Textarea
                       id="address"
                       {...form.register("address")}
-                      placeholder="Calle, colonia, ciudad, estado, CP"
+                      placeholder={text.placeholderAddress}
                       rows={2}
                       data-testid="textarea-address"
                     />
@@ -668,7 +754,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="idNumber"
                         {...form.register("idNumber")}
-                        placeholder="1234567890123"
+                        placeholder={text.placeholderIdNumber}
                         data-testid="input-id-number"
                       />
                     </div>
@@ -685,7 +771,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="jobPosition"
                         {...form.register("jobPosition")}
-                        placeholder="Gerente de Ventas"
+                        placeholder={text.placeholderJobPosition}
                         data-testid="input-job-position"
                       />
                     </div>
@@ -695,7 +781,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="companyName"
                         {...form.register("companyName")}
-                        placeholder="Empresa S.A. de C.V."
+                        placeholder={text.placeholderCompanyName}
                         data-testid="input-company-name"
                       />
                     </div>
@@ -715,7 +801,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="companyTenure"
                         {...form.register("companyTenure")}
-                        placeholder="2 años"
+                        placeholder={text.placeholderCompanyTenure}
                         data-testid="input-company-tenure"
                       />
                     </div>
@@ -726,7 +812,7 @@ export default function PublicRentalForm() {
                     <Textarea
                       id="workplaceAddress"
                       {...form.register("workplaceAddress")}
-                      placeholder="Dirección completa del lugar de trabajo"
+                      placeholder={text.placeholderWorkplaceAddress}
                       rows={2}
                       data-testid="textarea-workplace-address"
                     />
@@ -798,7 +884,7 @@ export default function PublicRentalForm() {
                         <Textarea
                           id="petDetails"
                           {...form.register("petDetails")}
-                          placeholder="Tipo, raza, tamaño, cantidad, edad, etc."
+                          placeholder={text.placeholderPetDetails}
                           rows={3}
                           data-testid="textarea-pet-details"
                         />
@@ -820,7 +906,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="previousLandlordName"
                         {...form.register("previousLandlordName")}
-                        placeholder="María González"
+                        placeholder={text.placeholderPreviousLandlordName}
                         data-testid="input-previous-landlord-name"
                       />
                     </div>
@@ -830,7 +916,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="previousLandlordPhone"
                         {...form.register("previousLandlordPhone")}
-                        placeholder="+52 123 456 7890"
+                        placeholder={text.placeholderPhone}
                         data-testid="input-previous-landlord-phone"
                       />
                     </div>
@@ -840,7 +926,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="previousTenancy"
                         {...form.register("previousTenancy")}
-                        placeholder="6 meses"
+                        placeholder={text.placeholderTimeInTulum}
                         data-testid="input-previous-tenancy"
                       />
                     </div>
@@ -851,7 +937,7 @@ export default function PublicRentalForm() {
                     <Textarea
                       id="previousAddress"
                       {...form.register("previousAddress")}
-                      placeholder="Dirección completa del arrendamiento anterior"
+                      placeholder={text.placeholderPreviousAddress}
                       rows={2}
                       data-testid="textarea-previous-address"
                     />
@@ -871,7 +957,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="directSupervisorName"
                         {...form.register("directSupervisorName")}
-                        placeholder="María García López"
+                        placeholder={text.placeholderSupervisorName}
                         data-testid="input-supervisor-name"
                       />
                     </div>
@@ -881,7 +967,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="companyLandline"
                         {...form.register("companyLandline")}
-                        placeholder="998 123 4567"
+                        placeholder={text.placeholderCompanyLandline}
                         data-testid="input-company-landline"
                       />
                     </div>
@@ -891,7 +977,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="supervisorCellphone"
                         {...form.register("supervisorCellphone")}
-                        placeholder="+52 123 456 7890"
+                        placeholder={text.placeholderPhone}
                         data-testid="input-supervisor-cellphone"
                       />
                     </div>
@@ -902,7 +988,7 @@ export default function PublicRentalForm() {
                     <Textarea
                       id="companyNameAddress"
                       {...form.register("companyNameAddress")}
-                      placeholder="Nombre completo de la empresa y su dirección"
+                      placeholder={text.placeholderCompanyNameAddress}
                       rows={2}
                       data-testid="textarea-company-name-address"
                     />
@@ -922,7 +1008,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="reference1Name"
                         {...form.register("reference1Name")}
-                        placeholder="Carlos Rodríguez"
+                        placeholder={text.placeholderReferenceName}
                         data-testid="input-reference1-name"
                       />
                     </div>
@@ -932,7 +1018,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="reference1Landline"
                         {...form.register("reference1Landline")}
-                        placeholder="998 123 4567"
+                        placeholder={text.placeholderCompanyLandline}
                         data-testid="input-reference1-landline"
                       />
                     </div>
@@ -942,7 +1028,7 @@ export default function PublicRentalForm() {
                       <Input
                         id="reference1Cellphone"
                         {...form.register("reference1Cellphone")}
-                        placeholder="+52 123 456 7890"
+                        placeholder={text.placeholderPhone}
                         data-testid="input-reference1-cellphone"
                       />
                     </div>
@@ -953,7 +1039,7 @@ export default function PublicRentalForm() {
                     <Textarea
                       id="reference1Address"
                       {...form.register("reference1Address")}
-                      placeholder="Dirección completa de la referencia personal"
+                      placeholder={text.placeholderReferenceAddress}
                       rows={2}
                       data-testid="textarea-reference1-address"
                     />
@@ -991,7 +1077,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorFullName"
                             {...form.register("guarantorFullName")}
-                            placeholder="Pedro Sánchez Morales"
+                            placeholder={text.placeholderGuarantorFullName}
                             data-testid="input-guarantor-full-name"
                           />
                         </div>
@@ -1002,7 +1088,7 @@ export default function PublicRentalForm() {
                             id="guarantorEmail"
                             type="email"
                             {...form.register("guarantorEmail")}
-                            placeholder="pedro@ejemplo.com"
+                            placeholder={text.placeholderGuarantorEmail}
                             data-testid="input-guarantor-email"
                           />
                         </div>
@@ -1012,7 +1098,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorBirthDatePlace"
                             {...form.register("guarantorBirthDatePlace")}
-                            placeholder="01/01/1980 - Ciudad de México"
+                            placeholder={text.placeholderGuarantorBirthDatePlace}
                             data-testid="input-guarantor-birth-date-place"
                           />
                         </div>
@@ -1022,7 +1108,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorNationality"
                             {...form.register("guarantorNationality")}
-                            placeholder="Mexicana"
+                            placeholder={text.placeholderNationality}
                             data-testid="input-guarantor-nationality"
                           />
                         </div>
@@ -1048,7 +1134,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorTimeInTulum"
                             {...form.register("guarantorTimeInTulum")}
-                            placeholder="2 años"
+                            placeholder={text.placeholderGuarantorTimeInTulum}
                             data-testid="input-guarantor-time-in-tulum"
                           />
                         </div>
@@ -1058,7 +1144,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorJobPosition"
                             {...form.register("guarantorJobPosition")}
-                            placeholder="Director Comercial"
+                            placeholder={text.placeholderGuarantorJobPosition}
                             data-testid="input-guarantor-job-position"
                           />
                         </div>
@@ -1068,7 +1154,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorCompanyName"
                             {...form.register("guarantorCompanyName")}
-                            placeholder="Empresa ABC S.A."
+                            placeholder={text.placeholderGuarantorCompanyName}
                             data-testid="input-guarantor-company-name"
                           />
                         </div>
@@ -1078,7 +1164,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorWorkPhone"
                             {...form.register("guarantorWorkPhone")}
-                            placeholder="998 123 4567"
+                            placeholder={text.placeholderCompanyLandline}
                             data-testid="input-guarantor-work-phone"
                           />
                         </div>
@@ -1104,7 +1190,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorLandline"
                             {...form.register("guarantorLandline")}
-                            placeholder="998 123 4567"
+                            placeholder={text.placeholderCompanyLandline}
                             data-testid="input-guarantor-landline"
                           />
                         </div>
@@ -1114,7 +1200,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorCellphone"
                             {...form.register("guarantorCellphone")}
-                            placeholder="+52 123 456 7890"
+                            placeholder={text.placeholderPhone}
                             data-testid="input-guarantor-cellphone"
                           />
                         </div>
@@ -1124,7 +1210,7 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorIdNumber"
                             {...form.register("guarantorIdNumber")}
-                            placeholder="INE o Pasaporte"
+                            placeholder={text.placeholderGuarantorIdNumber}
                             data-testid="input-guarantor-id-number"
                           />
                         </div>
@@ -1135,7 +1221,7 @@ export default function PublicRentalForm() {
                         <Textarea
                           id="guarantorAddress"
                           {...form.register("guarantorAddress")}
-                          placeholder="Dirección completa del garante"
+                          placeholder={text.placeholderGuarantorAddress}
                           rows={2}
                           data-testid="textarea-guarantor-address"
                         />
@@ -1146,7 +1232,7 @@ export default function PublicRentalForm() {
                         <Textarea
                           id="guarantorWorkAddress"
                           {...form.register("guarantorWorkAddress")}
-                          placeholder="Dirección completa del lugar de trabajo"
+                          placeholder={text.placeholderGuarantorWorkAddress}
                           rows={2}
                           data-testid="textarea-guarantor-work-address"
                         />
@@ -1288,9 +1374,7 @@ export default function PublicRentalForm() {
                       data-testid="checkbox-terms-accepted"
                     />
                     <Label htmlFor="acceptedTerms" className="cursor-pointer text-sm leading-relaxed">
-                      {language === 'es' 
-                        ? 'Acepto los términos y condiciones anteriores y confirmo que toda la información proporcionada es verdadera y correcta. *'
-                        : 'I accept the above terms and conditions and confirm that all information provided is true and correct. *'}
+                      {text.acceptTermsLabel}
                     </Label>
                   </div>
                   {form.formState.errors.acceptedTerms && (
