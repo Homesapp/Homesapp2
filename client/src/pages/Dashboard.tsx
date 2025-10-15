@@ -186,7 +186,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Quick Categories */}
-          <div className="mt-6 flex flex-wrap gap-2 justify-center">
+          <div className="mt-6 grid grid-cols-3 gap-2 max-w-2xl mx-auto">
             <Button 
               variant="outline" 
               size="sm"
@@ -194,8 +194,8 @@ export default function Dashboard() {
               onClick={() => setLocation("/buscar-propiedades?status=rent")}
               data-testid="button-category-rent"
             >
-              <Home className="h-4 w-4 mr-2" />
-              En Renta
+              <Home className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="text-xs sm:text-sm">En Renta</span>
             </Button>
             <Button 
               variant="outline" 
@@ -204,8 +204,8 @@ export default function Dashboard() {
               onClick={() => setLocation("/buscar-propiedades?status=sale")}
               data-testid="button-category-sale"
             >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              En Venta
+              <TrendingUp className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="text-xs sm:text-sm">En Venta</span>
             </Button>
             <Button 
               variant="outline" 
@@ -214,8 +214,8 @@ export default function Dashboard() {
               onClick={() => setLocation("/buscar-propiedades?featured=true")}
               data-testid="button-category-featured"
             >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Destacadas
+              <Sparkles className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Destacadas</span>
             </Button>
           </div>
         </div>
