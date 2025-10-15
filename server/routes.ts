@@ -12600,6 +12600,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Este enlace ya ha sido utilizado" });
       }
 
+      // Transform date string to Date object if present
+      const transformedData: any = { ...formData };
+      if (transformedData.checkInDate && typeof transformedData.checkInDate === 'string') {
+        // Parse date string as UTC noon to avoid timezone shift issues
+        // Input format: "YYYY-MM-DD" -> Parse as "YYYY-MM-DD 12:00:00 UTC"
+        const dateParts = transformedData.checkInDate.split('-');
+        if (dateParts.length === 3) {
+          transformedData.checkInDate = new Date(Date.UTC(
+            parseInt(dateParts[0]), // year
+            parseInt(dateParts[1]) - 1, // month (0-indexed)
+            parseInt(dateParts[2]), // day
+            12, 0, 0 // noon UTC to avoid day boundary issues
+          ));
+        }
+      }
+
       // Create tenant rental form
       const [rentalForm] = await db
         .insert(tenantRentalForms)
@@ -12607,7 +12623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tokenId: rentalFormToken.id,
           propertyId: rentalFormToken.propertyId,
           leadId: rentalFormToken.leadId,
-          ...formData,
+          ...transformedData,
           status: 'pendiente',
         })
         .returning();
