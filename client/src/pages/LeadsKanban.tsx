@@ -390,6 +390,12 @@ export default function LeadsKanban() {
     enabled: !!selectedLeadDetails?.id && detailsDialogOpen,
   });
 
+  // Query para obtener el historial de actividades del lead
+  const { data: leadHistory = [], isLoading: loadingHistory } = useQuery<any[]>({
+    queryKey: [`/api/leads/${selectedLeadDetails?.id}/history`],
+    enabled: !!selectedLeadDetails?.id && detailsDialogOpen,
+  });
+
   const handleDragStart = (e: DragEvent, leadId: string) => {
     e.dataTransfer.setData("leadId", leadId);
   };
@@ -1549,6 +1555,63 @@ export default function LeadsKanban() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No hay ofertas enviadas</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Historial de Actividades */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Historial de Actividades {loadingHistory ? "" : `(${leadHistory.length})`}
+                  </h3>
+                  {loadingHistory ? (
+                    <p className="text-sm text-muted-foreground">Cargando historial...</p>
+                  ) : leadHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {leadHistory.map((entry: any) => (
+                        <Card key={entry.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-1 flex-1">
+                                <p className="font-medium">{entry.description}</p>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span>
+                                    {entry.user
+                                      ? `${entry.user.firstName} ${entry.user.lastName}`
+                                      : "Sistema"}
+                                  </span>
+                                  <span>•</span>
+                                  <span>
+                                    {format(new Date(entry.createdAt), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+                                  </span>
+                                </div>
+                                {entry.field && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {entry.oldValue && entry.newValue && (
+                                      <>
+                                        <span className="line-through">{entry.oldValue}</span>
+                                        {" → "}
+                                        <span className="font-medium">{entry.newValue}</span>
+                                      </>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge variant="outline">
+                                {entry.action === "status_changed" ? "Cambio de Estado" : 
+                                 entry.action === "created" ? "Creación" : 
+                                 entry.action === "updated" ? "Actualización" : 
+                                 entry.action}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay actividades registradas</p>
                   )}
                 </div>
 
