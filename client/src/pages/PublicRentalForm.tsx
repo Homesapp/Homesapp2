@@ -79,10 +79,16 @@ export default function PublicRentalForm() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: RentalFormValues) => {
+      console.log("Mutation started, sending data to:", `/api/rental-form-tokens/${token}/submit`);
+      console.log("Data being sent:", data);
       const response = await apiRequest("POST", `/api/rental-form-tokens/${token}/submit`, data);
-      return response.json();
+      console.log("Response received:", response.status);
+      const result = await response.json();
+      console.log("Response data:", result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Success callback triggered:", data);
       setSubmitted(true);
       toast({
         title: "Formulario enviado exitosamente",
@@ -90,6 +96,7 @@ export default function PublicRentalForm() {
       });
     },
     onError: (error: Error) => {
+      console.error("Error callback triggered:", error);
       toast({
         title: "Error al enviar formulario",
         description: error.message,
@@ -98,9 +105,20 @@ export default function PublicRentalForm() {
     },
   });
 
-  const onSubmit = form.handleSubmit(async (data) => {
-    submitMutation.mutate(data);
-  });
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      console.log("Form is valid, submitting:", data);
+      submitMutation.mutate(data);
+    },
+    (errors) => {
+      console.error("Form validation errors:", errors);
+      toast({
+        title: "Error de validación",
+        description: "Por favor revisa los campos del formulario",
+        variant: "destructive",
+      });
+    }
+  );
 
   const nextStep = () => {
     if (currentStep < totalSteps) {
