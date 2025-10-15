@@ -8,6 +8,31 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 15, 2025)
 
+### Admin Offer Management Enhancements
+*   **Lead Information Display**: Enhanced offer token management with lead visibility
+    - **Backend Enhancement**: GET `/api/offer-tokens` now enriches each token with lead data (firstName, lastName, email) when leadId exists
+    - **Frontend Implementation**: AdminOfferManagement table displays new "Lead" column showing full name and email
+    - **User Experience**: Admins can now quickly identify which lead is associated with each offer link
+    - **Files**: `server/routes.ts`, `client/src/pages/AdminOfferManagement.tsx`
+
+*   **Manual Link Deletion**: Admin capability to manually remove offer tokens
+    - **Backend**: DELETE `/api/offer-tokens/:id` endpoint restricted to admin/master/admin_jr roles
+    - **Frontend**: Trash icon button on each offer row triggers AlertDialog confirmation
+    - **Security**: Role-based access control prevents unauthorized deletions
+    - **UX Features**: 
+      - Confirmation dialog shows lead information before deletion
+      - Loading state during deletion
+      - Toast notification on success/error
+      - Automatic cache invalidation for real-time UI updates
+    - **Files**: `server/routes.ts`, `client/src/pages/AdminOfferManagement.tsx`
+
+*   **Expired Links Tab**: Automatic filtering of expired offer tokens
+    - **Implementation**: New "Expiradas" tab in AdminOfferManagement
+    - **Logic**: Filters tokens where `!isUsed && new Date() > expiresAt`
+    - **Benefits**: Easy identification and management of expired links without manual checking
+    - **Tab Counts**: Real-time counters for All/Pending/Completed/Expired categories
+    - **File**: `client/src/pages/AdminOfferManagement.tsx`
+
 ### Public Offer Form Lead Auto-Fill Enhancement
 *   **Issue - Form Pre-population**: Implemented automatic pre-filling of offer form with lead data
     - **Problem**: When generating offer links from leads, users had to manually re-enter all lead information
