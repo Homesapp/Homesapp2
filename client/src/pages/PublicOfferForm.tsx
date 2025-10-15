@@ -99,6 +99,7 @@ export default function PublicOfferForm() {
   });
 
   const property = validationData?.property;
+  const lead = validationData?.lead;
 
   const usageType = form.watch("usageType");
   const contractDuration = form.watch("contractDuration");
@@ -138,6 +139,36 @@ export default function PublicOfferForm() {
       form.setValue("propertyRequiredServices", property.includedServices);
     }
   }, [property, form]);
+
+  // Pre-fill form with lead data when available
+  useEffect(() => {
+    if (lead) {
+      if (lead.firstName && lead.lastName) {
+        form.setValue("fullName", `${lead.firstName} ${lead.lastName}`);
+      }
+      if (lead.email) {
+        form.setValue("email", lead.email);
+      }
+      if (lead.phone) {
+        form.setValue("phone", lead.phone);
+      }
+      // Pre-fill contract duration if available (take first option from array)
+      if (lead.contractDuration && lead.contractDuration.length > 0) {
+        form.setValue("contractDuration", lead.contractDuration[0]);
+      }
+      // Pre-fill move in date if available (take first option from array)
+      if (lead.moveInDate && lead.moveInDate.length > 0) {
+        form.setValue("moveInDate", lead.moveInDate[0]);
+      }
+      // Pre-fill pets information if available
+      if (lead.pets) {
+        form.setValue("pets", lead.pets.toLowerCase().includes("no") ? "no" : "si");
+        if (!lead.pets.toLowerCase().includes("no")) {
+          form.setValue("petDetails", lead.pets);
+        }
+      }
+    }
+  }, [lead, form]);
 
   const uploadPetPhotosMutation = useMutation({
     mutationFn: async (files: FileList) => {

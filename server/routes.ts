@@ -12096,9 +12096,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get property info
       const property = await storage.getProperty(offerToken.propertyId);
 
+      // Get lead info if leadId exists
+      let lead = null;
+      if (offerToken.leadId) {
+        lead = await storage.getLead(offerToken.leadId);
+      }
+
       res.json({
         valid: true,
         property,
+        lead,
         expiresAt: offerToken.expiresAt,
       });
     } catch (error) {
