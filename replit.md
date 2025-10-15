@@ -121,8 +121,11 @@ The platform features a comprehensive public rental form accessible via secure t
   5. Referencias Laborales (Work References)
   6. Referencias Personales (Personal References)
   7. Datos del Garante - Opcional (Guarantor/Co-Signer Data - Optional)
-  8. Términos y Condiciones (Terms & Conditions)
+  8. Términos y Condiciones (Terms & Conditions) - **13 secciones legales completas**
 - Language toggle (Spanish/English) for internationalization
+  - **Full bilingual Terms & Conditions**: 13 legal sections translated to English
+  - Dynamic language switching via LanguageContext
+  - Headers, content, and checkbox labels translate automatically
 - Zod validation with z.preprocess for optional numeric fields (age, numberOfTenants, guarantorAge)
 - Conditional guarantor form - only shows if user checks "Aplicaré con Garante"
 - Clean error handling with user-friendly toast notifications
@@ -205,3 +208,4 @@ The platform features a comprehensive public rental form accessible via secure t
 5. Expanded to 8-step form with all required fields
 6. Fixed field mapping (previousCondoUnit → previousLandlordName)
 7. Fixed integer overflow vulnerability with defense-in-depth validation (frontend + backend)
+8. Replaced generic terms with complete 13-section legal Terms & Conditions (bilingual ES/EN)
