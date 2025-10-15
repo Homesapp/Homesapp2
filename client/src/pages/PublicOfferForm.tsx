@@ -80,7 +80,7 @@ export default function PublicOfferForm() {
       occupation: "",
       usageType: "vivienda",
       monthlyRent: "",
-      currency: "USD",
+      currency: "MXN",
       contractDuration: "12 meses",
       moveInDate: "",
       moveOutDate: "",
@@ -642,9 +642,8 @@ export default function PublicOfferForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="USD">USD</SelectItem>
                               <SelectItem value="MXN">MXN</SelectItem>
-                              <SelectItem value="EUR">EUR</SelectItem>
+                              <SelectItem value="USD">USD</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
