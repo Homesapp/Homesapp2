@@ -264,6 +264,15 @@ export default function PublicRentalForm() {
       bedroomsBathrooms: "Recámaras / Baños",
       location: "Ubicación",
       
+      // Step descriptions
+      step4Description: "Proporciona información sobre tu arrendamiento anterior",
+      step5Description: "Proporciona información de tu supervisor o jefe directo",
+      step6Description: "Proporciona al menos una referencia personal no laboral",
+      step7Description: "Si cuentas con un garante o co-signer, marca esta casilla y completa la información a continuación",
+      
+      // Guarantor section title
+      guarantorInfoTitle: "Información del Garante",
+      
       required: "*",
       
       // Validation messages
@@ -432,6 +441,15 @@ export default function PublicRentalForm() {
       monthlyRent: "Monthly Rent",
       bedroomsBathrooms: "Bedrooms / Bathrooms",
       location: "Location",
+      
+      // Step descriptions
+      step4Description: "Provide information about your previous rental",
+      step5Description: "Provide information about your direct supervisor or boss",
+      step6Description: "Provide at least one non-work personal reference",
+      step7Description: "If you have a guarantor or co-signer, check this box and complete the information below",
+      
+      // Guarantor section title
+      guarantorInfoTitle: "Guarantor Information",
       
       required: "*",
       
@@ -924,7 +942,7 @@ export default function PublicRentalForm() {
               {currentStep === 4 && (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Proporciona información sobre tu arrendamiento anterior
+                    {text.step4Description}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -975,7 +993,7 @@ export default function PublicRentalForm() {
               {currentStep === 5 && (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Proporciona información de tu supervisor o jefe directo
+                    {text.step5Description}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1026,7 +1044,7 @@ export default function PublicRentalForm() {
               {currentStep === 6 && (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Proporciona al menos una referencia personal no laboral
+                    {text.step6Description}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1088,14 +1106,14 @@ export default function PublicRentalForm() {
                         {text.applyWithGuarantor}
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Si cuentas con un garante o co-signer, marca esta casilla y completa la información a continuación
+                        {text.step7Description}
                       </p>
                     </div>
                   </div>
 
                   {form.watch("hasGuarantor") && (
                     <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                      <h4 className="font-semibold">Información del Garante</h4>
+                      <h4 className="font-semibold">{text.guarantorInfoTitle}</h4>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
