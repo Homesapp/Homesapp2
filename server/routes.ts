@@ -12616,6 +12616,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Filter out undefined values to prevent Drizzle/Postgres errors
+      const cleanedData: any = {};
+      for (const [key, value] of Object.entries(transformedData)) {
+        if (value !== undefined && value !== '') {
+          cleanedData[key] = value;
+        }
+      }
+
       // Create tenant rental form
       const [rentalForm] = await db
         .insert(tenantRentalForms)
@@ -12623,7 +12631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tokenId: rentalFormToken.id,
           propertyId: rentalFormToken.propertyId,
           leadId: rentalFormToken.leadId,
-          ...transformedData,
+          ...cleanedData,
           status: 'pendiente',
         })
         .returning();

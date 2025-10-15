@@ -563,7 +563,10 @@ export default function PublicRentalForm() {
                     <Checkbox
                       id="acceptedTerms"
                       checked={form.watch("acceptedTerms")}
-                      onCheckedChange={(checked) => form.setValue("acceptedTerms", checked as boolean)}
+                      onCheckedChange={(checked) => {
+                        console.log("Checkbox changed to:", checked, typeof checked);
+                        form.setValue("acceptedTerms", checked === true);
+                      }}
                       data-testid="checkbox-terms-accepted"
                     />
                     <Label htmlFor="acceptedTerms" className="cursor-pointer text-sm leading-relaxed">
