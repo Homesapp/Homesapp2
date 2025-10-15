@@ -104,3 +104,43 @@ Key features include:
 
 ### Summary
 All critical endpoints now enforce proper role-based access control. Clients are restricted to their own data, while admins/sellers retain full access. Two critical vulnerabilities were identified and fixed in offers and appointments endpoints.
+
+## Rental Form Submission System (October 15, 2025)
+
+### Public Rental Form Implementation
+The platform features a public rental form accessible via secure tokens, allowing prospective tenants to submit their information for property rental applications.
+
+### Key Technical Implementations:
+
+**Frontend (PublicRentalForm.tsx):**
+- 4-step wizard: Basic Info → Additional Info → Rental Details → Terms & Conditions
+- Language toggle (Spanish/English) for internationalization
+- Zod validation with z.preprocess for optional numeric fields (age, numberOfTenants)
+- Clean error handling with user-friendly toast notifications
+- Checkbox binding ensures boolean true value for acceptedTerms
+
+**Backend (server/routes.ts):**
+- Public endpoint: `POST /api/rental-form-tokens/:token/submit`
+- Undefined value filtering prevents Drizzle timestamp mapping errors
+- UTC noon conversion for checkInDate to avoid timezone day-shift issues
+- Token validation and automatic marking as used after submission
+- Status set to 'pendiente' for admin review workflow
+
+**Database Schema (tenant_rental_forms):**
+- All required columns synchronized including accepted_terms
+- Comprehensive fields for tenant, guarantor, references, and documents
+- Timestamp columns properly handled with Date objects or null values
+- Foreign key relationships: tokenId, propertyId, leadId
+
+### Security & Privacy:
+- All PII logging removed from both frontend and backend
+- No sensitive data exposed in console logs
+- Clean error messages without data leakage
+- Production-ready implementation verified by end-to-end testing
+
+### Recent Fixes:
+1. Fixed field name mismatch (termsAccepted → acceptedTerms)
+2. Added missing database columns via direct SQL (drizzle-kit timeout issues)
+3. Implemented undefined/empty string filtering before DB insertion
+4. Removed all debugging logs that exposed tenant PII
+5. End-to-end test passes successfully with proper data persistence
