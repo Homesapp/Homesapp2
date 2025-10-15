@@ -8707,13 +8707,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/appointments", isAuthenticated, async (req, res) => {
+  app.get("/api/appointments", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { status, clientId, propertyId } = req.query;
       const filters: any = {};
       if (status) filters.status = status;
-      if (clientId) filters.clientId = clientId;
       if (propertyId) filters.propertyId = propertyId;
+      
+      // Security: Only admins/masters/sellers can filter by different clientId
+      // Clients can only see their own appointments
+      if (clientId && clientId !== userId) {
+        if (!["master", "admin", "admin_jr", "seller"].includes(user.role)) {
+          return res.status(403).json({ message: "No tienes permiso para ver citas de otros clientes" });
+        }
+        filters.clientId = clientId;
+      } else if (user.role === "client") {
+        // Clients always see only their own appointments
+        filters.clientId = userId;
+      } else if (clientId) {
+        // Admin/seller requested specific clientId
+        filters.clientId = clientId;
+      }
 
       const appointments = await storage.getAppointments(filters);
       
@@ -11077,13 +11098,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Offer routes
-  app.get("/api/offers", isAuthenticated, async (req, res) => {
+  app.get("/api/offers", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { status, clientId, propertyId } = req.query;
       const filters: any = {};
       if (status) filters.status = status;
-      if (clientId) filters.clientId = clientId;
       if (propertyId) filters.propertyId = propertyId;
+      
+      // Security: Only admins/masters/sellers can filter by different clientId
+      // Clients can only see their own offers
+      if (clientId && clientId !== userId) {
+        if (!["master", "admin", "admin_jr", "seller"].includes(user.role)) {
+          return res.status(403).json({ message: "No tienes permiso para ver ofertas de otros clientes" });
+        }
+        filters.clientId = clientId;
+      } else if (user.role === "client") {
+        // Clients always see only their own offers
+        filters.clientId = userId;
+      } else if (clientId) {
+        // Admin/seller requested specific clientId
+        filters.clientId = clientId;
+      }
 
       const offers = await storage.getOffers(filters);
       res.json(offers);
