@@ -26,7 +26,7 @@ const rentalFormSchema = z.object({
   age: z.preprocess((val) => {
     const num = Number(val);
     return isNaN(num) ? undefined : num;
-  }, z.number().min(18, "Debe ser mayor de 18 años").optional()),
+  }, z.number().min(18, "Debe ser mayor de 18 años").max(150, "Edad máxima: 150 años").optional()),
   timeInTulum: z.string().optional(),
   jobPosition: z.string().optional(),
   companyName: z.string().optional(),
@@ -43,7 +43,7 @@ const rentalFormSchema = z.object({
   numberOfTenants: z.preprocess((val) => {
     const num = Number(val);
     return isNaN(num) ? undefined : num;
-  }, z.number().min(1).optional()),
+  }, z.number().min(1, "Mínimo 1 inquilino").max(20, "Máximo 20 inquilinos").optional()),
   paymentMethod: z.string().optional(),
   hasPets: z.boolean().default(false),
   petDetails: z.string().optional(),
@@ -77,7 +77,7 @@ const rentalFormSchema = z.object({
   guarantorAge: z.preprocess((val) => {
     const num = Number(val);
     return isNaN(num) ? undefined : num;
-  }, z.number().optional()),
+  }, z.number().min(18, "Debe ser mayor de 18 años").max(150, "Edad máxima: 150 años").optional()),
   guarantorTimeInTulum: z.string().optional(),
   guarantorJobPosition: z.string().optional(),
   guarantorCompanyName: z.string().optional(),
@@ -363,6 +363,8 @@ export default function PublicRentalForm() {
                       <Input
                         id="age"
                         type="number"
+                        min="18"
+                        max="150"
                         {...form.register("age", { valueAsNumber: true })}
                         placeholder="30"
                         data-testid="input-age"
@@ -515,10 +517,15 @@ export default function PublicRentalForm() {
                       <Input
                         id="numberOfTenants"
                         type="number"
+                        min="1"
+                        max="20"
                         {...form.register("numberOfTenants", { valueAsNumber: true })}
                         placeholder="1"
                         data-testid="input-number-of-tenants"
                       />
+                      {form.formState.errors.numberOfTenants && (
+                        <p className="text-sm text-destructive">{form.formState.errors.numberOfTenants.message}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -789,10 +796,15 @@ export default function PublicRentalForm() {
                           <Input
                             id="guarantorAge"
                             type="number"
+                            min="18"
+                            max="150"
                             {...form.register("guarantorAge", { valueAsNumber: true })}
                             placeholder="45"
                             data-testid="input-guarantor-age"
                           />
+                          {form.formState.errors.guarantorAge && (
+                            <p className="text-sm text-destructive">{form.formState.errors.guarantorAge.message}</p>
+                          )}
                         </div>
 
                         <div className="space-y-2">

@@ -12614,6 +12614,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Validate integer fields to prevent out-of-range errors
+      if (transformedData.age !== undefined && transformedData.age !== null) {
+        const age = Number(transformedData.age);
+        if (!Number.isFinite(age) || age < 18 || age > 150) {
+          return res.status(400).json({ message: "Edad debe estar entre 18 y 150 años" });
+        }
+        transformedData.age = Math.floor(age); // Ensure integer
+      }
+      
+      if (transformedData.numberOfTenants !== undefined && transformedData.numberOfTenants !== null) {
+        const numberOfTenants = Number(transformedData.numberOfTenants);
+        if (!Number.isFinite(numberOfTenants) || numberOfTenants < 1 || numberOfTenants > 20) {
+          return res.status(400).json({ message: "Número de inquilinos debe estar entre 1 y 20" });
+        }
+        transformedData.numberOfTenants = Math.floor(numberOfTenants); // Ensure integer
+      }
+      
+      if (transformedData.guarantorAge !== undefined && transformedData.guarantorAge !== null) {
+        const guarantorAge = Number(transformedData.guarantorAge);
+        if (!Number.isFinite(guarantorAge) || guarantorAge < 18 || guarantorAge > 150) {
+          return res.status(400).json({ message: "Edad del garante debe estar entre 18 y 150 años" });
+        }
+        transformedData.guarantorAge = Math.floor(guarantorAge); // Ensure integer
+      }
+
       // Filter out undefined values to prevent Drizzle/Postgres errors
       const cleanedData: any = {};
       for (const [key, value] of Object.entries(transformedData)) {

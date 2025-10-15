@@ -108,16 +108,52 @@ All critical endpoints now enforce proper role-based access control. Clients are
 ## Rental Form Submission System (October 15, 2025)
 
 ### Public Rental Form Implementation
-The platform features a public rental form accessible via secure tokens, allowing prospective tenants to submit their information for property rental applications.
+The platform features a comprehensive public rental form accessible via secure tokens, allowing prospective tenants to submit complete rental applications with guarantor option.
 
 ### Key Technical Implementations:
 
 **Frontend (PublicRentalForm.tsx):**
-- 4-step wizard: Basic Info → Additional Info → Rental Details → Terms & Conditions
+- 8-step wizard:
+  1. Datos Personales (Personal Info)
+  2. Información Laboral (Employment Info)
+  3. Detalles de Renta (Rental Details)
+  4. Referencias de Arrendamiento Anterior (Previous Rental References)
+  5. Referencias Laborales (Work References)
+  6. Referencias Personales (Personal References)
+  7. Datos del Garante - Opcional (Guarantor/Co-Signer Data - Optional)
+  8. Términos y Condiciones (Terms & Conditions)
 - Language toggle (Spanish/English) for internationalization
-- Zod validation with z.preprocess for optional numeric fields (age, numberOfTenants)
+- Zod validation with z.preprocess for optional numeric fields (age, numberOfTenants, guarantorAge)
+- Conditional guarantor form - only shows if user checks "Aplicaré con Garante"
 - Clean error handling with user-friendly toast notifications
-- Checkbox binding ensures boolean true value for acceptedTerms
+- Checkbox binding ensures boolean true values for acceptedTerms and hasGuarantor
+
+**Form Fields Captured:**
+
+*Tenant Personal Data:*
+- Full name, address, nationality, age, marital status
+- Time in Tulum, contact info (WhatsApp, cellphone, email)
+- ID type and number
+- Check-in date, number of tenants, payment method
+- Pet details (optional)
+
+*Previous Rental References:*
+- Previous landlord name and phone
+- Previous address and tenancy duration
+
+*Work References:*
+- Direct supervisor name
+- Company name, address, and phone numbers (landline, supervisor cellphone)
+
+*Personal References:*
+- Reference name, address, landline, and cellphone
+
+*Guarantor Data (Optional):*
+- Full name, address, birth date/place, nationality, age
+- Time in Tulum, job position, company name
+- Work address and phone
+- Marital status, landline, cellphone, email
+- ID number
 
 **Backend (server/routes.ts):**
 - Public endpoint: `POST /api/rental-form-tokens/:token/submit`
@@ -125,10 +161,11 @@ The platform features a public rental form accessible via secure tokens, allowin
 - UTC noon conversion for checkInDate to avoid timezone day-shift issues
 - Token validation and automatic marking as used after submission
 - Status set to 'pendiente' for admin review workflow
+- Spread operator handles all form fields dynamically
 
 **Database Schema (tenant_rental_forms):**
 - All required columns synchronized including accepted_terms
-- Comprehensive fields for tenant, guarantor, references, and documents
+- Comprehensive fields for tenant, guarantor, and all reference types
 - Timestamp columns properly handled with Date objects or null values
 - Foreign key relationships: tokenId, propertyId, leadId
 
@@ -136,11 +173,15 @@ The platform features a public rental form accessible via secure tokens, allowin
 - All PII logging removed from both frontend and backend
 - No sensitive data exposed in console logs
 - Clean error messages without data leakage
-- Production-ready implementation verified by end-to-end testing
+- Production-ready implementation
+
+### Pending Features:
+- Document upload functionality for tenant and guarantor (INE/Pasaporte, comprobante domicilio, solvencia económica)
 
 ### Recent Fixes:
 1. Fixed field name mismatch (termsAccepted → acceptedTerms)
 2. Added missing database columns via direct SQL (drizzle-kit timeout issues)
 3. Implemented undefined/empty string filtering before DB insertion
 4. Removed all debugging logs that exposed tenant PII
-5. End-to-end test passes successfully with proper data persistence
+5. Expanded to 8-step form with all required fields
+6. Fixed field mapping (previousCondoUnit → previousLandlordName)
