@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -19,15 +19,15 @@ import { getPropertyTitle } from "@/lib/propertyHelpers";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const rentalFormSchema = z.object({
+const getRentalFormSchema = (text: any) => z.object({
   // Datos Personales
-  fullName: z.string().min(2, "Nombre completo es requerido"),
+  fullName: z.string().min(2, text.validationFullNameRequired),
   address: z.string().optional(),
   nationality: z.string().optional(),
   age: z.preprocess((val) => {
     const num = Number(val);
     return isNaN(num) ? undefined : num;
-  }, z.number().min(18, "Debe ser mayor de 18 años").max(150, "Edad máxima: 150 años").optional()),
+  }, z.number().min(18, text.validationAgeMin).max(150, text.validationAgeMax).optional()),
   timeInTulum: z.string().optional(),
   jobPosition: z.string().optional(),
   companyName: z.string().optional(),
@@ -35,16 +35,16 @@ const rentalFormSchema = z.object({
   monthlyIncome: z.string().optional(),
   companyTenure: z.string().optional(),
   maritalStatus: z.string().optional(),
-  whatsappNumber: z.string().min(10, "Número de WhatsApp requerido"),
+  whatsappNumber: z.string().min(10, text.validationWhatsappRequired),
   cellphone: z.string().optional(),
-  email: z.string().email("Email inválido"),
+  email: z.string().email(text.validationEmailInvalid),
   idType: z.string().optional(),
   idNumber: z.string().optional(),
   checkInDate: z.string().optional(),
   numberOfTenants: z.preprocess((val) => {
     const num = Number(val);
     return isNaN(num) ? undefined : num;
-  }, z.number().min(1, "Mínimo 1 inquilino").max(20, "Máximo 20 inquilinos").optional()),
+  }, z.number().min(1, text.validationTenantsMin).max(20, text.validationTenantsMax).optional()),
   paymentMethod: z.string().optional(),
   hasPets: z.boolean().default(false),
   petDetails: z.string().optional(),
@@ -78,7 +78,7 @@ const rentalFormSchema = z.object({
   guarantorAge: z.preprocess((val) => {
     const num = Number(val);
     return isNaN(num) ? undefined : num;
-  }, z.number().min(18, "Debe ser mayor de 18 años").max(150, "Edad máxima: 150 años").optional()),
+  }, z.number().min(18, text.validationGuarantorAgeMin).max(150, text.validationGuarantorAgeMax).optional()),
   guarantorTimeInTulum: z.string().optional(),
   guarantorJobPosition: z.string().optional(),
   guarantorCompanyName: z.string().optional(),
@@ -90,10 +90,8 @@ const rentalFormSchema = z.object({
   guarantorEmail: z.string().optional(),
   guarantorIdNumber: z.string().optional(),
   
-  acceptedTerms: z.boolean().refine(val => val === true, "Debes aceptar los términos y condiciones"),
+  acceptedTerms: z.boolean().refine(val => val === true, text.validationAcceptTerms),
 });
-
-type RentalFormValues = z.infer<typeof rentalFormSchema>;
 
 export default function PublicRentalForm() {
   const { token } = useParams();
@@ -108,64 +106,6 @@ export default function PublicRentalForm() {
     queryKey: [`/api/rental-form-tokens/${token}/validate`],
     enabled: !!token,
   });
-
-  const form = useForm<RentalFormValues>({
-    resolver: zodResolver(rentalFormSchema),
-    defaultValues: {
-      fullName: "",
-      whatsappNumber: "",
-      email: "",
-      hasPets: false,
-      hasGuarantor: false,
-      acceptedTerms: false,
-    },
-  });
-
-  const submitMutation = useMutation({
-    mutationFn: async (data: RentalFormValues) => {
-      const response = await apiRequest("POST", `/api/rental-form-tokens/${token}/submit`, data);
-      return response.json();
-    },
-    onSuccess: () => {
-      setSubmitted(true);
-      toast({
-        title: text.successTitle,
-        description: text.successDescription,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: text.errorTitle,
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = form.handleSubmit(
-    async (data) => {
-      submitMutation.mutate(data);
-    },
-    (errors) => {
-      toast({
-        title: text.errorTitle,
-        description: text.validationError,
-        variant: "destructive",
-      });
-    }
-  );
-
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
 
   // Translation object
   const t = {
@@ -324,7 +264,19 @@ export default function PublicRentalForm() {
       bedroomsBathrooms: "Recámaras / Baños",
       location: "Ubicación",
       
-      required: "*"
+      required: "*",
+      
+      // Validation messages
+      validationFullNameRequired: "Nombre completo es requerido",
+      validationAgeMin: "Debe ser mayor de 18 años",
+      validationAgeMax: "Edad máxima: 150 años",
+      validationWhatsappRequired: "Número de WhatsApp requerido",
+      validationEmailInvalid: "Email inválido",
+      validationTenantsMin: "Mínimo 1 inquilino",
+      validationTenantsMax: "Máximo 20 inquilinos",
+      validationGuarantorAgeMin: "Debe ser mayor de 18 años",
+      validationGuarantorAgeMax: "Edad máxima: 150 años",
+      validationAcceptTerms: "Debes aceptar los términos y condiciones"
     },
     en: {
       title: "Tenant Rental Application Form",
@@ -481,11 +433,85 @@ export default function PublicRentalForm() {
       bedroomsBathrooms: "Bedrooms / Bathrooms",
       location: "Location",
       
-      required: "*"
+      required: "*",
+      
+      // Validation messages
+      validationFullNameRequired: "Full name is required",
+      validationAgeMin: "Must be at least 18 years old",
+      validationAgeMax: "Maximum age: 150 years",
+      validationWhatsappRequired: "WhatsApp number required",
+      validationEmailInvalid: "Invalid email",
+      validationTenantsMin: "Minimum 1 tenant",
+      validationTenantsMax: "Maximum 20 tenants",
+      validationGuarantorAgeMin: "Must be at least 18 years old",
+      validationGuarantorAgeMax: "Maximum age: 150 years",
+      validationAcceptTerms: "You must accept the terms and conditions"
     }
   };
 
   const text = language === "es" ? t.es : t.en;
+
+  // Create dynamic schema based on current language
+  const formSchema = useMemo(() => getRentalFormSchema(text), [text]);
+
+  // Create form with dynamic schema
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      fullName: "",
+      whatsappNumber: "",
+      email: "",
+      hasPets: false,
+      hasGuarantor: false,
+      acceptedTerms: false,
+    },
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const response = await apiRequest("POST", `/api/rental-form-tokens/${token}/submit`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      setSubmitted(true);
+      toast({
+        title: text.successTitle,
+        description: text.successDescription,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: text.errorTitle,
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      submitMutation.mutate(data);
+    },
+    (errors) => {
+      toast({
+        title: text.errorTitle,
+        description: text.validationError,
+        variant: "destructive",
+      });
+    }
+  );
+
+  const nextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   if (isValidating) {
     return (
