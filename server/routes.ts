@@ -266,7 +266,6 @@ async function ensureUserExists(req: any): Promise<any> {
   
   // If user doesn't exist but we have valid claims, create them automatically
   if (!user && claims) {
-    console.log("[AUTO-CREATE-USER] Creating user from session claims:", claims.sub, claims.email);
     user = await storage.upsertUser({
       id: claims.sub,
       email: claims.email,
@@ -315,7 +314,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If user doesn't exist but we have valid claims, create them automatically
       if (!user && claims) {
-        console.log("[AUTO-CREATE-USER] Creating user from session claims:", claims.sub, claims.email);
         user = await storage.upsertUser({
           id: claims.sub,
           email: claims.email,

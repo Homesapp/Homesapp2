@@ -79,16 +79,10 @@ export default function PublicRentalForm() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: RentalFormValues) => {
-      console.log("Mutation started, sending data to:", `/api/rental-form-tokens/${token}/submit`);
-      console.log("Data being sent:", data);
       const response = await apiRequest("POST", `/api/rental-form-tokens/${token}/submit`, data);
-      console.log("Response received:", response.status);
-      const result = await response.json();
-      console.log("Response data:", result);
-      return result;
+      return response.json();
     },
-    onSuccess: (data) => {
-      console.log("Success callback triggered:", data);
+    onSuccess: () => {
       setSubmitted(true);
       toast({
         title: "Formulario enviado exitosamente",
@@ -96,7 +90,6 @@ export default function PublicRentalForm() {
       });
     },
     onError: (error: Error) => {
-      console.error("Error callback triggered:", error);
       toast({
         title: "Error al enviar formulario",
         description: error.message,
@@ -107,11 +100,9 @@ export default function PublicRentalForm() {
 
   const onSubmit = form.handleSubmit(
     async (data) => {
-      console.log("Form is valid, submitting:", data);
       submitMutation.mutate(data);
     },
     (errors) => {
-      console.error("Form validation errors:", errors);
       toast({
         title: "Error de validación",
         description: "Por favor revisa los campos del formulario",
@@ -564,7 +555,6 @@ export default function PublicRentalForm() {
                       id="acceptedTerms"
                       checked={form.watch("acceptedTerms")}
                       onCheckedChange={(checked) => {
-                        console.log("Checkbox changed to:", checked, typeof checked);
                         form.setValue("acceptedTerms", checked === true);
                       }}
                       data-testid="checkbox-terms-accepted"
