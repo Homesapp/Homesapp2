@@ -32,7 +32,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, SlidersHorizontal, LayoutGrid, List, Share2, Copy } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Search, Plus, SlidersHorizontal, LayoutGrid, List, Share2, Copy, X } from "lucide-react";
 import { useProperties, useSearchProperties, useDeleteProperty } from "@/hooks/useProperties";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +59,16 @@ export default function Properties() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
+  
+  // Advanced filters
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [priceMin, setPriceMin] = useState<string>("");
+  const [priceMax, setPriceMax] = useState<string>("");
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
+  const [bedroomsMin, setBedroomsMin] = useState<string>("");
+  const [bathroomsMin, setBathroomsMin] = useState<string>("");
+  const [areaMin, setAreaMin] = useState<string>("");
+  const [areaMax, setAreaMax] = useState<string>("");
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -195,8 +214,48 @@ export default function Properties() {
     }
   };
 
+  const handleClearFilters = () => {
+    setPriceMin("");
+    setPriceMax("");
+    setPropertyTypeFilter("all");
+    setBedroomsMin("");
+    setBathroomsMin("");
+    setAreaMin("");
+    setAreaMax("");
+  };
+
+  const hasActiveFilters = priceMin || priceMax || propertyTypeFilter !== "all" || 
+    bedroomsMin || bathroomsMin || areaMin || areaMax;
+
+  const applyAdvancedFilters = (props: Property[]) => {
+    return props.filter(property => {
+      // Price filter
+      if (priceMin && Number(property.price) < Number(priceMin)) return false;
+      if (priceMax && Number(property.price) > Number(priceMax)) return false;
+      
+      // Property type filter
+      if (propertyTypeFilter !== "all" && property.propertyType !== propertyTypeFilter) return false;
+      
+      // Bedrooms filter
+      if (bedroomsMin && property.bedrooms < Number(bedroomsMin)) return false;
+      
+      // Bathrooms filter
+      if (bathroomsMin && Number(property.bathrooms) < Number(bathroomsMin)) return false;
+      
+      // Area filter
+      if (areaMin && Number(property.area) < Number(areaMin)) return false;
+      if (areaMax && Number(property.area) > Number(areaMax)) return false;
+      
+      return true;
+    });
+  };
+
   const isAdminOrSeller = user && ["admin", "seller", "master"].includes(user.role);
-  const displayProperties = debouncedSearch.trim() ? searchResults : properties;
+  
+  let displayProperties = debouncedSearch.trim() ? searchResults : properties;
+  if (displayProperties && hasActiveFilters) {
+    displayProperties = applyAdvancedFilters(displayProperties);
+  }
 
   return (
     <div className="space-y-6">
@@ -257,9 +316,18 @@ export default function Properties() {
             </Button>
           </div>
         )}
-        <Button variant="outline" data-testid="button-advanced-filters">
+        <Button 
+          variant={hasActiveFilters ? "default" : "outline"} 
+          onClick={() => setFiltersOpen(true)}
+          data-testid="button-advanced-filters"
+        >
           <SlidersHorizontal className="h-4 w-4 mr-2" />
           Filtros Avanzados
+          {hasActiveFilters && (
+            <Badge variant="secondary" className="ml-2">
+              Activo
+            </Badge>
+          )}
         </Button>
       </div>
 
@@ -415,6 +483,141 @@ export default function Properties() {
           </Table>
         </div>
       )}
+
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-advanced-filters">
+          <DialogHeader>
+            <DialogTitle>Filtros Avanzados</DialogTitle>
+            <DialogDescription>
+              Refina tu búsqueda con filtros específicos
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-6 py-4">
+            {/* Price Range */}
+            <div className="space-y-2">
+              <Label>Rango de Precio</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price-min" className="text-sm text-muted-foreground">Mínimo</Label>
+                  <Input
+                    id="price-min"
+                    type="number"
+                    placeholder="$0"
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(e.target.value)}
+                    data-testid="input-price-min"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price-max" className="text-sm text-muted-foreground">Máximo</Label>
+                  <Input
+                    id="price-max"
+                    type="number"
+                    placeholder="$999,999,999"
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(e.target.value)}
+                    data-testid="input-price-max"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Property Type */}
+            <div className="space-y-2">
+              <Label htmlFor="property-type">Tipo de Propiedad</Label>
+              <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
+                <SelectTrigger id="property-type" data-testid="select-property-type">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="apartment">Departamento</SelectItem>
+                  <SelectItem value="house">Casa</SelectItem>
+                  <SelectItem value="commercial">Comercial</SelectItem>
+                  <SelectItem value="land">Terreno</SelectItem>
+                  <SelectItem value="office">Oficina</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Bedrooms and Bathrooms */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bedrooms-min">Recámaras (mínimo)</Label>
+                <Input
+                  id="bedrooms-min"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={bedroomsMin}
+                  onChange={(e) => setBedroomsMin(e.target.value)}
+                  data-testid="input-bedrooms-min"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bathrooms-min">Baños (mínimo)</Label>
+                <Input
+                  id="bathrooms-min"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  placeholder="0"
+                  value={bathroomsMin}
+                  onChange={(e) => setBathroomsMin(e.target.value)}
+                  data-testid="input-bathrooms-min"
+                />
+              </div>
+            </div>
+
+            {/* Area Range */}
+            <div className="space-y-2">
+              <Label>Área (m²)</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="area-min" className="text-sm text-muted-foreground">Mínimo</Label>
+                  <Input
+                    id="area-min"
+                    type="number"
+                    placeholder="0"
+                    value={areaMin}
+                    onChange={(e) => setAreaMin(e.target.value)}
+                    data-testid="input-area-min"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="area-max" className="text-sm text-muted-foreground">Máximo</Label>
+                  <Input
+                    id="area-max"
+                    type="number"
+                    placeholder="999"
+                    value={areaMax}
+                    onChange={(e) => setAreaMax(e.target.value)}
+                    data-testid="input-area-max"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClearFilters}
+              data-testid="button-clear-filters"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Limpiar Filtros
+            </Button>
+            <Button
+              onClick={() => setFiltersOpen(false)}
+              data-testid="button-apply-filters"
+            >
+              Aplicar Filtros
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PropertyFormDialog
         open={formOpen}
