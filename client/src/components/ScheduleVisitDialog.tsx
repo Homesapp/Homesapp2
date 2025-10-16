@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Calendar, Video, MapPin } from "lucide-react";
+import { datetimeLocalToCancunDate } from "@/lib/timezoneHelpers";
 
 const scheduleVisitSchema = z.object({
   date: z.string().min(1, "Fecha y hora son requeridas"),
@@ -64,7 +65,13 @@ export function ScheduleVisitDialog({
 
   const scheduleVisitMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("POST", `/api/rental-opportunity-requests/${sorId}/schedule-visit`, data);
+      // Convert datetime-local string to proper UTC date for Cancún timezone
+      const appointmentDate = datetimeLocalToCancunDate(data.date);
+      
+      return await apiRequest("POST", `/api/rental-opportunity-requests/${sorId}/schedule-visit`, {
+        ...data,
+        date: appointmentDate.toISOString(),
+      });
     },
     onSuccess: (data: any) => {
       // Invalidar todas las queries relacionadas con oportunidades de renta (exact: false invalida con prefijo)

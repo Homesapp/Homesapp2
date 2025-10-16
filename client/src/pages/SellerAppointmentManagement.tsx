@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Lead, Property } from "@shared/schema";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
+import { datetimeLocalToCancunDate } from "@/lib/timezoneHelpers";
 
 type Appointment = {
   id: string;
@@ -245,9 +246,12 @@ export default function SellerAppointmentManagement() {
       return;
     }
 
+    // Convert datetime-local string to proper UTC date for Cancún timezone
+    const appointmentUTCDate = datetimeLocalToCancunDate(appointmentDate);
+    
     const appointmentData: any = {
       leadId: selectedLeadId,
-      date: appointmentDate,
+      date: appointmentUTCDate.toISOString(),
       type: appointmentType,
       notes,
     };
@@ -287,9 +291,12 @@ export default function SellerAppointmentManagement() {
 
   const handleConfirmReschedule = () => {
     if (selectedAppointment && rescheduleDate) {
+      // Convert datetime-local string to proper UTC date for Cancún timezone
+      const rescheduleUTCDate = datetimeLocalToCancunDate(rescheduleDate);
+      
       rescheduleAppointmentMutation.mutate({
         id: selectedAppointment.id,
-        newDate: rescheduleDate,
+        newDate: rescheduleUTCDate.toISOString(),
       });
     }
   };

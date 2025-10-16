@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppointmentSchema, type InsertAppointment, type Appointment } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
+import { combineDateAndTimeCancun, getTimeCancun } from "@/lib/timezoneHelpers";
 import {
   Dialog,
   DialogContent,
@@ -123,7 +124,7 @@ export function AppointmentFormDialog({
         unitNumber: appointment.unitNumber || "",
       });
       setAppointmentMode(appointment.mode || "individual");
-      setTime(format(appointmentDate, "HH:mm"));
+      setTime(getTimeCancun(appointmentDate));
     } else if (mode === "create") {
       form.reset({
         propertyId: "",
@@ -200,10 +201,8 @@ export function AppointmentFormDialog({
 
   const onSubmit = async (data: InsertAppointment) => {
     try {
-
-      const [hours, minutes] = time.split(":").map(Number);
-      const appointmentDate = new Date(data.date);
-      appointmentDate.setHours(hours, minutes, 0, 0);
+      // Combine date and time in Cancún timezone
+      const appointmentDate = combineDateAndTimeCancun(data.date, time);
 
       if (mode === "edit" && appointment) {
         // Edit mode: solo actualizar la cita existente
