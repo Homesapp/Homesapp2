@@ -1019,6 +1019,25 @@ export const insertPropertyDocumentSchema = createInsertSchema(propertyDocuments
 export type InsertPropertyDocument = z.infer<typeof insertPropertyDocumentSchema>;
 export type PropertyDocument = typeof propertyDocuments.$inferSelect;
 
+// Property Notes (Internal Annotations) table
+export const propertyNotes = pgTable("property_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPropertyNoteSchema = createInsertSchema(propertyNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPropertyNote = z.infer<typeof insertPropertyNoteSchema>;
+export type PropertyNote = typeof propertyNotes.$inferSelect;
+
 // Colonies table
 export const colonies = pgTable("colonies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -3741,6 +3760,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   budgets: many(budgets),
   tasks: many(tasks),
   documents: many(propertyDocuments),
+  notes: many(propertyNotes),
 }));
 
 export const propertyDocumentsRelations = relations(propertyDocuments, ({ one }) => ({
@@ -3750,6 +3770,17 @@ export const propertyDocumentsRelations = relations(propertyDocuments, ({ one })
   }),
   validator: one(users, {
     fields: [propertyDocuments.validatedBy],
+    references: [users.id],
+  }),
+}));
+
+export const propertyNotesRelations = relations(propertyNotes, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyNotes.propertyId],
+    references: [properties.id],
+  }),
+  author: one(users, {
+    fields: [propertyNotes.authorId],
     references: [users.id],
   }),
 }));
