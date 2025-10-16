@@ -20,6 +20,7 @@ import {
   offers,
   permissions,
   propertyStaff,
+  propertyNotes,
   budgets,
   tasks,
   workReports,
@@ -114,6 +115,8 @@ import {
   type InsertPermission,
   type PropertyStaff,
   type InsertPropertyStaff,
+  type PropertyNote,
+  type InsertPropertyNote,
   type Budget,
   type InsertBudget,
   type Task,
@@ -410,6 +413,12 @@ export interface IStorage {
   assignStaff(assignment: InsertPropertyStaff): Promise<PropertyStaff>;
   getPropertyStaff(propertyId: string): Promise<PropertyStaff[]>;
   removeStaff(propertyId: string, staffId: string, role: string): Promise<void>;
+  
+  // Property Notes operations (Internal Annotations)
+  getPropertyNote(id: string): Promise<PropertyNote | undefined>;
+  getPropertyNotes(propertyId: string): Promise<any[]>;
+  createPropertyNote(note: InsertPropertyNote): Promise<PropertyNote>;
+  deletePropertyNote(id: string): Promise<void>;
   
   // Appointment operations
   getAppointment(id: string): Promise<Appointment | undefined>;
@@ -1910,6 +1919,51 @@ export class DatabaseStorage implements IStorage {
           eq(propertyStaff.role, role)
         )
       );
+  }
+
+  async getPropertyNote(id: string): Promise<PropertyNote | undefined> {
+    const [note] = await db
+      .select()
+      .from(propertyNotes)
+      .where(eq(propertyNotes.id, id));
+    return note;
+  }
+
+  async getPropertyNotes(propertyId: string): Promise<any[]> {
+    const notes = await db
+      .select({
+        id: propertyNotes.id,
+        propertyId: propertyNotes.propertyId,
+        authorId: propertyNotes.authorId,
+        content: propertyNotes.content,
+        createdAt: propertyNotes.createdAt,
+        updatedAt: propertyNotes.updatedAt,
+        author: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+      .from(propertyNotes)
+      .leftJoin(users, eq(propertyNotes.authorId, users.id))
+      .where(eq(propertyNotes.propertyId, propertyId))
+      .orderBy(propertyNotes.createdAt);
+    
+    return notes;
+  }
+
+  async createPropertyNote(note: InsertPropertyNote): Promise<PropertyNote> {
+    const [createdNote] = await db
+      .insert(propertyNotes)
+      .values(note)
+      .returning();
+    return createdNote;
+  }
+
+  async deletePropertyNote(id: string): Promise<void> {
+    await db.delete(propertyNotes).where(eq(propertyNotes.id, id));
   }
 
   // Appointment operations

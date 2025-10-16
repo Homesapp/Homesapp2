@@ -4443,6 +4443,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Property Notes Routes (Internal Annotations for Admins/Sellers)
+  app.get("/api/properties/:propertyId/notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !["seller", "admin", "admin_jr", "master"].includes(user.role)) {
+        return res.status(403).json({ message: "Solo vendedores y administradores pueden ver anotaciones internas" });
+      }
+
+      const notes = await storage.getPropertyNotes(propertyId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching property notes:", error);
+      res.status(500).json({ message: "Failed to fetch property notes" });
+    }
+  });
+
+  app.post("/api/properties/:propertyId/notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !["seller", "admin", "admin_jr", "master"].includes(user.role)) {
+        return res.status(403).json({ message: "Solo vendedores y administradores pueden crear anotaciones internas" });
+      }
+
+      const { content } = req.body;
+      
+      if (!content || content.trim() === "") {
+        return res.status(400).json({ message: "El contenido de la anotación es requerido" });
+      }
+
+      const note = await storage.createPropertyNote({
+        propertyId,
+        authorId: userId,
+        content: content.trim(),
+      });
+
+      res.status(201).json(note);
+    } catch (error) {
+      console.error("Error creating property note:", error);
+      res.status(500).json({ message: "Failed to create property note" });
+    }
+  });
+
+  app.delete("/api/properties/:propertyId/notes/:noteId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId, noteId } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const note = await storage.getPropertyNote(noteId);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Only the author or admin can delete
+      if (note.authorId !== userId && !["admin", "master"].includes(user.role)) {
+        return res.status(403).json({ message: "Solo el autor o un administrador pueden eliminar esta anotación" });
+      }
+
+      await storage.deletePropertyNote(noteId);
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting property note:", error);
+      res.status(500).json({ message: "Failed to delete property note" });
+    }
+  });
+
   // Owner API routes - for property owners to manage their properties
   app.get("/api/owner/properties", isAuthenticated, async (req: any, res) => {
     try {
