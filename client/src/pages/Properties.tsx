@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { PropertyCard } from "@/components/PropertyCard";
 import { PropertyFormDialog } from "@/components/PropertyFormDialog";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default function Properties() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
 
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: properties, isLoading, error } = useProperties({
     status: statusFilter !== "all" ? statusFilter : undefined,
     active: true,
@@ -83,6 +85,26 @@ export default function Properties() {
       await deleteMutation.mutateAsync(propertyToDelete);
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
+    }
+  };
+
+  const handleViewProperty = (propertyId: string) => {
+    if (user?.role === "owner") {
+      setLocation(`/owner/property/${propertyId}`);
+    } else {
+      setLocation(`/propiedad/${propertyId}`);
+    }
+  };
+
+  const handleScheduleAppointment = (propertyId: string) => {
+    if (user?.role === "seller") {
+      setLocation(`/seller/appointments?propertyId=${propertyId}`);
+    } else if (user?.role === "owner") {
+      setLocation(`/owner/appointments?propertyId=${propertyId}`);
+    } else if (["admin", "master", "admin_jr"].includes(user?.role || "")) {
+      setLocation(`/admin/appointments?propertyId=${propertyId}`);
+    } else {
+      setLocation(`/appointments?propertyId=${propertyId}`);
     }
   };
 
@@ -165,10 +187,10 @@ export default function Properties() {
                 location={property.location}
                 status={property.status}
                 image={property.primaryImages?.[property.coverImageIndex || 0] || property.images?.[0]}
-                onView={() => console.log("Ver propiedad", property.id)}
+                onView={() => handleViewProperty(property.id)}
                 onEdit={canEditProperty(property) ? () => handleEditClick(property) : undefined}
                 onDelete={canEditProperty(property) ? () => handleDeleteClick(property.id) : undefined}
-                onSchedule={() => console.log("Agendar cita", property.id)}
+                onSchedule={() => handleScheduleAppointment(property.id)}
               />
             ))
           ) : (
