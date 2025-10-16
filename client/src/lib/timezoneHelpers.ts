@@ -4,6 +4,8 @@
  * All appointments should be handled in Cancún timezone (GMT-6)
  */
 
+import { formatInTimeZone } from 'date-fns-tz';
+
 const CANCUN_TIMEZONE_OFFSET = -6; // GMT-6
 
 /**
@@ -130,15 +132,39 @@ export function getTimeCancun(date: Date | string): string {
 }
 
 /**
- * Converts a UTC date to a Date object that represents Cancún local time
- * This is useful for formatting with date-fns while maintaining Cancún timezone
+ * DO NOT USE: This function is deprecated due to double-conversion issues
+ * Use formatCancunDateTime() instead
  * 
- * @param date - Date object or ISO string (in UTC from backend)
- * @returns Date object adjusted to Cancún timezone for formatting purposes
+ * @deprecated Use formatCancunDateTime() to format dates in Cancún timezone
  */
 export function utcToCancunDate(date: Date | string): Date {
+  console.warn('utcToCancunDate is deprecated. Use formatCancunDateTime() instead');
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return new Date(d.getTime() - (6 * 60 * 60 * 1000));
+}
+
+/**
+ * Formats a date in Cancún timezone using date-fns-tz
+ * This correctly handles timezone conversion without double-conversion issues
+ * 
+ * @param date - Date object or ISO string (in UTC from backend)
+ * @param formatString - date-fns format string (e.g., "PPP 'a las' p")
+ * @param options - Additional format options (e.g., { locale: es })
+ * @returns Formatted date string in Cancún timezone
+ */
+export function formatCancunDateTime(
+  date: Date | string, 
+  formatString: string = "PPP 'a las' p",
+  options?: { locale?: any }
+): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   
-  // Convert UTC to Cancún time by subtracting 6 hours
-  return new Date(d.getTime() - (6 * 60 * 60 * 1000));
+  // Use date-fns-tz to format in Cancún timezone
+  // This prevents double conversion issues
+  return formatInTimeZone(
+    d,
+    'America/Cancun',
+    formatString,
+    options
+  );
 }
