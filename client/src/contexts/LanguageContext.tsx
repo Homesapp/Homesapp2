@@ -667,6 +667,22 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.directory": "Directorio",
     "sidebar.myServices": "Mis Servicios",
     "sidebar.profile": "Perfil",
+    
+    // Chat Page
+    "chat.title": "Mensajes",
+    "chat.subtitle": "Mantén conversaciones con inquilinos, equipo y soporte",
+    "chat.selectConversation": "Selecciona una conversación para empezar a chatear",
+    "chat.noConversations": "No hay conversaciones",
+    "chat.startChatWithMarco": "Iniciar Chat con MARCO",
+    "chat.homesapp": "HomesApp",
+    "chat.typingPlaceholder": "Escribe un mensaje...",
+    "chat.send": "Enviar",
+    "chat.sending": "Enviando...",
+    "chat.rentalChats": "Chats de Renta",
+    "chat.appointmentChats": "Chats de Citas",
+    "chat.internalChats": "Chats Internos",
+    "chat.supportChats": "Chat de Soporte",
+    "chat.chatbot": "Bot",
     "sidebar.contracts": "Contratos",
     
     // Concierge Schedule
@@ -1880,6 +1896,22 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.directory": "Directory",
     "sidebar.myServices": "My Services",
     "sidebar.profile": "Profile",
+    
+    // Chat Page
+    "chat.title": "Messages",
+    "chat.subtitle": "Keep conversations with tenants, team and support",
+    "chat.selectConversation": "Select a conversation to start chatting",
+    "chat.noConversations": "No conversations",
+    "chat.startChatWithMarco": "Start Chat with MARCO",
+    "chat.homesapp": "HomesApp",
+    "chat.typingPlaceholder": "Type a message...",
+    "chat.send": "Send",
+    "chat.sending": "Sending...",
+    "chat.rentalChats": "Rental Chats",
+    "chat.appointmentChats": "Appointment Chats",
+    "chat.internalChats": "Internal Chats",
+    "chat.supportChats": "Support Chat",
+    "chat.chatbot": "Bot",
     "sidebar.contracts": "Contracts",
     
     // Concierge Schedule

@@ -11,16 +11,19 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { MessageCircle, Send, Paperclip, Key, Users, Headset, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useChatWebSocket } from "@/hooks/useChatWebSocket";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { ChatConversation, ChatMessage } from "@shared/schema";
 
 export default function Chat() {
   const { user } = useAuth();
   const { adminUser, isAdminAuthenticated } = useAdminAuth();
+  const { t, language } = useLanguage();
   const currentUser = isAdminAuthenticated ? adminUser : user;
+  const dateLocale = language === 'es' ? es : enUS;
   
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -172,9 +175,9 @@ export default function Chat() {
       <div className="flex items-center gap-3">
         <MessageCircle className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-3xl font-bold" data-testid="heading-chat">Mensajes</h1>
+          <h1 className="text-3xl font-bold" data-testid="heading-chat">{t("chat.title")}</h1>
           <p className="text-muted-foreground">
-            Mantén conversaciones con inquilinos, equipo y soporte
+            {t("chat.subtitle")}
           </p>
         </div>
       </div>
@@ -183,19 +186,19 @@ export default function Chat() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="appointment" className="flex items-center gap-2" data-testid="tab-appointment">
             <Calendar className="h-4 w-4" />
-            Chat de Citas
+            {t("chat.appointmentChats")}
           </TabsTrigger>
           <TabsTrigger value="rental" className="flex items-center gap-2" data-testid="tab-rental">
             <Key className="h-4 w-4" />
-            Rentas en Curso
+            {t("chat.rentalChats")}
           </TabsTrigger>
           <TabsTrigger value="internal" className="flex items-center gap-2" data-testid="tab-internal">
             <Users className="h-4 w-4" />
-            Chat Interno
+            {t("chat.internalChats")}
           </TabsTrigger>
           <TabsTrigger value="support" className="flex items-center gap-2" data-testid="tab-support">
             <Headset className="h-4 w-4" />
-            HomesApp
+            {t("chat.homesapp")}
           </TabsTrigger>
         </TabsList>
 
@@ -204,7 +207,7 @@ export default function Chat() {
             {/* Conversations List */}
             <Card className="md:col-span-1">
               <CardHeader>
-                <CardTitle className="text-lg">Conversaciones</CardTitle>
+                <CardTitle className="text-lg">{t("chat.title")}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[500px]">
@@ -219,14 +222,14 @@ export default function Chat() {
                         data-testid="button-start-chatbot"
                       >
                         <Headset className="h-4 w-4 mr-2" />
-                        Iniciar Chat con {chatbotStatus.name || "Asistente Virtual"}
+                        {t("chat.startChatWithMarco").replace("MARCO", chatbotStatus.name || "MARCO")}
                       </Button>
                     </div>
                   )}
                   {conversations.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">
                       <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No hay conversaciones</p>
+                      <p>{t("chat.noConversations")}</p>
                     </div>
                   ) : (
                     <div className="divide-y">
@@ -250,16 +253,16 @@ export default function Chat() {
                                   <span className="text-xs text-muted-foreground">
                                     {formatDistanceToNow(new Date(conversation.lastMessageAt), {
                                       addSuffix: true,
-                                      locale: es,
+                                      locale: dateLocale,
                                     })}
                                   </span>
                                 )}
                               </div>
                               <Badge variant="outline" className="mt-1 capitalize">
-                                {conversation.type === "appointment" && "Citas"}
-                                {conversation.type === "rental" && "Renta"}
-                                {conversation.type === "internal" && "Interno"}
-                                {conversation.type === "support" && "Soporte"}
+                                {conversation.type === "appointment" && t("chat.appointmentChats")}
+                                {conversation.type === "rental" && t("chat.rentalChats")}
+                                {conversation.type === "internal" && t("chat.internalChats")}
+                                {conversation.type === "support" && t("chat.supportChats")}
                               </Badge>
                             </div>
                           </div>
@@ -286,8 +289,8 @@ export default function Chat() {
                         {messages.length === 0 ? (
                           <div className="text-center text-muted-foreground py-12">
                             <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                            <p>No hay mensajes aún</p>
-                            <p className="text-sm">Inicia la conversación</p>
+                            <p>{t("chat.noConversations")}</p>
+                            <p className="text-sm">{t("chat.selectConversation")}</p>
                           </div>
                         ) : (
                           <>
@@ -309,7 +312,7 @@ export default function Chat() {
                                   <div className={`flex-1 ${isOwn ? "text-right" : ""}`}>
                                     {isBot && (
                                       <p className="text-xs text-muted-foreground mb-1">
-                                        Asistente Virtual
+                                        {t("chat.chatbot")}
                                       </p>
                                     )}
                                     <div
@@ -326,7 +329,7 @@ export default function Chat() {
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {formatDistanceToNow(new Date(msg.createdAt), {
                                         addSuffix: true,
-                                        locale: es,
+                                        locale: dateLocale,
                                       })}
                                     </p>
                                   </div>
@@ -344,7 +347,7 @@ export default function Chat() {
                           <Paperclip className="h-5 w-5" />
                         </Button>
                         <Input
-                          placeholder="Escribe un mensaje..."
+                          placeholder={t("chat.typingPlaceholder")}
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
@@ -355,7 +358,7 @@ export default function Chat() {
                           disabled={!message.trim() || sendMessageMutation.isPending}
                           data-testid="button-send"
                         >
-                          <Send className="h-5 w-5" />
+                          {sendMessageMutation.isPending ? t("chat.sending") : <Send className="h-5 w-5" />}
                         </Button>
                       </div>
                     </div>
@@ -365,8 +368,8 @@ export default function Chat() {
                 <CardContent className="flex-1 flex items-center justify-center">
                   <div className="text-center text-muted-foreground">
                     <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Selecciona una conversación</p>
-                    <p className="text-sm">Elige una conversación para empezar a chatear</p>
+                    <p className="text-lg font-medium">{t("chat.selectConversation")}</p>
+                    <p className="text-sm">{t("chat.selectConversation")}</p>
                   </div>
                 </CardContent>
               )}
