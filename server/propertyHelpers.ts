@@ -5,10 +5,21 @@ export function getPropertyTitle(property: Property | null | undefined): string 
     return "Propiedad";
   }
 
-  if (property.condominiumName && property.unitNumber) {
-    return `${property.condominiumName} - ${property.unitNumber}`;
+  // Use condoName (the actual field in the database) instead of condominiumName
+  if (property.condoName && property.unitNumber) {
+    return `${property.condoName} - ${property.unitNumber}`;
   }
 
-  // Fallback for backwards compatibility
-  return property.title || "Propiedad";
+  // If only unit number exists
+  if (property.unitNumber) {
+    return `Unidad ${property.unitNumber}`;
+  }
+
+  // If only condo name exists
+  if (property.condoName) {
+    return property.condoName;
+  }
+
+  // Final fallback
+  return "Propiedad";
 }
