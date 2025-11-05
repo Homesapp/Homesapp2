@@ -142,8 +142,10 @@ export default function AdminPropertyManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
       toast({ title: "Propiedad aprobada", description: "La propiedad ha sido aprobada y publicada" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "No se pudo aprobar la propiedad", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Error approving property:", error);
+      const errorMessage = error?.message || error?.toString() || "No se pudo aprobar la propiedad";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     },
   });
 
@@ -170,8 +172,10 @@ export default function AdminPropertyManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
       toast({ title: "Propiedad rechazada", description: "La propiedad ha sido rechazada" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "No se pudo rechazar la propiedad", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Error rejecting property:", error);
+      const errorMessage = error?.message || error?.toString() || "No se pudo rechazar la propiedad";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     },
   });
 
@@ -185,8 +189,10 @@ export default function AdminPropertyManagement() {
       setSelectedProperties([]);
       toast({ title: "Propiedades aprobadas", description: `${selectedProperties.length} propiedades aprobadas` });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Error al aprobar propiedades en masa", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Error bulk approving properties:", error);
+      const errorMessage = error?.message || error?.toString() || "Error al aprobar propiedades en masa";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     },
   });
 
