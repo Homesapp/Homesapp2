@@ -420,12 +420,34 @@ export default function MyProperties() {
                           }}
                           data-testid={`text-property-title-${property.id}`}
                         >
-                          {property.title}
+                          {property.unitType && property.unitType !== 'private' && property.unitNumber && property.condoName
+                            ? `Unidad ${property.unitNumber} - ${property.condoName}`
+                            : property.title}
                         </h3>
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
                           <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                           <span className="line-clamp-1">{property.location}</span>
                         </div>
+                        {/* Servicios incluidos */}
+                        {property.includedServices && (
+                          <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                            {(() => {
+                              const services = property.includedServices as any;
+                              const included = [];
+                              
+                              if (services?.basicServices?.water?.included) included.push("💧 Agua");
+                              if (services?.basicServices?.electricity?.included) included.push("⚡ Luz");
+                              if (services?.basicServices?.internet?.included) included.push("📶 Internet");
+                              if (services?.basicServices?.gas?.included) included.push("🔥 Gas");
+                              
+                              return included.length > 0 ? (
+                                <span className="flex items-center gap-1.5 bg-muted/50 px-2 py-0.5 rounded">
+                                  {included.join(" • ")}
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2 flex-shrink-0">
