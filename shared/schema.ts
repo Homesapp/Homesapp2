@@ -816,7 +816,7 @@ export const insertRoleRequestSchema = createInsertSchema(roleRequests).omit({
 }).extend({
   email: z.string().email("Correo electrónico inválido"),
   whatsapp: z.string().min(10, "WhatsApp debe tener al menos 10 dígitos"),
-  yearsOfExperience: z.number().min(0).optional(),
+  yearsOfExperience: z.coerce.number().min(0).optional(),
 });
 
 export type RoleRequest = typeof roleRequests.$inferSelect;
