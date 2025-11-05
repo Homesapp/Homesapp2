@@ -390,6 +390,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
       
+      // Ensure admin also exists in users table (for foreign key constraints)
+      try {
+        await storage.upsertUser({
+          id: admin.id,
+          email: admin.email,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          role: admin.role,
+          profileImageUrl: admin.profileImageUrl,
+        });
+      } catch (upsertError) {
+        console.error("Error upserting admin to users table:", upsertError);
+        // Don't fail login if this fails, but log it
+      }
+      
       // Create session with admin info
       req.session.adminUser = {
         id: admin.id,
