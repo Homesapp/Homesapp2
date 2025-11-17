@@ -20,7 +20,6 @@ import PropertyEditWizard from "@/components/PropertyEditWizard";
 import { useLocation } from "wouter";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
 import type { Property } from "@shared/schema";
-import JSZip from "jszip";
 
 type AccessInfo = 
   | {
@@ -292,26 +291,18 @@ export default function AdminPropertyManagement() {
         description: `Preparando ${allImages.length} imagen(es) para descargar`
       });
 
-      const zip = new JSZip();
-      const propertyFolder = zip.folder(getPropertyTitle(property).replace(/[^a-zA-Z0-9]/g, "_"));
+      // Call backend endpoint to download images
+      const response = await fetch(`/api/properties/${property.id}/download-images`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download images');
+      }
 
-      // Download each image and add to ZIP
-      const promises = allImages.map(async (imageUrl, index) => {
-        try {
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          const extension = imageUrl.split('.').pop()?.split('?')[0] || 'jpg';
-          propertyFolder?.file(`image_${index + 1}.${extension}`, blob);
-        } catch (error) {
-          console.error(`Error downloading image ${index + 1}:`, error);
-        }
-      });
-
-      await Promise.all(promises);
-
-      // Generate and download ZIP
-      const content = await zip.generateAsync({ type: "blob" });
-      const url = window.URL.createObjectURL(content);
+      // Get the ZIP file as blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `${getPropertyTitle(property).replace(/[^a-zA-Z0-9]/g, "_")}_fotos.zip`;
