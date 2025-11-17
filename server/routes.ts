@@ -7715,6 +7715,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sidebar Menu Visibility Configuration routes (user-based)
+  // Admin: Get users by role
+  app.get("/api/admin/users-by-role/:role", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { role } = req.params;
+      const users = await storage.getUsersByRole(role);
+      res.json(users);
+    } catch (error: any) {
+      console.error("Error fetching users by role:", error);
+      res.status(500).json({ message: error.message || "Error al obtener usuarios" });
+    }
+  });
+
+  // Admin: Get sidebar configuration for a specific user
+  app.get("/api/admin/sidebar-config-user/:userId", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const config = await storage.getSidebarMenuVisibilityByUser(userId);
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching user sidebar config:", error);
+      res.status(500).json({ message: error.message || "Error al obtener configuración del usuario" });
+    }
+  });
+
+  // Admin: Update sidebar configuration for a specific user
+  app.post("/api/admin/sidebar-config-user/:userId", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { configurations } = req.body;
+      
+      if (!Array.isArray(configurations)) {
+        return res.status(400).json({ message: "Se requiere un array de configuraciones" });
+      }
+      
+      const results = await storage.bulkSetSidebarMenuVisibilityUser(userId, configurations);
+      
+      await createAuditLog(
+        req,
+        "update",
+        "sidebar_menu_visibility_user",
+        userId,
+        `Configuración del sidebar actualizada para usuario ${userId}, ${configurations.length} items`
+      );
+      
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error updating user sidebar config:", error);
+      res.status(500).json({ message: error.message || "Error al actualizar configuración del usuario" });
+    }
+  });
+
+  // Admin: Reset sidebar configuration for a specific user
+  app.delete("/api/admin/sidebar-config-user/:userId", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      await storage.resetSidebarMenuVisibilityUser(userId);
+      
+      await createAuditLog(
+        req,
+        "delete",
+        "sidebar_menu_visibility_user",
+        userId,
+        `Configuración del sidebar reseteada para usuario ${userId}`
+      );
+      
+      res.json({ message: "Configuración de usuario reseteada exitosamente" });
+    } catch (error: any) {
+      console.error("Error resetting user sidebar config:", error);
+      res.status(500).json({ message: error.message || "Error al resetear configuración del usuario" });
+    }
+  });
+
   // Rental Opportunity Requests (SOR) routes
   app.post("/api/rental-opportunity-requests", isAuthenticated, async (req: any, res) => {
     try {

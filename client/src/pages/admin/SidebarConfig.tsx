@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Settings2, Save, RotateCcw, Loader2 } from "lucide-react";
+import { Settings2, Save, RotateCcw, Loader2, Users, User } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Definición de todos los menu items del sidebar
 const ALL_MENU_ITEMS = {
@@ -124,15 +125,39 @@ interface MenuItemVisibility {
 
 export default function SidebarConfig() {
   const { toast } = useToast();
+  const [configMode, setConfigMode] = useState<"role" | "user">("role");
   const [selectedRole, setSelectedRole] = useState<string>("cliente");
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [menuVisibility, setMenuVisibility] = useState<MenuItemVisibility>({});
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Fetch current configuration for selected role
-  const { data: config, isLoading } = useQuery({
-    queryKey: ["/api/admin/sidebar-config", selectedRole],
-    enabled: !!selectedRole,
+  // Fetch users by role (for user mode)
+  const { data: users } = useQuery({
+    queryKey: ["/api/admin/users-by-role", selectedRole],
+    enabled: configMode === "user" && !!selectedRole,
   });
+
+  // Fetch current configuration for selected role
+  const { data: roleConfig, isLoading: isLoadingRole } = useQuery({
+    queryKey: ["/api/admin/sidebar-config", selectedRole],
+    enabled: configMode === "role" && !!selectedRole,
+  });
+
+  // Fetch current configuration for selected user
+  const { data: userConfig, isLoading: isLoadingUser } = useQuery({
+    queryKey: ["/api/admin/sidebar-config-user", selectedUserId],
+    enabled: configMode === "user" && !!selectedUserId,
+  });
+
+  const config = configMode === "role" ? roleConfig : userConfig;
+  const isLoading = configMode === "role" ? isLoadingRole : isLoadingUser;
+
+  // Reset selected user when changing mode or role
+  useEffect(() => {
+    setSelectedUserId("");
+    setMenuVisibility({});
+    setHasChanges(false);
+  }, [configMode, selectedRole]);
 
   // Load configuration when data changes
   useEffect(() => {
@@ -155,10 +180,18 @@ export default function SidebarConfig() {
         visible,
       }));
 
-      return await apiRequest("POST", "/api/admin/sidebar-config", { configurations });
+      if (configMode === "role") {
+        return await apiRequest("POST", "/api/admin/sidebar-config", { configurations });
+      } else {
+        return await apiRequest("POST", `/api/admin/sidebar-config-user/${selectedUserId}`, { configurations });
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/sidebar-config", selectedRole] });
+      if (configMode === "role") {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/sidebar-config", selectedRole] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/sidebar-config-user", selectedUserId] });
+      }
       setHasChanges(false);
       toast({
         title: "Configuración guardada",
@@ -177,15 +210,25 @@ export default function SidebarConfig() {
   // Reset configuration mutation
   const resetMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("DELETE", `/api/admin/sidebar-config/${selectedRole}`, {});
+      if (configMode === "role") {
+        return await apiRequest("DELETE", `/api/admin/sidebar-config/${selectedRole}`, {});
+      } else {
+        return await apiRequest("DELETE", `/api/admin/sidebar-config-user/${selectedUserId}`, {});
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/sidebar-config", selectedRole] });
+      if (configMode === "role") {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/sidebar-config", selectedRole] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/sidebar-config-user", selectedUserId] });
+      }
       setMenuVisibility({});
       setHasChanges(false);
       toast({
         title: "Configuración reseteada",
-        description: "Se ha restaurado la configuración por defecto",
+        description: configMode === "role" 
+          ? "Se ha restaurado la configuración por defecto del rol" 
+          : "Se ha restaurado la configuración del usuario (ahora usará la configuración del rol)",
       });
     },
     onError: (error: any) => {
@@ -253,42 +296,107 @@ export default function SidebarConfig() {
           <h1 className="text-3xl font-bold">Configuración del Menú Lateral</h1>
         </div>
         <p className="text-muted-foreground">
-          Controla qué opciones del menú lateral son visibles para cada rol de usuario
+          Controla qué opciones del menú lateral son visibles para cada rol o usuario específico
         </p>
       </div>
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Seleccionar Rol</CardTitle>
+          <CardTitle>Modo de Configuración</CardTitle>
           <CardDescription>
-            Elige el rol para configurar su menú lateral
+            Elige si deseas configurar por rol o por usuario individual
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-64" data-testid="select-role">
-                <SelectValue placeholder="Seleccionar rol" />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLE_OPTIONS.map((role) => (
-                  <SelectItem key={role.value} value={role.value} data-testid={`role-option-${role.value}`}>
-                    {role.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {hasChanges && (
-              <Badge variant="secondary" className="gap-1">
-                <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                Cambios sin guardar
-              </Badge>
+          <Tabs value={configMode} onValueChange={(value) => setConfigMode(value as "role" | "user")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="role" className="gap-2" data-testid="tab-role">
+                <Users className="w-4 h-4" />
+                Por Rol
+              </TabsTrigger>
+              <TabsTrigger value="user" className="gap-2" data-testid="tab-user">
+                <User className="w-4 h-4" />
+                Por Usuario
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>
+            {configMode === "role" ? "Seleccionar Rol" : "Seleccionar Usuario"}
+          </CardTitle>
+          <CardDescription>
+            {configMode === "role" 
+              ? "Elige el rol para configurar su menú lateral" 
+              : "Primero elige el rol, luego selecciona el usuario específico"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="w-64" data-testid="select-role">
+                  <SelectValue placeholder="Seleccionar rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((role) => (
+                    <SelectItem key={role.value} value={role.value} data-testid={`role-option-${role.value}`}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {hasChanges && (
+                <Badge variant="secondary" className="gap-1">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                  Cambios sin guardar
+                </Badge>
+              )}
+            </div>
+
+            {configMode === "user" && (
+              <div>
+                <Select 
+                  value={selectedUserId} 
+                  onValueChange={setSelectedUserId}
+                  disabled={!users || users.length === 0}
+                >
+                  <SelectTrigger className="w-full" data-testid="select-user">
+                    <SelectValue placeholder={
+                      !users || users.length === 0 
+                        ? "No hay usuarios con este rol" 
+                        : "Seleccionar usuario específico"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users && users.map((user: any) => (
+                      <SelectItem key={user.id} value={user.id} data-testid={`user-option-${user.id}`}>
+                        {user.firstName} {user.lastName} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!selectedUserId && users && users.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    La configuración por usuario se superpone a la configuración del rol
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {configMode === "user" && !selectedUserId ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Selecciona un usuario para configurar su menú lateral</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -298,9 +406,18 @@ export default function SidebarConfig() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Opciones del Menú - {ROLE_OPTIONS.find(r => r.value === selectedRole)?.label}</CardTitle>
+              <CardTitle>
+                Opciones del Menú - {ROLE_OPTIONS.find(r => r.value === selectedRole)?.label}
+                {configMode === "user" && selectedUserId && users && (
+                  <span className="text-base font-normal text-muted-foreground ml-2">
+                    ({users.find((u: any) => u.id === selectedUserId)?.firstName} {users.find((u: any) => u.id === selectedUserId)?.lastName})
+                  </span>
+                )}
+              </CardTitle>
               <CardDescription>
-                Activa o desactiva las opciones que verá este rol en su menú lateral
+                {configMode === "role" 
+                  ? "Activa o desactiva las opciones que verá este rol en su menú lateral"
+                  : "Configuración personalizada para este usuario (se superpone a la configuración del rol)"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
