@@ -299,6 +299,9 @@ import {
   hoaAnnouncementReads,
   type HoaAnnouncementRead,
   type InsertHoaAnnouncementRead,
+  sidebarMenuVisibility,
+  type SidebarMenuVisibility,
+  type InsertSidebarMenuVisibility,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -1030,6 +1033,12 @@ export interface IStorage {
   markHoaAnnouncementAsRead(announcementId: string, ownerId: string): Promise<HoaAnnouncementRead>;
   getHoaAnnouncementReads(announcementId: string): Promise<HoaAnnouncementRead[]>;
   hasOwnerReadAnnouncement(announcementId: string, ownerId: string): Promise<boolean>;
+
+  // Sidebar Menu Visibility operations
+  getSidebarMenuVisibility(role: string): Promise<SidebarMenuVisibility[]>;
+  setSidebarMenuVisibility(visibility: InsertSidebarMenuVisibility): Promise<SidebarMenuVisibility>;
+  bulkSetSidebarMenuVisibility(visibilities: InsertSidebarMenuVisibility[]): Promise<SidebarMenuVisibility[]>;
+  resetSidebarMenuVisibility(role: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6827,6 +6836,44 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(1);
     return result.length > 0;
+  }
+
+  // Sidebar Menu Visibility operations
+  async getSidebarMenuVisibility(role: string): Promise<SidebarMenuVisibility[]> {
+    return await db.select()
+      .from(sidebarMenuVisibility)
+      .where(eq(sidebarMenuVisibility.role, role as any))
+      .orderBy(sidebarMenuVisibility.menuItemKey);
+  }
+
+  async setSidebarMenuVisibility(visibility: InsertSidebarMenuVisibility): Promise<SidebarMenuVisibility> {
+    const [result] = await db.insert(sidebarMenuVisibility)
+      .values(visibility)
+      .onConflictDoUpdate({
+        target: [sidebarMenuVisibility.role, sidebarMenuVisibility.menuItemKey],
+        set: {
+          visible: visibility.visible,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async bulkSetSidebarMenuVisibility(visibilities: InsertSidebarMenuVisibility[]): Promise<SidebarMenuVisibility[]> {
+    if (visibilities.length === 0) return [];
+    
+    const results: SidebarMenuVisibility[] = [];
+    for (const visibility of visibilities) {
+      const result = await this.setSidebarMenuVisibility(visibility);
+      results.push(result);
+    }
+    return results;
+  }
+
+  async resetSidebarMenuVisibility(role: string): Promise<void> {
+    await db.delete(sidebarMenuVisibility)
+      .where(eq(sidebarMenuVisibility.role, role as any));
   }
 }
 
