@@ -235,6 +235,7 @@ function AuthenticatedApp() {
       <div className="flex h-screen w-full">
         <AppSidebar
           userRole={userRole}
+          userId={currentUser?.id}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
           <header className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b bg-background">

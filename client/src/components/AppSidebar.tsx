@@ -72,6 +72,7 @@ export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "m
 
 export type AppSidebarProps = {
   userRole: UserRole | undefined;
+  userId?: string;
 };
 
 const roleLabels: Record<UserRole, string> = {
@@ -89,16 +90,37 @@ const roleLabels: Record<UserRole, string> = {
   agente_servicios_especiales: "Agente de Servicios Especiales",
 };
 
-export function AppSidebar({ userRole }: AppSidebarProps) {
+export function AppSidebar({ userRole, userId }: AppSidebarProps) {
   const [location] = useLocation();
   const { t, language } = useLanguage();
   const { state } = useSidebar();
 
   // Fetch sidebar visibility configurations for the current role
-  const { data: visibilityConfig } = useQuery<Record<string, boolean>>({
+  const { data: roleVisibilityConfig } = useQuery<Array<{menuItemKey: string, visible: boolean}>>({
     queryKey: ['/api/admin/sidebar-config', userRole],
     enabled: !!userRole && userRole !== "master" && userRole !== "admin",
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    select: (data) => {
+      const config: Record<string, boolean> = {};
+      data?.forEach((item: any) => {
+        config[item.menuItemKey] = item.visible;
+      });
+      return config;
+    },
+  });
+
+  // Fetch sidebar visibility configurations for the current user (overrides role config)
+  const { data: userVisibilityConfig } = useQuery<Array<{menuItemKey: string, visible: boolean}>>({
+    queryKey: ['/api/admin/sidebar-config-user', userId],
+    enabled: !!userId && !!userRole && userRole !== "master" && userRole !== "admin",
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    select: (data) => {
+      const config: Record<string, boolean> = {};
+      data?.forEach((item: any) => {
+        config[item.menuItemKey] = item.visible;
+      });
+      return config;
+    },
   });
 
   // Helper function to check if a menu item should be visible
@@ -107,11 +129,19 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     if (userRole === "master" || userRole === "admin") {
       return true;
     }
-    // If no config or key not found, default to visible
-    if (!visibilityConfig || !(menuItemKey in visibilityConfig)) {
-      return true;
+    
+    // User-specific config takes priority over role config
+    if (userVisibilityConfig && menuItemKey in userVisibilityConfig) {
+      return userVisibilityConfig[menuItemKey];
     }
-    return visibilityConfig[menuItemKey];
+    
+    // Fall back to role config
+    if (roleVisibilityConfig && menuItemKey in roleVisibilityConfig) {
+      return roleVisibilityConfig[menuItemKey];
+    }
+    
+    // Default to visible if no config found
+    return true;
   };
 
   const [openGroups, setOpenGroups] = useState({
