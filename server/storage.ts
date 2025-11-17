@@ -302,6 +302,9 @@ import {
   sidebarMenuVisibility,
   type SidebarMenuVisibility,
   type InsertSidebarMenuVisibility,
+  sidebarMenuVisibilityUser,
+  type SidebarMenuVisibilityUser,
+  type InsertSidebarMenuVisibilityUser,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -1035,11 +1038,17 @@ export interface IStorage {
   getHoaAnnouncementReads(announcementId: string): Promise<HoaAnnouncementRead[]>;
   hasOwnerReadAnnouncement(announcementId: string, ownerId: string): Promise<boolean>;
 
-  // Sidebar Menu Visibility operations
+  // Sidebar Menu Visibility operations (role-based)
   getSidebarMenuVisibility(role: string): Promise<SidebarMenuVisibility[]>;
   setSidebarMenuVisibility(visibility: InsertSidebarMenuVisibility): Promise<SidebarMenuVisibility>;
   bulkSetSidebarMenuVisibility(visibilities: InsertSidebarMenuVisibility[]): Promise<SidebarMenuVisibility[]>;
   resetSidebarMenuVisibility(role: string): Promise<void>;
+  
+  // Sidebar Menu Visibility operations (user-based)
+  getSidebarMenuVisibilityByUser(userId: string): Promise<SidebarMenuVisibilityUser[]>;
+  bulkSetSidebarMenuVisibilityUser(userId: string, visibilities: InsertSidebarMenuVisibilityUser[]): Promise<SidebarMenuVisibilityUser[]>;
+  resetSidebarMenuVisibilityUser(userId: string): Promise<void>;
+  getUsersByRole(role: string): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6947,6 +6956,46 @@ export class DatabaseStorage implements IStorage {
   async resetSidebarMenuVisibility(role: string): Promise<void> {
     await db.delete(sidebarMenuVisibility)
       .where(eq(sidebarMenuVisibility.role, role as any));
+  }
+
+  // Sidebar Menu Visibility operations (user-based)
+  async getSidebarMenuVisibilityByUser(userId: string): Promise<SidebarMenuVisibilityUser[]> {
+    return await db.select()
+      .from(sidebarMenuVisibilityUser)
+      .where(eq(sidebarMenuVisibilityUser.userId, userId))
+      .orderBy(sidebarMenuVisibilityUser.menuItemKey);
+  }
+
+  async bulkSetSidebarMenuVisibilityUser(userId: string, visibilities: InsertSidebarMenuVisibilityUser[]): Promise<SidebarMenuVisibilityUser[]> {
+    if (visibilities.length === 0) return [];
+    
+    const results: SidebarMenuVisibilityUser[] = [];
+    for (const visibility of visibilities) {
+      const [result] = await db.insert(sidebarMenuVisibilityUser)
+        .values({ ...visibility, userId })
+        .onConflictDoUpdate({
+          target: [sidebarMenuVisibilityUser.userId, sidebarMenuVisibilityUser.menuItemKey],
+          set: {
+            visible: visibility.visible,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      results.push(result);
+    }
+    return results;
+  }
+
+  async resetSidebarMenuVisibilityUser(userId: string): Promise<void> {
+    await db.delete(sidebarMenuVisibilityUser)
+      .where(eq(sidebarMenuVisibilityUser.userId, userId));
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db.select()
+      .from(users)
+      .where(eq(users.role, role as any))
+      .orderBy(users.firstName, users.lastName);
   }
 }
 
