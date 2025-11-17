@@ -15,8 +15,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield, Star, Trash2, Edit, Calendar, Link2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PropertyFormDialog } from "@/components/PropertyFormDialog";
 import { PropertyInviteDialog } from "@/components/PropertyInviteDialog";
+import PropertyEditWizard from "@/components/PropertyEditWizard";
 import { useLocation } from "wouter";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
 
@@ -1050,18 +1050,20 @@ export default function AdminPropertyManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Property Dialog */}
-      <PropertyFormDialog
-        open={editDialogOpen}
-        onOpenChange={(open) => {
-          setEditDialogOpen(open);
-          if (!open) {
+      {/* Edit Property Wizard */}
+      {propertyToEdit && (
+        <PropertyEditWizard
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          property={propertyToEdit}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/properties/stats"] });
+            // Clear after successful save and queries invalidated
             setPropertyToEdit(null);
-          }
-        }}
-        property={propertyToEdit || undefined}
-        mode="edit"
-      />
+          }}
+        />
+      )}
 
       {/* Property Invite Dialog */}
       <PropertyInviteDialog

@@ -21,6 +21,7 @@ interface PropertyEditWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   property: Property;
+  onSuccess?: () => void;
 }
 
 export type EditWizardData = {
@@ -79,6 +80,7 @@ export default function PropertyEditWizard({
   open,
   onOpenChange,
   property,
+  onSuccess,
 }: PropertyEditWizardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -100,6 +102,7 @@ export default function PropertyEditWizard({
         title: "Propiedad actualizada",
         description: "Los cambios se guardaron exitosamente",
       });
+      onSuccess?.();
       onOpenChange(false);
     },
     onError: (error: any) => {
