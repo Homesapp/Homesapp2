@@ -4084,6 +4084,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/properties/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      
+      // Check if this is a draft ID (format: draft-{uuid})
+      if (id.startsWith('draft-')) {
+        const draftId = id.substring(6); // Remove 'draft-' prefix
+        const draft = await storage.getPropertySubmissionDraft(draftId);
+
+        if (!draft) {
+          return res.status(404).json({ message: "Draft not found" });
+        }
+
+        // Check authorization for draft deletion
+        let isAuthorized = false;
+        
+        if (req.session?.adminUser) {
+          // Admin user session - check admin privileges (only master and admin can delete)
+          const adminRole = req.session.adminUser.role;
+          isAuthorized = ["master", "admin"].includes(adminRole);
+        } else if (req.user?.claims?.sub) {
+          // Regular user session
+          const userId = req.user.claims.sub;
+          const user = await storage.getUser(userId);
+          
+          if (user) {
+            // User can delete if they own the draft or have admin privileges
+            isAuthorized = draft.userId === userId || ["master", "admin"].includes(user.role);
+          }
+        }
+
+        if (!isAuthorized) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+
+        // Log draft deletion
+        await createAuditLog(
+          req,
+          "delete",
+          "property-draft",
+          draftId,
+          `Borrador de propiedad eliminado: ${draft.basicInfo?.name || 'Sin nombre'}`
+        );
+
+        await storage.deletePropertySubmissionDraft(draftId);
+        res.status(204).send();
+        return;
+      }
+      
+      // Handle regular property deletion
       const property = await storage.getProperty(id);
 
       if (!property) {
