@@ -17,7 +17,8 @@ import {
   User, Phone, Mail, Building, Image, Video, Map, Scan,
   CheckCircle2, XCircle, Home, Wifi, Droplets, Zap, Flame, Wrench,
   ChevronLeft, ChevronRight, X, Dumbbell, Trees, Car, Shield,
-  Waves, UtensilsCrossed, Dog, Wind, Snowflake, TrendingUp, StickyNote, Trash2
+  Waves, UtensilsCrossed, Dog, Wind, Snowflake, TrendingUp, StickyNote, Trash2,
+  Download, Copy, Archive
 } from "lucide-react";
 import { type Property } from "@shared/schema";
 import { AppointmentSchedulingDialog } from "@/components/AppointmentSchedulingDialog";
@@ -28,6 +29,7 @@ import { getPropertyTitle } from "@/lib/propertyHelpers";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import JSZip from "jszip";
 
 interface PropertyNote {
   id: string;
@@ -220,7 +222,13 @@ export default function PropertyFullDetails() {
   }
 
 
-  const allImages = property.primaryImages || [];
+  // Consolidate ALL images from all arrays
+  const allImages = [
+    ...(property.primaryImages || []),
+    ...(property.secondaryImages || []),
+    ...(property.images || [])
+  ].filter((img, index, self) => img && self.indexOf(img) === index); // Remove duplicates and empty strings
+  
   const VISIBLE_THUMBNAILS = 4;
 
   const handleThumbnailClick = (index: number) => {
@@ -241,6 +249,91 @@ export default function PropertyFullDetails() {
 
   const toggleImageExpansion = (index: number) => {
     setExpandedImageIndex(expandedImageIndex === index ? null : index);
+  };
+
+  // Download single image
+  const handleDownloadImage = async (imageUrl: string, index: number) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${getPropertyTitle(property)}-foto-${index + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: "Foto descargada",
+        description: `Foto ${index + 1} descargada exitosamente`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo descargar la foto",
+      });
+    }
+  };
+
+  // Copy image URL to clipboard
+  const handleCopyImageUrl = async (imageUrl: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(imageUrl);
+      toast({
+        title: "URL copiada",
+        description: `URL de la foto ${index + 1} copiada al portapapeles`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo copiar la URL al portapapeles",
+      });
+    }
+  };
+
+  // Download all images as ZIP
+  const handleDownloadAllImages = async () => {
+    try {
+      toast({
+        title: "Preparando descarga",
+        description: "Empaquetando todas las fotos...",
+      });
+
+      const zip = new JSZip();
+      const imageFolder = zip.folder("fotos");
+
+      // Download all images
+      for (let i = 0; i < allImages.length; i++) {
+        const response = await fetch(allImages[i]);
+        const blob = await response.blob();
+        imageFolder?.file(`foto-${i + 1}.jpg`, blob);
+      }
+
+      // Generate ZIP file
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = window.URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${getPropertyTitle(property)}-fotos.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Descarga completa",
+        description: `${allImages.length} fotos descargadas en ZIP`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudieron descargar las fotos",
+      });
+    }
   };
 
   return (
@@ -340,8 +433,8 @@ export default function PropertyFullDetails() {
                 )}
               </div>
 
-              {/* Media Options Buttons */}
-              <div className="grid grid-cols-4 gap-3 px-6 py-4 border-b">
+                      {/* Media Options Buttons */}
+              <div className="grid grid-cols-5 gap-3 px-6 py-4 border-b">
                 <Button
                   variant="outline"
                   className="flex flex-col items-center gap-2 h-auto py-3"
@@ -352,6 +445,18 @@ export default function PropertyFullDetails() {
                   <Image className="h-5 w-5" />
                   <span className="text-xs">Imágenes ({allImages.length})</span>
                 </Button>
+                {isAdminOrSeller && (
+                  <Button
+                    variant="outline"
+                    className="flex flex-col items-center gap-2 h-auto py-3"
+                    onClick={handleDownloadAllImages}
+                    disabled={allImages.length === 0}
+                    data-testid="button-download-all"
+                  >
+                    <Archive className="h-5 w-5" />
+                    <span className="text-xs">Descargar ZIP</span>
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="flex flex-col items-center gap-2 h-auto py-3"
@@ -743,13 +848,226 @@ export default function PropertyFullDetails() {
               </CardContent>
             </Card>
 
-            {/* Referral Information - Admin Only */}
-            {adminUser && (property.referredByName || property.referredByLastName || property.referredByPhone || property.referredByEmail || property.referralPercent) && (
-              <Card className="mt-6">
+            {/* Owner Information - Admin/Seller Only */}
+            {isAdminOrSeller && (property.ownerFirstName || property.ownerLastName || property.ownerPhone || property.ownerEmail) && (
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
-                    Información del Referido (Solo Admin)
+                    Información del Propietario
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    {(property.ownerFirstName || property.ownerLastName) && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                        <div className="flex-1">
+                          <div className="text-sm text-muted-foreground mb-1">Nombre Completo</div>
+                          <div className="font-medium">
+                            {[property.ownerFirstName, property.ownerLastName].filter(Boolean).join(' ')}
+                          </div>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            navigator.clipboard.writeText([property.ownerFirstName, property.ownerLastName].filter(Boolean).join(' '));
+                            toast({ title: "Copiado", description: "Nombre copiado al portapapeles" });
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {property.ownerPhone && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                        <div className="flex-1">
+                          <div className="text-sm text-muted-foreground mb-1">Teléfono WhatsApp</div>
+                          <div className="font-medium flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            {property.ownerPhone}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              navigator.clipboard.writeText(property.ownerPhone!);
+                              toast({ title: "Copiado", description: "Teléfono copiado al portapapeles" });
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => window.open(`https://wa.me/${property.ownerPhone?.replace(/\D/g, '')}`, '_blank')}
+                          >
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {property.ownerEmail && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                        <div className="flex-1">
+                          <div className="text-sm text-muted-foreground mb-1">Email</div>
+                          <div className="font-medium flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            {property.ownerEmail}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              navigator.clipboard.writeText(property.ownerEmail!);
+                              toast({ title: "Copiado", description: "Email copiado al portapapeles" });
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => window.open(`mailto:${property.ownerEmail}`, '_blank')}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Property Details - Admin/Seller Only */}
+            {isAdminOrSeller && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Detalles Completos de la Propiedad
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">ID de Propiedad</div>
+                      <div className="font-mono text-sm">{property.id}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Estado de Aprobación</div>
+                      <Badge variant={property.approvalStatus === 'approved' ? 'default' : 'secondary'}>
+                        {property.approvalStatus}
+                      </Badge>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Tipo de Unidad</div>
+                      <div className="font-medium capitalize">{property.unitType}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Moneda</div>
+                      <div className="font-medium">{property.currency}</div>
+                    </div>
+                    {property.salePrice && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Precio de Venta</div>
+                        <div className="font-medium">{formatPrice(property.salePrice)}</div>
+                      </div>
+                    )}
+                    {property.acceptedLeaseDurations && property.acceptedLeaseDurations.length > 0 && (
+                      <div className="col-span-2">
+                        <div className="text-sm text-muted-foreground mb-2">Duraciones de Contrato Aceptadas</div>
+                        <div className="flex flex-wrap gap-2">
+                          {property.acceptedLeaseDurations.map((duration, idx) => (
+                            <Badge key={idx} variant="outline">{duration}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {property.accessInfo && (
+                    <>
+                      <Separator className="my-4" />
+                      <div>
+                        <h4 className="font-semibold mb-3 text-sm">Información de Acceso</h4>
+                        <div className="space-y-2 text-sm">
+                          {(property.accessInfo as any).lockboxCode && (
+                            <div className="flex items-center justify-between p-2 rounded bg-muted">
+                              <span>Código de Lockbox:</span>
+                              <div className="flex items-center gap-2">
+                                <code className="font-mono">{(property.accessInfo as any).lockboxCode}</code>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText((property.accessInfo as any).lockboxCode);
+                                    toast({ title: "Copiado", description: "Código copiado" });
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {(property.accessInfo as any).contactPerson && (
+                            <div className="flex items-center justify-between p-2 rounded bg-muted">
+                              <span>Persona de Contacto:</span>
+                              <span className="font-medium">{(property.accessInfo as any).contactPerson}</span>
+                            </div>
+                          )}
+                          {(property.accessInfo as any).contactPhone && (
+                            <div className="flex items-center justify-between p-2 rounded bg-muted">
+                              <span>Teléfono de Contacto:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{(property.accessInfo as any).contactPhone}</span>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText((property.accessInfo as any).contactPhone);
+                                    toast({ title: "Copiado", description: "Teléfono copiado" });
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {property.specifications && (
+                    <>
+                      <Separator className="my-4" />
+                      <div>
+                        <h4 className="font-semibold mb-3 text-sm">Especificaciones Técnicas</h4>
+                        <div className="text-sm bg-muted p-3 rounded font-mono whitespace-pre-wrap">
+                          {JSON.stringify(property.specifications, null, 2)}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Referral Information - Admin Only */}
+            {adminUser && (property.referredByName || property.referredByLastName || property.referredByPhone || property.referredByEmail || property.referralPercent) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Información del Referido
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -875,7 +1193,21 @@ export default function PropertyFullDetails() {
       <Dialog open={showAllPhotosDialog} onOpenChange={setShowAllPhotosDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-all-photos">
           <DialogHeader>
-            <DialogTitle>Todas las Imágenes ({allImages.length})</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Todas las Imágenes ({allImages.length})</span>
+              {isAdminOrSeller && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadAllImages}
+                  className="gap-2"
+                  data-testid="button-download-all-zip"
+                >
+                  <Archive className="h-4 w-4" />
+                  Descargar Todo (ZIP)
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
           
           <div className="flex-1 overflow-y-auto">
@@ -883,12 +1215,11 @@ export default function PropertyFullDetails() {
               {allImages.map((img, index) => (
                 <div
                   key={index}
-                  className={`relative cursor-pointer transition-all ${
+                  className={`relative group transition-all ${
                     expandedImageIndex === index 
                       ? 'col-span-2 row-span-2' 
                       : 'aspect-square'
                   }`}
-                  onClick={() => toggleImageExpansion(index)}
                   data-testid={`photo-grid-item-${index}`}
                 >
                   <img
@@ -897,11 +1228,51 @@ export default function PropertyFullDetails() {
                     className={`w-full h-full object-cover rounded-lg ${
                       expandedImageIndex === index 
                         ? 'ring-2 ring-primary' 
-                        : 'hover-elevate'
+                        : 'hover-elevate cursor-pointer'
                     }`}
+                    onClick={() => toggleImageExpansion(index)}
                   />
+                  
+                  {/* Action Buttons for Admin/Seller */}
+                  {isAdminOrSeller && (
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadImage(img, index);
+                        }}
+                        data-testid={`button-download-image-${index}`}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyImageUrl(img, index);
+                        }}
+                        data-testid={`button-copy-url-${index}`}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Image Number Badge */}
+                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    Foto {index + 1}
+                  </div>
+                  
                   {expandedImageIndex === index && (
-                    <div className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1">
+                    <div 
+                      className="absolute top-2 left-2 bg-black/50 text-white rounded-full p-1 cursor-pointer"
+                      onClick={() => toggleImageExpansion(index)}
+                    >
                       <X className="h-4 w-4" />
                     </div>
                   )}
