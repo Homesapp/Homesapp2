@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield, Star, Trash2, Edit, Calendar, Link2 } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, FileText, Search, Filter, Home, Building2, MapPin, Bed, Bath, DollarSign, Eye, CheckSquare, XSquare, MoreVertical, Key, User, Lock, Copy, Shield, Star, Trash2, Edit, Calendar, Link2, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PropertyInviteDialog } from "@/components/PropertyInviteDialog";
@@ -268,6 +268,17 @@ export default function AdminPropertyManagement() {
   };
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+
+  // Download individual image
+  const handleDownloadImage = (imageUrl: string, index: number) => {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `foto_${index + 1}.jpg`;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -593,20 +604,45 @@ export default function AdminPropertyManagement() {
                                   return allImages.length > 0 && (
                                     <div className="space-y-3">
                                       <p className="text-sm text-muted-foreground mb-2">{allImages.length} foto(s)</p>
-                                      <img
-                                        src={allImages[0]}
-                                        alt={detailProperty.title}
-                                        className="w-full h-80 object-cover rounded-lg border"
-                                      />
+                                      
+                                      {/* Main Image */}
+                                      <div className="relative group">
+                                        <img
+                                          src={allImages[0]}
+                                          alt={detailProperty.title}
+                                          className="w-full h-80 object-cover rounded-lg border"
+                                        />
+                                        <Button
+                                          size="icon"
+                                          variant="secondary"
+                                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={() => handleDownloadImage(allImages[0], 0)}
+                                          data-testid="button-download-image-0"
+                                        >
+                                          <Download className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                      
+                                      {/* Thumbnail Images */}
                                       {allImages.length > 1 && (
                                         <div className="grid grid-cols-5 gap-2">
                                           {allImages.slice(1).map((img, idx) => (
-                                            <img
-                                              key={idx}
-                                              src={img}
-                                              alt={`${detailProperty.title} - ${idx + 2}`}
-                                              className="w-full h-20 object-cover rounded-md border"
-                                            />
+                                            <div key={idx} className="relative group">
+                                              <img
+                                                src={img}
+                                                alt={`${detailProperty.title} - ${idx + 2}`}
+                                                className="w-full h-20 object-cover rounded-md border"
+                                              />
+                                              <Button
+                                                size="icon"
+                                                variant="secondary"
+                                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => handleDownloadImage(img, idx + 1)}
+                                                data-testid={`button-download-image-${idx + 1}`}
+                                              >
+                                                <Download className="w-3 h-3" />
+                                              </Button>
+                                            </div>
                                           ))}
                                         </div>
                                       )}
