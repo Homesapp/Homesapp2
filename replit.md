@@ -50,7 +50,13 @@ Key features include:
     - Admin UI for token generation with copy-to-clipboard functionality
     - Management page at `/admin/property-invitations` to view all generated links with status tracking, copy functionality, and WhatsApp sharing
     - Bilingual support (Spanish/English) for all invitation-related UI
-    - Bug fix (2025-11-17): Corrected token validation in public endpoints to use `getPropertySubmissionTokenByToken()` instead of `getPropertySubmissionToken()` for proper token string lookup
+    - **Bug fixes (2025-11-17)**:
+      - Corrected token validation in public endpoints to use `getPropertySubmissionTokenByToken()` for proper token string lookup
+      - Fixed draft property display: corrected field mapping in `/api/admin/properties` endpoint to read `bedrooms`, `bathrooms`, `area` from `draft.details` (not `draft.basicInfo`) and `price` from `draft.basicInfo.price` (not `rentPrice`)
+      - Fixed draft approval: automatic owner user creation/lookup when approving invitation-based drafts (searches by email/phone, creates new propietario user if not found)
+      - Expanded draft transformation to include all fields: accessInfo, amenities (with name lookup), includedServices, videos, virtualTourUrl, owner contact data
+      - Fixed amenities display: batch lookup of amenity names by IDs to show readable names instead of UUIDs
+      - Fixed services display: corrected mapping from `servicesInfo.basicServices` to `includedServices` structure
 *   **Sidebar Menu Visibility Control**: Admin configuration system allowing master and admin users to control sidebar menu item visibility for specific roles. Features include:
     - Database-driven visibility configuration per role and menu item
     - Admin UI at `/admin/sidebar-config` with role-based tabs

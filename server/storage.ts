@@ -1449,6 +1449,11 @@ export class DatabaseStorage implements IStorage {
     return amenity;
   }
 
+  async getAmenitiesByIds(ids: string[]): Promise<Amenity[]> {
+    if (ids.length === 0) return [];
+    return await db.select().from(amenities).where(inArray(amenities.id, ids));
+  }
+
   async getAmenities(filters?: { category?: string; approvalStatus?: string }): Promise<Amenity[]> {
     let query = db.select().from(amenities);
     const conditions = [];

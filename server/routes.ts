@@ -6344,47 +6344,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? await storage.getPropertySubmissionDrafts({ status: "draft" })
           : [];
         
+        // Collect all unique amenity IDs from all drafts to fetch their names
+        const allDrafts = [...submittedDrafts, ...draftStatusDrafts];
+        const allAmenityIds = new Set<string>();
+        
+        for (const draft of allDrafts) {
+          const amenities = (draft.details as any)?.propertyAmenities || [];
+          for (const amenityId of amenities) {
+            if (amenityId) allAmenityIds.add(amenityId);
+          }
+        }
+        
+        // Fetch amenity names in batch
+        const amenityMap = new Map<string, string>();
+        if (allAmenityIds.size > 0) {
+          const amenityRecords = await storage.getAmenitiesByIds(Array.from(allAmenityIds));
+          for (const amenity of amenityRecords) {
+            amenityMap.set(amenity.id, amenity.name);
+          }
+        }
+        
         // Transform drafts to property-like objects
-        const transformDraft = (draft: any) => ({
-          id: `draft-${draft.id}`,
-          isDraft: true,
-          draftId: draft.id,
-          title: draft.basicInfo?.title || draft.basicInfo?.customListingTitle || "Propiedad sin título",
-          customListingTitle: draft.basicInfo?.customListingTitle || "",
-          description: draft.basicInfo?.description || "",
-          propertyType: draft.basicInfo?.propertyType || "house",
-          price: draft.basicInfo?.price || "0",
-          salePrice: draft.basicInfo?.salePrice || "0",
-          currency: draft.basicInfo?.currency || "MXN",
-          bedrooms: draft.details?.bedrooms || 0,
-          bathrooms: draft.details?.bathrooms || 0,
-          area: draft.details?.area || 0,
-          location: draft.locationInfo?.address || "",
-          colonyName: draft.locationInfo?.colonyName || "",
-          condoName: draft.locationInfo?.condoName || "",
-          unitNumber: draft.locationInfo?.unitNumber || "",
-          googleMapsUrl: draft.locationInfo?.googleMapsUrl || "",
-          amenities: draft.details?.propertyAmenities || [],
-          images: draft.media?.images || [],
-          primaryImages: draft.media?.primaryImages || [],
-          videos: draft.media?.videos || [],
-          virtualTourUrl: draft.media?.virtualTourUrl || "",
-          includedServices: draft.servicesInfo?.includedServices || {},
-          acceptedLeaseDurations: draft.servicesInfo?.acceptedLeaseDurations || [],
-          accessInfo: draft.accessInfo || null,
-          ownerId: draft.userId,
-          ownerFirstName: draft.ownerData?.ownerFirstName || "",
-          ownerLastName: draft.ownerData?.ownerLastName || "",
-          ownerPhone: draft.ownerData?.ownerPhone || "",
-          ownerEmail: draft.ownerData?.ownerEmail || "",
-          approvalStatus: draft.status === "submitted" ? "pending_review" : "draft",
-          ownerStatus: "active",
-          published: false,
-          active: false,
-          featured: false,
-          createdAt: draft.createdAt,
-          updatedAt: draft.updatedAt,
-        });
+        const transformDraft = (draft: any) => {
+          // Expand amenity IDs to names
+          const amenityIds = draft.details?.propertyAmenities || [];
+          const amenityNames = amenityIds.map((id: string) => amenityMap.get(id) || id).filter((name: string) => name);
+          
+          // Transform services structure: servicesInfo.basicServices -> includedServices
+          const basicServices = draft.servicesInfo?.basicServices || {};
+          const includedServices: any = {};
+          
+          // Map basicServices structure to includedServices
+          if (basicServices.water?.included) includedServices.water = true;
+          if (basicServices.electricity?.included) includedServices.electricity = true;
+          if (basicServices.internet?.included) includedServices.internet = true;
+          if (basicServices.gas?.included) includedServices.gas = true;
+          
+          return {
+            id: `draft-${draft.id}`,
+            isDraft: true,
+            draftId: draft.id,
+            title: draft.basicInfo?.title || draft.basicInfo?.customListingTitle || "Propiedad sin título",
+            customListingTitle: draft.basicInfo?.customListingTitle || "",
+            description: draft.basicInfo?.description || "",
+            propertyType: draft.basicInfo?.propertyType || "house",
+            price: draft.basicInfo?.price || "0",
+            salePrice: draft.basicInfo?.salePrice || "0",
+            currency: draft.basicInfo?.currency || "MXN",
+            bedrooms: draft.details?.bedrooms || 0,
+            bathrooms: draft.details?.bathrooms || 0,
+            area: draft.details?.area || 0,
+            location: draft.locationInfo?.address || "",
+            colonyName: draft.locationInfo?.colonyName || "",
+            condoName: draft.locationInfo?.condoName || "",
+            unitNumber: draft.locationInfo?.unitNumber || "",
+            googleMapsUrl: draft.locationInfo?.googleMapsUrl || "",
+            amenities: amenityNames,
+            images: draft.media?.images || [],
+            primaryImages: draft.media?.primaryImages || [],
+            videos: draft.media?.videos || [],
+            virtualTourUrl: draft.media?.virtualTourUrl || "",
+            includedServices: includedServices,
+            acceptedLeaseDurations: draft.servicesInfo?.acceptedLeaseDurations || [],
+            accessInfo: draft.accessInfo || null,
+            ownerId: draft.userId,
+            ownerFirstName: draft.ownerData?.ownerFirstName || "",
+            ownerLastName: draft.ownerData?.ownerLastName || "",
+            ownerPhone: draft.ownerData?.ownerPhone || "",
+            ownerEmail: draft.ownerData?.ownerEmail || "",
+            approvalStatus: draft.status === "submitted" ? "pending_review" : "draft",
+            ownerStatus: "active",
+            published: false,
+            active: false,
+            featured: false,
+            createdAt: draft.createdAt,
+            updatedAt: draft.updatedAt,
+          };
+        };
         
         let submittedDraftProperties = submittedDrafts.map(transformDraft);
         let draftProperties = draftStatusDrafts.map(transformDraft);
