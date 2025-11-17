@@ -63,7 +63,23 @@ export default function PropertySubmissionWizard({
     enabled: !invitationToken, // Only fetch when NOT using invitation token
   });
 
-  // Load existing draft if found
+  // Fetch draft linked to invitation token
+  const { data: tokenDraft } = useQuery<PropertySubmissionDraft | null>({
+    queryKey: ["/api/property-tokens", invitationToken, "draft"],
+    queryFn: async () => {
+      if (!invitationToken) return null;
+      const response = await fetch(`/api/property-tokens/${invitationToken}/draft`);
+      if (!response.ok) {
+        // If 404, no draft exists yet (which is fine)
+        if (response.status === 404) return null;
+        throw new Error("Failed to fetch draft");
+      }
+      return response.json();
+    },
+    enabled: !!invitationToken,
+  });
+
+  // Load existing draft if found (for authenticated users)
   // SECURITY: Skip loading authenticated drafts when using invitation token
   useEffect(() => {
     if (!invitationToken && existingDrafts && existingDrafts.length > 0) {
@@ -90,6 +106,30 @@ export default function PropertySubmissionWizard({
       }
     }
   }, [existingDrafts, invitationToken]);
+
+  // Load existing draft linked to invitation token
+  useEffect(() => {
+    if (invitationToken && tokenDraft) {
+      setDraftId(tokenDraft.id);
+      setCurrentStep(tokenDraft.currentStep);
+      setWizardData({
+        isForRent: tokenDraft.isForRent,
+        isForSale: tokenDraft.isForSale,
+        basicInfo: tokenDraft.basicInfo,
+        locationInfo: tokenDraft.locationInfo,
+        details: tokenDraft.details,
+        media: tokenDraft.media,
+        servicesInfo: tokenDraft.servicesInfo,
+        accessInfo: tokenDraft.accessInfo,
+        ownerData: tokenDraft.ownerData,
+        commercialTerms: tokenDraft.commercialTerms,
+      });
+      // Set last saved to show the indicator after reload
+      if (tokenDraft.updatedAt) {
+        setLastSaved(new Date(tokenDraft.updatedAt));
+      }
+    }
+  }, [tokenDraft, invitationToken]);
 
   // Create draft mutation
   const createDraftMutation = useMutation<PropertySubmissionDraft, Error, Partial<WizardData> & { currentStep: number }>({

@@ -7466,6 +7466,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get draft linked to invitation token
+  app.get("/api/property-tokens/:token/draft", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const tokenRecord = await storage.getPropertySubmissionTokenByToken(token);
+      
+      if (!tokenRecord) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+      
+      // Check if token has a linked draft
+      if (!tokenRecord.propertyDraftId) {
+        return res.status(404).json({ message: "No hay borrador vinculado a este token" });
+      }
+      
+      // Get the draft
+      const draft = await storage.getPropertySubmissionDraft(tokenRecord.propertyDraftId);
+      
+      if (!draft) {
+        return res.status(404).json({ message: "Borrador no encontrado" });
+      }
+      
+      res.json(draft);
+    } catch (error: any) {
+      console.error("Error fetching draft for token:", error);
+      res.status(500).json({ message: error.message || "Error al obtener borrador" });
+    }
+  });
+
   // Property Agreement routes
   app.get("/api/property-agreements/:id", isAuthenticated, async (req: any, res) => {
     try {

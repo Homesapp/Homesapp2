@@ -50,7 +50,10 @@ Key features include:
     - Admin UI for token generation with copy-to-clipboard functionality
     - Management page at `/admin/property-invitations` to view all generated links with status tracking, copy functionality, and WhatsApp sharing
     - Bilingual support (Spanish/English) for all invitation-related UI
-    - **Bug fixes (2025-11-17)**:
+    - **Bug fixes & improvements (2025-11-17)**:
+      - **Shortened invitation tokens**: Changed from 64-char hex to professional 13-char format (PROP-XXXXXXXX) using uppercase alphanumeric without confusing characters (0/O, 1/I/l)
+      - **Fixed multiple draft creation bug**: Wizard now properly loads existing draft linked to token, preventing duplicate drafts on page reload/navigation
+      - **New endpoint**: Added `/api/property-tokens/:token/draft` to fetch draft linked to invitation token
       - Corrected token validation in public endpoints to use `getPropertySubmissionTokenByToken()` for proper token string lookup
       - Fixed draft property display: corrected field mapping in `/api/admin/properties` endpoint to read `bedrooms`, `bathrooms`, `area` from `draft.details` (not `draft.basicInfo`) and `price` from `draft.basicInfo.price` (not `rentPrice`)
       - Fixed draft approval: automatic owner user creation/lookup when approving invitation-based drafts (searches by email/phone, creates new propietario user if not found)
