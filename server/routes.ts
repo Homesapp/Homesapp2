@@ -7262,9 +7262,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: List property submission tokens
   app.get("/api/admin/property-tokens", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
     try {
-      const adminId = req.user.claims.sub;
-      const tokens = await storage.getPropertySubmissionTokens({ createdBy: adminId });
-      res.json(tokens);
+      // Get all tokens (admin can see all tokens, not just their own)
+      const tokens = await storage.getPropertySubmissionTokens({});
+      
+      // Add inviteUrl and status to each token
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const tokensWithUrls = tokens.map(token => {
+        const inviteUrl = `${baseUrl}/submit-property/${token.token}`;
+        const now = new Date();
+        const isExpired = now > token.expiresAt;
+        const status = token.used ? 'used' : (isExpired ? 'expired' : 'pending');
+        
+        return {
+          ...token,
+          inviteUrl,
+          status,
+        };
+      });
+      
+      res.json(tokensWithUrls);
     } catch (error: any) {
       console.error("Error fetching property submission tokens:", error);
       res.status(500).json({ message: error.message || "Error al obtener tokens" });
