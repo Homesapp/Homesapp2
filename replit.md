@@ -76,14 +76,26 @@ Key features include:
       - Fixed image gallery: now displays ALL images (primary + secondary) with duplicate removal
       - Added individual image download buttons: each photo in the gallery has a download button that appears on hover
       - Google Maps link: already displayed in multimedia section when available
-*   **Sidebar Menu Visibility Control**: Admin configuration system allowing master and admin users to control sidebar menu item visibility for specific roles. Features include:
-    - Database-driven visibility configuration per role and menu item
-    - Admin UI at `/admin/sidebar-config` with role-based tabs
+*   **Sidebar Menu Visibility Control**: Admin configuration system allowing master and admin users to control sidebar menu item visibility for specific roles and individual users. Features include:
+    - Database-driven visibility configuration per role and menu item (`sidebar_menu_visibility` table)
+    - Per-user override system (`sidebar_menu_visibility_user` table) with user-specific configuration taking precedence over role defaults
+    - Admin UI at `/admin/sidebar-config` with dual-mode interface:
+      - "Por Rol" tab: Configure visibility for entire roles
+      - "Por Usuario" tab: User-specific overrides with role-based user filtering and individual toggle controls
     - Real-time visibility toggling with automatic persistence
-    - AppSidebar integration with react-query for efficient configuration fetching
+    - AppSidebar integration with react-query for efficient configuration fetching and hierarchical merging (user overrides > role defaults)
     - Master and admin roles always see all menu items regardless of configuration
     - Granular control for roles: cliente, propietario, vendedor, conserje, abogado, contador, admin jr
     - Bilingual support (Spanish/English) for all UI elements
+    - Reset functionality to clear user-specific overrides and restore role defaults
+*   **Auto-Logout Configuration**: System-wide configurable auto-logout timeout for enhanced security. Features include:
+    - Centralized configuration storage via `system_settings` table (key-value pattern for flexible system settings)
+    - Admin UI at `/admin/auto-logout-config` for configuring inactivity timeout (1-1440 minutes)
+    - Real-time timeout updates apply to all users in their next session
+    - `useAutoLogout` hook dynamically fetches timeout from API with 10-minute cache and 5-minute fallback
+    - Public API endpoint (`/api/system-settings/auto-logout-timeout`) for authenticated users to fetch current timeout
+    - Admin-only endpoints for viewing and updating system settings with audit logging
+    - Recommended values provided in UI: 5min (max security), 15min (balanced), 30min (low risk), 60min (extended work)
 
 ## External Dependencies
 *   Google Calendar API

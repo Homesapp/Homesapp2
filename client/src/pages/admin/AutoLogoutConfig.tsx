@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -24,24 +24,23 @@ export default function AutoLogoutConfig() {
 
   const { data: setting, isLoading } = useQuery<SystemSetting>({
     queryKey: ["/api/admin/system-settings/auto_logout_timeout_ms"],
-    onSuccess: (data) => {
-      if (data?.settingValue) {
-        const minutes = Math.floor(parseInt(data.settingValue) / 60000);
-        setTimeoutMinutes(minutes);
-      }
-    },
   });
+
+  // Sync local state with query data
+  useEffect(() => {
+    if (setting?.settingValue) {
+      const minutes = Math.floor(parseInt(setting.settingValue) / 60000);
+      setTimeoutMinutes(minutes);
+    }
+  }, [setting]);
 
   const updateMutation = useMutation({
     mutationFn: async (minutes: number) => {
       const milliseconds = minutes * 60000;
       return await apiRequest(
+        "PUT",
         `/api/admin/system-settings/auto_logout_timeout_ms`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ value: milliseconds.toString() }),
-        }
+        { value: milliseconds.toString() }
       );
     },
     onSuccess: () => {

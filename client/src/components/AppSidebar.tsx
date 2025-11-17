@@ -96,13 +96,18 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
   const { state } = useSidebar();
 
   // Fetch sidebar visibility configurations for the current role
-  const { data: roleVisibilityConfig } = useQuery<Array<{menuItemKey: string, visible: boolean}>>({
+  const { data: roleVisibilityConfig } = useQuery<
+    Array<{menuItemKey: string, visible: boolean}>,
+    Error,
+    Record<string, boolean>,
+    any[]
+  >({
     queryKey: ['/api/admin/sidebar-config', userRole],
     enabled: !!userRole && userRole !== "master" && userRole !== "admin",
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     select: (data) => {
       const config: Record<string, boolean> = {};
-      data?.forEach((item: any) => {
+      data?.forEach((item) => {
         config[item.menuItemKey] = item.visible;
       });
       return config;
@@ -110,13 +115,18 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
   });
 
   // Fetch sidebar visibility configurations for the current user (overrides role config)
-  const { data: userVisibilityConfig } = useQuery<Array<{menuItemKey: string, visible: boolean}>>({
+  const { data: userVisibilityConfig } = useQuery<
+    Array<{menuItemKey: string, visible: boolean}>,
+    Error,
+    Record<string, boolean>,
+    any[]
+  >({
     queryKey: ['/api/admin/sidebar-config-user', userId],
     enabled: !!userId && !!userRole && userRole !== "master" && userRole !== "admin",
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     select: (data) => {
       const config: Record<string, boolean> = {};
-      data?.forEach((item: any) => {
+      data?.forEach((item) => {
         config[item.menuItemKey] = item.visible;
       });
       return config;
