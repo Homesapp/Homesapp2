@@ -4712,6 +4712,64 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // CRITICAL: Handle owner user creation for drafts submitted via invitation token
+    // If draft doesn't have userId (created without login), create/find owner user
+    let ownerUserId = draft.userId;
+    
+    if (!ownerUserId) {
+      const ownerData = draft.ownerData as any;
+      
+      if (!ownerData || !ownerData.ownerPhone) {
+        throw new Error("No se puede aprobar: falta información del propietario (teléfono requerido)");
+      }
+      
+      // Try to find existing user by phone or email
+      let existingOwner = null;
+      
+      if (ownerData.ownerEmail) {
+        const emailMatch = await db.select().from(users)
+          .where(eq(users.email, ownerData.ownerEmail))
+          .limit(1);
+        if (emailMatch.length > 0) {
+          existingOwner = emailMatch[0];
+        }
+      }
+      
+      if (!existingOwner && ownerData.ownerPhone) {
+        const phoneMatch = await db.select().from(users)
+          .where(eq(users.phone, ownerData.ownerPhone))
+          .limit(1);
+        if (phoneMatch.length > 0) {
+          existingOwner = phoneMatch[0];
+        }
+      }
+      
+      if (existingOwner) {
+        // Use existing owner
+        ownerUserId = existingOwner.id;
+      } else {
+        // Create new owner user
+        const newOwner = await this.createUser({
+          email: ownerData.ownerEmail || `owner_${Date.now()}@temp.homesapp.com`,
+          username: ownerData.ownerPhone || `owner_${Date.now()}`,
+          password: Math.random().toString(36).slice(-12), // Random temp password
+          firstName: ownerData.ownerFirstName || "Propietario",
+          lastName: ownerData.ownerLastName || "Sin Apellido",
+          phone: ownerData.ownerPhone,
+          role: "propietario",
+          approved: false, // Admin will approve later
+          active: true,
+        });
+        ownerUserId = newOwner.id;
+      }
+      
+      // Update draft with owner user ID
+      await this.updatePropertySubmissionDraft(id, { userId: ownerUserId });
+      
+      // Update draft object for transformer
+      draft.userId = ownerUserId;
+    }
+    
     // Normalize termsAcceptance for rental lifecycle integration
     let normalizedTermsAcceptance = draft.termsAcceptance;
     if (draft.termsAcceptance) {
