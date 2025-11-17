@@ -584,27 +584,34 @@ export default function AdminPropertyManagement() {
                             {detailProperty && (
                               <div className="space-y-6">
                                 {/* Image Gallery */}
-                                {detailProperty.primaryImages && detailProperty.primaryImages.length > 0 && (
-                                  <div className="space-y-3">
-                                    <img
-                                      src={detailProperty.primaryImages[0]}
-                                      alt={detailProperty.title}
-                                      className="w-full h-80 object-cover rounded-lg border"
-                                    />
-                                    {detailProperty.primaryImages.length > 1 && (
-                                      <div className="grid grid-cols-5 gap-2">
-                                        {detailProperty.primaryImages.slice(1).map((img, idx) => (
-                                          <img
-                                            key={idx}
-                                            src={img}
-                                            alt={`${detailProperty.title} - ${idx + 2}`}
-                                            className="w-full h-20 object-cover rounded-md border"
-                                          />
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                {(() => {
+                                  const allImages = [
+                                    ...(detailProperty.primaryImages || []),
+                                    ...(detailProperty.images || [])
+                                  ].filter((img, idx, self) => self.indexOf(img) === idx); // Remove duplicates
+                                  
+                                  return allImages.length > 0 && (
+                                    <div className="space-y-3">
+                                      <img
+                                        src={allImages[0]}
+                                        alt={detailProperty.title}
+                                        className="w-full h-80 object-cover rounded-lg border"
+                                      />
+                                      {allImages.length > 1 && (
+                                        <div className="grid grid-cols-5 gap-2">
+                                          {allImages.slice(1).map((img, idx) => (
+                                            <img
+                                              key={idx}
+                                              src={img}
+                                              alt={`${detailProperty.title} - ${idx + 2}`}
+                                              className="w-full h-20 object-cover rounded-md border"
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
 
                                 {/* Status Badges */}
                                 <div className="flex flex-wrap gap-2">
@@ -727,10 +734,10 @@ export default function AdminPropertyManagement() {
                                   </Card>
                                 )}
 
-                                {/* Amenities */}
+                                {/* Property Amenities */}
                                 <Card>
                                   <CardHeader>
-                                    <CardTitle className="text-base">Amenidades</CardTitle>
+                                    <CardTitle className="text-base">Amenidades de la Propiedad</CardTitle>
                                   </CardHeader>
                                   <CardContent>
                                     {detailProperty.amenities && detailProperty.amenities.length > 0 ? (
@@ -747,6 +754,25 @@ export default function AdminPropertyManagement() {
                                     )}
                                   </CardContent>
                                 </Card>
+
+                                {/* Condominium Amenities */}
+                                {(detailProperty as any).condominiumAmenities && (detailProperty as any).condominiumAmenities.length > 0 && (
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-base">Amenidades del Condominio</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="flex flex-wrap gap-2">
+                                        {(detailProperty as any).condominiumAmenities.map((amenity: string, idx: number) => (
+                                          <Badge key={idx} variant="secondary" className="gap-1">
+                                            <Building2 className="w-3 h-3" />
+                                            {amenity}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                )}
 
                                 {/* Included Services */}
                                 <Card>
@@ -777,6 +803,51 @@ export default function AdminPropertyManagement() {
                                     )}
                                   </CardContent>
                                 </Card>
+
+                                {/* Not Included Services with Costs */}
+                                {(detailProperty as any).notIncludedServices && Object.keys((detailProperty as any).notIncludedServices).length > 0 && (
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-base">Servicios NO Incluidos</CardTitle>
+                                      <CardDescription>Costo aproximado mensual</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {Object.entries((detailProperty as any).notIncludedServices).map(([key, info]: [string, any]) => (
+                                          <div key={key} className="border rounded-lg p-3">
+                                            <div className="flex items-start justify-between mb-2">
+                                              <div className="flex items-center gap-2">
+                                                <XCircle className="w-4 h-4 text-destructive" />
+                                                <span className="font-medium">
+                                                  {key === 'water' ? 'Agua' :
+                                                   key === 'electricity' ? 'Luz' :
+                                                   key === 'internet' ? 'Internet' :
+                                                   key === 'gas' ? 'Gas' : key}
+                                                </span>
+                                              </div>
+                                              <Badge variant="outline" className="gap-1">
+                                                <DollarSign className="w-3 h-3" />
+                                                {info.cost}
+                                              </Badge>
+                                            </div>
+                                            {info.provider && (
+                                              <p className="text-xs text-muted-foreground">
+                                                Proveedor: {info.provider}
+                                              </p>
+                                            )}
+                                            {info.billingCycle && (
+                                              <p className="text-xs text-muted-foreground">
+                                                Ciclo: {info.billingCycle === 'monthly' ? 'Mensual' : 
+                                                        info.billingCycle === 'bimonthly' ? 'Bimestral' : 
+                                                        info.billingCycle}
+                                              </p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                )}
 
                                 {/* Lease Durations */}
                                 {detailProperty.acceptedLeaseDurations && detailProperty.acceptedLeaseDurations.length > 0 && (

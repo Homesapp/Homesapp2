@@ -6370,15 +6370,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const amenityIds = draft.details?.propertyAmenities || [];
           const amenityNames = amenityIds.map((id: string) => amenityMap.get(id) || id).filter((name: string) => name);
           
-          // Transform services structure: servicesInfo.basicServices -> includedServices
+          // Expand condominium amenity IDs to names
+          const condoAmenityIds = draft.details?.condominiumAmenities || [];
+          const condoAmenityNames = condoAmenityIds.map((id: string) => amenityMap.get(id) || id).filter((name: string) => name);
+          
+          // Transform services structure: servicesInfo.basicServices -> includedServices and notIncludedServices
           const basicServices = draft.servicesInfo?.basicServices || {};
           const includedServices: any = {};
+          const notIncludedServices: any = {};
           
-          // Map basicServices structure to includedServices
-          if (basicServices.water?.included) includedServices.water = true;
-          if (basicServices.electricity?.included) includedServices.electricity = true;
-          if (basicServices.internet?.included) includedServices.internet = true;
-          if (basicServices.gas?.included) includedServices.gas = true;
+          // Map basicServices structure to includedServices and notIncludedServices
+          const serviceKeys = ['water', 'electricity', 'internet', 'gas'];
+          for (const key of serviceKeys) {
+            if (basicServices[key]?.included) {
+              includedServices[key] = true;
+            } else if (basicServices[key]?.cost) {
+              // Service is not included but has cost information
+              notIncludedServices[key] = {
+                cost: basicServices[key].cost,
+                provider: basicServices[key].provider || null,
+                billingCycle: basicServices[key].billingCycle || null,
+              };
+            }
+          }
           
           return {
             id: `draft-${draft.id}`,
@@ -6400,11 +6414,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unitNumber: draft.locationInfo?.unitNumber || "",
             googleMapsUrl: draft.locationInfo?.googleMapsUrl || "",
             amenities: amenityNames,
+            condominiumAmenities: condoAmenityNames,
             images: draft.media?.images || [],
             primaryImages: draft.media?.primaryImages || [],
             videos: draft.media?.videos || [],
             virtualTourUrl: draft.media?.virtualTourUrl || "",
             includedServices: includedServices,
+            notIncludedServices: notIncludedServices,
             acceptedLeaseDurations: draft.servicesInfo?.acceptedLeaseDurations || [],
             accessInfo: draft.accessInfo || null,
             ownerId: draft.userId,
