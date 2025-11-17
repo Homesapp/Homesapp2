@@ -85,7 +85,7 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
             <div>
               <h3 className="text-lg font-semibold mb-2">{t.step1.operationType}</h3>
               <p className="text-sm text-muted-foreground">
-                {t.step1.operationTypeDescription}
+                {t.step1.operationDesc}
               </p>
             </div>
 
@@ -179,7 +179,7 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t.step1.titleLabel} *</FormLabel>
+                  <FormLabel>{t.step1.propertyTitle} *</FormLabel>
                   <FormControl>
                     <Input
                       placeholder={t.step1.titlePlaceholder}
