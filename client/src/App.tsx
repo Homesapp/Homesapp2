@@ -73,6 +73,7 @@ import CondominiumDetails from "@/pages/CondominiumDetails";
 import AdminSuggestions from "@/pages/AdminSuggestions";
 import AdminChatbotConfig from "@/pages/AdminChatbotConfig";
 import AdminSidebarConfig from "@/pages/admin/SidebarConfig";
+import PropertyInvitations from "@/pages/admin/PropertyInvitations";
 import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
 import OwnerAppointments from "@/pages/OwnerAppointments";
 import OwnerOffers from "@/pages/OwnerOffers";
@@ -288,6 +289,7 @@ function AuthenticatedApp() {
               <Route path="/admin/appointments" component={AdminAppointmentManagement} />
               <Route path="/admin/sellers" component={AdminSellerManagement} />
               <Route path="/admin/properties" component={AdminPropertyManagement} />
+              <Route path="/admin/property-invitations" component={PropertyInvitations} />
               <Route path="/admin/import-contacts" component={AdminContactImport} />
               <Route path="/admin/tasks" component={AdminTaskManagement} />
               <Route path="/admin/integrations" component={AdminIntegrationsControl} />
