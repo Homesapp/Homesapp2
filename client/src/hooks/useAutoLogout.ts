@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds (fallback)
 
 interface UseAutoLogoutOptions {
   onLogout?: () => void;
@@ -10,6 +11,15 @@ interface UseAutoLogoutOptions {
 export function useAutoLogout(options: UseAutoLogoutOptions = {}) {
   const { onLogout, enabled = true } = options;
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch auto-logout timeout from API
+  const { data: timeoutData } = useQuery<{ timeout: number }>({
+    queryKey: ["/api/system-settings/auto-logout-timeout"],
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    retry: 1,
+  });
+
+  const INACTIVITY_TIMEOUT = timeoutData?.timeout ?? DEFAULT_TIMEOUT;
 
   const logout = useCallback(() => {
     // Clear any existing timeout
@@ -37,7 +47,7 @@ export function useAutoLogout(options: UseAutoLogoutOptions = {}) {
         logout();
       }, INACTIVITY_TIMEOUT);
     }
-  }, [logout, enabled]);
+  }, [logout, enabled, INACTIVITY_TIMEOUT]);
 
   useEffect(() => {
     // Only set up listeners if enabled
