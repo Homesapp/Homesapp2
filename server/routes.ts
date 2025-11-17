@@ -7321,7 +7321,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Generate a cryptographically secure random token
   function generateSecureToken(): string {
-    return crypto.randomBytes(32).toString('hex'); // 64 character hex string
+    // Generate professional short code: PROP-XXXXXXXX (13 characters)
+    // Using uppercase alphanumeric (excluding confusing chars: 0, O, I, 1, l)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      const randomIndex = Math.floor(Math.random() * chars.length);
+      code += chars[randomIndex];
+    }
+    return `PROP-${code}`;
   }
 
   // Admin: Create property submission token

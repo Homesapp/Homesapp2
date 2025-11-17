@@ -2860,7 +2860,7 @@ export type PropertySubmissionDraft = typeof propertySubmissionDrafts.$inferSele
 // Property Submission Tokens - for inviting property owners without requiring account creation
 export const propertySubmissionTokens = pgTable("property_submission_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  token: varchar("token", { length: 64 }).notNull().unique(), // Unique token for the link
+  token: varchar("token", { length: 20 }).notNull().unique(), // Short professional code like PROP-A1B2C3D4
   createdBy: varchar("created_by").notNull().references(() => users.id), // Admin who created the token
   expiresAt: timestamp("expires_at").notNull(), // Token expiration (24 hours from creation)
   used: boolean("used").notNull().default(false), // Whether token has been used
