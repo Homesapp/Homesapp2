@@ -3752,6 +3752,27 @@ export const insertTenantScreeningSchema = createInsertSchema(tenantScreenings).
 export type InsertTenantScreening = z.infer<typeof insertTenantScreeningSchema>;
 export type TenantScreening = typeof tenantScreenings.$inferSelect;
 
+// Sidebar Menu Visibility Configuration
+export const sidebarMenuVisibility = pgTable("sidebar_menu_visibility", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  role: userRoleEnum("role").notNull(),
+  menuItemKey: varchar("menu_item_key", { length: 255 }).notNull(),
+  visible: boolean("visible").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  unique("unique_role_menu_item").on(table.role, table.menuItemKey),
+]);
+
+export const insertSidebarMenuVisibilitySchema = createInsertSchema(sidebarMenuVisibility).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSidebarMenuVisibility = z.infer<typeof insertSidebarMenuVisibilitySchema>;
+export type SidebarMenuVisibility = typeof sidebarMenuVisibility.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   properties: many(properties, { relationName: "owner" }),
