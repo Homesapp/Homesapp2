@@ -7471,6 +7471,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Delete property submission token
+  app.delete("/api/admin/property-tokens/:id", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify token exists
+      const existingToken = await storage.getPropertySubmissionToken(id);
+      if (!existingToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+      
+      // Delete the token
+      await storage.deletePropertySubmissionToken(id);
+      
+      await createAuditLog(
+        req,
+        "delete",
+        "property_submission_token",
+        id,
+        `Token de invitación eliminado${existingToken.inviteeName ? ` (${existingToken.inviteeName})` : ''}`
+      );
+      
+      res.json({ message: "Token eliminado exitosamente" });
+    } catch (error: any) {
+      console.error("Error deleting property submission token:", error);
+      res.status(500).json({ message: error.message || "Error al eliminar el token" });
+    }
+  });
+
+  // Admin: Regenerate property submission token
+  app.post("/api/admin/property-tokens/:id/regenerate", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.user.claims.sub;
+      
+      // Get existing token
+      const existingToken = await storage.getPropertySubmissionToken(id);
+      if (!existingToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+      
+      // CRITICAL: Ensure admin exists in users table for foreign key constraint
+      try {
+        await storage.upsertUser({
+          id: adminId,
+          email: req.user.claims.email,
+          firstName: req.user.claims.first_name || "Admin",
+          lastName: req.user.claims.last_name || "User",
+          role: "admin",
+        });
+      } catch (upsertError) {
+        console.error("Error upserting admin to users table:", upsertError);
+        // Continue - the admin might already exist
+      }
+      
+      // Delete old token
+      await storage.deletePropertySubmissionToken(id);
+      
+      // Generate new secure token
+      const token = generatePropertyToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+      
+      // Create new token with same info
+      const newTokenRecord = await storage.createPropertySubmissionToken({
+        token,
+        createdBy: adminId,
+        expiresAt,
+        inviteeEmail: existingToken.inviteeEmail,
+        inviteePhone: existingToken.inviteePhone,
+        inviteeName: existingToken.inviteeName,
+        notes: existingToken.notes,
+      });
+      
+      await createAuditLog(
+        req,
+        "update",
+        "property_submission_token",
+        newTokenRecord.id,
+        `Token de invitación regenerado${existingToken.inviteeName ? ` para ${existingToken.inviteeName}` : ''}`
+      );
+      
+      // Return new token with full URL
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const inviteUrl = `${baseUrl}/submit-property/${token}`;
+      
+      res.status(201).json({
+        ...newTokenRecord,
+        inviteUrl,
+      });
+    } catch (error: any) {
+      console.error("Error regenerating property submission token:", error);
+      res.status(500).json({ message: error.message || "Error al regenerar el token" });
+    }
+  });
+
   // Public: Validate property submission token
   app.get("/api/property-tokens/:token/validate", async (req, res) => {
     try {
