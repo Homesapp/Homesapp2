@@ -10,35 +10,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { SuggestColonyDialog } from "@/components/SuggestColonyDialog";
 import { SuggestCondominiumDialog } from "@/components/SuggestCondominiumDialog";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { getTranslation, Language } from "@/lib/wizardTranslations";
 import type { Colony, Condominium } from "@shared/schema";
 
-const locationSchema = z.object({
-  address: z.string().min(5, "La dirección debe tener al menos 5 caracteres"),
-  city: z.string().min(2, "La ciudad es requerida"),
-  state: z.string().min(2, "El estado es requerido"),
-  zipCode: z.string().min(4, "El código postal debe tener al menos 4 caracteres"),
-  colonyId: z.string().optional(),
-  condominiumId: z.string().optional(),
-  unitNumber: z.string().optional(),
-  googleMapsUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal("")),
-  latitude: z.string().optional(),
-  longitude: z.string().optional(),
-});
-
-type LocationForm = z.infer<typeof locationSchema>;
+const getLocationSchema = (language: Language) => {
+  const t = getTranslation(language);
+  return z.object({
+    address: z.string().min(5, t.errors.addressMin),
+    city: z.string().min(2, t.errors.cityMin),
+    state: z.string().min(2, t.errors.stateMin),
+    zipCode: z.string().min(4, t.errors.zipCodeMin),
+    colonyId: z.string().optional(),
+    condominiumId: z.string().optional(),
+    unitNumber: z.string().optional(),
+    googleMapsUrl: z.string().url(t.errors.googleMapsValidUrl).optional().or(z.literal("")),
+    latitude: z.string().optional(),
+    longitude: z.string().optional(),
+  });
+};
 
 type Step3Props = {
   data: any;
   onUpdate: (data: any) => void;
   onNext: (stepData?: any) => void;
   onPrevious: () => void;
+  language?: Language;
 };
 
-export default function Step3Location({ data, onUpdate, onNext, onPrevious }: Step3Props) {
-  const { t } = useLanguage();
+export default function Step3Location({ data, onUpdate, onNext, onPrevious, language = "es" }: Step3Props) {
+  const t = getTranslation(language);
+  const locationSchema = getLocationSchema(language);
+  type LocationForm = z.infer<typeof locationSchema>;
+  
   const { toast } = useToast();
   const [showColonyDialog, setShowColonyDialog] = useState(false);
   const [showCondoDialog, setShowCondoDialog] = useState(false);
@@ -90,8 +95,8 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
         // Crear sugerencia automáticamente sin bloquear el flujo
         await createCondoSuggestion.mutateAsync(newCondoName.trim());
         toast({
-          title: "Sugerencia enviada",
-          description: `El condominio "${newCondoName}" ha sido enviado para aprobación del administrador.`,
+          title: t.notifications.suggestionSentTitle,
+          description: `${t.step2.condominium} "${newCondoName}" ${t.notifications.suggestionSentDesc}`,
         });
         // Limpiar el ID porque no está aprobado aún
         finalCondoId = undefined;
@@ -99,8 +104,8 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
         // Si falla, mostrar error informativo pero permitir continuar
         console.error("Error creating condo suggestion:", error);
         toast({
-          title: "No se pudo enviar la sugerencia",
-          description: `El condominio "${newCondoName}" no pudo ser sugerido. Puedes continuar de todos modos.`,
+          title: t.notifications.suggestionErrorTitle,
+          description: `${t.step2.condominium} "${newCondoName}" ${t.notifications.suggestionErrorDesc}`,
           variant: "destructive",
         });
         finalCondoId = undefined;
@@ -128,10 +133,10 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2" data-testid="heading-step3-title">
-          Ubicación
+          {t.step2.title}
         </h2>
         <p className="text-muted-foreground" data-testid="text-step3-description">
-          Indica dónde se encuentra la propiedad
+          {t.step2.subtitle}
         </p>
       </div>
 
@@ -142,10 +147,10 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
             name="address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Dirección</FormLabel>
+                <FormLabel>{t.step2.address}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Ej: Calle Principal 123"
+                    placeholder={t.step2.addressPlaceholder}
                     {...field}
                     data-testid="input-address"
                   />
@@ -161,10 +166,10 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
               name="city"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ciudad</FormLabel>
+                  <FormLabel>{t.step2.city}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ej: Ciudad de México"
+                      placeholder={t.step2.cityPlaceholder}
                       {...field}
                       data-testid="input-city"
                     />
@@ -179,10 +184,10 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
               name="state"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Estado</FormLabel>
+                  <FormLabel>{t.step2.state}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ej: CDMX"
+                      placeholder={t.step2.statePlaceholder}
                       {...field}
                       data-testid="input-state"
                     />
@@ -198,10 +203,10 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
             name="zipCode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Código Postal</FormLabel>
+                <FormLabel>{t.step2.zipCode}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Ej: 12345"
+                    placeholder={t.step2.zipCodePlaceholder}
                     {...field}
                     data-testid="input-zipcode"
                   />
@@ -216,7 +221,7 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
             name="colonyId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("public.filterColony")} (Opcional)</FormLabel>
+                <FormLabel>{t.step2.colony} ({t.step1.customListingTitleDescription.split(',')[0]})</FormLabel>
                 <div className="flex gap-2">
                   <Select
                     value={field.value || undefined}
@@ -224,7 +229,7 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-colony">
-                        <SelectValue placeholder={t("public.filterColonyPlaceholder")} />
+                        <SelectValue placeholder={t.step2.colonyPlaceholder} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -250,7 +255,7 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
                   </Button>
                 </div>
                 <FormDescription>
-                  {t("suggestion.notFound")} {t("suggestion.suggestButton")}
+                  {t.step2.suggestDialogDescription}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -262,7 +267,7 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
             name="condominiumId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("public.filterCondo")} (Opcional)</FormLabel>
+                <FormLabel>{t.step2.condominium} ({t.step1.customListingTitleDescription.split(',')[0]})</FormLabel>
                 <Select
                   value={field.value || undefined}
                   onValueChange={(value) => {
@@ -275,7 +280,7 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
                 >
                   <FormControl>
                     <SelectTrigger data-testid="select-condominium">
-                      <SelectValue placeholder={t("public.filterCondoPlaceholder")} />
+                      <SelectValue placeholder={t.step2.condominiumPlaceholder} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -289,12 +294,12 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
                       </SelectItem>
                     ))}
                     <SelectItem value="NEW_CONDO" data-testid="option-new-condo">
-                      ✏️ Otro (escribir nombre nuevo)
+                      ✏️ {t.step2.addNewCondominium}
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Selecciona un condominio existente o escribe uno nuevo
+                  {t.step2.selectCondominium}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -305,16 +310,16 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
           {showNewCondoInput && (
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Nombre del Nuevo Condominio
+                {t.step2.newCondoName}
               </label>
               <Input
                 value={newCondoName}
                 onChange={(e) => setNewCondoName(e.target.value)}
-                placeholder="Ej: Residencial Las Palmas"
+                placeholder={t.step2.newCondominiumPlaceholder}
                 data-testid="input-new-condo-name"
               />
               <p className="text-sm text-muted-foreground">
-                Este condominio será enviado para aprobación del administrador
+                {t.step2.suggestDialogDescription}
               </p>
             </div>
           )}
@@ -324,16 +329,16 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
             name="unitNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Número de Unidad (Opcional)</FormLabel>
+                <FormLabel>{t.step2.unitNumber} ({t.step1.customListingTitleDescription.split(',')[0]})</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Ej: 101, A-5..."
+                    placeholder={t.step2.unitNumberPlaceholder}
                     {...field}
                     data-testid="input-unit-number"
                   />
                 </FormControl>
                 <FormDescription>
-                  Si la propiedad está en un condominio, especifica el número de unidad
+                  {t.step2.unitNumberDescription}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -345,14 +350,17 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
             name="googleMapsUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Link de Google Maps (Opcional)</FormLabel>
+                <FormLabel>{t.step2.googleMapsUrl} ({t.step1.customListingTitleDescription.split(',')[0]})</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="https://maps.google.com/..."
+                    placeholder={t.step2.googleMapsPlaceholder}
                     {...field}
                     data-testid="input-google-maps-url"
                   />
                 </FormControl>
+                <FormDescription>
+                  {t.step2.googleMapsDesc}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -366,10 +374,10 @@ export default function Step3Location({ data, onUpdate, onNext, onPrevious }: St
               data-testid="button-previous-step3"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              Anterior
+              {t.previous}
             </Button>
             <Button type="submit" data-testid="button-next-step3">
-              Continuar
+              {t.next}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
