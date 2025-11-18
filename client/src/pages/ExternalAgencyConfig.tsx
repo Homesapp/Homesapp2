@@ -21,18 +21,23 @@ export default function ExternalAgencyConfig() {
   const { language } = useLanguage();
   const { toast } = useToast();
 
-  const { data: agency, isLoading } = useQuery<ExternalAgency>({
+  const { data: agencies, isLoading } = useQuery<ExternalAgency[]>({
     queryKey: ['/api/external-agencies'],
   });
+
+  // Get the first agency (external_agency_admin users should only have one)
+  const agency = agencies?.[0];
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: agency?.name || "",
-      email: agency?.email || "",
-      phone: agency?.phone || "",
-      address: agency?.address || "",
-      contactPerson: agency?.contactPerson || "",
+      description: agency?.description || "",
+      contactName: agency?.contactName || "",
+      contactEmail: agency?.contactEmail || "",
+      contactPhone: agency?.contactPhone || "",
+      agencyLogoUrl: agency?.agencyLogoUrl || "",
+      isActive: agency?.isActive ?? true,
     },
   });
 
@@ -40,10 +45,12 @@ export default function ExternalAgencyConfig() {
   if (agency && !form.formState.isDirty) {
     form.reset({
       name: agency.name,
-      email: agency.email || "",
-      phone: agency.phone || "",
-      address: agency.address || "",
-      contactPerson: agency.contactPerson || "",
+      description: agency.description || "",
+      contactName: agency.contactName || "",
+      contactEmail: agency.contactEmail || "",
+      contactPhone: agency.contactPhone || "",
+      agencyLogoUrl: agency.agencyLogoUrl || "",
+      isActive: agency.isActive,
     });
   }
 
@@ -133,16 +140,18 @@ export default function ExternalAgencyConfig() {
 
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
+                      <FormLabel>{language === "es" ? "Descripción" : "Description"}</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Textarea 
                           {...field} 
-                          type="email"
-                          data-testid="input-agency-email"
-                          placeholder={language === "es" ? "contacto@miagencia.com" : "contact@myagency.com"}
+                          data-testid="input-agency-description"
+                          placeholder={language === "es" 
+                            ? "Descripción breve de tu agencia inmobiliaria" 
+                            : "Brief description of your real estate agency"}
+                          rows={3}
                         />
                       </FormControl>
                       <FormMessage />
@@ -152,32 +161,14 @@ export default function ExternalAgencyConfig() {
 
                 <FormField
                   control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          data-testid="input-agency-phone"
-                          placeholder="+52 984 123 4567"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="contactPerson"
+                  name="contactName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{language === "es" ? "Persona de Contacto" : "Contact Person"}</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
-                          data-testid="input-contact-person"
+                          data-testid="input-contact-name"
                           placeholder={language === "es" ? "Juan Pérez" : "John Doe"}
                         />
                       </FormControl>
@@ -188,18 +179,34 @@ export default function ExternalAgencyConfig() {
 
                 <FormField
                   control={form.control}
-                  name="address"
+                  name="contactEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Dirección" : "Address"}</FormLabel>
+                      <FormLabel>{language === "es" ? "Email de Contacto" : "Contact Email"}</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Input 
                           {...field} 
-                          data-testid="input-agency-address"
-                          placeholder={language === "es" 
-                            ? "Av. Tulum #123, Centro, Tulum, Q.Roo" 
-                            : "123 Tulum Ave, Downtown, Tulum, Q.Roo"}
-                          rows={3}
+                          type="email"
+                          data-testid="input-contact-email"
+                          placeholder={language === "es" ? "contacto@miagencia.com" : "contact@myagency.com"}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contactPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Teléfono de Contacto" : "Contact Phone"}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          data-testid="input-contact-phone"
+                          placeholder="+52 984 123 4567"
                         />
                       </FormControl>
                       <FormMessage />

@@ -19771,6 +19771,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Self-registration endpoint for external agencies (available to all authenticated users)
+  app.post("/api/external-agencies/register", isAuthenticated, async (req: any, res) => {
+    try {
+      // Check if user already has an agency
+      const existingAgencies = await storage.getExternalAgenciesByCreator(req.user.id);
+      if (existingAgencies && existingAgencies.length > 0) {
+        return res.status(400).json({ message: "User already has an external agency" });
+      }
+
+      const validatedData = insertExternalAgencySchema.parse(req.body);
+      const agency = await storage.createExternalAgency({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      // Update user role to external_agency_admin
+      await storage.updateUserRole(req.user.id, "external_agency_admin");
+      
+      await createAuditLog(req, "create", "external_agency", agency.id, "Self-registered external agency");
+      res.status(201).json(agency);
+    } catch (error: any) {
+      console.error("Error registering external agency:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
   app.patch("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
     try {
       const { id } = req.params;

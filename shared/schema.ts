@@ -4703,6 +4703,10 @@ export const insertExternalAgencySchema = createInsertSchema(externalAgencies).o
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  isActive: z.boolean().optional().default(true),
+  agencyLogoUrl: z.string().optional(),
+  createdBy: z.string().optional(),
 });
 
 export type InsertExternalAgency = z.infer<typeof insertExternalAgencySchema>;
