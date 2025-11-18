@@ -6,24 +6,31 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getTranslation, Language } from "@/lib/wizardTranslations";
 
-const detailsSchema = z.object({
-  bedrooms: z.coerce.number().int().min(0, "Las habitaciones deben ser un número positivo"),
-  bathrooms: z.coerce.number().min(0, "Los baños deben ser un número positivo"),
-  area: z.coerce.number().min(1, "El área debe ser mayor a 0"),
-  amenities: z.string().optional(),
-});
-
-type DetailsForm = z.infer<typeof detailsSchema>;
+const getDetailsSchema = (language: Language) => {
+  const t = getTranslation(language);
+  return z.object({
+    bedrooms: z.coerce.number().int().min(0, t.errors.bedroomsPositive),
+    bathrooms: z.coerce.number().min(0, t.errors.bathroomsPositive),
+    area: z.coerce.number().min(1, t.errors.areaGreaterThanZero),
+    amenities: z.string().optional(),
+  });
+};
 
 type Step4Props = {
   data: any;
   onUpdate: (data: any) => void;
   onNext: (stepData?: any) => void;
   onPrevious: () => void;
+  language?: Language;
 };
 
-export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Step4Props) {
+export default function Step4Details({ data, onUpdate, onNext, onPrevious, language = "es" }: Step4Props) {
+  const t = getTranslation(language);
+  const detailsSchema = getDetailsSchema(language);
+  type DetailsForm = z.infer<typeof detailsSchema>;
+
   const form = useForm<DetailsForm>({
     resolver: zodResolver(detailsSchema),
     defaultValues: {
@@ -42,10 +49,10 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2" data-testid="heading-step4-title">
-          Detalles de la Propiedad
+          {t.step2.characteristics}
         </h2>
         <p className="text-muted-foreground" data-testid="text-step4-description">
-          Proporciona las características físicas de la propiedad
+          {t.step2.subtitle}
         </p>
       </div>
 
@@ -57,13 +64,13 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
               name="bedrooms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Habitaciones</FormLabel>
+                  <FormLabel>{t.step2.bedrooms}</FormLabel>
                   <FormControl>
                     <Input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder="Ej: 3"
+                      placeholder={t.step2.bedroomsPlaceholder}
                       {...field}
                       data-testid="input-bedrooms"
                     />
@@ -78,13 +85,13 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
               name="bathrooms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Baños</FormLabel>
+                  <FormLabel>{t.step2.bathrooms}</FormLabel>
                   <FormControl>
                     <Input
                       type="text"
                       inputMode="decimal"
                       pattern="[0-9]*\.?[0-9]*"
-                      placeholder="Ej: 2"
+                      placeholder={t.step2.bathroomsPlaceholder}
                       {...field}
                       data-testid="input-bathrooms"
                     />
@@ -99,13 +106,13 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
               name="area"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Área (m²)</FormLabel>
+                  <FormLabel>{t.step2.area}</FormLabel>
                   <FormControl>
                     <Input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder="Ej: 150"
+                      placeholder={t.step2.areaPlaceholder}
                       {...field}
                       data-testid="input-area"
                     />
@@ -121,17 +128,17 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
             name="amenities"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Amenidades (Opcional)</FormLabel>
+                <FormLabel>{t.step2.propertyAmenities}</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Ej: Piscina, Gimnasio, Estacionamiento techado, Jardín..."
+                    placeholder={t.step2.propertyAmenities}
                     rows={3}
                     {...field}
                     data-testid="textarea-amenities"
                   />
                 </FormControl>
                 <FormDescription data-testid="text-amenities-description">
-                  Separa las amenidades con comas
+                  {t.step2.noAmenitiesSelected}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -146,10 +153,10 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious }: Ste
               data-testid="button-previous-step4"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              Anterior
+              {t.previous}
             </Button>
             <Button type="submit" data-testid="button-next-step4">
-              Continuar
+              {t.next}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>

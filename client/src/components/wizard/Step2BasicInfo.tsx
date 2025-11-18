@@ -9,35 +9,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getTranslation, Language } from "@/lib/wizardTranslations";
 
-const basicInfoSchema = z.object({
-  title: z.string().min(5, "El título debe tener al menos 5 caracteres"),
-  description: z.string().min(20, "La descripción debe tener al menos 20 caracteres"),
-  propertyType: z.string().min(1, "Selecciona un tipo de propiedad"),
-  price: z.string().min(1, "El precio es requerido"),
-  unitType: z.enum(["private", "condo"], { required_error: "Selecciona el tipo de unidad" }),
-  condoName: z.string().optional(),
-  unitNumber: z.string().optional(),
-}).refine((data) => {
-  if (data.unitType === "condo") {
-    return data.condoName && data.condoName.length > 0 && data.unitNumber && data.unitNumber.length > 0;
-  }
-  return true;
-}, {
-  message: "Para unidades en condominio, debes proporcionar el nombre del condominio y número de unidad",
-  path: ["condoName"],
-});
-
-type BasicInfoForm = z.infer<typeof basicInfoSchema>;
+const getBasicInfoSchema = (language: Language) => {
+  const t = getTranslation(language);
+  return z.object({
+    title: z.string().min(5, t.errors.titleMin),
+    description: z.string().min(20, t.errors.descriptionMin),
+    propertyType: z.string().min(1, t.errors.propertyTypeRequired),
+    price: z.string().min(1, t.errors.priceRequired),
+    unitType: z.enum(["private", "condo"], { required_error: t.errors.required }),
+    condoName: z.string().optional(),
+    unitNumber: z.string().optional(),
+  }).refine((data) => {
+    if (data.unitType === "condo") {
+      return data.condoName && data.condoName.length > 0 && data.unitNumber && data.unitNumber.length > 0;
+    }
+    return true;
+  }, {
+    message: t.errors.required,
+    path: ["condoName"],
+  });
+};
 
 type Step2Props = {
   data: any;
   onUpdate: (data: any) => void;
   onNext: (stepData?: any) => void;
   onPrevious: () => void;
+  language?: Language;
 };
 
-export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: Step2Props) {
+export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious, language = "es" }: Step2Props) {
+  const t = getTranslation(language);
+  const basicInfoSchema = getBasicInfoSchema(language);
+  type BasicInfoForm = z.infer<typeof basicInfoSchema>;
+
   const form = useForm<BasicInfoForm>({
     resolver: zodResolver(basicInfoSchema),
     defaultValues: {
@@ -62,10 +69,10 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2" data-testid="heading-step2-title">
-          Información Básica
+          {t.step1.mainDetails}
         </h2>
         <p className="text-muted-foreground" data-testid="text-step2-description">
-          Proporciona los detalles principales de la propiedad
+          {t.step1.descriptionDesc}
         </p>
       </div>
 
@@ -76,10 +83,10 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
             name="title"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Título</FormLabel>
+                <FormLabel>{t.step1.propertyTitle}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Ej: Casa moderna en zona céntrica"
+                    placeholder={t.step1.titlePlaceholder}
                     {...field}
                     data-testid="input-title"
                   />
@@ -94,10 +101,10 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Descripción</FormLabel>
+                <FormLabel>{t.step1.description}</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Describe la propiedad en detalle..."
+                    placeholder={t.step1.descriptionPlaceholder}
                     rows={4}
                     {...field}
                     data-testid="textarea-description"
@@ -113,20 +120,32 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
             name="propertyType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de Propiedad</FormLabel>
+                <FormLabel>{t.step1.propertyType}</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-property-type">
-                      <SelectValue placeholder="Selecciona el tipo" />
+                      <SelectValue placeholder={t.step1.selectPropertyType} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="house" data-testid="option-property-house">Casa</SelectItem>
-                    <SelectItem value="apartment" data-testid="option-property-apartment">Apartamento</SelectItem>
-                    <SelectItem value="condo" data-testid="option-property-condo">Condominio</SelectItem>
-                    <SelectItem value="land" data-testid="option-property-land">Terreno</SelectItem>
-                    <SelectItem value="commercial" data-testid="option-property-commercial">Comercial</SelectItem>
-                    <SelectItem value="office" data-testid="option-property-office">Oficina</SelectItem>
+                    <SelectItem value="house" data-testid="option-property-house">
+                      {t.step1.propertyTypes.house}
+                    </SelectItem>
+                    <SelectItem value="apartment" data-testid="option-property-apartment">
+                      {t.step1.propertyTypes.apartment}
+                    </SelectItem>
+                    <SelectItem value="condo" data-testid="option-property-condo">
+                      {t.step1.propertyTypes.condo}
+                    </SelectItem>
+                    <SelectItem value="land" data-testid="option-property-land">
+                      {t.step1.propertyTypes.land}
+                    </SelectItem>
+                    <SelectItem value="commercial" data-testid="option-property-commercial">
+                      {t.step1.propertyTypes.commercial}
+                    </SelectItem>
+                    <SelectItem value="office" data-testid="option-property-office">
+                      {t.step1.propertyTypes.office}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -139,13 +158,13 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Precio (MXN)</FormLabel>
+                <FormLabel>{t.step1.price} (MXN)</FormLabel>
                 <FormControl>
                   <Input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    placeholder="Ej: 5000000"
+                    placeholder={t.step1.pricePlaceholder}
                     {...field}
                     data-testid="input-price"
                   />
@@ -160,7 +179,7 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
             name="unitType"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel>Tipo de Unidad</FormLabel>
+                <FormLabel>{t.step2.location}</FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -170,13 +189,13 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="private" id="private" data-testid="radio-private" />
                       <Label htmlFor="private" className="font-normal cursor-pointer">
-                        Unidad Privada (casa privada a la calle)
+                        {t.step2.noCondominium}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="condo" id="condo" data-testid="radio-condo" />
                       <Label htmlFor="condo" className="font-normal cursor-pointer">
-                        En Condominio
+                        {t.step2.condominium}
                       </Label>
                     </div>
                   </RadioGroup>
@@ -193,10 +212,10 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
                 name="condoName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre del Condominio</FormLabel>
+                    <FormLabel>{t.step2.newCondoName}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ej: Residencial Las Palmas"
+                        placeholder={t.step2.newCondominiumPlaceholder}
                         {...field}
                         data-testid="input-condo-name"
                       />
@@ -211,16 +230,16 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
                 name="unitNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Número de Unidad</FormLabel>
+                    <FormLabel>{t.step2.unitNumber}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ej: 101, A-15, etc."
+                        placeholder={t.step2.unitNumberPlaceholder}
                         {...field}
                         data-testid="input-unit-number"
                       />
                     </FormControl>
                     <FormDescription>
-                      Número o identificador de la unidad dentro del condominio
+                      {t.step2.unitNumberDescription}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -237,10 +256,10 @@ export default function Step2BasicInfo({ data, onUpdate, onNext, onPrevious }: S
               data-testid="button-previous-step2"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              Anterior
+              {t.previous}
             </Button>
             <Button type="submit" data-testid="button-next-step2">
-              Continuar
+              {t.next}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
