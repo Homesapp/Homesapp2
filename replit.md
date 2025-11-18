@@ -112,3 +112,38 @@ Key features include:
 *   WebSocket (ws)
 *   cookie
 *   OpenAI GPT-5
+
+## Internationalization (i18n) System
+The platform implements comprehensive bilingual support (Spanish/English) with a modular translation system. Translation files are organized by domain for maintainability and scalability.
+
+### Translation Files
+*   **`client/src/lib/wizardTranslations.ts`**: Property submission wizard translations (8 steps)
+*   **`client/src/lib/adminTranslations.ts`**: Administrative component translations (SidebarConfig, AutoLogoutConfig, and other admin features)
+
+### Usage Pattern
+All components follow this pattern for bilingual support:
+```typescript
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getAdminTranslation } from "@/lib/adminTranslations";
+
+export default function MyComponent() {
+  const { language } = useLanguage();
+  const t = getAdminTranslation(language);
+  
+  return <h1>{t.myFeature.title}</h1>;
+}
+```
+
+### Language Switching
+Users can toggle between Spanish and English using the language switcher in the top navigation bar. The selection persists across sessions via localStorage.
+
+### Translation Status
+*   **Fully translated**: Property submission wizard, SidebarConfig, AutoLogoutConfig, property invitation system
+*   **Partially translated**: AppSidebar menu items (some hardcoded strings remain)
+*   **Pending translation**: Privacy policy, Terms and conditions, various admin components, form validation messages
+
+### Adding New Translations
+1. Add translation keys to appropriate file (`adminTranslations.ts`, `wizardTranslations.ts`, or create new domain file)
+2. Import translation function in component
+3. Use `useLanguage()` hook to get current language
+4. Replace hardcoded strings with translation keys: `{t.section.key}`
