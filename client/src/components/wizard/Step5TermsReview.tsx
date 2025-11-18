@@ -66,14 +66,20 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
     queryKey: ["/api/property-owner-terms/active"],
   });
 
-  // Helper functions to get names from IDs
-  const getColonyName = (colonyId: string | undefined) => {
+  // Helper functions to get names from IDs or direct names
+  const getColonyName = (colonyId: string | undefined, colonyName: string | undefined) => {
+    // First try to use the direct colony name if available
+    if (colonyName) return colonyName;
+    // Otherwise try to find by ID
     if (!colonyId) return "N/A";
     const colony = colonies.find(c => c.id === colonyId);
     return colony?.name || "N/A";
   };
 
-  const getCondominiumName = (condominiumId: string | undefined) => {
+  const getCondominiumName = (condominiumId: string | undefined, condoName: string | undefined) => {
+    // First try to use the direct condo name if available
+    if (condoName) return condoName;
+    // Otherwise try to find by ID
     if (!condominiumId) return "N/A";
     const condo = condominiums.find(c => c.id === condominiumId);
     return condo?.name || "N/A";
@@ -282,11 +288,15 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-sm font-medium text-muted-foreground">{t.step7.colonyLabel}:</span>
-                        <p className="text-base" data-testid="text-review-colony">{getColonyName(data.locationInfo.colonyId)}</p>
+                        <p className="text-base" data-testid="text-review-colony">
+                          {getColonyName(data.locationInfo.colonyId, data.locationInfo.colonyName)}
+                        </p>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-muted-foreground">{t.step7.condominiumLabel}:</span>
-                        <p className="text-base" data-testid="text-review-condominium">{getCondominiumName(data.locationInfo.condominiumId)}</p>
+                        <p className="text-base" data-testid="text-review-condominium">
+                          {getCondominiumName(data.locationInfo.condominiumId, data.locationInfo.condoName)}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -363,38 +373,160 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                   <CardHeader>
                     <CardTitle>{t.step7.multimedia}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    {data.media.primaryImages && data.media.primaryImages.length > 0 ? (
-                      <>
-                        <div>
-                          <span className="text-sm font-medium text-muted-foreground">{t.step7.primaryImages}</span>
-                          <p className="text-base" data-testid="text-review-primary-images-count">
-                            {data.media.primaryImages.length} {t.step7.images} {data.media.coverImageIndex !== undefined && `(${t.step7.coverImage}: #${data.media.coverImageIndex + 1})`}
-                          </p>
+                  <CardContent className="space-y-4">
+                    {/* Primary Images with thumbnails */}
+                    {data.media.primaryImages && data.media.primaryImages.length > 0 && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.primaryImages}</span>
+                        <p className="text-base mb-2" data-testid="text-review-primary-images-count">
+                          {data.media.primaryImages.length} {t.step7.images} {data.media.coverImageIndex !== undefined && `(${t.step7.coverImage}: #${data.media.coverImageIndex + 1})`}
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {data.media.primaryImages.slice(0, 8).map((img: string, idx: number) => (
+                            <div 
+                              key={idx} 
+                              className={`relative aspect-square rounded-md overflow-hidden border-2 ${data.media.coverImageIndex === idx ? 'border-primary' : 'border-border'}`}
+                            >
+                              <img 
+                                src={img} 
+                                alt={`Primary ${idx + 1}`} 
+                                className="w-full h-full object-cover"
+                              />
+                              {data.media.coverImageIndex === idx && (
+                                <div className="absolute top-1 right-1 bg-primary text-primary-foreground text-xs px-1 rounded">
+                                  {t.step7.cover || "Portada"}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                        {data.media.secondaryImages && data.media.secondaryImages.length > 0 && (
-                          <div>
-                            <span className="text-sm font-medium text-muted-foreground">{t.step7.secondaryImages}</span>
-                            <p className="text-base" data-testid="text-review-secondary-images-count">
-                              {data.media.secondaryImages.length} {t.step7.images}
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      data.media.images && data.media.images.length > 0 && (
-                        <div>
-                          <span className="text-sm font-medium text-muted-foreground">{t.step7.imagesLabel}</span>
-                          <p className="text-base" data-testid="text-review-images-count">
-                            {data.media.images.length} {t.step7.images}
-                          </p>
+                      </div>
+                    )}
+                    {/* Secondary Images with thumbnails */}
+                    {data.media.secondaryImages && data.media.secondaryImages.length > 0 && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.secondaryImages}</span>
+                        <p className="text-base mb-2" data-testid="text-review-secondary-images-count">
+                          {data.media.secondaryImages.length} {t.step7.images}
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {data.media.secondaryImages.slice(0, 8).map((img: string, idx: number) => (
+                            <div key={idx} className="relative aspect-square rounded-md overflow-hidden border">
+                              <img 
+                                src={img} 
+                                alt={`Secondary ${idx + 1}`} 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
                         </div>
-                      )
+                      </div>
                     )}
                     {data.media.virtualTourUrl && (
                       <div>
                         <span className="text-sm font-medium text-muted-foreground">{t.step7.tourLabel}</span>
                         <p className="text-base" data-testid="text-review-tour">{t.step7.tourAvailable}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Access Information */}
+              {data.accessInfo && Object.keys(data.accessInfo).length > 0 && (
+                <Card data-testid="card-review-access">
+                  <CardHeader>
+                    <CardTitle>{t.step7.accessInfo || "Información de Acceso"}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {data.accessInfo.accessType && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.accessType || "Tipo de Acceso"}:</span>
+                        <p className="text-base" data-testid="text-review-access-type">
+                          {data.accessInfo.accessType === "unattended" ? (language === "es" ? "Sin Asistencia" : "Unattended") : (language === "es" ? "Con Asistencia" : "Attended")}
+                        </p>
+                      </div>
+                    )}
+                    {data.accessInfo.method && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.accessMethod || "Método"}:</span>
+                        <p className="text-base" data-testid="text-review-access-method">
+                          {data.accessInfo.method === "lockbox" ? "Lockbox" : "Smart Lock"}
+                        </p>
+                      </div>
+                    )}
+                    {data.accessInfo.lockboxCode && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.lockboxCode || "Código Lockbox"}:</span>
+                        <p className="text-base" data-testid="text-review-lockbox-code">{data.accessInfo.lockboxCode}</p>
+                      </div>
+                    )}
+                    {data.accessInfo.contactPerson && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.contactPerson || "Persona de Contacto"}:</span>
+                        <p className="text-base" data-testid="text-review-contact-person">{data.accessInfo.contactPerson}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Owner Information */}
+              {data.ownerData && (data.ownerData.ownerFirstName || data.ownerData.ownerPhone || data.ownerData.ownerEmail) && (
+                <Card data-testid="card-review-owner">
+                  <CardHeader>
+                    <CardTitle>{t.step7.ownerInfo || "Información del Propietario"}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {data.ownerData.ownerFirstName && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.ownerName || "Nombre"}:</span>
+                        <p className="text-base" data-testid="text-review-owner-name">
+                          {data.ownerData.ownerFirstName} {data.ownerData.ownerLastName}
+                        </p>
+                      </div>
+                    )}
+                    {data.ownerData.ownerPhone && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.ownerPhone || "Teléfono"}:</span>
+                        <p className="text-base" data-testid="text-review-owner-phone">{data.ownerData.ownerPhone}</p>
+                      </div>
+                    )}
+                    {data.ownerData.ownerEmail && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.ownerEmail || "Email"}:</span>
+                        <p className="text-base" data-testid="text-review-owner-email">{data.ownerData.ownerEmail}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Referral Information */}
+              {data.ownerData?.hasReferral && (data.ownerData.referredByName || data.ownerData.referredByPhone) && (
+                <Card data-testid="card-review-referral">
+                  <CardHeader>
+                    <CardTitle>{t.step7.referralInfo || "Información del Referido"}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {data.ownerData.referredByName && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.referredByName || "Referido Por"}:</span>
+                        <p className="text-base" data-testid="text-review-referral-name">
+                          {data.ownerData.referredByName} {data.ownerData.referredByLastName}
+                        </p>
+                      </div>
+                    )}
+                    {data.ownerData.referredByPhone && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.referredByPhone || "Teléfono"}:</span>
+                        <p className="text-base" data-testid="text-review-referral-phone">{data.ownerData.referredByPhone}</p>
+                      </div>
+                    )}
+                    {data.ownerData.referredByEmail && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.referredByEmail || "Email"}:</span>
+                        <p className="text-base" data-testid="text-review-referral-email">{data.ownerData.referredByEmail}</p>
                       </div>
                     )}
                   </CardContent>
