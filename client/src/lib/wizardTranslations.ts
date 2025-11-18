@@ -327,6 +327,7 @@ export const wizardTranslations = {
       tabTerms: "Términos y Condiciones",
       reviewSummary: "Resumen de la Propiedad",
       reviewSummaryDesc: "Revisa toda la información antes de enviar",
+      reviewBeforeSubmitting: "Revisa toda la información antes de enviar",
       incompleteTitle: "Información Incompleta",
       incompleteDesc: "Por favor completa todos los pasos requeridos antes de enviar",
       termsForOwners: "Términos y Condiciones para Propietarios",
@@ -339,6 +340,12 @@ export const wizardTranslations = {
       propertySubmittedDesc: "Tu propiedad ha sido enviada y aparecerá en Mis Propiedades con estado 'Pendiente' hasta que sea aprobada por un administrador.",
       submitError: "No se pudo enviar la propiedad",
       noDraft: "No hay borrador para enviar",
+      error: "Error",
+      
+      // Aliases for backward compatibility
+      propertySummary: "Resumen de la Propiedad",
+      propertySubmittedTitle: "Propiedad enviada para revisión",
+      submissionError: "No se pudo enviar la propiedad",
       
       // Review sections
       operationType: "Tipo de Operación",
@@ -359,15 +366,81 @@ export const wizardTranslations = {
       areaLabel: "Área:",
       services: "Servicios",
       servicesIncluded: "Servicios Incluidos:",
+      includedServices: "Servicios Incluidos:",
       acceptedDurations: "Duraciones Aceptadas:",
       multimedia: "Multimedia",
       primaryImages: "Imágenes Principales:",
       secondaryImages: "Imágenes Secundarias:",
-      images: "Imágenes:",
+      images: "imagen(es)",
+      imagesLabel: "Imágenes:",
       imageCount: "imagen(es)",
-      coverImage: "(portada:",
+      coverImage: "portada",
+      cover: "Portada",
       tourAvailable: "Disponible",
+      available: "Disponible",
       tourLabel: "Tour Virtual:",
+      virtualTour: "Tour Virtual:",
+      water: "Agua",
+      electricity: "Electricidad",
+      internet: "Internet",
+      
+      // Checkbox labels and descriptions
+      confirmAccuracyLabel: "Confirmo que toda la información es correcta",
+      confirmAccuracyDesc: "Verifico que todos los datos proporcionados son veraces y actuales",
+      acceptCommissionLabel: "Acepto el esquema de comisiones",
+      acceptCommissionDesc: "Acepto pagar las comisiones establecidas por HomesApp",
+      acceptTermsLabel: "Acepto los términos y condiciones",
+      acceptTermsDesc: "He leído y acepto los términos y condiciones para propietarios",
+      
+      // Final confirmation
+      termsTitle: "Términos y Condiciones Completos",
+      termsContent: `
+        <h3 class="text-base font-bold mb-3">1. Propiedad y Titularidad</h3>
+        <p class="mb-4">El Propietario declara bajo protesta de decir verdad que es el legítimo propietario de la propiedad descrita en este documento y que tiene pleno derecho legal para ofrecer la propiedad en renta y/o venta a través de HomesApp.</p>
+        
+        <h3 class="text-base font-bold mb-3">2. Información Veraz</h3>
+        <p class="mb-4">El Propietario se compromete a proporcionar información veraz, completa y actualizada sobre la propiedad, incluyendo pero no limitado a: características físicas, servicios, amenidades, documentación legal y cualquier gravamen o restricción que pueda afectar la propiedad.</p>
+        
+        <h3 class="text-base font-bold mb-3">3. Estado de la Propiedad</h3>
+        <p class="mb-4">El Propietario declara que la propiedad se encuentra en buen estado de conservación y funcionamiento, cumpliendo con todos los estándares de habitabilidad y seguridad requeridos por las leyes aplicables.</p>
+        
+        <h3 class="text-base font-bold mb-3">4. Cumplimiento Legal</h3>
+        <p class="mb-4">El Propietario garantiza que la propiedad cumple con todas las regulaciones locales, estatales y federales aplicables, incluyendo pero no limitado a: zonificación, permisos de construcción, regulaciones ambientales y códigos de edificación.</p>
+        
+        <h3 class="text-base font-bold mb-3">5. Exclusividad</h3>
+        <p class="mb-4">El Propietario otorga a HomesApp el derecho exclusivo de comercializar la propiedad por el período acordado. Durante este período, el Propietario se compromete a no ofrecer la propiedad a través de otros medios o intermediarios sin previo consentimiento por escrito de HomesApp.</p>
+        
+        <h3 class="text-base font-bold mb-3">6. Comisiones y Honorarios</h3>
+        <p class="mb-4">El Propietario acepta pagar las comisiones establecidas por HomesApp según el esquema vigente al momento de la firma del contrato de renta o venta. Estas comisiones serán claramente especificadas antes de cualquier transacción.</p>
+        
+        <h3 class="text-base font-bold mb-3">7. Acceso a la Propiedad</h3>
+        <p class="mb-4">El Propietario se compromete a facilitar el acceso a la propiedad para visitas de potenciales inquilinos o compradores, coordinadas previamente con HomesApp, así como para sesiones fotográficas profesionales y evaluaciones técnicas necesarias.</p>
+        
+        <h3 class="text-base font-bold mb-3">8. Fotografía y Publicidad</h3>
+        <p class="mb-4">El Propietario autoriza a HomesApp a fotografiar y publicitar la propiedad a través de diversos medios, incluyendo pero no limitado a: sitio web, redes sociales, portales inmobiliarios y material impreso.</p>
+        
+        <h3 class="text-base font-bold mb-3">9. Mantenimiento</h3>
+        <p class="mb-4">El Propietario se compromete a mantener la propiedad en buen estado durante todo el período de comercialización y a atender de manera oportuna cualquier reparación o mantenimiento necesario.</p>
+        
+        <h3 class="text-base font-bold mb-3">10. Responsabilidad</h3>
+        <p class="mb-4">HomesApp actuará como intermediario entre el Propietario y los potenciales inquilinos o compradores. HomesApp no se hace responsable por daños a la propiedad durante las visitas coordinadas, siendo responsabilidad del Propietario contar con los seguros apropiados.</p>
+        
+        <h3 class="text-base font-bold mb-3">11. Terminación</h3>
+        <p class="mb-4">Cualquiera de las partes puede terminar este acuerdo con un aviso previo por escrito de 30 días. En caso de que la propiedad se rente o venda durante el período de exclusividad, las comisiones acordadas serán exigibles.</p>
+        
+        <h3 class="text-base font-bold mb-3">12. Protección de Datos</h3>
+        <p class="mb-4">El Propietario consiente el tratamiento de sus datos personales de acuerdo con las leyes de protección de datos aplicables y la política de privacidad de HomesApp.</p>
+        
+        <h3 class="text-base font-bold mb-3">13. Modificaciones</h3>
+        <p class="mb-4">HomesApp se reserva el derecho de modificar estos términos y condiciones. Cualquier cambio significativo será comunicado al Propietario con antelación razonable.</p>
+      `,
+      finalConfirmation: "Confirmación Final",
+      confirmReviewAccept: "Confirma que has revisado toda la información y aceptas los términos",
+      
+      // Validation messages
+      mustAcceptTerms: "Debes aceptar los términos y condiciones",
+      mustConfirmAccuracy: "Debes confirmar que la información es correcta",
+      mustAcceptCommission: "Debes aceptar el esquema de comisiones",
       
       // Terms sections (same as Spanish)
       terms: {
@@ -803,6 +876,7 @@ export const wizardTranslations = {
       tabTerms: "Terms and Conditions",
       reviewSummary: "Property Summary",
       reviewSummaryDesc: "Review all information before submitting",
+      reviewBeforeSubmitting: "Review all information before submitting",
       incompleteTitle: "Incomplete Information",
       incompleteDesc: "Please complete all required steps before submitting",
       termsForOwners: "Terms and Conditions for Owners",
@@ -815,6 +889,12 @@ export const wizardTranslations = {
       propertySubmittedDesc: "Your property has been submitted and will appear in My Properties with 'Pending' status until approved by an administrator.",
       submitError: "Could not submit property",
       noDraft: "No draft to submit",
+      error: "Error",
+      
+      // Aliases for backward compatibility
+      propertySummary: "Property Summary",
+      propertySubmittedTitle: "Property submitted for review",
+      submissionError: "Could not submit property",
       
       // Review sections
       operationType: "Operation Type",
@@ -835,15 +915,81 @@ export const wizardTranslations = {
       areaLabel: "Area:",
       services: "Services",
       servicesIncluded: "Included Services:",
+      includedServices: "Included Services:",
       acceptedDurations: "Accepted Durations:",
       multimedia: "Multimedia",
       primaryImages: "Primary Images:",
       secondaryImages: "Secondary Images:",
-      images: "Images:",
+      images: "image(s)",
+      imagesLabel: "Images:",
       imageCount: "image(s)",
-      coverImage: "(cover:",
+      coverImage: "cover",
+      cover: "Cover",
       tourAvailable: "Available",
+      available: "Available",
       tourLabel: "Virtual Tour:",
+      virtualTour: "Virtual Tour:",
+      water: "Water",
+      electricity: "Electricity",
+      internet: "Internet",
+      
+      // Checkbox labels and descriptions
+      confirmAccuracyLabel: "I confirm all information is accurate",
+      confirmAccuracyDesc: "I verify that all provided data is truthful and current",
+      acceptCommissionLabel: "I accept the commission scheme",
+      acceptCommissionDesc: "I agree to pay the commissions established by HomesApp",
+      acceptTermsLabel: "I accept the terms and conditions",
+      acceptTermsDesc: "I have read and accept the terms and conditions for owners",
+      
+      // Final confirmation
+      termsTitle: "Complete Terms and Conditions",
+      termsContent: `
+        <h3 class="text-base font-bold mb-3">1. Property Ownership</h3>
+        <p class="mb-4">The Owner declares under oath that they are the legitimate owner of the property described in this document and have full legal right to offer the property for rent and/or sale through HomesApp.</p>
+        
+        <h3 class="text-base font-bold mb-3">2. Accurate Information</h3>
+        <p class="mb-4">The Owner commits to providing truthful, complete, and up-to-date information about the property, including but not limited to: physical characteristics, services, amenities, legal documentation, and any liens or restrictions that may affect the property.</p>
+        
+        <h3 class="text-base font-bold mb-3">3. Property Condition</h3>
+        <p class="mb-4">The Owner declares that the property is in good state of conservation and operation, complying with all habitability and safety standards required by applicable laws.</p>
+        
+        <h3 class="text-base font-bold mb-3">4. Legal Compliance</h3>
+        <p class="mb-4">The Owner guarantees that the property complies with all applicable local, state, and federal regulations, including but not limited to: zoning, building permits, environmental regulations, and building codes.</p>
+        
+        <h3 class="text-base font-bold mb-3">5. Exclusivity</h3>
+        <p class="mb-4">The Owner grants HomesApp the exclusive right to market the property for the agreed period. During this period, the Owner commits to not offer the property through other means or intermediaries without prior written consent from HomesApp.</p>
+        
+        <h3 class="text-base font-bold mb-3">6. Commissions and Fees</h3>
+        <p class="mb-4">The Owner agrees to pay the commissions established by HomesApp according to the scheme in effect at the time of signing the rental or sale contract. These commissions will be clearly specified before any transaction.</p>
+        
+        <h3 class="text-base font-bold mb-3">7. Property Access</h3>
+        <p class="mb-4">The Owner commits to facilitate access to the property for visits by potential tenants or buyers, coordinated in advance with HomesApp, as well as for professional photography sessions and necessary technical evaluations.</p>
+        
+        <h3 class="text-base font-bold mb-3">8. Photography and Advertising</h3>
+        <p class="mb-4">The Owner authorizes HomesApp to photograph and advertise the property through various media, including but not limited to: website, social networks, real estate portals, and printed materials.</p>
+        
+        <h3 class="text-base font-bold mb-3">9. Maintenance</h3>
+        <p class="mb-4">The Owner commits to maintain the property in good condition throughout the marketing period and to attend promptly to any necessary repairs or maintenance.</p>
+        
+        <h3 class="text-base font-bold mb-3">10. Liability</h3>
+        <p class="mb-4">HomesApp will act as an intermediary between the Owner and potential tenants or buyers. HomesApp is not responsible for property damage during coordinated visits, it being the Owner's responsibility to have appropriate insurance.</p>
+        
+        <h3 class="text-base font-bold mb-3">11. Termination</h3>
+        <p class="mb-4">Either party may terminate this agreement with 30 days' prior written notice. In the event that the property is rented or sold during the exclusivity period, the agreed commissions will be enforceable.</p>
+        
+        <h3 class="text-base font-bold mb-3">12. Data Protection</h3>
+        <p class="mb-4">The Owner consents to the processing of their personal data in accordance with applicable data protection laws and HomesApp's privacy policy.</p>
+        
+        <h3 class="text-base font-bold mb-3">13. Modifications</h3>
+        <p class="mb-4">HomesApp reserves the right to modify these terms and conditions. Any significant changes will be communicated to the Owner with reasonable notice.</p>
+      `,
+      finalConfirmation: "Final Confirmation",
+      confirmReviewAccept: "Confirm that you have reviewed all information and accept the terms",
+      
+      // Validation messages
+      mustAcceptTerms: "You must accept the terms and conditions",
+      mustConfirmAccuracy: "You must confirm that the information is accurate",
+      mustAcceptCommission: "You must accept the commission scheme",
       
       // Terms sections (English translations)
       terms: {

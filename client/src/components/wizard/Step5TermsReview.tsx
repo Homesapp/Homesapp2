@@ -60,6 +60,20 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
     },
   });
 
+  const formatDuration = (duration: string) => {
+    const durationMap: Record<string, { es: string; en: string }> = {
+      '1_month': { es: '1 mes', en: '1 month' },
+      '3_months': { es: '3 meses', en: '3 months' },
+      '6_months': { es: '6 meses', en: '6 months' },
+      '1_year': { es: '1 año', en: '1 year' },
+      '2_years': { es: '2 años', en: '2 years' },
+      '3_years': { es: '3 años', en: '3 years' },
+      '4_years': { es: '4 años', en: '4 years' },
+      '5_years': { es: '5 años', en: '5 years' },
+    };
+    return durationMap[duration]?.[language] || duration;
+  };
+
   const submitMutation = useMutation({
     mutationFn: async (termsData: TermsForm) => {
       if (!draftId) {
@@ -133,7 +147,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
   const isComplete = data.basicInfo && data.locationInfo && data.details && data.media;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold mb-2" data-testid="heading-step5-title">
           {t.step7.title}
@@ -144,7 +158,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <Tabs defaultValue="review" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="review" data-testid="tab-review">
@@ -157,7 +171,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
 
             <TabsContent value="review" className="space-y-4 mt-4">
               <div>
-                <h3 className="text-lg font-semibold mb-2">{t.step7.propertySummary}</h3>
+                <h3 className="text-lg font-semibold mb-2">{t.step7.reviewSummary}</h3>
                 <p className="text-sm text-muted-foreground">
                   {t.step7.reviewBeforeSubmitting}
                 </p>
@@ -278,7 +292,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                   <CardContent className="space-y-3">
                     {data.servicesInfo.basicServices && (
                       <div>
-                        <span className="text-sm font-medium text-muted-foreground">{t.step7.includedServices}:</span>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.servicesIncluded}</span>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {data.servicesInfo.basicServices.water?.included && (
                             <Badge variant="secondary">{t.step7.water}</Badge>
@@ -297,7 +311,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                         <span className="text-sm font-medium text-muted-foreground">{t.step7.acceptedDurations}:</span>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {data.servicesInfo.acceptedLeaseDurations.map((duration: string) => (
-                            <Badge key={duration} variant="outline">{duration}</Badge>
+                            <Badge key={duration} variant="outline">{formatDuration(duration)}</Badge>
                           ))}
                         </div>
                       </div>
@@ -316,14 +330,14 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                     {data.media.primaryImages && data.media.primaryImages.length > 0 ? (
                       <>
                         <div>
-                          <span className="text-sm font-medium text-muted-foreground">{t.step7.primaryImages}:</span>
+                          <span className="text-sm font-medium text-muted-foreground">{t.step7.primaryImages}</span>
                           <p className="text-base" data-testid="text-review-primary-images-count">
-                            {data.media.primaryImages.length} {t.step7.images} {data.media.coverImageIndex !== undefined && `(${t.step7.cover}: #${data.media.coverImageIndex + 1})`}
+                            {data.media.primaryImages.length} {t.step7.images} {data.media.coverImageIndex !== undefined && `(${t.step7.coverImage}: #${data.media.coverImageIndex + 1})`}
                           </p>
                         </div>
                         {data.media.secondaryImages && data.media.secondaryImages.length > 0 && (
                           <div>
-                            <span className="text-sm font-medium text-muted-foreground">{t.step7.secondaryImages}:</span>
+                            <span className="text-sm font-medium text-muted-foreground">{t.step7.secondaryImages}</span>
                             <p className="text-base" data-testid="text-review-secondary-images-count">
                               {data.media.secondaryImages.length} {t.step7.images}
                             </p>
@@ -333,7 +347,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                     ) : (
                       data.media.images && data.media.images.length > 0 && (
                         <div>
-                          <span className="text-sm font-medium text-muted-foreground">{t.step7.imagesLabel}:</span>
+                          <span className="text-sm font-medium text-muted-foreground">{t.step7.imagesLabel}</span>
                           <p className="text-base" data-testid="text-review-images-count">
                             {data.media.images.length} {t.step7.images}
                           </p>
@@ -342,8 +356,8 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
                     )}
                     {data.media.virtualTourUrl && (
                       <div>
-                        <span className="text-sm font-medium text-muted-foreground">{t.step7.virtualTour}:</span>
-                        <p className="text-base" data-testid="text-review-tour">{t.step7.available}</p>
+                        <span className="text-sm font-medium text-muted-foreground">{t.step7.tourLabel}</span>
+                        <p className="text-base" data-testid="text-review-tour">{t.step7.tourAvailable}</p>
                       </div>
                     )}
                   </CardContent>
@@ -355,7 +369,7 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
+                    <FileText className="h-5 w-5 flex-shrink-0" />
                     <CardTitle>{t.step7.termsTitle}</CardTitle>
                   </div>
                 </CardHeader>
