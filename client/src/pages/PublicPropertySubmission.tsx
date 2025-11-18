@@ -5,10 +5,62 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Languages } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import PropertySubmissionWizard from "./PropertySubmissionWizard";
+import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 
 type Language = "es" | "en";
+
+// Language Toggle Header Component
+function LanguageHeader({ language, setLanguage }: { language: Language; setLanguage: (lang: Language) => void }) {
+  return (
+    <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center">
+          <img 
+            src={logoUrl} 
+            alt="HomesApp" 
+            className="h-10 md:h-12 w-auto object-contain"
+            data-testid="img-logo"
+          />
+        </div>
+        
+        {/* Language Toggle */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid="button-language-toggle">
+              <Languages className="h-5 w-5" />
+              <span className="sr-only">Toggle language</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => setLanguage("es")}
+              data-testid="option-language-es"
+              className={language === "es" ? "bg-accent" : ""}
+            >
+              🇪🇸 Español
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setLanguage("en")}
+              data-testid="option-language-en"
+              className={language === "en" ? "bg-accent" : ""}
+            >
+              🇺🇸 English
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  );
+}
 
 export default function PublicPropertySubmission() {
   const [, params] = useRoute("/submit-property/:token");
@@ -60,28 +112,10 @@ export default function PublicPropertySubmission() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
-        <div className="w-full max-w-md space-y-4">
-          {/* Language Toggle */}
-          <div className="flex justify-end gap-2">
-            <Button
-              variant={language === "es" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLanguage("es")}
-              data-testid="button-lang-es"
-            >
-              Español
-            </Button>
-            <Button
-              variant={language === "en" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLanguage("en")}
-              data-testid="button-lang-en"
-            >
-              English
-            </Button>
-          </div>
-          <Card className="w-full">
+      <div className="min-h-screen flex flex-col bg-muted/30">
+        <LanguageHeader language={language} setLanguage={setLanguage} />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <XCircle className="w-5 h-5 text-destructive" />
@@ -101,19 +135,22 @@ export default function PublicPropertySubmission() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-64 mt-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex flex-col bg-muted/30">
+        <LanguageHeader language={language} setLanguage={setLanguage} />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64 mt-2" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -122,28 +159,10 @@ export default function PublicPropertySubmission() {
     const errorMessage = error?.message || validation?.message || "Token inválido o expirado";
     
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
-        <div className="w-full max-w-md space-y-4">
-          {/* Language Toggle */}
-          <div className="flex justify-end gap-2">
-            <Button
-              variant={language === "es" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLanguage("es")}
-              data-testid="button-lang-es"
-            >
-              Español
-            </Button>
-            <Button
-              variant={language === "en" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLanguage("en")}
-              data-testid="button-lang-en"
-            >
-              English
-            </Button>
-          </div>
-          <Card className="w-full">
+      <div className="min-h-screen flex flex-col bg-muted/30">
+        <LanguageHeader language={language} setLanguage={setLanguage} />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-destructive" />
@@ -170,51 +189,32 @@ export default function PublicPropertySubmission() {
 
   // Token is valid - show the wizard
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="container max-w-4xl py-8">
-        {/* Language Toggle */}
-        <div className="flex justify-end mb-4">
-          <div className="flex gap-2">
-            <Button
-              variant={language === "es" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLanguage("es")}
-              data-testid="button-lang-es"
-            >
-              Español
-            </Button>
-            <Button
-              variant={language === "en" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLanguage("en")}
-              data-testid="button-lang-en"
-            >
-              English
-            </Button>
-          </div>
+    <div className="min-h-screen flex flex-col bg-muted/30">
+      <LanguageHeader language={language} setLanguage={setLanguage} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="container max-w-4xl py-8">
+          {/* Welcome Banner */}
+          <Card className="mb-6 border-primary/20 bg-primary/5">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-primary" />
+                <CardTitle>{t.welcome}{validation.inviteeName ? `, ${validation.inviteeName}` : ""}</CardTitle>
+              </div>
+              <CardDescription>
+                {t.welcomeDesc}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          {/* Property Submission Wizard */}
+          <PropertySubmissionWizard 
+            invitationToken={token}
+            inviteeEmail={validation.inviteeEmail}
+            inviteePhone={validation.inviteePhone}
+            inviteeName={validation.inviteeName}
+            language={language}
+          />
         </div>
-
-        {/* Welcome Banner */}
-        <Card className="mb-6 border-primary/20 bg-primary/5">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-primary" />
-              <CardTitle>{t.welcome}{validation.inviteeName ? `, ${validation.inviteeName}` : ""}</CardTitle>
-            </div>
-            <CardDescription>
-              {t.welcomeDesc}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        {/* Property Submission Wizard */}
-        <PropertySubmissionWizard 
-          invitationToken={token}
-          inviteeEmail={validation.inviteeEmail}
-          inviteePhone={validation.inviteePhone}
-          inviteeName={validation.inviteeName}
-          language={language}
-        />
       </div>
     </div>
   );
