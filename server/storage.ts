@@ -4711,9 +4711,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePropertySubmissionDraft(id: string, updates: Partial<InsertPropertySubmissionDraft>): Promise<PropertySubmissionDraft> {
+    // Deep merge JSONB columns to prevent data loss on partial updates
+    // Load existing draft first
+    const existing = await this.getPropertySubmissionDraft(id);
+    if (!existing) {
+      throw new Error("Draft not found");
+    }
+
+    // Helper to deep merge objects (preserves existing keys not in updates)
+    const deepMerge = (target: any, source: any): any => {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) {
+        return source; // Replace primitives and arrays completely
+      }
+      if (!target || typeof target !== 'object' || Array.isArray(target)) {
+        return source; // If target isn't an object, use source
+      }
+      
+      const result = { ...target }; // Start with all target keys
+      for (const key in source) {
+        if (source[key] !== undefined) {
+          result[key] = deepMerge(target[key], source[key]); // Recursively merge
+        }
+      }
+      return result;
+    };
+
+    // Merge JSONB columns deeply
+    const mergedUpdates: any = { ...updates, updatedAt: new Date() };
+    
+    const jsonbColumns = ['basicInfo', 'locationInfo', 'details', 'media', 'servicesInfo', 'accessInfo', 'ownerData', 'commercialTerms'];
+    for (const col of jsonbColumns) {
+      if (updates[col as keyof typeof updates] !== undefined) {
+        mergedUpdates[col] = deepMerge(existing[col as keyof typeof existing], updates[col as keyof typeof updates]);
+      }
+    }
+
     const [updated] = await db
       .update(propertySubmissionDrafts)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(mergedUpdates)
       .where(eq(propertySubmissionDrafts.id, id))
       .returning();
     return updated;
