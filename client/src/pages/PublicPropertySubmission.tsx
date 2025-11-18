@@ -20,14 +20,14 @@ type Language = "es" | "en";
 // Language Toggle Header Component
 function LanguageHeader({ language, setLanguage }: { language: Language; setLanguage: (lang: Language) => void }) {
   return (
-    <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex items-center">
+        <div className="flex items-center min-w-0">
           <img 
             src={logoUrl} 
             alt="HomesApp" 
-            className="h-10 md:h-12 w-auto object-contain"
+            className="h-12 sm:h-14 md:h-16 w-auto object-contain"
             data-testid="img-logo"
           />
         </div>

@@ -22,13 +22,24 @@ const getStep1Schema = (language: Language) => {
     customListingTitle: z.string().max(60, t.errors.customListingTitleMax).optional().or(z.literal("")),
     description: z.string().min(20, t.errors.descriptionMin),
     propertyType: z.string().min(1, t.errors.propertyTypeRequired),
-    price: z.string().min(1, t.errors.priceRequired),
-    currency: z.enum(["MXN", "USD"]).default("MXN"),
+    rentalPrice: z.string().optional(),
+    rentalPriceCurrency: z.enum(["MXN", "USD"]).default("MXN"),
+    salePrice: z.string().optional(),
+    salePriceCurrency: z.enum(["MXN", "USD"]).default("MXN"),
     petFriendly: z.boolean().default(false),
     allowsSubleasing: z.boolean().default(false),
-  }).refine((data) => data.isForRent || data.isForSale, {
+  })
+  .refine((data) => data.isForRent || data.isForSale, {
     message: t.errors.operationTypeRequired,
     path: ["isForRent"],
+  })
+  .refine((data) => !data.isForRent || (data.rentalPrice && data.rentalPrice.length > 0), {
+    message: t.errors.priceRequired,
+    path: ["rentalPrice"],
+  })
+  .refine((data) => !data.isForSale || (data.salePrice && data.salePrice.length > 0), {
+    message: t.errors.priceRequired,
+    path: ["salePrice"],
   });
 };
 
@@ -44,6 +55,10 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
   const step1Schema = getStep1Schema(language);
   type Step1Form = z.infer<typeof step1Schema>;
 
+  // Migración de campos legacy: si existe price/currency (borradores antiguos), migrar a rentalPrice/salePrice
+  const legacyPrice = data.basicInfo?.price;
+  const legacyCurrency = data.basicInfo?.currency;
+  
   const form = useForm<Step1Form>({
     resolver: zodResolver(step1Schema),
     defaultValues: {
@@ -53,14 +68,25 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
       customListingTitle: data.basicInfo?.customListingTitle || "",
       description: data.basicInfo?.description || "",
       propertyType: data.basicInfo?.propertyType || "house",
-      price: data.basicInfo?.price || "",
-      currency: data.basicInfo?.currency || "MXN",
+      // Migración: usar rentalPrice si existe, si no, usar legacy price si isForRent
+      rentalPrice: data.basicInfo?.rentalPrice || (data.isForRent ? legacyPrice : "") || "",
+      rentalPriceCurrency: data.basicInfo?.rentalPriceCurrency || (data.isForRent ? legacyCurrency : "MXN") || "MXN",
+      // Migración: usar salePrice si existe, si no, usar legacy price si isForSale
+      salePrice: data.basicInfo?.salePrice || (data.isForSale ? legacyPrice : "") || "",
+      salePriceCurrency: data.basicInfo?.salePriceCurrency || (data.isForSale ? legacyCurrency : "MXN") || "MXN",
       petFriendly: data.basicInfo?.petFriendly || false,
       allowsSubleasing: data.basicInfo?.allowsSubleasing || false,
     },
   });
 
   const onSubmit = (formData: Step1Form) => {
+    // Mantener campos legacy para compatibilidad con componentes downstream
+    // Si solo isForRent, usar rentalPrice como price legacy
+    // Si solo isForSale, usar salePrice como price legacy
+    // Si ambos, dar prioridad a rentalPrice para legacy
+    const legacyPrice = formData.isForRent ? formData.rentalPrice : formData.salePrice;
+    const legacyCurrency = formData.isForRent ? formData.rentalPriceCurrency : formData.salePriceCurrency;
+    
     onNext({
       isForRent: formData.isForRent,
       isForSale: formData.isForSale,
@@ -69,8 +95,14 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
         customListingTitle: formData.customListingTitle && formData.customListingTitle.trim() !== "" ? formData.customListingTitle : undefined,
         description: formData.description,
         propertyType: formData.propertyType,
-        price: formData.price,
-        currency: formData.currency,
+        // Nuevos campos
+        rentalPrice: formData.rentalPrice,
+        rentalPriceCurrency: formData.rentalPriceCurrency,
+        salePrice: formData.salePrice,
+        salePriceCurrency: formData.salePriceCurrency,
+        // Campos legacy para compatibilidad
+        price: legacyPrice,
+        currency: legacyCurrency,
         petFriendly: formData.petFriendly,
         allowsSubleasing: formData.allowsSubleasing,
       },
@@ -243,96 +275,167 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="propertyType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.step1.propertyType} *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-property-type">
-                          <SelectValue placeholder={t.step1.selectPropertyType} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="house" data-testid="option-property-house">
-                          {t.step1.propertyTypes.house}
-                        </SelectItem>
-                        <SelectItem value="apartment" data-testid="option-property-apartment">
-                          {t.step1.propertyTypes.apartment}
-                        </SelectItem>
-                        <SelectItem value="condo" data-testid="option-property-condo">
-                          {t.step1.propertyTypes.condo}
-                        </SelectItem>
-                        <SelectItem value="land" data-testid="option-property-land">
-                          {t.step1.propertyTypes.land}
-                        </SelectItem>
-                        <SelectItem value="commercial" data-testid="option-property-commercial">
-                          {t.step1.propertyTypes.commercial}
-                        </SelectItem>
-                        <SelectItem value="office" data-testid="option-property-office">
-                          {t.step1.propertyTypes.office}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.step1.price} *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder={t.step1.pricePlaceholder}
-                        {...field}
-                        data-testid="input-price"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Moneda */}
             <FormField
               control={form.control}
-              name="currency"
+              name="propertyType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t.step1.currency} *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>{t.step1.propertyType} *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger data-testid="select-currency">
-                        <SelectValue placeholder={t.step1.currency} />
+                      <SelectTrigger data-testid="select-property-type">
+                        <SelectValue placeholder={t.step1.selectPropertyType} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="MXN" data-testid="option-currency-mxn">
-                        {t.step1.mxn}
+                      <SelectItem value="house" data-testid="option-property-house">
+                        {t.step1.propertyTypes.house}
                       </SelectItem>
-                      <SelectItem value="USD" data-testid="option-currency-usd">
-                        {t.step1.usd}
+                      <SelectItem value="apartment" data-testid="option-property-apartment">
+                        {t.step1.propertyTypes.apartment}
+                      </SelectItem>
+                      <SelectItem value="condo" data-testid="option-property-condo">
+                        {t.step1.propertyTypes.condo}
+                      </SelectItem>
+                      <SelectItem value="land" data-testid="option-property-land">
+                        {t.step1.propertyTypes.land}
+                      </SelectItem>
+                      <SelectItem value="commercial" data-testid="option-property-commercial">
+                        {t.step1.propertyTypes.commercial}
+                      </SelectItem>
+                      <SelectItem value="office" data-testid="option-property-office">
+                        {t.step1.propertyTypes.office}
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription className="text-xs">
-                    {t.step1.currencyDesc}
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Precio de Renta (solo si isForRent) */}
+            {form.watch("isForRent") && (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-sm">
+                  {language === "es" ? "Precio de Renta" : "Rental Price"}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="rentalPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {language === "es" ? "Precio Mensual de Renta" : "Monthly Rental Price"} *
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder={t.step1.pricePlaceholder}
+                            {...field}
+                            data-testid="input-rental-price"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="rentalPriceCurrency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.step1.currency} *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-rental-currency">
+                              <SelectValue placeholder={t.step1.currency} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="MXN" data-testid="option-rental-currency-mxn">
+                              {t.step1.mxn}
+                            </SelectItem>
+                            <SelectItem value="USD" data-testid="option-rental-currency-usd">
+                              {t.step1.usd}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs">
+                          {t.step1.currencyDesc}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Precio de Venta (solo si isForSale) */}
+            {form.watch("isForSale") && (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-sm">
+                  {language === "es" ? "Precio de Venta" : "Sale Price"}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="salePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {language === "es" ? "Precio de Venta" : "Sale Price"} *
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder={language === "es" ? "Ej: 5000000" : "Ex: 5000000"}
+                            {...field}
+                            data-testid="input-sale-price"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="salePriceCurrency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.step1.currency} *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-sale-currency">
+                              <SelectValue placeholder={t.step1.currency} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="MXN" data-testid="option-sale-currency-mxn">
+                              {t.step1.mxn}
+                            </SelectItem>
+                            <SelectItem value="USD" data-testid="option-sale-currency-usd">
+                              {t.step1.usd}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs">
+                          {t.step1.currencyDesc}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Mascotas y Subarrendamiento */}
             <div className="space-y-4">
