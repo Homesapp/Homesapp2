@@ -5,8 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Users, FileEdit, ClipboardCheck, CheckCircle2, Clock, XCircle, ArrowRight } from "lucide-react";
 import type { Property, PropertyChangeRequest, InspectionReport, User } from "@shared/schema";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getAdminTranslation } from "@/lib/adminTranslations";
 
 export default function AdminDashboard() {
+  const { language } = useLanguage();
+  const t = getAdminTranslation(language);
   const { data: properties = [], isLoading: loadingProperties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
   });
@@ -44,7 +48,7 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Cargando dashboard...</div>
+        <div className="text-muted-foreground">{t.dashboard.loading}</div>
       </div>
     );
   }
@@ -52,9 +56,9 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold" data-testid="heading-admin-dashboard">Dashboard Administrador</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold" data-testid="heading-admin-dashboard">{t.dashboard.title}</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          Métricas globales y actividades del sistema
+          {t.dashboard.subtitle}
         </p>
       </div>
 
@@ -62,52 +66,52 @@ export default function AdminDashboard() {
       <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card data-testid="card-total-properties">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Propiedades</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.totalProperties}</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalProperties}</div>
             <p className="text-xs text-muted-foreground">
-              {publishedProperties} publicadas, {pendingReview} pendientes
+              {publishedProperties} {t.dashboard.published}, {pendingReview} {t.dashboard.pending}
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-users">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.users}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{users.length}</div>
             <p className="text-xs text-muted-foreground">
-              {ownerUsers} propietarios, {clientUsers} clientes
+              {ownerUsers} {t.dashboard.owners}, {clientUsers} {t.dashboard.clients}
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-pending-changes">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cambios Pendientes</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.pendingChanges}</CardTitle>
             <FileEdit className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingChangeRequests.length}</div>
             <p className="text-xs text-muted-foreground">
-              {approvedChangeRequests.length} aprobados, {rejectedChangeRequests.length} rechazados
+              {approvedChangeRequests.length} {t.dashboard.approved}, {rejectedChangeRequests.length} {t.dashboard.rejected}
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-pending-inspections">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inspecciones Pendientes</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.pendingInspections}</CardTitle>
             <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingInspections.length}</div>
             <p className="text-xs text-muted-foreground">
-              {approvedInspections.length} aprobadas
+              {approvedInspections.length} {t.dashboard.approved}
             </p>
           </CardContent>
         </Card>
@@ -117,9 +121,9 @@ export default function AdminDashboard() {
       {(pendingChangeRequests.length > 0 || pendingInspections.length > 0 || pendingReview > 0) && (
         <Card data-testid="card-pending-reviews">
           <CardHeader>
-            <CardTitle>Revisiones Pendientes</CardTitle>
+            <CardTitle>{t.dashboard.pendingReviews}</CardTitle>
             <CardDescription>
-              Elementos que requieren tu atención
+              {t.dashboard.pendingReviewsDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -128,15 +132,15 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-3">
                   <FileEdit className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
-                    <p className="font-medium">Solicitudes de cambio</p>
+                    <p className="font-medium">{t.dashboard.changeRequests}</p>
                     <p className="text-sm text-muted-foreground">
-                      {pendingChangeRequests.length} solicitud{pendingChangeRequests.length > 1 ? "es" : ""} esperando revisión
+                      {pendingChangeRequests.length} {pendingChangeRequests.length > 1 ? t.dashboard.changeRequests : t.dashboard.changeRequests} {language === "es" ? "esperando revisión" : "awaiting review"}
                     </p>
                   </div>
                 </div>
                 <Link href="/admin/change-requests" className="block md:inline">
                   <Button size="sm" className="w-full md:w-auto" data-testid="button-view-change-requests">
-                    Revisar
+                    {t.dashboard.review}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -148,15 +152,15 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-3">
                   <ClipboardCheck className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
-                    <p className="font-medium">Reportes de inspección</p>
+                    <p className="font-medium">{language === "es" ? "Reportes de inspección" : "Inspection Reports"}</p>
                     <p className="text-sm text-muted-foreground">
-                      {pendingInspections.length} reporte{pendingInspections.length > 1 ? "s" : ""} pendiente{pendingInspections.length > 1 ? "s" : ""}
+                      {pendingInspections.length} {language === "es" ? `reporte${pendingInspections.length > 1 ? "s" : ""} pendiente${pendingInspections.length > 1 ? "s" : ""}` : `${pendingInspections.length > 1 ? "reports" : "report"} pending`}
                     </p>
                   </div>
                 </div>
                 <Link href="/admin/inspection-reports" className="block md:inline">
                   <Button size="sm" className="w-full md:w-auto" data-testid="button-view-inspections">
-                    Revisar
+                    {t.dashboard.review}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -168,15 +172,15 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5 text-primary flex-shrink-0" />
                   <div>
-                    <p className="font-medium">Propiedades en revisión</p>
+                    <p className="font-medium">{language === "es" ? "Propiedades en revisión" : "Properties under review"}</p>
                     <p className="text-sm text-muted-foreground">
-                      {pendingReview} propiedad{pendingReview > 1 ? "es" : ""} esperando revisión inicial
+                      {pendingReview} {language === "es" ? `propiedad${pendingReview > 1 ? "es" : ""} esperando revisión inicial` : `${pendingReview > 1 ? "properties" : "property"} awaiting initial review`}
                     </p>
                   </div>
                 </div>
                 <Link href="/properties" className="block md:inline">
                   <Button size="sm" variant="outline" className="w-full md:w-auto" data-testid="button-view-properties">
-                    Ver propiedades
+                    {language === "es" ? "Ver propiedades" : "View properties"}
                   </Button>
                 </Link>
               </div>
@@ -188,15 +192,15 @@ export default function AdminDashboard() {
       {/* Property Status Overview */}
       <Card data-testid="card-property-overview">
         <CardHeader>
-          <CardTitle>Estado de Propiedades</CardTitle>
-          <CardDescription>Distribución por estado de aprobación</CardDescription>
+          <CardTitle>{t.dashboard.propertyStatus}</CardTitle>
+          <CardDescription>{t.dashboard.propertyStatusDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Publicadas</span>
+                <span className="text-sm">{t.dashboard.publishedStatus}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{publishedProperties}</span>
@@ -207,7 +211,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm">En revisión inicial</span>
+                <span className="text-sm">{language === "es" ? "En revisión inicial" : "In initial review"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{pendingReview}</span>
@@ -218,7 +222,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ClipboardCheck className="h-4 w-4 text-blue-600" />
-                <span className="text-sm">Inspección programada</span>
+                <span className="text-sm">{t.dashboard.inspectionScheduled}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{inspectionScheduled}</span>
@@ -229,7 +233,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-red-600" />
-                <span className="text-sm">Rechazadas</span>
+                <span className="text-sm">{t.dashboard.rejectedStatus}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">
@@ -247,9 +251,9 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <Card data-testid="card-quick-actions">
         <CardHeader>
-          <CardTitle>Acciones Rápidas</CardTitle>
+          <CardTitle>{language === "es" ? "Acciones Rápidas" : "Quick Actions"}</CardTitle>
           <CardDescription>
-            Acceso rápido a funciones administrativas
+            {language === "es" ? "Acceso rápido a funciones administrativas" : "Quick access to administrative functions"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -257,25 +261,25 @@ export default function AdminDashboard() {
             <Link href="/properties">
               <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-properties">
                 <Building2 className="h-4 w-4" />
-                Propiedades
+                {language === "es" ? "Propiedades" : "Properties"}
               </Button>
             </Link>
             <Link href="/admin/change-requests">
               <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-change-requests">
                 <FileEdit className="h-4 w-4" />
-                Solicitudes de cambio
+                {language === "es" ? "Solicitudes de cambio" : "Change Requests"}
               </Button>
             </Link>
             <Link href="/admin/inspection-reports">
               <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-inspections">
                 <ClipboardCheck className="h-4 w-4" />
-                Inspecciones
+                {language === "es" ? "Inspecciones" : "Inspections"}
               </Button>
             </Link>
             <Link href="/users">
               <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-users">
                 <Users className="h-4 w-4" />
-                Usuarios
+                {language === "es" ? "Usuarios" : "Users"}
               </Button>
             </Link>
           </div>

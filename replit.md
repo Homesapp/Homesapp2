@@ -1,21 +1,10 @@
 # HomesApp - Smart Real Estate
 
 ## Overview
-HomesApp is a comprehensive SaaS platform for smart real estate property management in Tulum, Quintana Roo. It supports multiple user roles (master, admin, seller, owner, client, lawyer) and offers features for property management, appointment scheduling, client presentations, service coordination, and offer processing with counter-negotiation. The platform aims to provide a professional, data-rich user experience with robust role-based access, Google Calendar integration, a service provider marketplace, digital agreement signing, legal document elaboration, and a powerful back office. Its strategic ambition is to dominate the Tulum real estate market through advanced commission systems, marketing automation, predictive analytics, and AI-powered functionalities.
+HomesApp is a comprehensive SaaS platform for smart real estate property management in Tulum, Quintana Roo. It supports multiple user roles and offers features for property management, appointment scheduling, client presentations, service coordination, and offer processing with counter-negotiation. The platform aims to provide a professional, data-rich user experience with robust role-based access, Google Calendar integration, a service provider marketplace, digital agreement signing, legal document elaboration, and a powerful back office. Its strategic ambition is to dominate the Tulum real estate market through advanced commission systems, marketing automation, predictive analytics, and AI-powered functionalities.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
-
-## Contact Information
-Official company contact details used throughout the application:
-- Email: administracion@tulumrentalhomes.com.mx
-- Phone: +52 984 321 3385
-
-These contact details are displayed in:
-- Property submission success page (PropertySubmissionSuccess.tsx)
-- Public dashboard footer (PublicDashboard.tsx)
-- Privacy policy page (Privacy.tsx)
-- Terms and conditions page (Terms.tsx)
 
 ## System Architecture
 The platform is built on a modern web stack, prioritizing a professional, responsive, accessible, and internationalized user experience.
@@ -27,76 +16,29 @@ The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Q
 The backend is developed with Node.js, Express.js, and TypeScript, offering a RESTful API. It includes role-based middleware, JSON error handling, and dual authentication mechanisms (Replit Auth/OpenID Connect, local username/password, Google OAuth). Session management, user approval workflows, and centralized OpenAI service integration (GPT-4 model) are core functionalities. Contract routes feature strict Zod validation, data sanitization, and role-based authorization.
 
 ### Data Storage
-PostgreSQL, provided by Neon serverless, is used with Drizzle ORM for type-safe database interactions. The schema supports comprehensive user management, property lifecycle, appointment scheduling, client presentation cards, service providers, offer workflows, staff assignments, audit logs, lead capture, condominium management, a bidirectional review system, financial tracking, payout management, and a robust rental contract system. Performance is enhanced with B-tree indexes, and security includes authorization auditing and role validation.
+PostgreSQL, provided by Neon serverless, is used with Drizzle ORM for type-safe database interactions. The schema supports comprehensive user management, property lifecycle, appointment scheduling, client presentation cards, service providers, offer workflows, staff assignments, audit logs, lead capture, condominium management, a bidirectional review system, financial tracking, payout management, and a robust rental contract system.
 
 ### System Design Choices
-The platform employs unified middleware for consistent authentication and automatic logging. The public dashboard dynamically adapts content based on user authentication status. Real-time chat is implemented via WebSockets with session-based authentication and per-conversation authorization. 
-
-**Development-Only Testing Endpoints:**
-- `/api/auth/test/set-role`: Role-switching for authenticated users (requires OIDC auth first)
-- `/api/test-auth/admin-session`: Bootstrap admin session without OIDC for e2e testing (creates/reuses `test-admin` user, strictly development-only)
+The platform employs unified middleware for consistent authentication and automatic logging. The public dashboard dynamically adapts content based on user authentication status. Real-time chat is implemented via WebSockets with session-based authentication and per-conversation authorization.
 
 Key features include:
-*   **Role-Based Access Control**: Granular permissions across all user types with admin direct role assignment.
-*   **Advanced Appointment System**: Dual-type scheduling with concierge assignment, dynamic slot availability, and manual property entry.
-*   **Property Management Lifecycle**: Property approval workflows, two-stage publication, owner change requests, sublease functionality, comprehensive photo editing, and a 7-step property submission wizard with digital agreement signing. Admin property editing via 7-step wizard showing current vs. new values with comprehensive null-safe field handling. Property details view with photo download (individual/ZIP), URL copy functionality, and expanded owner information display.
+*   **Role-Based Access Control**: Granular permissions across all user types.
+*   **Advanced Appointment System**: Dual-type scheduling with concierge assignment and dynamic slot availability.
+*   **Property Management Lifecycle**: Property approval workflows, two-stage publication, owner change requests, sublease functionality, comprehensive photo editing, and a 7-step property submission wizard with digital agreement signing.
 *   **Rental Management**: Active rental portals for clients and owners, including service-based payment tracking, owner payment approval, and tenant maintenance requests.
 *   **Rental Opportunity & Offer System**: Workflow for clients to request and create rental offers, followed by a bidirectional counter-offer negotiation system.
 *   **Contract Elaboration System**: Automated workflow after offer acceptance, involving forms, admin verification, lawyer elaboration, tripartite chat, and digital signatures.
 *   **HOA Module**: Complete condominium management system for admin, owner, and HOA Manager roles.
 *   **Comprehensive Notification System**: Full-featured system with real-time updates, filtering, priority levels, email integration, and user preferences.
 *   **AI-Powered Capabilities**: Predictive analytics, automated legal document generation, intelligent tenant screening, and a virtual assistant (MARCO) powered by OpenAI GPT-4.
-*   **CRM Lead Management System**: Kanban-style lead management with a 10-stage rental pipeline, multi-step lead creation, and quick actions, with advanced table view features.
+*   **CRM Lead Management System**: Kanban-style lead management with a 10-stage rental pipeline.
 *   **Referral System**: Sellers can refer property owners and earn 20% commission per referred property.
 *   **User Experience**: Airbnb-style role switching, full i18n support, real-time chat, granular email notification preferences, and auto-logout security.
-*   **Public Rental Form**: Comprehensive 8-step wizard for tenants to submit rental applications with guarantor option, featuring bilingual support (Spanish/English) including 13 legal sections of Terms & Conditions, Zod validation with `z.preprocess`, and conditional guarantor forms. Includes robust frontend and backend validation for integer fields to prevent overflow errors.
-*   **Property Invitation Token System**: Secure token-based property submission system allowing admins to generate time-limited, single-use invitation links for property owners to submit properties without creating accounts. Features include:
-    - 24-hour expiring tokens with professional short codes (format: PROP-XXXXXXXX, 13 characters)
-    - Optional metadata capture (email/phone of invitee)
-    - Public submission endpoints with comprehensive security validations
-    - Token ownership verification preventing draft hijacking
-    - Single-use enforcement: tokens remain valid during wizard completion but marked used upon final submission
-    - Draft age restrictions (48-hour limit)
-    - Cache isolation between authenticated and public sessions
-    - Admin UI for token generation with copy-to-clipboard functionality
-    - Management page at `/admin/property-invitations` to view all generated links with status tracking, copy functionality, and WhatsApp sharing
-    - Bilingual support (Spanish/English) for all invitation-related UI
-    - **Bug fixes & improvements (2025-11-17)**:
-      - **Shortened invitation tokens**: Changed from 64-char hex to professional 13-char format (PROP-XXXXXXXX) using uppercase alphanumeric without confusing characters (0/O, 1/I/l)
-      - **Fixed multiple draft creation bug**: Wizard now properly loads existing draft linked to token, preventing duplicate drafts on page reload/navigation
-      - **New endpoint**: Added `/api/property-tokens/:token/draft` to fetch draft linked to invitation token
-      - Corrected token validation in public endpoints to use `getPropertySubmissionTokenByToken()` for proper token string lookup
-      - Fixed draft property display: corrected field mapping in `/api/admin/properties` endpoint to read `bedrooms`, `bathrooms`, `area` from `draft.details` (not `draft.basicInfo`) and `price` from `draft.basicInfo.price` (not `rentPrice`)
-      - Fixed draft approval: automatic owner user creation/lookup when approving invitation-based drafts (searches by email/phone, creates new propietario user if not found)
-      - Expanded draft transformation to include all fields: accessInfo, amenities (with name lookup), includedServices, videos, virtualTourUrl, owner contact data
-      - Fixed amenities display: batch lookup of amenity names by IDs to show readable names instead of UUIDs
-      - Fixed services display: corrected mapping from `servicesInfo.basicServices` to `includedServices` structure
-      - Added services NOT included with cost information: displays water, electricity, internet, gas costs when not included in rent
-      - Added condominium amenities display: shows amenities specific to the condominium if available
-      - Fixed image gallery: now displays ALL images (primary + secondary) with duplicate removal
-      - Added individual image download buttons: each photo in the gallery has a download button that appears on hover
-      - Google Maps link: already displayed in multimedia section when available
-      - **Fixed wizard Step 1 crash (2025-11-17)**: Corrected translation structure in `wizardTranslations.ts` to nest property types under `step1.propertyTypes` object instead of directly under `step1`, resolving "Cannot read properties of undefined (reading 'house')" error when accessing invitation links
-*   **Sidebar Menu Visibility Control**: Admin configuration system allowing master and admin users to control sidebar menu item visibility for specific roles and individual users. Features include:
-    - Database-driven visibility configuration per role and menu item (`sidebar_menu_visibility` table)
-    - Per-user override system (`sidebar_menu_visibility_user` table) with user-specific configuration taking precedence over role defaults
-    - Admin UI at `/admin/sidebar-config` with dual-mode interface:
-      - "Por Rol" tab: Configure visibility for entire roles
-      - "Por Usuario" tab: User-specific overrides with role-based user filtering and individual toggle controls
-    - Real-time visibility toggling with automatic persistence
-    - AppSidebar integration with react-query for efficient configuration fetching and hierarchical merging (user overrides > role defaults)
-    - Master and admin roles always see all menu items regardless of configuration
-    - Granular control for roles: cliente, propietario, vendedor, conserje, abogado, contador, admin jr
-    - Bilingual support (Spanish/English) for all UI elements
-    - Reset functionality to clear user-specific overrides and restore role defaults
-*   **Auto-Logout Configuration**: System-wide configurable auto-logout timeout for enhanced security. Features include:
-    - Centralized configuration storage via `system_settings` table (key-value pattern for flexible system settings)
-    - Admin UI at `/admin/auto-logout-config` for configuring inactivity timeout (1-1440 minutes)
-    - Real-time timeout updates apply to all users in their next session
-    - `useAutoLogout` hook dynamically fetches timeout from API with 10-minute cache and 5-minute fallback
-    - Public API endpoint (`/api/system-settings/auto-logout-timeout`) for authenticated users to fetch current timeout
-    - Admin-only endpoints for viewing and updating system settings with audit logging
-    - Recommended values provided in UI: 5min (max security), 15min (balanced), 30min (low risk), 60min (extended work)
+*   **Public Rental Form**: Comprehensive 8-step wizard for tenants to submit rental applications with guarantor option, featuring bilingual support and robust validation.
+*   **Property Invitation Token System**: Secure token-based property submission system allowing admins to generate time-limited, single-use invitation links for property owners to submit properties without creating accounts.
+*   **Sidebar Menu Visibility Control**: Admin configuration system allowing master and admin users to control sidebar menu item visibility for specific roles and individual users, with database-driven configurations and per-user overrides.
+*   **Auto-Logout Configuration**: System-wide configurable auto-logout timeout for enhanced security, managed via system settings and an admin UI.
+*   **Internationalization (i18n) System**: Comprehensive bilingual support (Spanish/English) with modular translation files organized by domain.
 
 ## External Dependencies
 *   Google Calendar API
@@ -112,45 +54,3 @@ Key features include:
 *   WebSocket (ws)
 *   cookie
 *   OpenAI GPT-5
-
-## Internationalization (i18n) System
-The platform implements comprehensive bilingual support (Spanish/English) with a modular translation system. Translation files are organized by domain for maintainability and scalability.
-
-### Translation Files
-*   **`client/src/lib/wizardTranslations.ts`**: Property submission wizard translations (8 steps)
-*   **`client/src/lib/adminTranslations.ts`**: Administrative component translations (SidebarConfig, AutoLogoutConfig, and other admin features)
-
-### Usage Pattern
-All components follow this pattern for bilingual support:
-```typescript
-import { useLanguage } from "@/contexts/LanguageContext";
-import { getAdminTranslation } from "@/lib/adminTranslations";
-
-export default function MyComponent() {
-  const { language } = useLanguage();
-  const t = getAdminTranslation(language);
-  
-  return <h1>{t.myFeature.title}</h1>;
-}
-```
-
-### Language Switching
-Users can toggle between Spanish and English using the language switcher in the top navigation bar. The selection persists across sessions via localStorage.
-
-### Translation Status
-*   **Fully translated**: Property submission wizard (all 7 steps including Step1BasicInfo), SidebarConfig, AutoLogoutConfig, property invitation system with complete bilingual support
-*   **Partially translated**: AppSidebar menu items (some hardcoded strings remain)
-*   **Pending translation**: Privacy policy, Terms and conditions, various admin components, form validation messages
-
-### Recent Translation Fixes (2025-11-18)
-*   **Step1BasicInfo wizard component**: Added missing translation keys for rent/sale operation type cards:
-    - `step1.rent`, `step1.rentDescription`, `step1.sale`, `step1.saleDescription`
-    - `step1.mainDetails`, `step1.price`, `step1.pricePlaceholder`
-    - `step1.customListingTitle`, `step1.customListingTitlePlaceholder`, `step1.customListingTitleDescription`
-    - All texts now display correctly in both Spanish and English in the property invitation wizard
-
-### Adding New Translations
-1. Add translation keys to appropriate file (`adminTranslations.ts`, `wizardTranslations.ts`, or create new domain file)
-2. Import translation function in component
-3. Use `useLanguage()` hook to get current language
-4. Replace hardcoded strings with translation keys: `{t.section.key}`
