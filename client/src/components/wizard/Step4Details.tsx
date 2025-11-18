@@ -34,9 +34,9 @@ export default function Step4Details({ data, onUpdate, onNext, onPrevious, langu
   const form = useForm<DetailsForm>({
     resolver: zodResolver(detailsSchema),
     defaultValues: {
-      bedrooms: data.details?.bedrooms || 0,
-      bathrooms: data.details?.bathrooms || 0,
-      area: data.details?.area || 0,
+      bedrooms: data.details?.bedrooms?.toString() || "",
+      bathrooms: data.details?.bathrooms?.toString() || "",
+      area: data.details?.area?.toString() || "",
       amenities: data.details?.amenities || "",
     },
   });

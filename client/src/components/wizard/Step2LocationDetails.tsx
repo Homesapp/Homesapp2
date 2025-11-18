@@ -108,9 +108,9 @@ export default function Step2LocationDetails({ data, onUpdate, onNext, onPreviou
       latitude: data.locationInfo?.latitude || "",
       longitude: data.locationInfo?.longitude || "",
       // Detalles
-      bedrooms: data.details?.bedrooms || 0,
-      bathrooms: data.details?.bathrooms || 0,
-      area: data.details?.area || "",
+      bedrooms: data.details?.bedrooms?.toString() || "",
+      bathrooms: data.details?.bathrooms?.toString() || "",
+      area: data.details?.area?.toString() || "",
       propertyAmenities: data.details?.propertyAmenities || [],
       condoAmenities: data.details?.condoAmenities || [],
     },
