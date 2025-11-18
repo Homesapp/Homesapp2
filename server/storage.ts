@@ -1073,10 +1073,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // Handle email: if null/empty, generate unique email from ID to avoid constraint violations
-    const safeEmail = userData.email || `user-${userData.id}@homesapp.internal`;
+    // Prepare email: if null/empty, immediately use fallback
+    const hasProvidedEmail = !!userData.email;
+    const fallbackEmail = `user-${userData.id}@homesapp.internal`;
+    let emailToUse = hasProvidedEmail ? userData.email : fallbackEmail;
     
-    // Build update fields (exclude email to avoid unique constraint violations on update)
+    // Build update fields
     const updateFields: any = {
       firstName: userData.firstName,
       lastName: userData.lastName,
@@ -1089,20 +1091,42 @@ export class DatabaseStorage implements IStorage {
       updateFields.role = userData.role;
     }
 
-    // Use onConflictDoUpdate with ID as target
-    // This will insert if ID doesn't exist, or update if it does
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...userData,
-        email: safeEmail,
-      })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: updateFields, // Note: email is NOT in updateFields to preserve existing email
-      })
-      .returning();
-    return user;
+    // Atomic upsert with retry logic for email conflicts
+    const attemptUpsert = async (email: string, allowEmailUpdate: boolean): Promise<User> => {
+      // Include email in update fields only when it's safe to update
+      const fieldsToUpdate = { ...updateFields };
+      if (allowEmailUpdate && hasProvidedEmail) {
+        fieldsToUpdate.email = email;
+      }
+      
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...userData,
+          email: email,
+        })
+        .onConflictDoUpdate({
+          target: users.id,
+          set: fieldsToUpdate,
+        })
+        .returning();
+      return user;
+    };
+
+    try {
+      // First attempt: use the provided email (or fallback if null)
+      return await attemptUpsert(emailToUse!, true);
+    } catch (error: any) {
+      // Check if error is a unique constraint violation on email
+      if (error?.code === '23505' && error?.constraint === 'users_email_unique') {
+        // Email conflict detected - retry with fallback email
+        // This handles the race condition where two concurrent inserts
+        // attempt to use the same email for different user IDs
+        return await attemptUpsert(fallbackEmail, false);
+      }
+      // Re-throw any other error
+      throw error;
+    }
   }
 
   async getUsersByStatus(status: string): Promise<User[]> {
