@@ -56,6 +56,7 @@ export default function AdminPropertyManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [showTourRequests, setShowTourRequests] = useState<boolean>(false);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [detailProperty, setDetailProperty] = useState<Property | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -96,12 +97,13 @@ export default function AdminPropertyManagement() {
 
   // Fetch properties
   const { data: properties = [], isLoading: propertiesLoading } = useQuery<Property[]>({
-    queryKey: ["/api/admin/properties", selectedStatus, selectedType, searchQuery],
+    queryKey: ["/api/admin/properties", selectedStatus, selectedType, searchQuery, showTourRequests],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedStatus !== "all") params.append("approvalStatus", selectedStatus);
       if (selectedType !== "all") params.append("propertyType", selectedType);
       if (searchQuery) params.append("q", searchQuery);
+      if (showTourRequests) params.append("requestVirtualTour", "true");
       const response = await fetch(`/api/admin/properties?${params}`);
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -409,6 +411,24 @@ export default function AdminPropertyManagement() {
             </div>
 
             <div className="space-y-2">
+              <label className="text-sm font-medium">Tour Virtual</label>
+              <div className="flex items-center space-x-2 h-10 px-3 rounded-md border bg-background">
+                <Checkbox
+                  id="tour-requests"
+                  checked={showTourRequests}
+                  onCheckedChange={setShowTourRequests}
+                  data-testid="checkbox-show-tour-requests"
+                />
+                <label
+                  htmlFor="tour-requests"
+                  className="text-sm font-medium leading-none cursor-pointer select-none"
+                >
+                  Solo con solicitud de tour 360°
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <label className="text-sm font-medium">Tipo de Propiedad</label>
               <Select value={selectedType} onValueChange={setSelectedType}>
                 <SelectTrigger data-testid="select-property-type">
@@ -532,7 +552,7 @@ export default function AdminPropertyManagement() {
                           </h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">{property.description}</p>
                         </div>
-                        <div className="flex gap-2 items-start">
+                        <div className="flex gap-2 items-start flex-wrap">
                           {getStatusBadge(property.approvalStatus)}
                           {property.published && (
                             <Badge variant="outline" className="gap-1">
@@ -542,6 +562,12 @@ export default function AdminPropertyManagement() {
                           )}
                           {property.featured && (
                             <Badge variant="default">Destacada</Badge>
+                          )}
+                          {property.requestVirtualTour && (
+                            <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={`badge-tour-request-${property.id}`}>
+                              <Calendar className="w-3 h-3" />
+                              Tour 360° Solicitado
+                            </Badge>
                           )}
                         </div>
                       </div>

@@ -183,11 +183,11 @@ export default function Step5TermsReview({ data, draftId, onUpdate, onPrevious, 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <Tabs defaultValue="review" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="review" data-testid="tab-review">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="review" data-testid="tab-review" className="data-[state=active]:bg-background">
                 {t.step7.reviewTab}
               </TabsTrigger>
-              <TabsTrigger value="terms" data-testid="tab-terms">
+              <TabsTrigger value="terms" data-testid="tab-terms" className="data-[state=active]:bg-background">
                 {t.step7.termsTab}
               </TabsTrigger>
             </TabsList>

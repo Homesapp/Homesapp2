@@ -870,6 +870,7 @@ export const properties = pgTable("properties", {
   secondaryImages: text("secondary_images").array().default(sql`ARRAY[]::text[]`), // 20 fotos secundarias max
   videos: text("videos").array().default(sql`ARRAY[]::text[]`), // URLs de videos
   virtualTourUrl: text("virtual_tour_url"), // Link de tour 360
+  requestVirtualTour: boolean("request_virtual_tour").default(false), // Solicitud de creación de tour 360
   googleMapsUrl: text("google_maps_url"), // Link de Google Maps
   latitude: decimal("latitude", { precision: 10, scale: 7 }), // Coordenada latitud
   longitude: decimal("longitude", { precision: 10, scale: 7 }), // Coordenada longitud
