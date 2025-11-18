@@ -248,7 +248,6 @@ export default function PropertySubmissionWizard({
       }
       
       const nextStep = currentStep + 1;
-      // Save with next step number and updated data
       setIsSaving(true);
       const dataToSave = {
         ...updatedData,
@@ -263,6 +262,7 @@ export default function PropertySubmissionWizard({
           setDraftId(newDraft.id);
         }
         setLastSaved(new Date());
+        // Only advance after successful save
         setCurrentStep(nextStep);
       } catch (error: any) {
         console.error("Save failed:", error);
@@ -280,7 +280,7 @@ export default function PropertySubmissionWizard({
   const handlePrevious = async () => {
     if (currentStep > 1) {
       const prevStep = currentStep - 1;
-      // Save with previous step number
+      // Save before navigating to ensure data consistency
       await saveDraft(prevStep);
       setCurrentStep(prevStep);
     }
