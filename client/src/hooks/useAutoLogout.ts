@@ -15,11 +15,15 @@ export function useAutoLogout(options: UseAutoLogoutOptions = {}) {
   // Fetch auto-logout timeout from API
   const { data: timeoutData } = useQuery<{ timeout: number }>({
     queryKey: ["/api/system-settings/auto-logout-timeout"],
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    staleTime: 30 * 1000, // Cache for 30 seconds (allows quick updates when config changes)
     retry: 1,
   });
 
   const INACTIVITY_TIMEOUT = timeoutData?.timeout ?? DEFAULT_TIMEOUT;
+  
+  // Debug logging
+  console.log('[useAutoLogout] Timeout data:', timeoutData);
+  console.log('[useAutoLogout] Using timeout (ms):', INACTIVITY_TIMEOUT, '=', Math.floor(INACTIVITY_TIMEOUT / 60000), 'minutes');
 
   const logout = useCallback(() => {
     // Clear any existing timeout
@@ -43,7 +47,9 @@ export function useAutoLogout(options: UseAutoLogoutOptions = {}) {
 
     // Set new timeout only if enabled
     if (enabled) {
+      console.log('[useAutoLogout] Setting new timeout for', Math.floor(INACTIVITY_TIMEOUT / 60000), 'minutes');
       timeoutRef.current = setTimeout(() => {
+        console.log('[useAutoLogout] Timeout expired, logging out...');
         logout();
       }, INACTIVITY_TIMEOUT);
     }
