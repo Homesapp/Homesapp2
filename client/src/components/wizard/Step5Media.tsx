@@ -5,10 +5,12 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Upload, X, Star, Image as ImageIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronLeft, ChevronRight, Upload, X, Star, Image as ImageIcon, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { getTranslation, Language } from "@/lib/wizardTranslations";
 
@@ -20,6 +22,7 @@ const getMediaSchema = (language: Language) => {
     secondaryImages: z.array(z.string()).max(20, t.errors.secondaryImagesMax).optional(),
     videos: z.array(z.string()).optional(),
     virtualTourUrl: z.string().url(t.errors.invalidUrl).optional().or(z.literal("")),
+    requestVirtualTour: z.boolean().default(false).optional(),
   });
 };
 
@@ -81,6 +84,7 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
       secondaryImages: initializeSecondaryImages(),
       videos: data.media?.videos || [],
       virtualTourUrl: data.media?.virtualTourUrl || "",
+      requestVirtualTour: data.media?.requestVirtualTour || false,
     },
   });
 
@@ -499,12 +503,21 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
 
           <Separator />
 
+          {/* Virtual Tour Benefits Alert */}
+          <Alert className="border-primary/20 bg-primary/5">
+            <Info className="h-4 w-4" />
+            <AlertTitle>{t.step3.tourBenefitsTitle}</AlertTitle>
+            <AlertDescription>
+              {t.step3.tourBenefits}
+            </AlertDescription>
+          </Alert>
+
           <FormField
             control={form.control}
             name="virtualTourUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.step3.virtualTour}</FormLabel>
+                <FormLabel>{t.step3.virtualTourUrl}</FormLabel>
                 <FormControl>
                   <Input
                     placeholder={t.step3.virtualTourPlaceholder}
@@ -513,9 +526,32 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
                   />
                 </FormControl>
                 <FormDescription data-testid="text-tour-description">
-                  {t.step3.virtualTourDescription}
+                  {t.step3.virtualTourDesc}
                 </FormDescription>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Request Virtual Tour Checkbox */}
+          <FormField
+            control={form.control}
+            name="requestVirtualTour"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-request-tour"
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none flex-1">
+                  <FormLabel className="text-base cursor-pointer font-medium">
+                    {t.step3.requestTour}
+                  </FormLabel>
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />

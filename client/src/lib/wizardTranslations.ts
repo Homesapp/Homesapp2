@@ -157,6 +157,9 @@ export const wizardTranslations = {
       virtualTourUrl: "URL de Tour Virtual",
       virtualTourPlaceholder: "https://...",
       virtualTourDesc: "Enlace a un recorrido virtual 360° (opcional)",
+      requestTour: "Solicitar que HomesApp cree un tour virtual 360° de mi propiedad",
+      tourBenefits: "💡 Un tour virtual 360° aumenta significativamente las visualizaciones y reduce el tiempo de renta. ¡Te ayudamos a crearlo!",
+      tourBenefitsTitle: "Beneficios del Tour Virtual",
     },
     
     // Step 4: Services
@@ -706,6 +709,9 @@ export const wizardTranslations = {
       virtualTourUrl: "Virtual Tour URL",
       virtualTourPlaceholder: "https://...",
       virtualTourDesc: "Link to a 360° virtual tour (optional)",
+      requestTour: "Request HomesApp to create a 360° virtual tour of my property",
+      tourBenefits: "💡 A 360° virtual tour significantly increases views and reduces rental time. We'll help you create one!",
+      tourBenefitsTitle: "Virtual Tour Benefits",
     },
     
     // Step 4: Services
