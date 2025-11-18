@@ -43,7 +43,7 @@ Key features include:
 *   **Property Wizard Optimization**: Intelligent payload management to speed up wizard step saves after image uploads.
 *   **Separate Rental and Sale Pricing**: Independent price and currency fields for rental and sale transactions with deep JSONB merge for data integrity.
 *   **Editable Owner Terms**: Admin-editable property owner terms and conditions with wizard UI enhancements.
-*   **External Property Management System**: Multi-tenant module for managing external agency properties independently, with payment calendar, maintenance tickets, and optional property linking to main system.
+*   **External Property Management System**: Multi-tenant module for managing external agency properties independently, with payment calendar, maintenance tickets, and optional property linking to main system. Admin-only creation: External agencies can only be created by HomesApp administrators, who assign users and automatically grant them the external_agency_admin role.
 
 ## External Dependencies
 *   Google Calendar API
