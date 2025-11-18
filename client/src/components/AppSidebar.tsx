@@ -260,6 +260,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
 
   const configGroup = [
     { titleKey: "sidebar.agreementTemplates", url: "/admin/agreement-templates", icon: FileText, roles: ["master", "admin"] },
+    { titleKey: "sidebar.propertyOwnerTerms", url: "/admin/property-owner-terms", icon: FileText, roles: ["master", "admin"] },
     { titleKey: "sidebar.chatbotConfig", url: "/admin/chatbot-config", icon: Bot, roles: ["master", "admin"] },
     { titleKey: "sidebar.sidebarConfig", url: "/admin/sidebar-config", icon: Settings2, roles: ["master", "admin"] },
     { titleKey: "sidebar.integrations", url: "/admin/integrations", icon: Plug, roles: ["master", "admin"] },
