@@ -79,10 +79,24 @@ export async function compressImage(
         onProgress(80); // 80% after drawing
         
         // Convert to base64 with compression
-        // Use JPEG for photos (better compression), PNG for images with transparency
-        const mimeType = file.type === 'image/png' && hasTransparency(ctx, width, height)
-          ? 'image/png'
-          : 'image/jpeg';
+        // Preserve original format when possible, especially for WebP
+        let mimeType: string;
+        const hasAlpha = hasTransparency(ctx, width, height);
+        
+        if (hasAlpha) {
+          // Has transparency - preserve format or use PNG
+          mimeType = file.type === 'image/webp' ? 'image/webp' : 'image/png';
+        } else {
+          // No transparency - preserve original format
+          if (file.type === 'image/webp') {
+            mimeType = 'image/webp';
+          } else if (file.type === 'image/png') {
+            mimeType = 'image/png';
+          } else {
+            // JPEG or other formats
+            mimeType = 'image/jpeg';
+          }
+        }
         
         const compressedBase64 = canvas.toDataURL(mimeType, quality);
         
