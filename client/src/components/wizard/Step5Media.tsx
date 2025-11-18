@@ -11,8 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { getTranslation, Language } from "@/lib/wizardTranslations";
+import { compressImage, formatFileSize } from "@/lib/imageCompression";
 
 const getMediaSchema = (language: Language) => {
   const t = getTranslation(language);
@@ -71,6 +73,8 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
   const [primaryImages, setPrimaryImages] = useState<string[]>(initializePrimaryImages());
   const [secondaryImages, setSecondaryImages] = useState<string[]>(initializeSecondaryImages());
   const [coverImageIndex, setCoverImageIndex] = useState<number>(initializeCoverIndex());
+  const [uploadingPrimary, setUploadingPrimary] = useState<Map<string, number>>(new Map());
+  const [uploadingSecondary, setUploadingSecondary] = useState<Map<string, number>>(new Map());
   
   const primaryFileInputRef = useRef<HTMLInputElement>(null);
   const secondaryFileInputRef = useRef<HTMLInputElement>(null);
@@ -213,15 +217,7 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: t.errors.error,
-          description: `${file.name} ${t.step3.exceeds5MB}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Remove size limit check - we'll compress instead
       if (primaryImages.length + validFiles.length >= 5) {
         return;
       }
@@ -229,26 +225,70 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
       validFiles.push(file);
     });
 
-    // Process valid files
+    // Process valid files with compression and progress tracking
     if (validFiles.length > 0) {
-      const readFilePromises = validFiles.map((file) => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-        });
-      });
+      const compressedImages: string[] = [];
+      
+      for (const file of validFiles) {
+        const fileId = `${file.name}_${Date.now()}_${Math.random()}`;
+        
+        try {
+          // Update progress state
+          setUploadingPrimary(prev => new Map(prev).set(fileId, 0));
+          
+          // Compress image with progress callback
+          const result = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.85,
+            onProgress: (progress) => {
+              setUploadingPrimary(prev => new Map(prev).set(fileId, progress));
+            },
+          });
+          
+          compressedImages.push(result.base64);
+          
+          // Show compression stats
+          if (result.compressionRatio > 10) {
+            toast({
+              title: "Imagen comprimida",
+              description: `${file.name}: ${formatFileSize(result.originalSize)} → ${formatFileSize(result.compressedSize)} (${Math.round(result.compressionRatio)}% reducción)`,
+              duration: 3000,
+            });
+          }
+          
+          // Remove from uploading state
+          setUploadingPrimary(prev => {
+            const next = new Map(prev);
+            next.delete(fileId);
+            return next;
+          });
+        } catch (error) {
+          console.error('Error compressing image:', error);
+          toast({
+            title: t.errors.error,
+            description: `${file.name}: Error al procesar imagen`,
+            variant: "destructive",
+          });
+          
+          // Remove from uploading state
+          setUploadingPrimary(prev => {
+            const next = new Map(prev);
+            next.delete(fileId);
+            return next;
+          });
+        }
+      }
 
-      const base64Images = await Promise.all(readFilePromises);
-      setPrimaryImages((prev) => {
-        const available = 5 - prev.length;
-        const imagesToAdd = base64Images.slice(0, available);
-        const updatedImages = [...prev, ...imagesToAdd];
-        form.setValue("primaryImages", updatedImages);
-        return updatedImages;
-      });
+      if (compressedImages.length > 0) {
+        setPrimaryImages((prev) => {
+          const available = 5 - prev.length;
+          const imagesToAdd = compressedImages.slice(0, available);
+          const updatedImages = [...prev, ...imagesToAdd];
+          form.setValue("primaryImages", updatedImages);
+          return updatedImages;
+        });
+      }
     }
 
     if (primaryFileInputRef.current) {
@@ -274,15 +314,7 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: t.errors.error,
-          description: `${file.name} ${t.step3.exceeds5MB}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Remove size limit check - we'll compress instead
       if (secondaryImages.length + validFiles.length >= 20) {
         return;
       }
@@ -290,26 +322,70 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
       validFiles.push(file);
     });
 
-    // Process valid files
+    // Process valid files with compression and progress tracking
     if (validFiles.length > 0) {
-      const readFilePromises = validFiles.map((file) => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-        });
-      });
+      const compressedImages: string[] = [];
+      
+      for (const file of validFiles) {
+        const fileId = `${file.name}_${Date.now()}_${Math.random()}`;
+        
+        try {
+          // Update progress state
+          setUploadingSecondary(prev => new Map(prev).set(fileId, 0));
+          
+          // Compress image with progress callback
+          const result = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.85,
+            onProgress: (progress) => {
+              setUploadingSecondary(prev => new Map(prev).set(fileId, progress));
+            },
+          });
+          
+          compressedImages.push(result.base64);
+          
+          // Show compression stats
+          if (result.compressionRatio > 10) {
+            toast({
+              title: "Imagen comprimida",
+              description: `${file.name}: ${formatFileSize(result.originalSize)} → ${formatFileSize(result.compressedSize)} (${Math.round(result.compressionRatio)}% reducción)`,
+              duration: 3000,
+            });
+          }
+          
+          // Remove from uploading state
+          setUploadingSecondary(prev => {
+            const next = new Map(prev);
+            next.delete(fileId);
+            return next;
+          });
+        } catch (error) {
+          console.error('Error compressing image:', error);
+          toast({
+            title: t.errors.error,
+            description: `${file.name}: Error al procesar imagen`,
+            variant: "destructive",
+          });
+          
+          // Remove from uploading state
+          setUploadingSecondary(prev => {
+            const next = new Map(prev);
+            next.delete(fileId);
+            return next;
+          });
+        }
+      }
 
-      const base64Images = await Promise.all(readFilePromises);
-      setSecondaryImages((prev) => {
-        const available = 20 - prev.length;
-        const imagesToAdd = base64Images.slice(0, available);
-        const updatedImages = [...prev, ...imagesToAdd];
-        form.setValue("secondaryImages", updatedImages);
-        return updatedImages;
-      });
+      if (compressedImages.length > 0) {
+        setSecondaryImages((prev) => {
+          const available = 20 - prev.length;
+          const imagesToAdd = compressedImages.slice(0, available);
+          const updatedImages = [...prev, ...imagesToAdd];
+          form.setValue("secondaryImages", updatedImages);
+          return updatedImages;
+        });
+      }
     }
 
     if (secondaryFileInputRef.current) {
@@ -355,13 +431,27 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
                 type="button"
                 variant="outline"
                 onClick={handleAddPrimaryImage}
-                disabled={primaryImages.length >= 5}
+                disabled={primaryImages.length >= 5 || uploadingPrimary.size > 0}
                 data-testid="button-add-primary-image"
                 className="w-full"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 {t.step3.addImages}
               </Button>
+
+              {uploadingPrimary.size > 0 && (
+                <div className="space-y-2">
+                  {Array.from(uploadingPrimary.entries()).map(([fileId, progress]) => (
+                    <div key={fileId} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Comprimiendo imagen...</span>
+                        <span className="font-medium">{progress}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {form.formState.errors.primaryImages && (
                 <p className="text-sm text-destructive">
@@ -452,13 +542,27 @@ export default function Step5Media({ data, onUpdate, onNext, onPrevious, languag
                 type="button"
                 variant="outline"
                 onClick={handleAddSecondaryImage}
-                disabled={secondaryImages.length >= 20}
+                disabled={secondaryImages.length >= 20 || uploadingSecondary.size > 0}
                 data-testid="button-add-secondary-image"
                 className="w-full"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 {t.step3.addImages}
               </Button>
+
+              {uploadingSecondary.size > 0 && (
+                <div className="space-y-2">
+                  {Array.from(uploadingSecondary.entries()).map(([fileId, progress]) => (
+                    <div key={fileId} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Comprimiendo imagen...</span>
+                        <span className="font-medium">{progress}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {secondaryImages.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

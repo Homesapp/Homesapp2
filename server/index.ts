@@ -10,8 +10,8 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: false, limit: '100mb' }));
 
 // Serve attached_assets as static files
 app.use('/attached_assets', express.static('attached_assets'));
