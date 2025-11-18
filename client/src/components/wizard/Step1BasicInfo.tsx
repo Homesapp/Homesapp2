@@ -2,10 +2,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronRight, Home, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,9 @@ const getStep1Schema = (language: Language) => {
     description: z.string().min(20, t.errors.descriptionMin),
     propertyType: z.string().min(1, t.errors.propertyTypeRequired),
     price: z.string().min(1, t.errors.priceRequired),
+    currency: z.enum(["MXN", "USD"]).default("MXN"),
+    petFriendly: z.boolean().default(false),
+    allowsSubleasing: z.boolean().default(false),
   }).refine((data) => data.isForRent || data.isForSale, {
     message: t.errors.operationTypeRequired,
     path: ["isForRent"],
@@ -50,6 +54,9 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
       description: data.basicInfo?.description || "",
       propertyType: data.basicInfo?.propertyType || "house",
       price: data.basicInfo?.price || "",
+      currency: data.basicInfo?.currency || "MXN",
+      petFriendly: data.basicInfo?.petFriendly || false,
+      allowsSubleasing: data.basicInfo?.allowsSubleasing || false,
     },
   });
 
@@ -63,6 +70,9 @@ export default function Step1BasicInfo({ data, onUpdate, onNext, language = "es"
         description: formData.description,
         propertyType: formData.propertyType,
         price: formData.price,
+        currency: formData.currency,
+        petFriendly: formData.petFriendly,
+        allowsSubleasing: formData.allowsSubleasing,
       },
     });
   };
