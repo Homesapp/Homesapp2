@@ -138,9 +138,16 @@ export default function MyComponent() {
 Users can toggle between Spanish and English using the language switcher in the top navigation bar. The selection persists across sessions via localStorage.
 
 ### Translation Status
-*   **Fully translated**: Property submission wizard, SidebarConfig, AutoLogoutConfig, property invitation system
+*   **Fully translated**: Property submission wizard (all 7 steps including Step1BasicInfo), SidebarConfig, AutoLogoutConfig, property invitation system with complete bilingual support
 *   **Partially translated**: AppSidebar menu items (some hardcoded strings remain)
 *   **Pending translation**: Privacy policy, Terms and conditions, various admin components, form validation messages
+
+### Recent Translation Fixes (2025-11-18)
+*   **Step1BasicInfo wizard component**: Added missing translation keys for rent/sale operation type cards:
+    - `step1.rent`, `step1.rentDescription`, `step1.sale`, `step1.saleDescription`
+    - `step1.mainDetails`, `step1.price`, `step1.pricePlaceholder`
+    - `step1.customListingTitle`, `step1.customListingTitlePlaceholder`, `step1.customListingTitleDescription`
+    - All texts now display correctly in both Spanish and English in the property invitation wizard
 
 ### Adding New Translations
 1. Add translation keys to appropriate file (`adminTranslations.ts`, `wizardTranslations.ts`, or create new domain file)
