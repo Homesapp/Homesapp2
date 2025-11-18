@@ -311,6 +311,24 @@ import {
   propertyOwnerTerms,
   type PropertyOwnerTerms,
   type InsertPropertyOwnerTerms,
+  externalAgencies,
+  type ExternalAgency,
+  type InsertExternalAgency,
+  externalProperties,
+  type ExternalProperty,
+  type InsertExternalProperty,
+  externalRentalContracts,
+  type ExternalRentalContract,
+  type InsertExternalRentalContract,
+  externalPaymentSchedules,
+  type ExternalPaymentSchedule,
+  type InsertExternalPaymentSchedule,
+  externalPayments,
+  type ExternalPayment,
+  type InsertExternalPayment,
+  externalMaintenanceTickets,
+  type ExternalMaintenanceTicket,
+  type InsertExternalMaintenanceTicket,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -1070,6 +1088,63 @@ export interface IStorage {
   getAllSystemSettings(): Promise<SystemSetting[]>;
   setSystemSetting(setting: InsertSystemSetting): Promise<SystemSetting>;
   updateSystemSetting(settingKey: string, settingValue: string): Promise<SystemSetting>;
+
+  // External Management System - Agency operations
+  getExternalAgency(id: string): Promise<ExternalAgency | undefined>;
+  getExternalAgencies(filters?: { isActive?: boolean }): Promise<ExternalAgency[]>;
+  getExternalAgenciesByCreator(createdBy: string): Promise<ExternalAgency[]>;
+  createExternalAgency(agency: InsertExternalAgency): Promise<ExternalAgency>;
+  updateExternalAgency(id: string, updates: Partial<InsertExternalAgency>): Promise<ExternalAgency>;
+  toggleExternalAgencyActive(id: string, isActive: boolean): Promise<ExternalAgency>;
+  deleteExternalAgency(id: string): Promise<void>;
+
+  // External Management System - Property operations
+  getExternalProperty(id: string): Promise<ExternalProperty | undefined>;
+  getExternalPropertiesByAgency(agencyId: string, filters?: { status?: string }): Promise<ExternalProperty[]>;
+  createExternalProperty(property: InsertExternalProperty): Promise<ExternalProperty>;
+  updateExternalProperty(id: string, updates: Partial<InsertExternalProperty>): Promise<ExternalProperty>;
+  linkExternalProperty(id: string, linkedPropertyId: string): Promise<ExternalProperty>;
+  deleteExternalProperty(id: string): Promise<void>;
+
+  // External Management System - Contract operations
+  getExternalRentalContract(id: string): Promise<ExternalRentalContract | undefined>;
+  getExternalRentalContractsByAgency(agencyId: string, filters?: { status?: string }): Promise<ExternalRentalContract[]>;
+  getExternalRentalContractsByProperty(propertyId: string): Promise<ExternalRentalContract[]>;
+  createExternalRentalContract(contract: InsertExternalRentalContract): Promise<ExternalRentalContract>;
+  updateExternalRentalContract(id: string, updates: Partial<InsertExternalRentalContract>): Promise<ExternalRentalContract>;
+  updateExternalContractStatus(id: string, status: string): Promise<ExternalRentalContract>;
+  deleteExternalRentalContract(id: string): Promise<void>;
+
+  // External Management System - Payment Schedule operations
+  getExternalPaymentSchedule(id: string): Promise<ExternalPaymentSchedule | undefined>;
+  getExternalPaymentSchedulesByContract(contractId: string): Promise<ExternalPaymentSchedule[]>;
+  getExternalPaymentSchedulesByAgency(agencyId: string, filters?: { isActive?: boolean }): Promise<ExternalPaymentSchedule[]>;
+  createExternalPaymentSchedule(schedule: InsertExternalPaymentSchedule): Promise<ExternalPaymentSchedule>;
+  updateExternalPaymentSchedule(id: string, updates: Partial<InsertExternalPaymentSchedule>): Promise<ExternalPaymentSchedule>;
+  toggleExternalPaymentScheduleActive(id: string, isActive: boolean): Promise<ExternalPaymentSchedule>;
+  deleteExternalPaymentSchedule(id: string): Promise<void>;
+
+  // External Management System - Payment operations
+  getExternalPayment(id: string): Promise<ExternalPayment | undefined>;
+  getExternalPaymentsByContract(contractId: string, filters?: { status?: string }): Promise<ExternalPayment[]>;
+  getExternalPaymentsByAgency(agencyId: string, filters?: { status?: string; serviceType?: string }): Promise<ExternalPayment[]>;
+  getUpcomingExternalPayments(agencyId: string, days: number): Promise<ExternalPayment[]>;
+  createExternalPayment(payment: InsertExternalPayment): Promise<ExternalPayment>;
+  updateExternalPayment(id: string, updates: Partial<InsertExternalPayment>): Promise<ExternalPayment>;
+  updateExternalPaymentStatus(id: string, status: string, paidDate?: Date): Promise<ExternalPayment>;
+  markExternalPaymentReminderSent(id: string): Promise<ExternalPayment>;
+  deleteExternalPayment(id: string): Promise<void>;
+
+  // External Management System - Maintenance Ticket operations
+  getExternalMaintenanceTicket(id: string): Promise<ExternalMaintenanceTicket | undefined>;
+  getExternalMaintenanceTicketsByAgency(agencyId: string, filters?: { status?: string; priority?: string }): Promise<ExternalMaintenanceTicket[]>;
+  getExternalMaintenanceTicketsByProperty(propertyId: string): Promise<ExternalMaintenanceTicket[]>;
+  getExternalMaintenanceTicketsByAssignee(assignedTo: string): Promise<ExternalMaintenanceTicket[]>;
+  createExternalMaintenanceTicket(ticket: InsertExternalMaintenanceTicket): Promise<ExternalMaintenanceTicket>;
+  updateExternalMaintenanceTicket(id: string, updates: Partial<InsertExternalMaintenanceTicket>): Promise<ExternalMaintenanceTicket>;
+  updateExternalTicketStatus(id: string, status: string, resolvedDate?: Date): Promise<ExternalMaintenanceTicket>;
+  assignExternalTicket(id: string, assignedTo: string): Promise<ExternalMaintenanceTicket>;
+  deleteExternalMaintenanceTicket(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -7155,6 +7230,399 @@ export class DatabaseStorage implements IStorage {
       .where(eq(systemSettings.settingKey, settingKey))
       .returning();
     return result;
+  }
+
+  // External Management System - Agency operations
+  async getExternalAgency(id: string): Promise<ExternalAgency | undefined> {
+    const [agency] = await db.select()
+      .from(externalAgencies)
+      .where(eq(externalAgencies.id, id))
+      .limit(1);
+    return agency;
+  }
+
+  async getExternalAgencies(filters?: { isActive?: boolean }): Promise<ExternalAgency[]> {
+    const conditions = [];
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(externalAgencies.isActive, filters.isActive));
+    }
+    
+    return await db.select()
+      .from(externalAgencies)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(externalAgencies.createdAt));
+  }
+
+  async getExternalAgenciesByCreator(createdBy: string): Promise<ExternalAgency[]> {
+    return await db.select()
+      .from(externalAgencies)
+      .where(eq(externalAgencies.createdBy, createdBy))
+      .orderBy(desc(externalAgencies.createdAt));
+  }
+
+  async createExternalAgency(agency: InsertExternalAgency): Promise<ExternalAgency> {
+    const [result] = await db.insert(externalAgencies)
+      .values(agency)
+      .returning();
+    return result;
+  }
+
+  async updateExternalAgency(id: string, updates: Partial<InsertExternalAgency>): Promise<ExternalAgency> {
+    const [result] = await db.update(externalAgencies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalAgencies.id, id))
+      .returning();
+    return result;
+  }
+
+  async toggleExternalAgencyActive(id: string, isActive: boolean): Promise<ExternalAgency> {
+    const [result] = await db.update(externalAgencies)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(externalAgencies.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalAgency(id: string): Promise<void> {
+    await db.delete(externalAgencies)
+      .where(eq(externalAgencies.id, id));
+  }
+
+  // External Management System - Property operations
+  async getExternalProperty(id: string): Promise<ExternalProperty | undefined> {
+    const [property] = await db.select()
+      .from(externalProperties)
+      .where(eq(externalProperties.id, id))
+      .limit(1);
+    return property;
+  }
+
+  async getExternalPropertiesByAgency(agencyId: string, filters?: { status?: string }): Promise<ExternalProperty[]> {
+    const conditions = [eq(externalProperties.agencyId, agencyId)];
+    if (filters?.status) {
+      conditions.push(eq(externalProperties.status, filters.status as any));
+    }
+    
+    return await db.select()
+      .from(externalProperties)
+      .where(and(...conditions))
+      .orderBy(desc(externalProperties.createdAt));
+  }
+
+  async createExternalProperty(property: InsertExternalProperty): Promise<ExternalProperty> {
+    const [result] = await db.insert(externalProperties)
+      .values(property)
+      .returning();
+    return result;
+  }
+
+  async updateExternalProperty(id: string, updates: Partial<InsertExternalProperty>): Promise<ExternalProperty> {
+    const [result] = await db.update(externalProperties)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalProperties.id, id))
+      .returning();
+    return result;
+  }
+
+  async linkExternalProperty(id: string, linkedPropertyId: string): Promise<ExternalProperty> {
+    const [result] = await db.update(externalProperties)
+      .set({ 
+        linkedPropertyId, 
+        status: 'linked',
+        updatedAt: new Date() 
+      })
+      .where(eq(externalProperties.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalProperty(id: string): Promise<void> {
+    await db.delete(externalProperties)
+      .where(eq(externalProperties.id, id));
+  }
+
+  // External Management System - Contract operations
+  async getExternalRentalContract(id: string): Promise<ExternalRentalContract | undefined> {
+    const [contract] = await db.select()
+      .from(externalRentalContracts)
+      .where(eq(externalRentalContracts.id, id))
+      .limit(1);
+    return contract;
+  }
+
+  async getExternalRentalContractsByAgency(agencyId: string, filters?: { status?: string }): Promise<ExternalRentalContract[]> {
+    const conditions = [eq(externalRentalContracts.agencyId, agencyId)];
+    if (filters?.status) {
+      conditions.push(eq(externalRentalContracts.status, filters.status as any));
+    }
+    
+    return await db.select()
+      .from(externalRentalContracts)
+      .where(and(...conditions))
+      .orderBy(desc(externalRentalContracts.createdAt));
+  }
+
+  async getExternalRentalContractsByProperty(propertyId: string): Promise<ExternalRentalContract[]> {
+    return await db.select()
+      .from(externalRentalContracts)
+      .where(eq(externalRentalContracts.propertyId, propertyId))
+      .orderBy(desc(externalRentalContracts.createdAt));
+  }
+
+  async createExternalRentalContract(contract: InsertExternalRentalContract): Promise<ExternalRentalContract> {
+    const [result] = await db.insert(externalRentalContracts)
+      .values(contract)
+      .returning();
+    return result;
+  }
+
+  async updateExternalRentalContract(id: string, updates: Partial<InsertExternalRentalContract>): Promise<ExternalRentalContract> {
+    const [result] = await db.update(externalRentalContracts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalRentalContracts.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateExternalContractStatus(id: string, status: string): Promise<ExternalRentalContract> {
+    const [result] = await db.update(externalRentalContracts)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(externalRentalContracts.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalRentalContract(id: string): Promise<void> {
+    await db.delete(externalRentalContracts)
+      .where(eq(externalRentalContracts.id, id));
+  }
+
+  // External Management System - Payment Schedule operations
+  async getExternalPaymentSchedule(id: string): Promise<ExternalPaymentSchedule | undefined> {
+    const [schedule] = await db.select()
+      .from(externalPaymentSchedules)
+      .where(eq(externalPaymentSchedules.id, id))
+      .limit(1);
+    return schedule;
+  }
+
+  async getExternalPaymentSchedulesByContract(contractId: string): Promise<ExternalPaymentSchedule[]> {
+    return await db.select()
+      .from(externalPaymentSchedules)
+      .where(eq(externalPaymentSchedules.contractId, contractId))
+      .orderBy(externalPaymentSchedules.dayOfMonth);
+  }
+
+  async getExternalPaymentSchedulesByAgency(agencyId: string, filters?: { isActive?: boolean }): Promise<ExternalPaymentSchedule[]> {
+    const conditions = [eq(externalPaymentSchedules.agencyId, agencyId)];
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(externalPaymentSchedules.isActive, filters.isActive));
+    }
+    
+    return await db.select()
+      .from(externalPaymentSchedules)
+      .where(and(...conditions))
+      .orderBy(externalPaymentSchedules.dayOfMonth);
+  }
+
+  async createExternalPaymentSchedule(schedule: InsertExternalPaymentSchedule): Promise<ExternalPaymentSchedule> {
+    const [result] = await db.insert(externalPaymentSchedules)
+      .values(schedule)
+      .returning();
+    return result;
+  }
+
+  async updateExternalPaymentSchedule(id: string, updates: Partial<InsertExternalPaymentSchedule>): Promise<ExternalPaymentSchedule> {
+    const [result] = await db.update(externalPaymentSchedules)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalPaymentSchedules.id, id))
+      .returning();
+    return result;
+  }
+
+  async toggleExternalPaymentScheduleActive(id: string, isActive: boolean): Promise<ExternalPaymentSchedule> {
+    const [result] = await db.update(externalPaymentSchedules)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(externalPaymentSchedules.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalPaymentSchedule(id: string): Promise<void> {
+    await db.delete(externalPaymentSchedules)
+      .where(eq(externalPaymentSchedules.id, id));
+  }
+
+  // External Management System - Payment operations
+  async getExternalPayment(id: string): Promise<ExternalPayment | undefined> {
+    const [payment] = await db.select()
+      .from(externalPayments)
+      .where(eq(externalPayments.id, id))
+      .limit(1);
+    return payment;
+  }
+
+  async getExternalPaymentsByContract(contractId: string, filters?: { status?: string }): Promise<ExternalPayment[]> {
+    const conditions = [eq(externalPayments.contractId, contractId)];
+    if (filters?.status) {
+      conditions.push(eq(externalPayments.status, filters.status as any));
+    }
+    
+    return await db.select()
+      .from(externalPayments)
+      .where(and(...conditions))
+      .orderBy(desc(externalPayments.dueDate));
+  }
+
+  async getExternalPaymentsByAgency(agencyId: string, filters?: { status?: string; serviceType?: string }): Promise<ExternalPayment[]> {
+    const conditions = [eq(externalPayments.agencyId, agencyId)];
+    if (filters?.status) {
+      conditions.push(eq(externalPayments.status, filters.status as any));
+    }
+    if (filters?.serviceType) {
+      conditions.push(eq(externalPayments.serviceType, filters.serviceType as any));
+    }
+    
+    return await db.select()
+      .from(externalPayments)
+      .where(and(...conditions))
+      .orderBy(desc(externalPayments.dueDate));
+  }
+
+  async getUpcomingExternalPayments(agencyId: string, days: number): Promise<ExternalPayment[]> {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+    
+    return await db.select()
+      .from(externalPayments)
+      .where(
+        and(
+          eq(externalPayments.agencyId, agencyId),
+          eq(externalPayments.status, 'pending'),
+          gte(externalPayments.dueDate, today),
+          lte(externalPayments.dueDate, futureDate)
+        )
+      )
+      .orderBy(externalPayments.dueDate);
+  }
+
+  async createExternalPayment(payment: InsertExternalPayment): Promise<ExternalPayment> {
+    const [result] = await db.insert(externalPayments)
+      .values(payment)
+      .returning();
+    return result;
+  }
+
+  async updateExternalPayment(id: string, updates: Partial<InsertExternalPayment>): Promise<ExternalPayment> {
+    const [result] = await db.update(externalPayments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalPayments.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateExternalPaymentStatus(id: string, status: string, paidDate?: Date): Promise<ExternalPayment> {
+    const [result] = await db.update(externalPayments)
+      .set({ 
+        status: status as any, 
+        paidDate: paidDate || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(externalPayments.id, id))
+      .returning();
+    return result;
+  }
+
+  async markExternalPaymentReminderSent(id: string): Promise<ExternalPayment> {
+    const [result] = await db.update(externalPayments)
+      .set({ reminderSentAt: new Date(), updatedAt: new Date() })
+      .where(eq(externalPayments.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalPayment(id: string): Promise<void> {
+    await db.delete(externalPayments)
+      .where(eq(externalPayments.id, id));
+  }
+
+  // External Management System - Maintenance Ticket operations
+  async getExternalMaintenanceTicket(id: string): Promise<ExternalMaintenanceTicket | undefined> {
+    const [ticket] = await db.select()
+      .from(externalMaintenanceTickets)
+      .where(eq(externalMaintenanceTickets.id, id))
+      .limit(1);
+    return ticket;
+  }
+
+  async getExternalMaintenanceTicketsByAgency(agencyId: string, filters?: { status?: string; priority?: string }): Promise<ExternalMaintenanceTicket[]> {
+    const conditions = [eq(externalMaintenanceTickets.agencyId, agencyId)];
+    if (filters?.status) {
+      conditions.push(eq(externalMaintenanceTickets.status, filters.status as any));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(externalMaintenanceTickets.priority, filters.priority as any));
+    }
+    
+    return await db.select()
+      .from(externalMaintenanceTickets)
+      .where(and(...conditions))
+      .orderBy(desc(externalMaintenanceTickets.createdAt));
+  }
+
+  async getExternalMaintenanceTicketsByProperty(propertyId: string): Promise<ExternalMaintenanceTicket[]> {
+    return await db.select()
+      .from(externalMaintenanceTickets)
+      .where(eq(externalMaintenanceTickets.propertyId, propertyId))
+      .orderBy(desc(externalMaintenanceTickets.createdAt));
+  }
+
+  async getExternalMaintenanceTicketsByAssignee(assignedTo: string): Promise<ExternalMaintenanceTicket[]> {
+    return await db.select()
+      .from(externalMaintenanceTickets)
+      .where(eq(externalMaintenanceTickets.assignedTo, assignedTo))
+      .orderBy(desc(externalMaintenanceTickets.createdAt));
+  }
+
+  async createExternalMaintenanceTicket(ticket: InsertExternalMaintenanceTicket): Promise<ExternalMaintenanceTicket> {
+    const [result] = await db.insert(externalMaintenanceTickets)
+      .values(ticket)
+      .returning();
+    return result;
+  }
+
+  async updateExternalMaintenanceTicket(id: string, updates: Partial<InsertExternalMaintenanceTicket>): Promise<ExternalMaintenanceTicket> {
+    const [result] = await db.update(externalMaintenanceTickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalMaintenanceTickets.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateExternalTicketStatus(id: string, status: string, resolvedDate?: Date): Promise<ExternalMaintenanceTicket> {
+    const [result] = await db.update(externalMaintenanceTickets)
+      .set({ 
+        status: status as any, 
+        resolvedDate: resolvedDate || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(externalMaintenanceTickets.id, id))
+      .returning();
+    return result;
+  }
+
+  async assignExternalTicket(id: string, assignedTo: string): Promise<ExternalMaintenanceTicket> {
+    const [result] = await db.update(externalMaintenanceTickets)
+      .set({ assignedTo, updatedAt: new Date() })
+      .where(eq(externalMaintenanceTickets.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalMaintenanceTicket(id: string): Promise<void> {
+    await db.delete(externalMaintenanceTickets)
+      .where(eq(externalMaintenanceTickets.id, id));
   }
 }
 

@@ -127,6 +127,11 @@ import PublicPropertySubmission from "@/pages/PublicPropertySubmission";
 import PropertySubmissionSuccess from "@/pages/PropertySubmissionSuccess";
 import AdminOfferManagement from "@/pages/AdminOfferManagement";
 import AdminRentalFormManagement from "@/pages/AdminRentalFormManagement";
+import ExternalDashboard from "@/pages/ExternalDashboard";
+import ExternalAgencyConfig from "@/pages/ExternalAgencyConfig";
+import ExternalProperties from "@/pages/ExternalProperties";
+import ExternalPayments from "@/pages/ExternalPayments";
+import ExternalMaintenanceTickets from "@/pages/ExternalMaintenanceTickets";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -355,6 +360,11 @@ function AuthenticatedApp() {
               <Route path="/admin/rental-opportunity-requests" component={AdminRentalOpportunityRequests} />
               <Route path="/admin/offers" component={AdminOfferManagement} />
               <Route path="/admin/rental-forms" component={AdminRentalFormManagement} />
+              <Route path="/external/dashboard" component={ExternalDashboard} />
+              <Route path="/external/agency" component={ExternalAgencyConfig} />
+              <Route path="/external/properties" component={ExternalProperties} />
+              <Route path="/external/payments" component={ExternalPayments} />
+              <Route path="/external/tickets" component={ExternalMaintenanceTickets} />
               <Route path="/ayuda" component={Help} />
               <Route path="/terminos" component={Terms} />
               <Route path="/privacidad" component={Privacy} />

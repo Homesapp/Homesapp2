@@ -53,6 +53,7 @@ import {
   TrendingUp,
   Upload,
   Link2,
+  Wrench,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import logoIconUrl from "@assets/Sin título (6 x 6 cm)_1759706217639.png";
@@ -160,6 +161,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     properties: false,
     config: false,
     community: false,
+    externalManagement: false,
     clientProperties: false,
     clientActivity: false,
     clientFinance: false,
@@ -272,6 +274,14 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.adminReferrals", url: "/admin/referidos", icon: Share2, roles: ["master", "admin", "admin_jr"] },
   ];
 
+  const externalManagementGroup = [
+    { titleKey: "sidebar.externalDashboard", url: "/external/dashboard", icon: Home, roles: ["master", "admin", "external_agency_admin", "external_staff"] },
+    { titleKey: "sidebar.externalAgency", url: "/external/agency", icon: Building, roles: ["master", "admin", "external_agency_admin"] },
+    { titleKey: "sidebar.externalProperties", url: "/external/properties", icon: Building2, roles: ["master", "admin", "external_agency_admin", "external_staff"] },
+    { titleKey: "sidebar.externalPayments", url: "/external/payments", icon: DollarSign, roles: ["master", "admin", "external_agency_admin", "external_staff"] },
+    { titleKey: "sidebar.externalTickets", url: "/external/tickets", icon: Wrench, roles: ["master", "admin", "external_agency_admin", "external_staff"] },
+  ];
+
   const serviceItems = [
     { titleKey: "sidebar.directory", url: "/directory", icon: Store, roles: ["master", "admin", "admin_jr", "owner", "management"] },
     { titleKey: "sidebar.myServices", url: "/my-services", icon: CreditCard, roles: ["provider"] },
@@ -313,6 +323,10 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     ? communityGroup.filter((item) => item.roles.includes(userRole) && isMenuItemVisible(item.titleKey))
     : [];
 
+  const filteredExternalManagement = userRole 
+    ? externalManagementGroup.filter((item) => item.roles.includes(userRole) && isMenuItemVisible(item.titleKey))
+    : [];
+
   const filteredService = userRole 
     ? serviceItems.filter((item) => item.roles.includes(userRole) && isMenuItemVisible(item.titleKey))
     : [];
@@ -350,7 +364,8 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
                         filteredUsersAndRoles.length > 0 || 
                         filteredProperties.length > 0 || 
                         filteredConfig.length > 0 || 
-                        filteredCommunity.length > 0;
+                        filteredCommunity.length > 0 ||
+                        filteredExternalManagement.length > 0;
 
   const hasClientGroups = filteredClientProperties.length > 0 || 
                           filteredClientActivity.length > 0 || 
@@ -591,6 +606,37 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
                       <CollapsibleContent>
                         <SidebarMenuSub>
                           {filteredCommunity.map((item) => (
+                            <SidebarMenuSubItem key={item.titleKey}>
+                              <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                  <item.icon />
+                                  <span>{t(item.titleKey)}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )}
+
+                {filteredExternalManagement.length > 0 && (
+                  <Collapsible 
+                    open={openGroups.externalManagement}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, externalManagement: open }))}
+                    className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid="collapsible-external-management">
+                          <Building />
+                          <span>{language === "es" ? "Gestión Externa" : "External Management"}</span>
+                          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {filteredExternalManagement.map((item) => (
                             <SidebarMenuSubItem key={item.titleKey}>
                               <SidebarMenuSubButton asChild isActive={location === item.url}>
                                 <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>

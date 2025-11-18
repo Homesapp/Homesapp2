@@ -135,6 +135,12 @@ import {
   condominiums,
   condominiumUnits,
   colonies,
+  insertExternalAgencySchema,
+  insertExternalPropertySchema,
+  insertExternalRentalContractSchema,
+  insertExternalPaymentScheduleSchema,
+  insertExternalPaymentSchema,
+  insertExternalMaintenanceTicketSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
@@ -19701,6 +19707,650 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error batch updating contacts:", error);
       res.status(500).json({ message: error.message || "Error al actualizar contactos" });
+    }
+  });
+
+  // =========================================
+  // External Management System API Routes
+  // =========================================
+
+  // External Agencies Routes
+  app.get("/api/external-agencies", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { isActive } = req.query;
+      const filters = isActive !== undefined ? { isActive: isActive === 'true' } : undefined;
+      
+      let agencies;
+      if (req.user.role === "external_agency_admin") {
+        // External agency admins can only see their own agency
+        agencies = await storage.getExternalAgenciesByCreator(req.user.id);
+      } else {
+        // Master and admin can see all agencies
+        agencies = await storage.getExternalAgencies(filters);
+      }
+      
+      res.json(agencies);
+    } catch (error: any) {
+      console.error("Error fetching external agencies:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.get("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agency = await storage.getExternalAgency(id);
+      
+      if (!agency) {
+        return res.status(404).json({ message: "Agency not found" });
+      }
+      
+      res.json(agency);
+    } catch (error: any) {
+      console.error("Error fetching external agency:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-agencies", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalAgencySchema.parse(req.body);
+      const agency = await storage.createExternalAgency({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_agency", agency.id, "Created external agency");
+      res.status(201).json(agency);
+    } catch (error: any) {
+      console.error("Error creating external agency:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agency = await storage.updateExternalAgency(id, req.body);
+      
+      await createAuditLog(req, "update", "external_agency", id, "Updated external agency");
+      res.json(agency);
+    } catch (error: any) {
+      console.error("Error updating external agency:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-agencies/:id/toggle-active", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const agency = await storage.toggleExternalAgencyActive(id, isActive);
+      
+      await createAuditLog(req, "update", "external_agency", id, `${isActive ? 'Activated' : 'Deactivated'} external agency`);
+      res.json(agency);
+    } catch (error: any) {
+      console.error("Error toggling external agency status:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExternalAgency(id);
+      
+      await createAuditLog(req, "delete", "external_agency", id, "Deleted external agency");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external agency:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External Properties Routes
+  app.get("/api/external-properties", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { agencyId, status } = req.query;
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "Agency ID is required" });
+      }
+      
+      const filters = status ? { status } : undefined;
+      const properties = await storage.getExternalPropertiesByAgency(agencyId, filters);
+      
+      res.json(properties);
+    } catch (error: any) {
+      console.error("Error fetching external properties:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.get("/api/external-properties/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const property = await storage.getExternalProperty(id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      res.json(property);
+    } catch (error: any) {
+      console.error("Error fetching external property:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-properties", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalPropertySchema.parse(req.body);
+      const property = await storage.createExternalProperty({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_property", property.id, "Created external property");
+      res.status(201).json(property);
+    } catch (error: any) {
+      console.error("Error creating external property:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-properties/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const property = await storage.updateExternalProperty(id, req.body);
+      
+      await createAuditLog(req, "update", "external_property", id, "Updated external property");
+      res.json(property);
+    } catch (error: any) {
+      console.error("Error updating external property:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-properties/:id/link", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { linkedPropertyId } = req.body;
+      
+      if (!linkedPropertyId) {
+        return res.status(400).json({ message: "Linked property ID is required" });
+      }
+      
+      const property = await storage.linkExternalProperty(id, linkedPropertyId);
+      
+      await createAuditLog(req, "update", "external_property", id, `Linked to property ${linkedPropertyId}`);
+      res.json(property);
+    } catch (error: any) {
+      console.error("Error linking external property:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-properties/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExternalProperty(id);
+      
+      await createAuditLog(req, "delete", "external_property", id, "Deleted external property");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external property:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External Rental Contracts Routes
+  app.get("/api/external-contracts", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { agencyId, propertyId, status } = req.query;
+      
+      if (propertyId) {
+        const contracts = await storage.getExternalRentalContractsByProperty(propertyId);
+        return res.json(contracts);
+      }
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "Agency ID or Property ID is required" });
+      }
+      
+      const filters = status ? { status } : undefined;
+      const contracts = await storage.getExternalRentalContractsByAgency(agencyId, filters);
+      
+      res.json(contracts);
+    } catch (error: any) {
+      console.error("Error fetching external contracts:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.get("/api/external-contracts/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const contract = await storage.getExternalRentalContract(id);
+      
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      res.json(contract);
+    } catch (error: any) {
+      console.error("Error fetching external contract:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-contracts", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalRentalContractSchema.parse(req.body);
+      const contract = await storage.createExternalRentalContract({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_contract", contract.id, "Created external rental contract");
+      res.status(201).json(contract);
+    } catch (error: any) {
+      console.error("Error creating external contract:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-contracts/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const contract = await storage.updateExternalRentalContract(id, req.body);
+      
+      await createAuditLog(req, "update", "external_contract", id, "Updated external rental contract");
+      res.json(contract);
+    } catch (error: any) {
+      console.error("Error updating external contract:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-contracts/:id/status", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const contract = await storage.updateExternalContractStatus(id, status);
+      
+      await createAuditLog(req, "update", "external_contract", id, `Changed contract status to ${status}`);
+      res.json(contract);
+    } catch (error: any) {
+      console.error("Error updating external contract status:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-contracts/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExternalRentalContract(id);
+      
+      await createAuditLog(req, "delete", "external_contract", id, "Deleted external rental contract");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external contract:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External Payment Schedules Routes
+  app.get("/api/external-payment-schedules", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { agencyId, contractId, isActive } = req.query;
+      
+      if (contractId) {
+        const schedules = await storage.getExternalPaymentSchedulesByContract(contractId);
+        return res.json(schedules);
+      }
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "Agency ID or Contract ID is required" });
+      }
+      
+      const filters = isActive !== undefined ? { isActive: isActive === 'true' } : undefined;
+      const schedules = await storage.getExternalPaymentSchedulesByAgency(agencyId, filters);
+      
+      res.json(schedules);
+    } catch (error: any) {
+      console.error("Error fetching external payment schedules:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-payment-schedules", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalPaymentScheduleSchema.parse(req.body);
+      const schedule = await storage.createExternalPaymentSchedule({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_payment_schedule", schedule.id, "Created external payment schedule");
+      res.status(201).json(schedule);
+    } catch (error: any) {
+      console.error("Error creating external payment schedule:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-payment-schedules/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const schedule = await storage.updateExternalPaymentSchedule(id, req.body);
+      
+      await createAuditLog(req, "update", "external_payment_schedule", id, "Updated external payment schedule");
+      res.json(schedule);
+    } catch (error: any) {
+      console.error("Error updating external payment schedule:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-payment-schedules/:id/toggle-active", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const schedule = await storage.toggleExternalPaymentScheduleActive(id, isActive);
+      
+      await createAuditLog(req, "update", "external_payment_schedule", id, `${isActive ? 'Activated' : 'Deactivated'} payment schedule`);
+      res.json(schedule);
+    } catch (error: any) {
+      console.error("Error toggling payment schedule status:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-payment-schedules/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExternalPaymentSchedule(id);
+      
+      await createAuditLog(req, "delete", "external_payment_schedule", id, "Deleted external payment schedule");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external payment schedule:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External Payments Routes
+  app.get("/api/external-payments", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { agencyId, contractId, status, serviceType, upcomingDays } = req.query;
+      
+      if (contractId) {
+        const filters = status ? { status } : undefined;
+        const payments = await storage.getExternalPaymentsByContract(contractId, filters);
+        return res.json(payments);
+      }
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "Agency ID or Contract ID is required" });
+      }
+      
+      if (upcomingDays) {
+        const payments = await storage.getUpcomingExternalPayments(agencyId, parseInt(upcomingDays));
+        return res.json(payments);
+      }
+      
+      const filters: any = {};
+      if (status) filters.status = status;
+      if (serviceType) filters.serviceType = serviceType;
+      
+      const payments = await storage.getExternalPaymentsByAgency(agencyId, filters);
+      
+      res.json(payments);
+    } catch (error: any) {
+      console.error("Error fetching external payments:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.get("/api/external-payments/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getExternalPayment(id);
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.json(payment);
+    } catch (error: any) {
+      console.error("Error fetching external payment:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-payments", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalPaymentSchema.parse(req.body);
+      const payment = await storage.createExternalPayment({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_payment", payment.id, "Created external payment");
+      res.status(201).json(payment);
+    } catch (error: any) {
+      console.error("Error creating external payment:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-payments/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.updateExternalPayment(id, req.body);
+      
+      await createAuditLog(req, "update", "external_payment", id, "Updated external payment");
+      res.json(payment);
+    } catch (error: any) {
+      console.error("Error updating external payment:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-payments/:id/status", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, paidDate } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const payment = await storage.updateExternalPaymentStatus(id, status, paidDate ? new Date(paidDate) : undefined);
+      
+      await createAuditLog(req, "update", "external_payment", id, `Changed payment status to ${status}`);
+      res.json(payment);
+    } catch (error: any) {
+      console.error("Error updating external payment status:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-payments/:id/reminder-sent", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.markExternalPaymentReminderSent(id);
+      
+      await createAuditLog(req, "update", "external_payment", id, "Marked payment reminder as sent");
+      res.json(payment);
+    } catch (error: any) {
+      console.error("Error marking payment reminder sent:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-payments/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExternalPayment(id);
+      
+      await createAuditLog(req, "delete", "external_payment", id, "Deleted external payment");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external payment:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External Maintenance Tickets Routes
+  app.get("/api/external-tickets", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { agencyId, propertyId, assignedTo, status, priority } = req.query;
+      
+      if (propertyId) {
+        const tickets = await storage.getExternalMaintenanceTicketsByProperty(propertyId);
+        return res.json(tickets);
+      }
+      
+      if (assignedTo) {
+        const tickets = await storage.getExternalMaintenanceTicketsByAssignee(assignedTo);
+        return res.json(tickets);
+      }
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "Agency ID, Property ID, or Assigned To is required" });
+      }
+      
+      const filters: any = {};
+      if (status) filters.status = status;
+      if (priority) filters.priority = priority;
+      
+      const tickets = await storage.getExternalMaintenanceTicketsByAgency(agencyId, filters);
+      
+      res.json(tickets);
+    } catch (error: any) {
+      console.error("Error fetching external tickets:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.get("/api/external-tickets/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const ticket = await storage.getExternalMaintenanceTicket(id);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      res.json(ticket);
+    } catch (error: any) {
+      console.error("Error fetching external ticket:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-tickets", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalMaintenanceTicketSchema.parse(req.body);
+      const ticket = await storage.createExternalMaintenanceTicket({
+        ...validatedData,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_ticket", ticket.id, "Created external maintenance ticket");
+      res.status(201).json(ticket);
+    } catch (error: any) {
+      console.error("Error creating external ticket:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const ticket = await storage.updateExternalMaintenanceTicket(id, req.body);
+      
+      await createAuditLog(req, "update", "external_ticket", id, "Updated external maintenance ticket");
+      res.json(ticket);
+    } catch (error: any) {
+      console.error("Error updating external ticket:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-tickets/:id/status", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, resolvedDate } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const ticket = await storage.updateExternalTicketStatus(id, status, resolvedDate ? new Date(resolvedDate) : undefined);
+      
+      await createAuditLog(req, "update", "external_ticket", id, `Changed ticket status to ${status}`);
+      res.json(ticket);
+    } catch (error: any) {
+      console.error("Error updating external ticket status:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-tickets/:id/assign", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { assignedTo } = req.body;
+      
+      if (!assignedTo) {
+        return res.status(400).json({ message: "Assigned To user ID is required" });
+      }
+      
+      const ticket = await storage.assignExternalTicket(id, assignedTo);
+      
+      await createAuditLog(req, "update", "external_ticket", id, `Assigned ticket to user ${assignedTo}`);
+      res.json(ticket);
+    } catch (error: any) {
+      console.error("Error assigning external ticket:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-tickets/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExternalMaintenanceTicket(id);
+      
+      await createAuditLog(req, "delete", "external_ticket", id, "Deleted external maintenance ticket");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external ticket:", error);
+      handleGenericError(error, res);
     }
   });
 

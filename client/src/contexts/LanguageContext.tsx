@@ -675,6 +675,11 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.directory": "Directorio",
     "sidebar.myServices": "Mis Servicios",
     "sidebar.profile": "Perfil",
+    "sidebar.externalDashboard": "Dashboard Externo",
+    "sidebar.externalAgency": "Configuración de Agencia",
+    "sidebar.externalProperties": "Propiedades Externas",
+    "sidebar.externalPayments": "Calendario de Pagos",
+    "sidebar.externalTickets": "Tickets de Mantenimiento",
     
     // Chat Page
     "chat.title": "Mensajes",
@@ -1932,6 +1937,11 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.directory": "Directory",
     "sidebar.myServices": "My Services",
     "sidebar.profile": "Profile",
+    "sidebar.externalDashboard": "External Dashboard",
+    "sidebar.externalAgency": "Agency Configuration",
+    "sidebar.externalProperties": "External Properties",
+    "sidebar.externalPayments": "Payment Calendar",
+    "sidebar.externalTickets": "Maintenance Tickets",
     
     // Chat Page
     "chat.title": "Messages",
