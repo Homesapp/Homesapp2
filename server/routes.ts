@@ -19895,8 +19895,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // External Management System API Routes
   // =========================================
 
+  // External agency role constants for consistent permissions
+  const EXTERNAL_ADMIN_ROLES = ["master", "admin", "external_agency_admin"];
+  const EXTERNAL_ACCOUNTING_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting"];
+  const EXTERNAL_MAINTENANCE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_maintenance"];
+  const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
+  const EXTERNAL_VIEW_ONLY_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
+
   // External Agencies Routes
-  app.get("/api/external-agencies", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.get("/api/external-agencies", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { isActive } = req.query;
       const filters = isActive !== undefined ? { isActive: isActive === 'true' } : undefined;
@@ -19917,7 +19924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-agencies/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const agency = await storage.getExternalAgency(id);
@@ -20014,7 +20021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.patch("/api/external-agencies/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const agency = await storage.updateExternalAgency(id, req.body);
@@ -20055,7 +20062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Properties Routes
-  app.get("/api/external-properties", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-properties", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { agencyId, status } = req.query;
       
@@ -20073,7 +20080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/external-properties/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-properties/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const property = await storage.getExternalProperty(id);
@@ -20089,7 +20096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/external-properties", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.post("/api/external-properties", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const validatedData = insertExternalPropertySchema.parse(req.body);
       const property = await storage.createExternalProperty({
@@ -20108,7 +20115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-properties/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-properties/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const property = await storage.updateExternalProperty(id, req.body);
@@ -20140,7 +20147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/external-properties/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.delete("/api/external-properties/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteExternalProperty(id);
@@ -20154,7 +20161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Rental Contracts Routes
-  app.get("/api/external-contracts", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { agencyId, propertyId, status } = req.query;
       
@@ -20177,7 +20184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/external-contracts/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const contract = await storage.getExternalRentalContract(id);
@@ -20193,7 +20200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/external-contracts", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.post("/api/external-contracts", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const validatedData = insertExternalRentalContractSchema.parse(req.body);
       const contract = await storage.createExternalRentalContract({
@@ -20212,7 +20219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-contracts/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-contracts/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const contract = await storage.updateExternalRentalContract(id, req.body);
@@ -20225,7 +20232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-contracts/:id/status", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-contracts/:id/status", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -20244,7 +20251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/external-contracts/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.delete("/api/external-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteExternalRentalContract(id);
@@ -20258,7 +20265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Payment Schedules Routes
-  app.get("/api/external-payment-schedules", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-payment-schedules", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { agencyId, contractId, isActive } = req.query;
       
@@ -20281,7 +20288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/external-payment-schedules", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.post("/api/external-payment-schedules", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
     try {
       const validatedData = insertExternalPaymentScheduleSchema.parse(req.body);
       const schedule = await storage.createExternalPaymentSchedule({
@@ -20300,7 +20307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-payment-schedules/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-payment-schedules/:id", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const schedule = await storage.updateExternalPaymentSchedule(id, req.body);
@@ -20313,7 +20320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-payment-schedules/:id/toggle-active", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.patch("/api/external-payment-schedules/:id/toggle-active", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { isActive } = req.body;
@@ -20327,7 +20334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/external-payment-schedules/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.delete("/api/external-payment-schedules/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteExternalPaymentSchedule(id);
@@ -20341,7 +20348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Payments Routes
-  app.get("/api/external-payments", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-payments", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { agencyId, contractId, status, serviceType, upcomingDays } = req.query;
       
@@ -20373,7 +20380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/external-payments/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-payments/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const payment = await storage.getExternalPayment(id);
@@ -20389,7 +20396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/external-payments", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.post("/api/external-payments", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
     try {
       const validatedData = insertExternalPaymentSchema.parse(req.body);
       const payment = await storage.createExternalPayment({
@@ -20408,7 +20415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-payments/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-payments/:id", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const payment = await storage.updateExternalPayment(id, req.body);
@@ -20421,7 +20428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-payments/:id/status", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-payments/:id/status", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status, paidDate } = req.body;
@@ -20440,7 +20447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-payments/:id/reminder-sent", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-payments/:id/reminder-sent", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const payment = await storage.markExternalPaymentReminderSent(id);
@@ -20453,7 +20460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/external-payments/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.delete("/api/external-payments/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteExternalPayment(id);
@@ -20467,7 +20474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Maintenance Tickets Routes
-  app.get("/api/external-tickets", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { agencyId, propertyId, assignedTo, status, priority } = req.query;
       
@@ -20498,7 +20505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/external-tickets/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.get("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const ticket = await storage.getExternalMaintenanceTicket(id);
@@ -20514,7 +20521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/external-tickets", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.post("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const validatedData = insertExternalMaintenanceTicketSchema.parse(req.body);
       const ticket = await storage.createExternalMaintenanceTicket({
@@ -20533,7 +20540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const ticket = await storage.updateExternalMaintenanceTicket(id, req.body);
@@ -20546,7 +20553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-tickets/:id/status", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_staff"]), async (req: any, res) => {
+  app.patch("/api/external-tickets/:id/status", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status, resolvedDate } = req.body;
@@ -20565,7 +20572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-tickets/:id/assign", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.patch("/api/external-tickets/:id/assign", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { assignedTo } = req.body;
@@ -20584,7 +20591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/external-tickets/:id", isAuthenticated, requireRole(["master", "admin", "external_agency_admin"]), async (req: any, res) => {
+  app.delete("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteExternalMaintenanceTicket(id);
