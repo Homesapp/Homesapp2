@@ -20602,9 +20602,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const assignmentSchema = z.object({
-        userId: z.string().uuid(),
-        condominiumId: z.string().uuid().optional(),
-        unitId: z.string().uuid().optional(),
+        userId: z.string().min(1),
+        condominiumId: z.string().min(1).optional(),
+        unitId: z.string().min(1).optional(),
       });
 
       const data = assignmentSchema.parse(req.body);
@@ -20679,9 +20679,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const batchSchema = z.object({
         assignments: z.array(z.object({
-          userId: z.string().uuid(),
-          condominiumId: z.string().uuid().optional(),
-          unitId: z.string().uuid().optional(),
+          userId: z.string().min(1),
+          condominiumId: z.string().min(1).optional(),
+          unitId: z.string().min(1).optional(),
         })),
       });
 
