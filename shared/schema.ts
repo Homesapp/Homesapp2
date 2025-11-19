@@ -4936,6 +4936,7 @@ export const externalCondominiums = pgTable("external_condominiums", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(), // Nombre del condominio
+  address: varchar("address", { length: 500 }), // Dirección del condominio
   description: text("description"), // Descripción
   totalUnits: integer("total_units"), // Total de unidades en el condominio
   isActive: boolean("is_active").notNull().default(true),
@@ -4949,8 +4950,11 @@ export const externalCondominiums = pgTable("external_condominiums", {
 
 export const insertExternalCondominiumSchema = createInsertSchema(externalCondominiums).omit({
   id: true,
+  agencyId: true,
+  createdBy: true,
   createdAt: true,
   updatedAt: true,
+  isActive: true,
 });
 
 export const updateExternalCondominiumSchema = insertExternalCondominiumSchema.partial();
@@ -4984,8 +4988,11 @@ export const externalUnits = pgTable("external_units", {
 
 export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
   id: true,
+  agencyId: true,
+  createdBy: true,
   createdAt: true,
   updatedAt: true,
+  isActive: true,
 });
 
 export const updateExternalUnitSchema = insertExternalUnitSchema.partial();
