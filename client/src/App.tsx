@@ -135,6 +135,9 @@ import ExternalAgencyConfig from "@/pages/ExternalAgencyConfig";
 import ExternalProperties from "@/pages/ExternalProperties";
 import ExternalPayments from "@/pages/ExternalPayments";
 import ExternalMaintenanceTickets from "@/pages/ExternalMaintenanceTickets";
+import ExternalCondominiums from "@/pages/ExternalCondominiums";
+import ExternalAccounting from "@/pages/ExternalAccounting";
+import ExternalMaintenance from "@/pages/ExternalMaintenance";
 import AdminExternalAgencies from "@/pages/AdminExternalAgencies";
 import NotFound from "@/pages/not-found";
 
@@ -394,6 +397,9 @@ function AuthenticatedApp() {
               <Route path="/external/properties" component={ExternalProperties} />
               <Route path="/external/payments" component={ExternalPayments} />
               <Route path="/external/tickets" component={ExternalMaintenanceTickets} />
+              <Route path="/external/condominiums" component={ExternalCondominiums} />
+              <Route path="/external/accounting" component={ExternalAccounting} />
+              <Route path="/external/maintenance" component={ExternalMaintenance} />
               <Route path="/ayuda" component={Help} />
               <Route path="/terminos" component={Terms} />
               <Route path="/privacidad" component={Privacy} />
