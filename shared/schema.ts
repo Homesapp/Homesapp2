@@ -4814,6 +4814,11 @@ export const insertExternalRentalContractSchema = createInsertSchema(externalRen
   updatedAt: true,
 });
 
+export const updateExternalRentalContractSchema = insertExternalRentalContractSchema.partial().omit({
+  agencyId: true,
+  createdBy: true,
+});
+
 export type InsertExternalRentalContract = z.infer<typeof insertExternalRentalContractSchema>;
 export type ExternalRentalContract = typeof externalRentalContracts.$inferSelect;
 

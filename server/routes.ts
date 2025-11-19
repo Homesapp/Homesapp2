@@ -142,6 +142,7 @@ import {
   insertExternalAgencySchema,
   insertExternalPropertySchema,
   insertExternalRentalContractSchema,
+  updateExternalRentalContractSchema,
   insertExternalPaymentScheduleSchema,
   insertExternalPaymentSchema,
   insertExternalMaintenanceTicketSchema,
@@ -21313,6 +21314,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external unit access control:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External Rental Contracts Routes
+  app.get("/api/external-rental-contracts/by-unit/:unitId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { unitId } = req.params;
+      
+      // Verify unit exists and get its agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      const contracts = await storage.getExternalRentalContractsByProperty(unitId);
+      
+      res.json(contracts);
+    } catch (error: any) {
+      console.error("Error fetching rental contracts:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-rental-contracts", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const validatedData = insertExternalRentalContractSchema.parse(req.body);
+      
+      // Verify unit exists and get its agency
+      const unit = await storage.getExternalUnit(validatedData.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      const contract = await storage.createExternalRentalContract({
+        ...validatedData,
+        agencyId: unit.agencyId,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_rental_contract", contract.id, "Created external rental contract");
+      res.status(201).json(contract);
+    } catch (error: any) {
+      console.error("Error creating rental contract:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-rental-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify contract exists
+      const existing = await storage.getExternalRentalContract(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      const validatedData = updateExternalRentalContractSchema.parse(req.body);
+      
+      // Prevent agencyId modification
+      const updateData = { ...validatedData };
+      delete (updateData as any).agencyId;
+      delete (updateData as any).createdBy;
+      
+      const contract = await storage.updateExternalRentalContract(id, updateData);
+      
+      await createAuditLog(req, "update", "external_rental_contract", id, "Updated external rental contract");
+      res.json(contract);
+    } catch (error: any) {
+      console.error("Error updating rental contract:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-rental-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getExternalRentalContract(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      await storage.deleteExternalRentalContract(id);
+      
+      await createAuditLog(req, "delete", "external_rental_contract", id, "Deleted external rental contract");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting rental contract:", error);
       handleGenericError(error, res);
     }
   });

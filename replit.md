@@ -46,6 +46,8 @@ Key features include:
 *   **External Property Management System**: Multi-tenant module for managing external agency properties independently, with payment calendar, maintenance tickets, and optional property linking to main system. Includes granular role-based permissions, agency logo upload, user reassignment, backend validation, and a condominium-unit management system (hierarchical property structure for multi-unit condominiums and standalone units).
     *   **Multi-Tenant Security**: All external agency routes enforce ownership verification via `verifyExternalAgencyOwnership()` helper, preventing cross-agency data access. Users are mapped to agencies via `assignedToUser` field, with admin/master roles retaining system-wide access.
     *   **Ownership Verification Pattern**: Each endpoint loads target entity (or parent), then validates that authenticated user's agency matches entity's `agencyId` before returning data. Creation endpoints derive `agencyId` from validated input or parent lookups.
+    *   **External Unit Detail View**: Comprehensive unit management page displaying unit information, owner CRUD operations, access control CRUD (door codes, WiFi, gates, etc. with password visibility toggles), and MVP rental contract creation.
+    *   **External Rental Contracts (MVP)**: Ability to create active rental contracts for units with tenant information (name, email, phone), contract details (monthly rent, currency, lease duration, start/end dates), smart date calculations, and visual active contract indicators. Prevents duplicate active rentals. Future enhancements planned: contract editing/termination, contract history viewing, payment schedule automation.
 
 ## External Dependencies
 *   Google Calendar API

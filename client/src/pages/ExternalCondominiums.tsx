@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +26,7 @@ type UnitFormData = z.infer<typeof insertExternalUnitSchema>;
 export default function ExternalCondominiums() {
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [showCondoDialog, setShowCondoDialog] = useState(false);
   const [showUnitDialog, setShowUnitDialog] = useState(false);
   const [editingCondo, setEditingCondo] = useState<ExternalCondominium | null>(null);
@@ -380,7 +382,8 @@ export default function ExternalCondominiums() {
                           <Card 
                             key={unit.id} 
                             data-testid={`card-unit-detail-${unit.id}`}
-                            className="hover-elevate active-elevate-2"
+                            className="hover-elevate active-elevate-2 cursor-pointer"
+                            onClick={() => navigate(`/external/units/${unit.id}`)}
                           >
                             <CardHeader>
                               <CardTitle className="flex items-center gap-2 justify-between">
@@ -391,7 +394,10 @@ export default function ExternalCondominiums() {
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  onClick={() => handleEditUnit(unit)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditUnit(unit);
+                                  }}
                                   data-testid={`button-edit-unit-detail-${unit.id}`}
                                 >
                                   <Edit className="h-4 w-4" />
@@ -563,7 +569,8 @@ export default function ExternalCondominiums() {
                   <Card 
                     key={unit.id} 
                     data-testid={`card-unit-${unit.id}`}
-                    className="hover-elevate active-elevate-2"
+                    className="hover-elevate active-elevate-2 cursor-pointer"
+                    onClick={() => navigate(`/external/units/${unit.id}`)}
                   >
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 justify-between">
@@ -574,7 +581,10 @@ export default function ExternalCondominiums() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => handleEditUnit(unit)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditUnit(unit);
+                          }}
                           data-testid={`button-edit-unit-${unit.id}`}
                         >
                           <Edit className="h-4 w-4" />
