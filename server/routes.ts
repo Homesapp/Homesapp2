@@ -21256,10 +21256,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Payment not found" });
       }
       
-      // Verify ownership (master/admin roles have agencyId === null and can access all payments)
-      const agencyId = await getUserAgencyId(req);
-      if (agencyId !== null && existingPayment.agencyId !== agencyId) {
-        return res.status(403).json({ message: "Access denied" });
+      // Verify ownership: master/admin can access all, others must match agency
+      const userRole = req.user?.role || req.session?.adminUser?.role;
+      const isMasterOrAdmin = userRole === "master" || userRole === "admin";
+      
+      if (!isMasterOrAdmin) {
+        const agencyId = await getUserAgencyId(req);
+        if (!agencyId || existingPayment.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
       }
       
       const payment = await storage.updateExternalPaymentStatus(id, status, paidDate ? new Date(paidDate) : undefined);
