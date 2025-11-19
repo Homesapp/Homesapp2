@@ -20867,6 +20867,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
       if (!hasAccess) return; // Response already sent by helper
       
+      // Check if condominium has any units
+      const units = await storage.getExternalUnitsByCondominium(id);
+      if (units && units.length > 0) {
+        return res.status(400).json({ 
+          message: `Cannot delete condominium with ${units.length} registered units. Please delete all units first.`
+        });
+      }
+      
       await storage.deleteExternalCondominium(id);
       
       await createAuditLog(req, "delete", "external_condominium", id, "Deleted external condominium");

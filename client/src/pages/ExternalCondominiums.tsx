@@ -29,8 +29,10 @@ export default function ExternalCondominiums() {
   const [, navigate] = useLocation();
   const [showCondoDialog, setShowCondoDialog] = useState(false);
   const [showUnitDialog, setShowUnitDialog] = useState(false);
+  const [showDeleteCondoDialog, setShowDeleteCondoDialog] = useState(false);
   const [editingCondo, setEditingCondo] = useState<ExternalCondominium | null>(null);
   const [editingUnit, setEditingUnit] = useState<ExternalUnit | null>(null);
+  const [deletingCondo, setDeletingCondo] = useState<ExternalCondominium | null>(null);
   const [selectedCondoId, setSelectedCondoId] = useState<string | null>(null);
 
   const { data: condominiums, isLoading: condosLoading, isError: condosError, error: condosErrorMsg } = useQuery<ExternalCondominium[]>({
@@ -155,6 +157,30 @@ export default function ExternalCondominiums() {
     },
   });
 
+  const deleteCondoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest('DELETE', `/api/external-condominiums/${id}`, undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external-condominiums'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external-units'] });
+      setShowDeleteCondoDialog(false);
+      setDeletingCondo(null);
+      toast({
+        title: language === "es" ? "Condominio eliminado" : "Condominium deleted",
+        description: language === "es" ? "El condominio se eliminó exitosamente" : "The condominium was deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      setShowDeleteCondoDialog(false);
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddCondo = () => {
     setEditingCondo(null);
     condoForm.reset({
@@ -216,6 +242,17 @@ export default function ExternalCondominiums() {
       updateUnitMutation.mutate({ id: editingUnit.id, data });
     } else {
       createUnitMutation.mutate(data);
+    }
+  };
+
+  const handleDeleteCondo = (condo: ExternalCondominium) => {
+    setDeletingCondo(condo);
+    setShowDeleteCondoDialog(true);
+  };
+
+  const confirmDeleteCondo = () => {
+    if (deletingCondo) {
+      deleteCondoMutation.mutate(deletingCondo.id);
     }
   };
 
@@ -457,17 +494,30 @@ export default function ExternalCondominiums() {
                             <Building2 className="h-5 w-5" />
                             <span>{condo.name}</span>
                           </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditCondo(condo);
-                            }}
-                            data-testid={`button-edit-condo-${condo.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCondo(condo);
+                              }}
+                              data-testid={`button-edit-condo-${condo.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCondo(condo);
+                              }}
+                              data-testid={`button-delete-condo-${condo.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </CardTitle>
                         <CardDescription>
                           {condo.address}
@@ -886,6 +936,72 @@ export default function ExternalCondominiums() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Condominium Confirmation Dialog */}
+      <Dialog open={showDeleteCondoDialog} onOpenChange={setShowDeleteCondoDialog}>
+        <DialogContent data-testid="dialog-delete-condo">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              {language === "es" ? "Eliminar Condominio" : "Delete Condominium"}
+            </DialogTitle>
+            <DialogDescription>
+              {deletingCondo && (
+                <>
+                  {language === "es" ? (
+                    <>
+                      ¿Estás seguro de que deseas eliminar el condominio <strong>{deletingCondo.name}</strong>?
+                      <br /><br />
+                      {getUnitsForCondo(deletingCondo.id).length > 0 ? (
+                        <span className="text-destructive font-semibold">
+                          Este condominio tiene {getUnitsForCondo(deletingCondo.id).length} unidades registradas. 
+                          Debes eliminar todas las unidades primero antes de poder eliminar el condominio.
+                        </span>
+                      ) : (
+                        "Esta acción no se puede deshacer."
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      Are you sure you want to delete the condominium <strong>{deletingCondo.name}</strong>?
+                      <br /><br />
+                      {getUnitsForCondo(deletingCondo.id).length > 0 ? (
+                        <span className="text-destructive font-semibold">
+                          This condominium has {getUnitsForCondo(deletingCondo.id).length} registered units. 
+                          You must delete all units first before you can delete the condominium.
+                        </span>
+                      ) : (
+                        "This action cannot be undone."
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowDeleteCondoDialog(false)}
+              data-testid="button-cancel-delete-condo"
+            >
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              onClick={confirmDeleteCondo}
+              disabled={deleteCondoMutation.isPending || (deletingCondo && getUnitsForCondo(deletingCondo.id).length > 0)}
+              data-testid="button-confirm-delete-condo"
+            >
+              {deleteCondoMutation.isPending
+                ? (language === "es" ? "Eliminando..." : "Deleting...")
+                : (language === "es" ? "Eliminar" : "Delete")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
