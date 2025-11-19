@@ -639,6 +639,7 @@ export const users = pgTable("users", {
   propertyLimit: integer("property_limit").notNull().default(3), // Maximum number of properties an owner can upload
   assignedToUser: varchar("assigned_to_user"),
   maintenanceSpecialty: maintenanceSpecialtyEnum("maintenance_specialty"), // Specialty for external_agency_maintenance role
+  googleCalendarEmail: varchar("google_calendar_email"), // Google Calendar email for automatic sync of assigned tasks
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
