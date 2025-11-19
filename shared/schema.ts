@@ -257,6 +257,8 @@ export const serviceTypeEnum = pgEnum("service_type", [
   "internet",        // Internet
   "gas",             // Gas
   "maintenance",     // Mantenimiento
+  "hoa",             // Pago HOA/Condominio
+  "special",         // Pago especial
   "other",           // Otro
 ]);
 
@@ -4781,13 +4783,11 @@ export type ExternalProperty = typeof externalProperties.$inferSelect;
 export const externalRentalContracts = pgTable("external_rental_contracts", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
-  propertyId: varchar("property_id").notNull().references(() => externalProperties.id, { onDelete: "cascade" }),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }), // Unidad/propiedad
+  propertyId: varchar("property_id").references(() => externalProperties.id, { onDelete: "cascade" }), // Deprecated - usar unitId
   tenantName: varchar("tenant_name", { length: 255 }).notNull(), // Nombre del inquilino
   tenantEmail: varchar("tenant_email", { length: 255 }),
   tenantPhone: varchar("tenant_phone", { length: 50 }),
-  ownerName: varchar("owner_name", { length: 255 }), // Nombre del propietario
-  ownerEmail: varchar("owner_email", { length: 255 }),
-  ownerPhone: varchar("owner_phone", { length: 50 }),
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(), // Renta mensual
   currency: varchar("currency", { length: 10 }).notNull().default("MXN"), // MXN o USD
   leaseDurationMonths: integer("lease_duration_months").notNull(), // 6, 12, etc
@@ -4800,6 +4800,7 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_external_contracts_agency").on(table.agencyId),
+  index("idx_external_contracts_unit").on(table.unitId),
   index("idx_external_contracts_property").on(table.propertyId),
   index("idx_external_contracts_status").on(table.status),
   index("idx_external_contracts_dates").on(table.startDate, table.endDate),
@@ -4885,8 +4886,9 @@ export type ExternalPayment = typeof externalPayments.$inferSelect;
 export const externalMaintenanceTickets = pgTable("external_maintenance_tickets", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }), // Unidad/propiedad
   contractId: varchar("contract_id").references(() => externalRentalContracts.id, { onDelete: "set null" }),
-  propertyId: varchar("property_id").notNull().references(() => externalProperties.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => externalProperties.id, { onDelete: "cascade" }), // Deprecated - usar unitId
   title: varchar("title", { length: 255 }).notNull(), // Título del ticket
   description: text("description").notNull(), // Descripción del problema
   category: tenantMaintenanceTypeEnum("category").notNull(), // plumbing, electrical, etc
@@ -4905,10 +4907,12 @@ export const externalMaintenanceTickets = pgTable("external_maintenance_tickets"
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_external_tickets_agency").on(table.agencyId),
+  index("idx_external_tickets_unit").on(table.unitId),
   index("idx_external_tickets_property").on(table.propertyId),
   index("idx_external_tickets_status").on(table.status),
   index("idx_external_tickets_priority").on(table.priority),
   index("idx_external_tickets_assigned").on(table.assignedTo),
+  index("idx_external_tickets_scheduled").on(table.scheduledDate),
 ]);
 
 export const insertExternalMaintenanceTicketSchema = createInsertSchema(externalMaintenanceTickets).omit({
@@ -4919,6 +4923,115 @@ export const insertExternalMaintenanceTicketSchema = createInsertSchema(external
 
 export type InsertExternalMaintenanceTicket = z.infer<typeof insertExternalMaintenanceTicketSchema>;
 export type ExternalMaintenanceTicket = typeof externalMaintenanceTickets.$inferSelect;
+
+// External Condominiums - Condominios gestionados por agencias externas
+export const externalCondominiums = pgTable("external_condominiums", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(), // Nombre del condominio
+  description: text("description"), // Descripción
+  totalUnits: integer("total_units"), // Total de unidades en el condominio
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_condominiums_agency").on(table.agencyId),
+  index("idx_external_condominiums_active").on(table.isActive),
+]);
+
+export const insertExternalCondominiumSchema = createInsertSchema(externalCondominiums).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalCondominium = z.infer<typeof insertExternalCondominiumSchema>;
+export type ExternalCondominium = typeof externalCondominiums.$inferSelect;
+
+// External Units - Unidades/apartamentos dentro de condominios
+export const externalUnits = pgTable("external_units", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  condominiumId: varchar("condominium_id").references(() => externalCondominiums.id, { onDelete: "cascade" }), // Null si es propiedad independiente
+  unitNumber: varchar("unit_number", { length: 50 }).notNull(), // Número de unidad/apartamento
+  propertyType: varchar("property_type", { length: 50 }), // Tipo de propiedad
+  bedrooms: integer("bedrooms"),
+  bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }),
+  area: decimal("area", { precision: 10, scale: 2 }), // m²
+  floor: integer("floor"), // Piso
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_units_agency").on(table.agencyId),
+  index("idx_external_units_condominium").on(table.condominiumId),
+  index("idx_external_units_active").on(table.isActive),
+  unique("unique_unit_number_per_condominium").on(table.condominiumId, table.unitNumber),
+]);
+
+export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalUnit = z.infer<typeof insertExternalUnitSchema>;
+export type ExternalUnit = typeof externalUnits.$inferSelect;
+
+// External Unit Owners - Propietarios de unidades
+export const externalUnitOwners = pgTable("external_unit_owners", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }),
+  ownerName: varchar("owner_name", { length: 255 }).notNull(), // Nombre del propietario
+  ownerEmail: varchar("owner_email", { length: 255 }),
+  ownerPhone: varchar("owner_phone", { length: 50 }),
+  isActive: boolean("is_active").notNull().default(true), // Si es el propietario actual
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_unit_owners_unit").on(table.unitId),
+  index("idx_external_unit_owners_active").on(table.isActive),
+]);
+
+export const insertExternalUnitOwnerSchema = createInsertSchema(externalUnitOwners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalUnitOwner = z.infer<typeof insertExternalUnitOwnerSchema>;
+export type ExternalUnitOwner = typeof externalUnitOwners.$inferSelect;
+
+// External Unit Access Controls - Controles de acceso/claves de unidades
+export const externalUnitAccessControls = pgTable("external_unit_access_controls", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }),
+  accessType: varchar("access_type", { length: 100 }).notNull(), // door_code, wifi, gate, etc
+  accessCode: text("access_code"), // Código/clave de acceso (puede ser encriptado)
+  description: text("description"), // Descripción del acceso
+  isActive: boolean("is_active").notNull().default(true),
+  canShareWithMaintenance: boolean("can_share_with_maintenance").notNull().default(false), // Si se puede compartir con personal de mantenimiento
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_access_controls_unit").on(table.unitId),
+  index("idx_external_access_controls_active").on(table.isActive),
+]);
+
+export const insertExternalUnitAccessControlSchema = createInsertSchema(externalUnitAccessControls).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalUnitAccessControl = z.infer<typeof insertExternalUnitAccessControlSchema>;
+export type ExternalUnitAccessControl = typeof externalUnitAccessControls.$inferSelect;
 
 // Relations
 export const tenantRentalFormTokensRelations = relations(tenantRentalFormTokens, ({ one }) => ({
