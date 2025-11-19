@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const createAssignmentSchema = z.object({
-  workerId: z.string().min(1, "Worker required"),
+  userId: z.string().min(1, "Worker required"),
   condominiumId: z.string().optional(),
   unitId: z.string().optional(),
 });
@@ -88,7 +88,7 @@ export default function ExternalMaintenanceWorkers() {
   const form = useForm<CreateAssignmentForm>({
     resolver: zodResolver(createAssignmentSchema),
     defaultValues: {
-      workerId: "",
+      userId: "",
       condominiumId: "",
       unitId: "",
     },
@@ -96,7 +96,7 @@ export default function ExternalMaintenanceWorkers() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateAssignmentForm) => {
-      const payload: any = { workerId: data.workerId };
+      const payload: any = { userId: data.userId };
       if (assignmentType === "condominium" && data.condominiumId) {
         payload.condominiumId = data.condominiumId;
       } else if (assignmentType === "unit" && data.unitId) {
@@ -207,7 +207,7 @@ export default function ExternalMaintenanceWorkers() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="workerId"
+                  name="userId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{language === "es" ? "Trabajador" : "Worker"}</FormLabel>
@@ -369,7 +369,7 @@ export default function ExternalMaintenanceWorkers() {
                       {assignments.map((assignment) => (
                         <TableRow key={assignment.id} data-testid={`row-assignment-${assignment.id}`}>
                           <TableCell className="font-medium">
-                            {getWorkerName(assignment.workerId)}
+                            {getWorkerName(assignment.userId)}
                           </TableCell>
                           <TableCell>
                             {assignment.condominiumId ? (
