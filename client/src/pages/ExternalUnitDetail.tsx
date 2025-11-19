@@ -925,7 +925,8 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
       <Dialog open={showOwnerDialog} onOpenChange={setShowOwnerDialog}>
         <DialogContent data-testid="dialog-owner-form">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
               {editingOwner 
                 ? (language === "es" ? "Editar Propietario" : "Edit Owner")
                 : (language === "es" ? "Agregar Propietario" : "Add Owner")
@@ -945,7 +946,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                 name="ownerName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Nombre *" : "Name *"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Nombre" : "Name"} *</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder={language === "es" ? "Nombre completo" : "Full name"} data-testid="input-owner-name" />
                     </FormControl>
@@ -953,32 +954,34 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                   </FormItem>
                 )}
               />
-              <FormField
-                control={ownerForm.control}
-                name="ownerEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" placeholder="email@example.com" data-testid="input-owner-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={ownerForm.control}
-                name="ownerPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="+52 123 456 7890" data-testid="input-owner-phone" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={ownerForm.control}
+                  name="ownerEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" placeholder="email@example.com" data-testid="input-owner-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={ownerForm.control}
+                  name="ownerPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="+52 123 456 7890" data-testid="input-owner-phone" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={ownerForm.control}
                 name="notes"
@@ -986,7 +989,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                   <FormItem>
                     <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
                     <FormControl>
-                      <Textarea {...field} rows={3} placeholder={language === "es" ? "Notas adicionales..." : "Additional notes..."} data-testid="input-owner-notes" />
+                      <Textarea {...field} rows={2} placeholder={language === "es" ? "Notas adicionales..." : "Additional notes..."} data-testid="input-owner-notes" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -996,13 +999,13 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                 control={ownerForm.control}
                 name="isActive"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                  <FormItem className="flex items-center justify-between rounded-lg border p-2.5">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">{language === "es" ? "Propietario Actual" : "Current Owner"}</FormLabel>
-                      <div className="text-sm text-muted-foreground">
+                      <FormLabel className="text-sm font-medium">{language === "es" ? "Propietario Actual" : "Current Owner"}</FormLabel>
+                      <div className="text-xs text-muted-foreground">
                         {language === "es" 
-                          ? "Marcar como el propietario actual de la unidad" 
-                          : "Mark as the current owner of the unit"
+                          ? "Marcar como el propietario actual" 
+                          : "Mark as the current owner"
                         }
                       </div>
                     </div>
@@ -1016,7 +1019,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                   </FormItem>
                 )}
               />
-              <DialogFooter>
+              <DialogFooter className="gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -1049,7 +1052,8 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
       <Dialog open={showAccessDialog} onOpenChange={setShowAccessDialog}>
         <DialogContent data-testid="dialog-access-form">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
               {editingAccess 
                 ? (language === "es" ? "Editar Control de Acceso" : "Edit Access Control")
                 : (language === "es" ? "Agregar Control de Acceso" : "Add Access Control")
@@ -1064,43 +1068,45 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
           </DialogHeader>
           <Form {...accessForm}>
             <form onSubmit={accessForm.handleSubmit(handleSubmitAccess)} className="space-y-4">
-              <FormField
-                control={accessForm.control}
-                name="accessType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Tipo de Acceso *" : "Access Type *"}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={accessForm.control}
+                  name="accessType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Tipo de Acceso" : "Access Type"} *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-access-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.entries(accessTypeTranslations).map(([key, translations]) => (
+                            <SelectItem key={key} value={key}>
+                              {(translations as any)[language]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={accessForm.control}
+                  name="accessCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Código/Clave" : "Code/Password"}</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-access-type">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <Input {...field} placeholder={language === "es" ? "Código..." : "Code..."} data-testid="input-access-code" />
                       </FormControl>
-                      <SelectContent>
-                        {Object.entries(accessTypeTranslations).map(([key, translations]) => (
-                          <SelectItem key={key} value={key}>
-                            {(translations as any)[language]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={accessForm.control}
-                name="accessCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Código/Clave" : "Code/Password"}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={language === "es" ? "Código de acceso..." : "Access code..."} data-testid="input-access-code" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={accessForm.control}
                 name="description"
@@ -1108,61 +1114,57 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                   <FormItem>
                     <FormLabel>{language === "es" ? "Descripción" : "Description"}</FormLabel>
                     <FormControl>
-                      <Textarea {...field} rows={3} placeholder={language === "es" ? "Detalles adicionales..." : "Additional details..."} data-testid="input-access-description" />
+                      <Textarea {...field} rows={2} placeholder={language === "es" ? "Detalles adicionales..." : "Additional details..."} data-testid="input-access-description" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={accessForm.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">{language === "es" ? "Activo" : "Active"}</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        {language === "es" 
-                          ? "Marcar si este acceso está activo" 
-                          : "Mark if this access is active"
-                        }
+              <div className="space-y-2">
+                <FormField
+                  control={accessForm.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-2.5">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-medium">{language === "es" ? "Activo" : "Active"}</FormLabel>
+                        <div className="text-xs text-muted-foreground">
+                          {language === "es" ? "Marcar si está activo" : "Mark if active"}
+                        </div>
                       </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-access-active"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={accessForm.control}
-                name="canShareWithMaintenance"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">{language === "es" ? "Compartir con Mantenimiento" : "Share with Maintenance"}</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        {language === "es" 
-                          ? "Permitir que el personal de mantenimiento acceda" 
-                          : "Allow maintenance staff to access"
-                        }
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-access-active"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={accessForm.control}
+                  name="canShareWithMaintenance"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-2.5">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-medium">{language === "es" ? "Compartir con Mantenimiento" : "Share with Maintenance"}</FormLabel>
+                        <div className="text-xs text-muted-foreground">
+                          {language === "es" ? "Permitir acceso a mantenimiento" : "Allow maintenance access"}
+                        </div>
                       </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-share-maintenance"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-share-maintenance"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter className="gap-2">
                 <Button
                   type="button"
                   variant="outline"

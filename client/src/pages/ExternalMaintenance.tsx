@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wrench, Plus, AlertCircle, AlertTriangle, Filter, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Wrench, Plus, AlertCircle, AlertTriangle, Filter, Calendar as CalendarIcon, Clock, Home, FileText, User } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -173,12 +174,29 @@ export default function ExternalMaintenance() {
 
   const createMaintenanceMutation = useMutation({
     mutationFn: async (data: MaintenanceFormData) => {
-      return await apiRequest('POST', '/api/external-tickets', data);
+      // Get agencyId from selected unit
+      const selectedUnit = units?.find(u => u.id === data.unitId);
+      if (!selectedUnit || !selectedUnit.agencyId) {
+        throw new Error(language === "es" 
+          ? "Error: No se pudo obtener la información de la unidad. Por favor recargue la página." 
+          : "Error: Could not get unit information. Please reload the page."
+        );
+      }
+      
+      const dataWithAgency = {
+        ...data,
+        agencyId: selectedUnit.agencyId,
+      };
+      
+      return await apiRequest('POST', '/api/external-tickets', dataWithAgency);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-tickets'] });
       setShowMaintenanceDialog(false);
       maintenanceForm.reset();
+      setFormCondominiumId("");
+      setFormDate(undefined);
+      setFormTime("09:00");
       toast({
         title: language === "es" ? "Mantenimiento creado" : "Maintenance created",
         description: language === "es" ? "El trabajo de mantenimiento se creó exitosamente" : "The maintenance job was created successfully",
@@ -624,9 +642,10 @@ export default function ExternalMaintenance() {
       )}
 
       <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-maintenance-form">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-maintenance-form">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
               {language === "es" ? "Nuevo Mantenimiento" : "New Maintenance"}
             </DialogTitle>
             <DialogDescription>
@@ -636,235 +655,289 @@ export default function ExternalMaintenance() {
             </DialogDescription>
           </DialogHeader>
           <Form {...maintenanceForm}>
-            <form onSubmit={maintenanceForm.handleSubmit(handleSubmitMaintenance)} className="space-y-4">
-              {/* Step 1: Select Condominium */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{language === "es" ? "Condominio" : "Condominium"} *</label>
-                <select
-                  value={formCondominiumId}
-                  onChange={(e) => {
-                    setFormCondominiumId(e.target.value);
-                    maintenanceForm.setValue("unitId", ""); // Reset unit when condo changes
-                  }}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                  data-testid="select-maintenance-condominium"
-                >
-                  <option value="">{language === "es" ? "Selecciona un condominio" : "Select a condominium"}</option>
-                  {condominiums?.map(condo => (
-                    <option key={condo.id} value={condo.id}>{condo.name}</option>
-                  ))}
-                </select>
+            <form onSubmit={maintenanceForm.handleSubmit(handleSubmitMaintenance)} className="space-y-5">
+              {/* Location Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Home className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Ubicación" : "Location"}</h3>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">{language === "es" ? "Condominio" : "Condominium"} *</label>
+                    <select
+                      value={formCondominiumId}
+                      onChange={(e) => {
+                        const newCondoId = e.target.value;
+                        setFormCondominiumId(newCondoId);
+                        // Reset unit when condo changes
+                        maintenanceForm.setValue("unitId", "", { shouldValidate: true });
+                      }}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1.5"
+                      data-testid="select-maintenance-condominium"
+                    >
+                      <option value="">{language === "es" ? "Seleccionar..." : "Select..."}</option>
+                      {condominiums?.map(condo => (
+                        <option key={condo.id} value={condo.id}>{condo.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <FormField
+                    control={maintenanceForm.control}
+                    name="unitId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Unidad" : "Unit"} *</FormLabel>
+                        <FormControl>
+                          <select
+                            name={field.name}
+                            ref={field.ref}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            onBlur={field.onBlur}
+                            disabled={!formCondominiumId}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                            data-testid="select-maintenance-unit"
+                          >
+                            <option value="">
+                              {!formCondominiumId 
+                                ? (language === "es" ? "Primero selecciona..." : "First select...")
+                                : (language === "es" ? "Seleccionar..." : "Select...")}
+                            </option>
+                            {filteredUnitsForForm.map(unit => (
+                              <option key={unit.id} value={unit.id}>{unit.unitNumber}</option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
-              {/* Step 2: Select Unit (filtered by condominium) */}
-              <FormField
-                control={maintenanceForm.control}
-                name="unitId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Unidad" : "Unit"} *</FormLabel>
-                    <FormControl>
-                      <select
-                        {...field}
-                        value={field.value || ""}
-                        onChange={e => field.onChange(e.target.value)}
-                        disabled={!formCondominiumId}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                        data-testid="select-maintenance-unit"
-                      >
-                        <option value="">
-                          {!formCondominiumId 
-                            ? (language === "es" ? "Primero selecciona un condominio" : "First select a condominium")
-                            : (language === "es" ? "Selecciona una unidad" : "Select a unit")}
-                        </option>
-                        {filteredUnitsForForm.map(unit => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.unitNumber}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={maintenanceForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Título" : "Title"} *</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-maintenance-title" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={maintenanceForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Descripción" : "Description"} *</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} data-testid="input-maintenance-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={maintenanceForm.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Categoría" : "Category"} *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-maintenance-category">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(serviceTypeColors).map(([type, config]) => (
-                          <SelectItem key={type} value={type}>
-                            {config.label[language]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Date and Time Picker - Always Visible */}
+              {/* Details Section */}
               <div className="space-y-3">
-                <label className="text-sm font-medium">
-                  {language === "es" ? "Fecha y Hora Programada" : "Scheduled Date & Time"}
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Calendar */}
-                  <div className="border rounded-md p-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Detalles del Problema" : "Problem Details"}</h3>
+                </div>
+                <Separator />
+                <FormField
+                  control={maintenanceForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Título" : "Title"} *</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={language === "es" ? "Ej: Fuga de agua en cocina" : "Ex: Water leak in kitchen"} data-testid="input-maintenance-title" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={maintenanceForm.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Categoría" : "Category"} *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-maintenance-category">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.entries(serviceTypeColors).map(([type, config]) => (
+                              <SelectItem key={type} value={type}>{config.label[language]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={maintenanceForm.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Prioridad" : "Priority"} *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-maintenance-priority">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="low">{language === "es" ? "Baja" : "Low"}</SelectItem>
+                            <SelectItem value="medium">{language === "es" ? "Media" : "Medium"}</SelectItem>
+                            <SelectItem value="high">{language === "es" ? "Alta" : "High"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={maintenanceForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Descripción" : "Description"} *</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={2} 
+                          placeholder={language === "es" ? "Describe el problema con la renta activa..." : "Describe the problem..."} 
+                          data-testid="input-maintenance-description" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Scheduling Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Programación" : "Scheduling"}</h3>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{language === "es" ? "Fecha" : "Date"}</label>
                     <Calendar
                       mode="single"
                       selected={formDate}
                       onSelect={setFormDate}
                       locale={language === "es" ? es : undefined}
                       disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                      className="mx-auto"
+                      className="border rounded-md p-2"
                       data-testid="calendar-maintenance-date"
                     />
                   </div>
-                  
-                  {/* Time Picker */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {language === "es" ? "Hora (Cancún)" : "Time (Cancun)"}
-                      </span>
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      {language === "es" ? "Hora (Cancún)" : "Time (Cancun)"}
+                    </label>
                     <Input
                       type="time"
                       value={formTime}
                       onChange={(e) => setFormTime(e.target.value)}
-                      className="w-full"
                       data-testid="input-maintenance-time"
                     />
                     {formDate && (
-                      <div className="mt-4 p-3 bg-muted rounded-md">
-                        <p className="text-sm font-medium mb-1">
+                      <div className="mt-3 p-2.5 bg-muted rounded-md">
+                        <p className="text-xs font-medium mb-1">
                           {language === "es" ? "Programado para:" : "Scheduled for:"}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {format(formDate, language === "es" ? "d 'de' MMMM, yyyy" : "MMMM d, yyyy", {
                             locale: language === "es" ? es : undefined
-                          })}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formTime} ({CANCUN_TIMEZONE})
+                          })} - {formTime}
                         </p>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-              <FormField
-                control={maintenanceForm.control}
-                name="assignedTo"
-                render={({ field }) => {
-                  const selectedUnitId = maintenanceForm.watch("unitId");
-                  const availableWorkers = getAvailableWorkersForLocation(selectedUnitId);
-                  
-                  return (
+              {/* Assignment & Notes Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Asignación y Notas" : "Assignment & Notes"}</h3>
+                </div>
+                <Separator />
+                <FormField
+                  control={maintenanceForm.control}
+                  name="assignedTo"
+                  render={({ field }) => {
+                    const selectedUnitId = maintenanceForm.watch("unitId");
+                    const availableWorkers = getAvailableWorkersForLocation(selectedUnitId);
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Asignar a" : "Assign to"}</FormLabel>
+                        <FormControl>
+                          <select
+                            {...field}
+                            value={field.value || ""}
+                            onChange={e => field.onChange(e.target.value || undefined)}
+                            disabled={!selectedUnitId}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                            data-testid="select-maintenance-assigned-user"
+                          >
+                            <option value="">
+                              {!selectedUnitId 
+                                ? (language === "es" ? "Primero selecciona una unidad" : "First select a unit")
+                                : (language === "es" ? "Sin asignar" : "Unassigned")}
+                            </option>
+                            {availableWorkers.map(worker => {
+                              const name = `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email;
+                              const specialtyLabels: Record<string, { es: string; en: string }> = {
+                                encargado_mantenimiento: { es: "Encargado", en: "Manager" },
+                                mantenimiento_general: { es: "General", en: "General" },
+                                electrico: { es: "Eléctrico", en: "Electrical" },
+                                plomero: { es: "Plomero", en: "Plumber" },
+                                refrigeracion: { es: "Refrigeración", en: "HVAC" },
+                                carpintero: { es: "Carpintero", en: "Carpenter" },
+                                pintor: { es: "Pintor", en: "Painter" },
+                                jardinero: { es: "Jardinero", en: "Gardener" },
+                                albanil: { es: "Albañil", en: "Mason" },
+                                limpieza: { es: "Limpieza", en: "Cleaning" },
+                              };
+                              const specialtyLabel = worker.maintenanceSpecialty ? 
+                                (specialtyLabels[worker.maintenanceSpecialty]?.[language] || worker.maintenanceSpecialty) : '';
+                              return (
+                                <option key={worker.id} value={worker.id}>
+                                  {specialtyLabel ? `${name} (${specialtyLabel})` : name}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </FormControl>
+                        {selectedUnitId && availableWorkers.length > 0 && workerAssignments && workerAssignments.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {language === "es" 
+                              ? "Mostrando trabajadores asignados a esta ubicación" 
+                              : "Showing workers assigned to this location"}
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+                <FormField
+                  control={maintenanceForm.control}
+                  name="notes"
+                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Asignar a" : "Assign to"}</FormLabel>
+                      <FormLabel>{language === "es" ? "Notas Adicionales" : "Additional Notes"}</FormLabel>
                       <FormControl>
-                        <select
-                          {...field}
-                          value={field.value || ""}
-                          onChange={e => field.onChange(e.target.value || undefined)}
-                          disabled={!selectedUnitId}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          data-testid="select-maintenance-assigned-user"
-                        >
-                          <option value="">
-                            {!selectedUnitId 
-                              ? (language === "es" ? "Primero selecciona una unidad" : "First select a unit")
-                              : (language === "es" ? "Sin asignar" : "Unassigned")}
-                          </option>
-                          {availableWorkers.map(worker => {
-                            const name = `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email;
-                            const specialtyLabels: Record<string, { es: string; en: string }> = {
-                              encargado_mantenimiento: { es: "Encargado", en: "Manager" },
-                              mantenimiento_general: { es: "General", en: "General" },
-                              electrico: { es: "Eléctrico", en: "Electrical" },
-                              plomero: { es: "Plomero", en: "Plumber" },
-                              refrigeracion: { es: "Refrigeración", en: "HVAC" },
-                              carpintero: { es: "Carpintero", en: "Carpenter" },
-                              pintor: { es: "Pintor", en: "Painter" },
-                              jardinero: { es: "Jardinero", en: "Gardener" },
-                              albanil: { es: "Albañil", en: "Mason" },
-                              limpieza: { es: "Limpieza", en: "Cleaning" },
-                            };
-                            const specialtyLabel = worker.maintenanceSpecialty ? 
-                              (specialtyLabels[worker.maintenanceSpecialty]?.[language] || worker.maintenanceSpecialty) : '';
-                            return (
-                              <option key={worker.id} value={worker.id}>
-                                {specialtyLabel ? `${name} (${specialtyLabel})` : name}
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <Textarea 
+                          {...field} 
+                          value={field.value || ""} 
+                          rows={2} 
+                          placeholder={language === "es" ? "Información adicional..." : "Additional information..."} 
+                          data-testid="input-maintenance-notes" 
+                        />
                       </FormControl>
-                      {selectedUnitId && availableWorkers.length > 0 && workerAssignments && workerAssignments.length > 0 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {language === "es" 
-                            ? "Mostrando trabajadores asignados a esta ubicación" 
-                            : "Showing workers assigned to this location"}
-                        </p>
-                      )}
                       <FormMessage />
                     </FormItem>
-                  );
-                }}
-              />
-              <FormField
-                control={maintenanceForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} value={field.value || ""} data-testid="input-maintenance-notes" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
+                  )}
+                />
+              </div>
+
+              <DialogFooter className="gap-2">
                 <Button 
                   type="button" 
                   variant="outline" 
