@@ -55,6 +55,7 @@ import {
   Link2,
   Wrench,
   Key,
+  HardHat,
 } from "lucide-react";
 import logoUrl from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import logoIconUrl from "@assets/Sin título (6 x 6 cm)_1759706217639.png";
@@ -290,6 +291,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.externalMaintenance", url: "/external/maintenance", icon: Wrench, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
     { titleKey: "sidebar.externalCalendar", url: "/external/calendar", icon: Calendar, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance"] },
     { titleKey: "sidebar.externalOwners", url: "/external/owners", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
+    { titleKey: "sidebar.externalMaintenanceWorkers", url: "/external/maintenance-workers", icon: HardHat, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
   ];
 
   const serviceItems = [
