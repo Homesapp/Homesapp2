@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -257,16 +258,26 @@ export default function ExternalUnitDetail() {
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
       status: "active",
+      leaseContractUrl: "",
+      inventoryUrl: "",
       notes: "",
     },
   });
 
   const createRentalMutation = useMutation({
     mutationFn: async (data: RentalFormData) => {
+      // Validate that unit and agencyId are available
+      if (!unit || !unit.agencyId) {
+        throw new Error(language === "es" 
+          ? "Error: No se pudo obtener la información de la unidad. Por favor recargue la página." 
+          : "Error: Could not get unit information. Please reload the page."
+        );
+      }
+      
       // Transform data: ensure dates are properly formatted and add agencyId from unit
       const transformedData = {
         ...data,
-        agencyId: unit?.agencyId, // Add agencyId from unit
+        agencyId: unit.agencyId, // Add agencyId from unit (now guaranteed to exist)
         startDate: data.startDate instanceof Date ? data.startDate.toISOString() : data.startDate,
         endDate: data.endDate instanceof Date ? data.endDate.toISOString() : data.endDate,
       };
@@ -370,6 +381,8 @@ export default function ExternalUnitDetail() {
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       status: "active",
+      leaseContractUrl: "",
+      inventoryUrl: "",
       notes: "",
     });
     setShowRentalDialog(true);
@@ -554,7 +567,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
           )}
           <Button
             onClick={handleAddRental}
-            disabled={isLoadingAuth || !user || !!activeContract}
+            disabled={isLoadingAuth || !user || !!activeContract || unitLoading || !unit}
             data-testid="button-generate-rental"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -1180,184 +1193,262 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
 
       {/* Rental Contract Dialog */}
       <Dialog open={showRentalDialog} onOpenChange={setShowRentalDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-rental">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-rental">
           <DialogHeader>
-            <DialogTitle data-testid="text-rental-dialog-title">
+            <DialogTitle className="flex items-center gap-2" data-testid="text-rental-dialog-title">
+              <Home className="h-5 w-5" />
               {language === "es" ? "Generar Renta Activa" : "Generate Active Rental"}
             </DialogTitle>
             <DialogDescription>
               {language === "es" 
-                ? "Complete la información del contrato de renta" 
-                : "Complete the rental contract information"
+                ? "Complete la información del contrato de renta y adjunte los documentos necesarios" 
+                : "Complete the rental contract information and attach required documents"
               }
             </DialogDescription>
           </DialogHeader>
           <Form {...rentalForm}>
-            <form onSubmit={rentalForm.handleSubmit(handleSubmitRental)} className="space-y-4">
-              {/* Tenant Information */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">{language === "es" ? "Información del Inquilino" : "Tenant Information"}</h3>
-                <FormField
-                  control={rentalForm.control}
-                  name="tenantName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Nombre del Inquilino *" : "Tenant Name *"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder={language === "es" ? "Nombre completo..." : "Full name..."} data-testid="input-tenant-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={rentalForm.control}
-                  name="tenantEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Email del Inquilino" : "Tenant Email"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" placeholder="email@example.com" data-testid="input-tenant-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={rentalForm.control}
-                  name="tenantPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Teléfono del Inquilino" : "Tenant Phone"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="+52..." data-testid="input-tenant-phone" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <form onSubmit={rentalForm.handleSubmit(handleSubmitRental)} className="space-y-6">
+              {/* Tenant Information Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Información del Inquilino" : "Tenant Information"}</h3>
+                </div>
+                <Separator />
+                <div className="grid gap-4">
+                  <FormField
+                    control={rentalForm.control}
+                    name="tenantName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Nombre del Inquilino" : "Tenant Name"} *</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder={language === "es" ? "Nombre completo..." : "Full name..."} data-testid="input-tenant-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={rentalForm.control}
+                      name="tenantEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Email del Inquilino" : "Tenant Email"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="email" placeholder="email@example.com" data-testid="input-tenant-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={rentalForm.control}
+                      name="tenantPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Teléfono del Inquilino" : "Tenant Phone"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="+52..." data-testid="input-tenant-phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Contract Details */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">{language === "es" ? "Detalles del Contrato" : "Contract Details"}</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={rentalForm.control}
-                    name="monthlyRent"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Renta Mensual *" : "Monthly Rent *"}</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" step="0.01" min="0" placeholder="0.00" data-testid="input-monthly-rent" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={rentalForm.control}
-                    name="currency"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Moneda *" : "Currency *"}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+              {/* Contract Details Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Detalles del Contrato" : "Contract Details"}</h3>
+                </div>
+                <Separator />
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={rentalForm.control}
+                      name="monthlyRent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Renta Mensual" : "Monthly Rent"} *</FormLabel>
                           <FormControl>
-                            <SelectTrigger data-testid="select-currency">
-                              <SelectValue />
-                            </SelectTrigger>
+                            <Input {...field} type="number" step="0.01" min="0" placeholder="0.00" data-testid="input-monthly-rent" />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="MXN">MXN</SelectItem>
-                            <SelectItem value="USD">USD</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={rentalForm.control}
-                  name="leaseDurationMonths"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Duración del Contrato (meses) *" : "Lease Duration (months) *"}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          min="1" 
-                          onChange={(e) => {
-                            const months = parseInt(e.target.value) || 12;
-                            field.onChange(months);
-                            const startDate = rentalForm.getValues('startDate');
-                            if (startDate) {
-                              const endDate = new Date(startDate);
-                              endDate.setMonth(endDate.getMonth() + months);
-                              rentalForm.setValue('endDate', endDate);
-                            }
-                          }}
-                          data-testid="input-lease-duration" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-3">
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={rentalForm.control}
+                      name="currency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Moneda" : "Currency"} *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-currency">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="MXN">MXN</SelectItem>
+                              <SelectItem value="USD">USD</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={rentalForm.control}
-                    name="startDate"
+                    name="leaseDurationMonths"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Fecha de Inicio *" : "Start Date *"}</FormLabel>
+                        <FormLabel>{language === "es" ? "Duración del Contrato (meses)" : "Lease Duration (months)"} *</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
-                            type="date" 
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            type="number" 
+                            min="1" 
                             onChange={(e) => {
-                              const startDate = new Date(e.target.value);
-                              field.onChange(startDate);
-                              const months = rentalForm.getValues('leaseDurationMonths');
-                              const endDate = new Date(startDate);
-                              endDate.setMonth(endDate.getMonth() + months);
-                              rentalForm.setValue('endDate', endDate);
+                              const months = parseInt(e.target.value) || 12;
+                              field.onChange(months);
+                              const startDate = rentalForm.getValues('startDate');
+                              if (startDate) {
+                                const endDate = new Date(startDate);
+                                endDate.setMonth(endDate.getMonth() + months);
+                                rentalForm.setValue('endDate', endDate);
+                              }
                             }}
-                            data-testid="input-start-date" 
+                            data-testid="input-lease-duration" 
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={rentalForm.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Fecha de Inicio" : "Start Date"} *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="date" 
+                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                              onChange={(e) => {
+                                const startDate = new Date(e.target.value);
+                                field.onChange(startDate);
+                                const months = rentalForm.getValues('leaseDurationMonths');
+                                const endDate = new Date(startDate);
+                                endDate.setMonth(endDate.getMonth() + months);
+                                rentalForm.setValue('endDate', endDate);
+                              }}
+                              data-testid="input-start-date" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={rentalForm.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Fecha de Fin" : "End Date"} *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="date" 
+                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                              data-testid="input-end-date" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">{language === "es" ? "Documentos" : "Documents"}</h3>
+                </div>
+                <Separator />
+                <div className="grid gap-4">
+                  <FormField
+                    control={rentalForm.control}
+                    name="leaseContractUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Contrato de Arrendamiento" : "Lease Agreement"}</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value || ""} 
+                            placeholder={language === "es" ? "URL del contrato (Google Drive, Dropbox, etc.)" : "Contract URL (Google Drive, Dropbox, etc.)"} 
+                            data-testid="input-lease-contract-url" 
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          {language === "es" 
+                            ? "Suba el contrato a Google Drive, Dropbox u otro servicio y pegue el enlace aquí" 
+                            : "Upload the contract to Google Drive, Dropbox or other service and paste the link here"
+                          }
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={rentalForm.control}
-                    name="endDate"
+                    name="inventoryUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Fecha de Fin *" : "End Date *"}</FormLabel>
+                        <FormLabel>{language === "es" ? "Inventario" : "Inventory"}</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
-                            type="date" 
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
-                            data-testid="input-end-date" 
+                            value={field.value || ""} 
+                            placeholder={language === "es" ? "URL del inventario" : "Inventory URL"} 
+                            data-testid="input-inventory-url" 
                           />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          {language === "es" 
+                            ? "Suba el inventario a Google Drive, Dropbox u otro servicio y pegue el enlace aquí" 
+                            : "Upload the inventory to Google Drive, Dropbox or other service and paste the link here"
+                          }
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+              </div>
+
+              {/* Additional Notes Section */}
+              <div className="space-y-4">
                 <FormField
                   control={rentalForm.control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
+                      <FormLabel>{language === "es" ? "Notas Adicionales" : "Additional Notes"}</FormLabel>
                       <FormControl>
                         <Textarea {...field} rows={3} placeholder={language === "es" ? "Notas adicionales..." : "Additional notes..."} data-testid="input-rental-notes" />
                       </FormControl>
@@ -1367,7 +1458,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                 />
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -1381,7 +1472,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createRentalMutation.isPending}
+                  disabled={createRentalMutation.isPending || !unit || !unit.agencyId}
                   data-testid="button-submit-rental"
                 >
                   {createRentalMutation.isPending
