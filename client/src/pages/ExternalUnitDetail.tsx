@@ -263,7 +263,14 @@ export default function ExternalUnitDetail() {
 
   const createRentalMutation = useMutation({
     mutationFn: async (data: RentalFormData) => {
-      return await apiRequest('POST', '/api/external-rental-contracts', data);
+      // Transform data: ensure dates are properly formatted and add agencyId from unit
+      const transformedData = {
+        ...data,
+        agencyId: unit?.agencyId, // Add agencyId from unit
+        startDate: data.startDate instanceof Date ? data.startDate.toISOString() : data.startDate,
+        endDate: data.endDate instanceof Date ? data.endDate.toISOString() : data.endDate,
+      };
+      return await apiRequest('POST', '/api/external-rental-contracts', transformedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/by-unit/${id}`] });
