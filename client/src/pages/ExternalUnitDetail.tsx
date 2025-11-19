@@ -274,12 +274,10 @@ export default function ExternalUnitDetail() {
         );
       }
       
-      // Transform data: ensure dates are properly formatted and add agencyId from unit
+      // Transform data: add agencyId from unit, dates remain as Date objects for backend validation
       const transformedData = {
         ...data,
         agencyId: unit.agencyId, // Add agencyId from unit (now guaranteed to exist)
-        startDate: data.startDate instanceof Date ? data.startDate.toISOString() : data.startDate,
-        endDate: data.endDate instanceof Date ? data.endDate.toISOString() : data.endDate,
       };
       return await apiRequest('POST', '/api/external-rental-contracts', transformedData);
     },
