@@ -281,6 +281,9 @@ export default function AdminExternalAgencies() {
       return await apiRequest("POST", `/api/admin/users/${userId}/reset-password`, {});
     },
     onSuccess: (data: any) => {
+      console.log("Response data:", data);
+      console.log("Email:", data.email);
+      console.log("Password:", data.temporaryPassword);
       setGeneratedPassword({ password: data.temporaryPassword, email: data.email });
       setIsPasswordDialogOpen(true);
       toast({
