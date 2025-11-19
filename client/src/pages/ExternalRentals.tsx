@@ -596,56 +596,62 @@ export default function ExternalRentals() {
                     </div>
                   </div>
 
-                  {/* Services and Next Payment Info */}
-                  {(activeServices && activeServices.length > 0) || nextPaymentDue ? (
+                  {/* Services with Payment Dates */}
+                  {activeServices && activeServices.length > 0 && (
                     <>
                       <Separator />
                       <div className="space-y-2">
-                        {activeServices && activeServices.length > 0 && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {language === "es" ? "Servicios:" : "Services:"}
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {activeServices.map((service, idx) => (
-                                <Badge 
-                                  key={idx} 
-                                  variant="outline" 
-                                  className="text-xs"
-                                  data-testid={`badge-service-${contract.id}-${idx}`}
-                                >
-                                  {getServiceLabel(service.serviceType)}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {nextPaymentDue && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                            <div>
-                              <p className="text-xs text-muted-foreground">
-                                {language === "es" ? "Próximo pago:" : "Next payment:"}
-                              </p>
-                              <p className="font-semibold text-xs" data-testid={`text-next-payment-${contract.id}`}>
-                                {format(new Date(nextPaymentDue), "dd MMM yyyy", { locale: language === "es" ? es : enUS })}
-                                {nextPaymentService && ` - ${getServiceLabel(nextPaymentService)}`}
-                                {nextPaymentAmount && ` - $${parseFloat(nextPaymentAmount).toLocaleString()}`}
-                              </p>
-                            </div>
-                          </div>
-                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {language === "es" ? "Servicios y próximas fechas de pago:" : "Services and next payment dates:"}
+                        </p>
+                        <div className="space-y-1.5">
+                          {activeServices.map((service, idx) => {
+                            const parsedAmount = service.amount ? parseFloat(service.amount) : NaN;
+                            const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+                            return (
+                              <div 
+                                key={idx}
+                                className="flex items-center justify-between gap-2 p-2 border rounded-md text-xs"
+                                data-testid={`service-item-${contract.id}-${idx}`}
+                              >
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs flex-shrink-0"
+                                  >
+                                    {getServiceLabel(service.serviceType)}
+                                  </Badge>
+                                  {hasValidAmount ? (
+                                    <span className="font-semibold text-xs">
+                                      ${parsedAmount.toLocaleString()}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      {language === "es" ? "Monto no especificado" : "Amount not specified"}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <Clock className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">
+                                    {language === "es" ? "Día" : "Day"} {service.dayOfMonth}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </>
-                  ) : null}
+                  )}
 
                   <Separator />
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button 
                       asChild 
                       size="sm" 
-                      className="flex-1"
+                      className="flex-1 min-w-[120px]"
                       data-testid={`button-view-rental-${contract.id}`}
                     >
                       <Link href={`/external/contracts/${contract.id}`}>
@@ -658,6 +664,7 @@ export default function ExternalRentals() {
                         asChild 
                         variant="outline" 
                         size="sm"
+                        className="flex-shrink-0"
                         data-testid={`button-view-unit-${contract.id}`}
                       >
                         <Link href={`/external/units/${unit.id}`}>
@@ -670,6 +677,7 @@ export default function ExternalRentals() {
                       <Button 
                         variant="destructive" 
                         size="sm"
+                        className="flex-shrink-0"
                         onClick={() => {
                           setContractToCancel(contract.id);
                           setCancelDialogOpen(true);
@@ -677,7 +685,8 @@ export default function ExternalRentals() {
                         data-testid={`button-cancel-rental-${contract.id}`}
                       >
                         <XCircle className="h-4 w-4 mr-2" />
-                        {language === "es" ? "Cancelar" : "Cancel"}
+                        <span className="hidden sm:inline">{language === "es" ? "Cancelar" : "Cancel"}</span>
+                        <span className="sm:hidden">{language === "es" ? "Cancelar" : "Cancel"}</span>
                       </Button>
                     )}
                   </div>

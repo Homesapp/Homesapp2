@@ -37,16 +37,24 @@ Key features include:
 *   **External Property Management System**: Multi-tenant module for managing external agency properties with independent payment calendars, maintenance tickets, and optional property linking. Includes granular role-based permissions, condominium-unit management, and robust multi-tenant security.
     *   **Maintenance Worker Management**: System for assigning specialized maintenance workers to specific condominiums or units, including specialty tracking and bulk assignment capabilities.
     *   **Owner Management System**: Comprehensive CRUD for unit owners, including charge creation and notification sending, with multi-tenant security.
-    *   **External Calendar System**: Displays payments and maintenance tickets for external agencies, with event highlighting, worker assignment details, and statistics.
+    *   **External Calendar System**: Displays payments, maintenance tickets, and rental contract start dates for external agencies. Features include:
+        - **Rental contract events:** Contract start dates now appear in calendar with purple icon
+        - **Complete contract details:** Shows tenant info, unit, monthly rent (with validation), duration, start/end dates, and contact info
+        - **Type-safe event handling:** Discriminated union with ExternalPayment, ExternalMaintenanceTicket, and ExternalRentalContract
+        - Event highlighting with color-coded icons (green for payments, blue for tickets, purple for contracts)
+        - Worker assignment details and statistics
+        - Robust null-checking for optional date and monetary fields
     *   **Google Calendar Sync Infrastructure**: Backend service for automatic synchronization of maintenance tickets to workers' Google Calendars with detailed event descriptions and email notifications.
     *   **Temporary Credentials Management**: Workflow for secure sharing of temporary user credentials with forced password changes on first login.
     *   **Unit Information Quick-Share System**: One-click copy-to-clipboard for unit information and access controls.
     *   **External Rentals Management**: Comprehensive rental contract dashboard with optimized performance. Features include:
         - Performance-optimized list endpoint using bulk queries (3 total queries for paginated results, avoiding N+1 problem)
         - Pagination support (default limit: 100, max: 500) for handling large datasets
-        - Active services display showing rent, electricity, water, internet, gas, and maintenance services
+        - **Enhanced service display:** Detailed list showing service type, amount (with validation), and payment day of month with Clock icon
+        - **Number.isFinite validation:** Safe parsing of all monetary values with descriptive placeholders ("Monto no especificado") when data is missing or invalid
         - Next payment information with due date, amount, and service type
-        - Dual view modes: card and table layouts
+        - Dual view modes: card and table layouts with responsive design
+        - **Mobile-optimized buttons:** flex-wrap layout prevents button text truncation on small screens
         - Advanced filtering by status, condominium, and unit number with searchable combobox components
         - Rental cancellation with automatic cleanup of future pending payments
         - Contract detail view with complete overview of services and payment schedules

@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { format, isSameDay, isWithinInterval, addDays, startOfDay } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import type { ExternalPayment, ExternalMaintenanceTicket, SelectUser } from "@shared/schema";
+import type { ExternalPayment, ExternalMaintenanceTicket, SelectUser, ExternalRentalContract } from "@shared/schema";
 
 type SelectedEvent = {
-  type: 'payment' | 'ticket';
-  data: ExternalPayment | ExternalMaintenanceTicket;
+  type: 'payment' | 'ticket' | 'contract';
+  data: ExternalPayment | ExternalMaintenanceTicket | ExternalRentalContract;
 };
 
 export default function ExternalCalendar() {
@@ -103,6 +103,15 @@ export default function ExternalCalendar() {
     return { pendingPayments, scheduledTickets, thisMonthEvents };
   }, [filteredPayments, filteredTickets]);
 
+  // Filter contracts by condominium
+  const filteredContracts = useMemo(() => {
+    if (selectedCondominium === "all") return contracts;
+    return contracts.filter((c: any) => {
+      const unit = units.find(u => u.id === c.unitId);
+      return unit?.condominiumId === selectedCondominium;
+    });
+  }, [contracts, units, selectedCondominium]);
+
   // Get events for selected date
   const eventsForDate = useMemo(() => {
     if (!selectedDate) return [];
@@ -138,10 +147,27 @@ export default function ExternalCalendar() {
         };
       });
 
-    return [...dayPayments, ...dayTickets].sort((a, b) => 
+    // Add contract start dates as events
+    const dayContracts = filteredContracts
+      .filter((c: any) => c.startDate && isSameDay(new Date(c.startDate), selectedDate))
+      .map((c: any) => {
+        const unit = units.find(u => u.id === c.unitId);
+        const location = unit ? `${unit.condominium?.name || ''} - ${unit.unitNumber}` : '';
+        return {
+          type: 'contract' as const,
+          title: language === "es" 
+            ? `Inicio de Renta: ${c.tenantName} - ${location}`
+            : `Rental Start: ${c.tenantName} - ${location}`,
+          time: '00:00',
+          status: c.status,
+          data: c,
+        };
+      });
+
+    return [...dayPayments, ...dayTickets, ...dayContracts].sort((a, b) => 
       a.time.localeCompare(b.time)
     );
-  }, [selectedDate, filteredPayments, filteredTickets, language, units]);
+  }, [selectedDate, filteredPayments, filteredTickets, filteredContracts, language, units]);
 
   // Dates with events for highlighting in calendar
   const datesWithEvents = useMemo(() => {
@@ -154,8 +180,13 @@ export default function ExternalCalendar() {
         dates.add(format(new Date(t.scheduledDate), 'yyyy-MM-dd'));
       }
     });
+    filteredContracts.forEach((c: any) => {
+      if (c.startDate) {
+        dates.add(format(new Date(c.startDate), 'yyyy-MM-dd'));
+      }
+    });
     return dates;
-  }, [filteredPayments, filteredTickets]);
+  }, [filteredPayments, filteredTickets, filteredContracts]);
 
   return (
     <div className="space-y-6">
@@ -240,13 +271,125 @@ export default function ExternalCalendar() {
                     </Button>
                     {selectedEvent.type === 'payment' ? (
                       <DollarSign className="h-6 w-6 text-green-600" />
+                    ) : selectedEvent.type === 'contract' ? (
+                      <CalIcon className="h-6 w-6 text-purple-600" />
                     ) : (
                       <Wrench className="h-6 w-6 text-blue-600" />
                     )}
                   </div>
 
                   <div className="space-y-3">
-                    {selectedEvent.type === 'ticket' ? (
+                    {selectedEvent.type === 'contract' ? (
+                      // Detalles del contrato de renta
+                      (() => {
+                        const contract = selectedEvent.data as ExternalRentalContract;
+                        const unit = units.find(u => u.id === contract.unitId);
+                        const parsedRent = contract.monthlyRent ? parseFloat(contract.monthlyRent) : NaN;
+                        const hasValidRent = Number.isFinite(parsedRent) && parsedRent > 0;
+                        
+                        return (
+                          <>
+                            <div>
+                              <h3 className="font-semibold text-base">
+                                {language === "es" ? "Inicio de Contrato de Renta" : "Rental Contract Start"}
+                              </h3>
+                              <p className="text-lg font-bold mt-2 text-purple-600">
+                                {contract.tenantName}
+                              </p>
+                            </div>
+
+                            <Separator />
+
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
+                                  {contract.status}
+                                </Badge>
+                              </div>
+
+                              {unit && (
+                                <div className="flex items-start gap-2">
+                                  <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Unidad" : "Unit"}</p>
+                                    <p className="text-muted-foreground">
+                                      {unit.unitNumber} - {unit.condominium?.name || ""}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex items-start gap-2">
+                                <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium">{language === "es" ? "Renta Mensual" : "Monthly Rent"}</p>
+                                  <p className="text-muted-foreground">
+                                    {hasValidRent 
+                                      ? `${contract.currency || 'MXN'} $${parsedRent.toLocaleString()}`
+                                      : (language === "es" ? "Monto no especificado" : "Amount not specified")
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-start gap-2">
+                                <CalIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium">{language === "es" ? "Duración" : "Duration"}</p>
+                                  <p className="text-muted-foreground">
+                                    {contract.leaseDurationMonths} {language === "es" ? "meses" : "months"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {contract.startDate && (
+                                <div className="flex items-start gap-2">
+                                  <CalIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Fecha de Inicio" : "Start Date"}</p>
+                                    <p className="text-muted-foreground">
+                                      {format(new Date(contract.startDate), "PPP", { locale: language === "es" ? es : enUS })}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {contract.endDate && (
+                                <div className="flex items-start gap-2">
+                                  <CalIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Fecha de Fin" : "End Date"}</p>
+                                    <p className="text-muted-foreground">
+                                      {format(new Date(contract.endDate), "PPP", { locale: language === "es" ? es : enUS })}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {contract.tenantEmail && (
+                                <div className="flex items-start gap-2">
+                                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Email del Inquilino" : "Tenant Email"}</p>
+                                    <p className="text-muted-foreground">{contract.tenantEmail}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {contract.tenantPhone && (
+                                <div className="flex items-start gap-2">
+                                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Teléfono del Inquilino" : "Tenant Phone"}</p>
+                                    <p className="text-muted-foreground">{contract.tenantPhone}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()
+                    ) : selectedEvent.type === 'ticket' ? (
                       // Detalles del ticket de mantenimiento
                       (() => {
                         const ticket = selectedEvent.data as ExternalMaintenanceTicket;
