@@ -301,8 +301,15 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.profile", url: "/perfil", icon: User },
   ];
 
+  // Check if user is ONLY an external agency user (not admin/master)
+  const isExternalAgencyUser = userRole && 
+    ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"].includes(userRole);
+
   const filteredMain = userRole 
-    ? mainItems.filter((item) => item.roles.includes(userRole) && isMenuItemVisible(item.titleKey))
+    ? (isExternalAgencyUser 
+        ? [] // External agency users don't see main items - they have their own section
+        : mainItems.filter((item) => item.roles.includes(userRole) && isMenuItemVisible(item.titleKey))
+      )
     : basicItems;
   
   const filteredAdminSingle = userRole 
@@ -371,7 +378,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
                         filteredProperties.length > 0 || 
                         filteredConfig.length > 0 || 
                         filteredCommunity.length > 0 ||
-                        filteredExternalManagement.length > 0;
+                        (filteredExternalManagement.length > 0 && !isExternalAgencyUser);
 
   const hasClientGroups = filteredClientProperties.length > 0 || 
                           filteredClientActivity.length > 0 || 
@@ -442,6 +449,26 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
                 
                 {/* Client items - flat structure without collapsibles */}
                 {[...filteredClientProperties, ...filteredClientActivity, ...filteredClientFinance].map((item) => (
+                  <SidebarMenuItem key={item.titleKey}>
+                    <SidebarMenuButton asChild isActive={location === item.url}>
+                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                        <item.icon />
+                        <span>{t(item.titleKey)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* External Agency Users - Flat structure */}
+        {isExternalAgencyUser && filteredExternalManagement.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredExternalManagement.map((item) => (
                   <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton asChild isActive={location === item.url}>
                       <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>

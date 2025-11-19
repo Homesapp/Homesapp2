@@ -48,6 +48,8 @@ Key features include:
     *   **Ownership Verification Pattern**: Each endpoint loads target entity (or parent), then validates that authenticated user's agency matches entity's `agencyId` before returning data. Creation endpoints derive `agencyId` from validated input or parent lookups.
     *   **External Unit Detail View**: Comprehensive unit management page displaying unit information, owner CRUD operations, access control CRUD (door codes, WiFi, gates, etc. with password visibility toggles), and MVP rental contract creation.
     *   **External Rental Contracts (MVP)**: Ability to create active rental contracts for units with tenant information (name, email, phone), contract details (monthly rent, currency, lease duration, start/end dates), smart date calculations, and visual active contract indicators. Prevents duplicate active rentals. Future enhancements planned: contract editing/termination, contract history viewing, payment schedule automation.
+    *   **Password Management for External Users**: Admin password reset functionality with temporary password generation, copy-to-clipboard for credentials, and forced password change flow with direct DB updates using Drizzle ORM.
+    *   **Streamlined External Agency Sidebar**: External agency users (`external_agency_admin`, `external_agency_accounting`, `external_agency_maintenance`, `external_agency_staff`) see only relevant management options directly in sidebar without collapsibles: Dashboard, Agency Info, Condominiums, Accounting, Maintenance.
 
 ## External Dependencies
 *   Google Calendar API
