@@ -21736,7 +21736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all units for this agency - already filtered by agency
-      const units = await storage.getExternalUnits(agencyId);
+      const units = await storage.getExternalUnitsByAgency(agencyId);
       
       // Verify ownership for each unit (extra security layer)
       for (const unit of units) {

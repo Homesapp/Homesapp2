@@ -144,9 +144,9 @@ export default function ExternalRentals() {
   const stats = rentals ? {
     total: rentals.length,
     active: rentals.filter(r => r.contract.status === "active").length,
-    pending: rentals.filter(r => r.contract.status === "pending").length,
     completed: rentals.filter(r => r.contract.status === "completed").length,
-  } : { total: 0, active: 0, pending: 0, completed: 0 };
+    suspended: rentals.filter(r => r.contract.status === "suspended").length,
+  } : { total: 0, active: 0, completed: 0, suspended: 0 };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -167,7 +167,7 @@ export default function ExternalRentals() {
       <Separator />
 
       {/* Statistics */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card data-testid="card-stats-total">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -190,20 +190,6 @@ export default function ExternalRentals() {
           <CardContent>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-stats-active">
               {stats.active}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-stats-pending">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Pendientes" : "Pending"}
-            </CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400" data-testid="text-stats-pending">
-              {stats.pending}
             </div>
           </CardContent>
         </Card>
@@ -265,14 +251,6 @@ export default function ExternalRentals() {
               data-testid="button-filter-active"
             >
               {language === "es" ? "Activos" : "Active"}
-            </Button>
-            <Button
-              variant={statusFilter === "pending" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter("pending")}
-              data-testid="button-filter-pending"
-            >
-              {language === "es" ? "Pendientes" : "Pending"}
             </Button>
             <Button
               variant={statusFilter === "completed" ? "default" : "outline"}
