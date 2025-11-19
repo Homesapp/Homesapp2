@@ -14,8 +14,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, Building2, Home } from "lucide-react";
+import { Plus, Trash2, Building2, Home, Wrench, Pencil } from "lucide-react";
 import { useState } from "react";
+import React from "react";
 import { z } from "zod";
 import {
   AlertDialog,
@@ -70,6 +71,7 @@ export default function ExternalMaintenanceWorkers() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteAssignmentId, setDeleteAssignmentId] = useState<string | null>(null);
   const [assignmentType, setAssignmentType] = useState<"condominium" | "unit">("condominium");
+  const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
 
   const { data: allUsers, isLoading: loadingWorkers } = useQuery<any[]>({
     queryKey: ['/api/external-agency-users'],
@@ -144,51 +146,89 @@ export default function ExternalMaintenanceWorkers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-worker-assignments'] });
       setIsCreateDialogOpen(false);
+      const isEditing = editingWorkerId !== null;
+      setEditingWorkerId(null);
       form.reset();
       toast({
-        title: language === "es" ? "Asignaciones creadas" : "Assignments created",
-        description: language === "es" 
-          ? "El trabajador ha sido asignado exitosamente"
-          : "Worker has been assigned successfully",
+        title: isEditing
+          ? (language === "es" ? "Asignaciones actualizadas" : "Assignments updated")
+          : (language === "es" ? "Asignaciones creadas" : "Assignments created"),
+        description: isEditing
+          ? (language === "es" 
+              ? "Las asignaciones se actualizaron exitosamente"
+              : "Assignments were updated successfully")
+          : (language === "es" 
+              ? "El trabajador ha sido asignado exitosamente"
+              : "Worker has been assigned successfully"),
       });
     },
     onError: () => {
+      const isEditing = editingWorkerId !== null;
       toast({
         title: language === "es" ? "Error" : "Error",
-        description: language === "es"
-          ? "No se pudieron crear las asignaciones"
-          : "Could not create assignments",
+        description: isEditing
+          ? (language === "es"
+              ? "No se pudieron actualizar las asignaciones"
+              : "Could not update assignments")
+          : (language === "es"
+              ? "No se pudieron crear las asignaciones"
+              : "Could not create assignments"),
         variant: "destructive",
       });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/external-worker-assignments/${id}`, {});
+    mutationFn: async (workerId: string) => {
+      // Delete all assignments for this worker
+      const workerAssignments = assignments?.filter(a => a.userId === workerId) || [];
+      const deletePromises = workerAssignments.map(assignment =>
+        apiRequest("DELETE", `/api/external-worker-assignments/${assignment.id}`, {})
+      );
+      return await Promise.all(deletePromises);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-worker-assignments'] });
       setDeleteAssignmentId(null);
       toast({
-        title: language === "es" ? "Asignación eliminada" : "Assignment deleted",
+        title: language === "es" ? "Asignaciones eliminadas" : "Assignments deleted",
         description: language === "es" 
-          ? "La asignación ha sido eliminada"
-          : "Assignment has been deleted",
+          ? "Todas las asignaciones del trabajador han sido eliminadas"
+          : "All worker assignments have been deleted",
       });
     },
     onError: () => {
       toast({
         title: language === "es" ? "Error" : "Error",
         description: language === "es"
-          ? "No se pudo eliminar la asignación"
-          : "Could not delete assignment",
+          ? "No se pudieron eliminar las asignaciones"
+          : "Could not delete assignments",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (data: CreateAssignmentForm) => {
+  const onSubmit = async (data: CreateAssignmentForm) => {
+    // If editing, first delete all existing assignments for this worker
+    if (editingWorkerId) {
+      const workerAssignments = assignments?.filter(a => a.userId === editingWorkerId) || [];
+      const deletePromises = workerAssignments.map(assignment =>
+        apiRequest("DELETE", `/api/external-worker-assignments/${assignment.id}`, {})
+      );
+      try {
+        await Promise.all(deletePromises);
+      } catch (error) {
+        toast({
+          title: language === "es" ? "Error" : "Error",
+          description: language === "es"
+            ? "No se pudieron eliminar las asignaciones anteriores"
+            : "Could not delete previous assignments",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     createMutation.mutate(data);
   };
 
@@ -209,6 +249,50 @@ export default function ExternalMaintenanceWorkers() {
     return unit?.unitNumber || unitId;
   };
 
+  // Group assignments by worker
+  const groupedAssignments = React.useMemo(() => {
+    if (!assignments || !workers) return [];
+    
+    const grouped = new Map<string, {
+      worker: any;
+      assignments: any[];
+    }>();
+
+    assignments.forEach((assignment) => {
+      const workerId = assignment.userId;
+      if (!grouped.has(workerId)) {
+        const worker = workers.find(w => w.id === workerId);
+        if (worker) {
+          grouped.set(workerId, {
+            worker,
+            assignments: []
+          });
+        }
+      }
+      grouped.get(workerId)?.assignments.push(assignment);
+    });
+
+    return Array.from(grouped.values());
+  }, [assignments, workers]);
+
+  const handleEditWorker = (workerId: string) => {
+    setEditingWorkerId(workerId);
+    const workerAssignments = assignments?.filter(a => a.userId === workerId);
+    if (workerAssignments && workerAssignments.length > 0) {
+      const condoIds = workerAssignments
+        .filter(a => a.condominiumId)
+        .map(a => a.condominiumId as string);
+      const unitIds = workerAssignments
+        .filter(a => a.unitId)
+        .map(a => a.unitId as string);
+      
+      form.setValue("userId", workerId);
+      form.setValue("condominiumIds", condoIds);
+      form.setValue("unitIds", unitIds);
+      setIsCreateDialogOpen(true);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -222,7 +306,13 @@ export default function ExternalMaintenanceWorkers() {
               : "Assign maintenance workers to condominiums and units"}
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+          setIsCreateDialogOpen(open);
+          if (!open) {
+            setEditingWorkerId(null);
+            form.reset();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-assignment">
               <Plus className="mr-2 h-4 w-4" />
@@ -232,12 +322,18 @@ export default function ExternalMaintenanceWorkers() {
           <DialogContent data-testid="dialog-create-assignment">
             <DialogHeader>
               <DialogTitle>
-                {language === "es" ? "Asignar Trabajador" : "Assign Worker"}
+                {editingWorkerId 
+                  ? (language === "es" ? "Editar Asignaciones" : "Edit Assignments")
+                  : (language === "es" ? "Asignar Trabajador" : "Assign Worker")}
               </DialogTitle>
               <DialogDescription>
-                {language === "es"
-                  ? "Asigna un trabajador de mantenimiento a un condominio o unidad específica"
-                  : "Assign a maintenance worker to a specific condominium or unit"}
+                {editingWorkerId 
+                  ? (language === "es"
+                      ? "Modifica las asignaciones del trabajador"
+                      : "Modify worker assignments")
+                  : (language === "es"
+                      ? "Asigna un trabajador de mantenimiento a un condominio o unidad específica"
+                      : "Assign a maintenance worker to a specific condominium or unit")}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -248,7 +344,11 @@ export default function ExternalMaintenanceWorkers() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{language === "es" ? "Trabajador" : "Worker"}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        disabled={editingWorkerId !== null}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-worker">
                             <SelectValue placeholder={language === "es" ? "Selecciona trabajador..." : "Select worker..."} />
@@ -445,48 +545,77 @@ export default function ExternalMaintenanceWorkers() {
                         <TableHead className="min-w-[200px]">
                           {language === "es" ? "Trabajador" : "Worker"}
                         </TableHead>
-                        <TableHead className="min-w-[200px]">
-                          {language === "es" ? "Condominio" : "Condominium"}
-                        </TableHead>
                         <TableHead className="min-w-[150px]">
-                          {language === "es" ? "Unidad" : "Unit"}
+                          {language === "es" ? "Especialidad" : "Specialty"}
                         </TableHead>
-                        <TableHead className="text-right min-w-[100px]">
+                        <TableHead className="min-w-[300px]">
+                          {language === "es" ? "Asignaciones" : "Assignments"}
+                        </TableHead>
+                        <TableHead className="text-right min-w-[150px]">
                           {language === "es" ? "Acciones" : "Actions"}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {assignments.map((assignment) => (
-                        <TableRow key={assignment.id} data-testid={`row-assignment-${assignment.id}`}>
+                      {groupedAssignments.map(({ worker, assignments: workerAssignments }) => (
+                        <TableRow key={worker.id} data-testid={`row-worker-${worker.id}`}>
                           <TableCell className="font-medium">
-                            {getWorkerName(assignment.userId)}
+                            <div className="flex items-center gap-2">
+                              <Wrench className="h-4 w-4 text-muted-foreground" />
+                              {worker.firstName} {worker.lastName}
+                            </div>
                           </TableCell>
                           <TableCell>
-                            {assignment.condominiumId ? (
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                {getCondominiumName(assignment.condominiumId)}
-                              </div>
+                            {worker.maintenanceSpecialty ? (
+                              <Badge variant="secondary">
+                                {SPECIALTY_LABELS[language][worker.maintenanceSpecialty as keyof typeof SPECIALTY_LABELS['es']]}
+                              </Badge>
                             ) : '-'}
                           </TableCell>
                           <TableCell>
-                            {assignment.unitId ? (
-                              <div className="flex items-center gap-2">
-                                <Home className="h-4 w-4 text-muted-foreground" />
-                                {getUnitName(assignment.unitId)}
-                              </div>
-                            ) : '-'}
+                            <div className="flex flex-wrap gap-2">
+                              {workerAssignments.map((assignment) => (
+                                <div key={assignment.id} className="flex items-center gap-1">
+                                  {assignment.condominiumId && (
+                                    <Badge variant="outline" className="flex items-center gap-1">
+                                      <Building2 className="h-3 w-3" />
+                                      {getCondominiumName(assignment.condominiumId)}
+                                    </Badge>
+                                  )}
+                                  {assignment.unitId && (
+                                    <Badge variant="outline" className="flex items-center gap-1">
+                                      <Home className="h-3 w-3" />
+                                      {getUnitName(assignment.unitId)}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setDeleteAssignmentId(assignment.id)}
-                              data-testid={`button-delete-${assignment.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleEditWorker(worker.id)}
+                                data-testid={`button-edit-${worker.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                  // Delete all assignments for this worker
+                                  if (workerAssignments.length > 0) {
+                                    setDeleteAssignmentId(worker.id);
+                                  }
+                                }}
+                                data-testid={`button-delete-${worker.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -570,12 +699,12 @@ export default function ExternalMaintenanceWorkers() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {language === "es" ? "¿Eliminar asignación?" : "Delete assignment?"}
+              {language === "es" ? "¿Eliminar todas las asignaciones?" : "Delete all assignments?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {language === "es"
-                ? "Esta acción no se puede deshacer. El trabajador ya no estará asignado a esta ubicación."
-                : "This action cannot be undone. The worker will no longer be assigned to this location."}
+                ? "Esta acción no se puede deshacer. Se eliminarán todas las asignaciones de este trabajador."
+                : "This action cannot be undone. All assignments for this worker will be deleted."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
