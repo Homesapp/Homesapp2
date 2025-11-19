@@ -146,6 +146,7 @@ function AuthenticatedApp() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { adminUser, isAdminAuthenticated, isLoading: isAdminLoading } = useAdminAuth();
 
+  // IMPORTANT: All hooks must be called before any early returns to avoid hook order violations
   const adminLogoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/auth/admin/logout");
@@ -162,10 +163,16 @@ function AuthenticatedApp() {
     onLogout: isAdminAuthenticated ? () => adminLogoutMutation.mutate() : undefined,
   });
 
-  const style = {
-    "--sidebar-width": "12rem",
-    "--sidebar-width-icon": "3rem",
-  };
+  // Check if user needs to change password (regular users only, not admin)
+  const needsPasswordChange = !isAdminAuthenticated && user?.requirePasswordChange;
+  
+  // Redirect to force-password-change if needed (using useEffect to avoid render-time redirect)
+  // IMPORTANT: This useEffect must be called BEFORE any early returns
+  useEffect(() => {
+    if (needsPasswordChange && location !== "/force-password-change") {
+      setLocation("/force-password-change");
+    }
+  }, [needsPasswordChange, location, setLocation]);
 
   // Wait for both auth checks to complete
   if (isLoading || isAdminLoading) {
@@ -201,6 +208,16 @@ function AuthenticatedApp() {
     );
   }
 
+  // If user needs to change password or is on force-password-change page, render that page  
+  // This prevents 404 flash after successful password change while waiting for redirect
+  if (needsPasswordChange || location === "/force-password-change") {
+    return (
+      <div className="min-h-screen">
+        <ForcePasswordChange />
+      </div>
+    );
+  }
+
   // Determine which user is authenticated
   const currentUser = isAdminAuthenticated ? adminUser : user;
   const userName = currentUser?.firstName && currentUser?.lastName 
@@ -212,25 +229,10 @@ function AuthenticatedApp() {
     ? (currentUser?.role || "admin") 
     : currentUser?.role;
 
-  // Check if user needs to change password (regular users only, not admin)
-  const needsPasswordChange = !isAdminAuthenticated && user?.requirePasswordChange;
-  
-  // Redirect to force-password-change if needed (using useEffect to avoid render-time redirect)
-  useEffect(() => {
-    if (needsPasswordChange && location !== "/force-password-change") {
-      setLocation("/force-password-change");
-    }
-  }, [needsPasswordChange, location, setLocation]);
-  
-  // If user is on force-password-change page OR needs to change password, render the force-password-change page
-  // This prevents 404 flash after successful password change while waiting for redirect
-  if (needsPasswordChange || location === "/force-password-change") {
-    return (
-      <div className="min-h-screen">
-        <ForcePasswordChange />
-      </div>
-    );
-  }
+  const style = {
+    "--sidebar-width": "12rem",
+    "--sidebar-width-icon": "3rem",
+  };
 
   // Determine home dashboard based on authentication type and role
   const getHomeDashboard = () => {
