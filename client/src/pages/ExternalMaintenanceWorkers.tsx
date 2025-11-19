@@ -70,19 +70,19 @@ export default function ExternalMaintenanceWorkers() {
   const [assignmentType, setAssignmentType] = useState<"condominium" | "unit">("condominium");
 
   const { data: workers, isLoading: loadingWorkers } = useQuery<any[]>({
-    queryKey: ['/api/external/maintenance-workers'],
+    queryKey: ['/api/external-agency-users'],
   });
 
   const { data: assignments, isLoading: loadingAssignments } = useQuery<any[]>({
-    queryKey: ['/api/external/maintenance-worker-assignments'],
+    queryKey: ['/api/external-worker-assignments'],
   });
 
   const { data: condominiums } = useQuery<any[]>({
-    queryKey: ['/api/external/condominiums'],
+    queryKey: ['/api/external-condominiums'],
   });
 
   const { data: units } = useQuery<any[]>({
-    queryKey: ['/api/external/units'],
+    queryKey: ['/api/external-units'],
   });
 
   const form = useForm<CreateAssignmentForm>({
