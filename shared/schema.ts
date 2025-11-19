@@ -4810,6 +4810,7 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   tenantPhone: varchar("tenant_phone", { length: 50 }),
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(), // Renta mensual
   currency: varchar("currency", { length: 10 }).notNull().default("MXN"), // MXN o USD
+  securityDeposit: decimal("security_deposit", { precision: 10, scale: 2 }), // Depósito de seguridad
   leaseDurationMonths: integer("lease_duration_months").notNull(), // 6, 12, etc
   startDate: timestamp("start_date").notNull(), // Inicio del contrato
   endDate: timestamp("end_date").notNull(), // Fin del contrato
@@ -4844,6 +4845,69 @@ export const updateExternalRentalContractSchema = insertExternalRentalContractSc
 
 export type InsertExternalRentalContract = z.infer<typeof insertExternalRentalContractSchema>;
 export type ExternalRentalContract = typeof externalRentalContracts.$inferSelect;
+
+// Check-Out Reports - Reportes de salida para contratos completados
+export const externalCheckoutReports = pgTable("external_checkout_reports", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  contractId: varchar("contract_id").notNull().references(() => externalRentalContracts.id, { onDelete: "cascade" }),
+  
+  // Información del check-out
+  checkoutDate: timestamp("checkout_date").notNull(), // Fecha de la inspección
+  inspector: varchar("inspector", { length: 255 }), // Nombre del inspector
+  inspectorSignatureUrl: text("inspector_signature_url"), // Firma del inspector
+  tenantSignatureUrl: text("tenant_signature_url"), // Firma del inquilino
+  
+  // Inventario de salida (JSON array)
+  inventoryItems: jsonb("inventory_items").notNull().default([]), // [{item: string, condition: 'good'|'fair'|'poor'|'missing', notes: string, estimatedCost?: number}]
+  
+  // Mantenimiento necesario (JSON array)
+  maintenanceItems: jsonb("maintenance_items").notNull().default([]), // [{item: string, description: string, estimatedCost: number, photoUrl?: string}]
+  
+  // Limpieza (JSON array)
+  cleaningChecklist: jsonb("cleaning_checklist").notNull().default([]), // [{area: string, status: 'clean'|'needs_cleaning', notes: string, estimatedCost?: number}]
+  
+  // Deducciones del depósito
+  deductions: jsonb("deductions").notNull().default([]), // [{concept: string, amount: number, description: string}]
+  totalDeductions: decimal("total_deductions", { precision: 10, scale: 2 }).notNull().default("0"),
+  depositRefundAmount: decimal("deposit_refund_amount", { precision: 10, scale: 2 }), // Monto a devolver
+  
+  // Documentación
+  photosUrls: text("photos_urls").array().default(sql`ARRAY[]::text[]`), // URLs de fotos de la unidad
+  reportPdfUrl: text("report_pdf_url"), // URL del PDF generado
+  
+  // Estado y notas
+  status: varchar("status", { length: 50 }).notNull().default("draft"), // draft, completed
+  notes: text("notes"),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_checkout_agency").on(table.agencyId),
+  index("idx_external_checkout_contract").on(table.contractId),
+  index("idx_external_checkout_status").on(table.status),
+]);
+
+export const insertExternalCheckoutReportSchema = createInsertSchema(externalCheckoutReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+}).extend({
+  checkoutDate: z.coerce.date(),
+});
+
+export const updateExternalCheckoutReportSchema = insertExternalCheckoutReportSchema.partial().omit({
+  agencyId: true,
+  contractId: true,
+  createdBy: true,
+});
+
+export type InsertExternalCheckoutReport = z.infer<typeof insertExternalCheckoutReportSchema>;
+export type UpdateExternalCheckoutReport = z.infer<typeof updateExternalCheckoutReportSchema>;
+export type ExternalCheckoutReport = typeof externalCheckoutReports.$inferSelect;
 
 // External Payment Schedules - Pagos programados/recurrentes
 export const externalPaymentSchedules = pgTable("external_payment_schedules", {
