@@ -242,7 +242,7 @@ export default function ExternalCalendar() {
                                   <div className="flex items-start gap-2">
                                     <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
                                     <div>
-                                      <p className="font-medium">{language === "es" ? "Asignado a" : "Assigned to"}</p>
+                                      <p className="font-medium">{language === "es" ? "Trabajador asignado" : "Assigned worker"}</p>
                                       <p className="text-muted-foreground">
                                         {assignedUser ? `${assignedUser.name}${assignedUser.maintenanceSpecialty ? ` (${assignedUser.maintenanceSpecialty})` : ''}` : ticket.assignedTo}
                                       </p>
@@ -250,18 +250,6 @@ export default function ExternalCalendar() {
                                   </div>
                                 );
                               })()}
-
-                              {ticket.estimatedCost && (
-                                <div className="flex items-start gap-2">
-                                  <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                                  <div>
-                                    <p className="font-medium">{language === "es" ? "Costo estimado" : "Estimated cost"}</p>
-                                    <p className="text-muted-foreground">
-                                      ${parseFloat(ticket.estimatedCost).toFixed(2)} MXN
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
 
                               {ticket.notes && (
                                 <div className="flex items-start gap-2">
@@ -276,9 +264,9 @@ export default function ExternalCalendar() {
                               <div className="flex items-start gap-2 pt-2">
                                 <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
                                 <div>
-                                  <p className="font-medium">{language === "es" ? "Creado" : "Created"}</p>
+                                  <p className="font-medium">{language === "es" ? "Última actualización" : "Last updated"}</p>
                                   <p className="text-muted-foreground">
-                                    {format(new Date(ticket.createdAt), "PPP p", { locale: language === "es" ? es : enUS })}
+                                    {format(new Date(ticket.updatedAt), "PPP p", { locale: language === "es" ? es : enUS })}
                                   </p>
                                 </div>
                               </div>
