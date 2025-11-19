@@ -213,10 +213,13 @@ export default function ExternalMaintenanceWorkers() {
     if (editingWorkerId) {
       const workerAssignments = assignments?.filter(a => a.userId === editingWorkerId) || [];
       
+      // Get unique assignment IDs to avoid duplicates
+      const uniqueAssignmentIds = [...new Set(workerAssignments.map(a => a.id))];
+      
       // Delete assignments sequentially to avoid race conditions
-      for (const assignment of workerAssignments) {
+      for (const assignmentId of uniqueAssignmentIds) {
         try {
-          await apiRequest("DELETE", `/api/external-worker-assignments/${assignment.id}`, {});
+          await apiRequest("DELETE", `/api/external-worker-assignments/${assignmentId}`, {});
         } catch (error: any) {
           // Ignore 404 errors (assignment already deleted)
           if (error?.status !== 404) {
