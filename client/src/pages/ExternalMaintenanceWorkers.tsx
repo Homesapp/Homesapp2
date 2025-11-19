@@ -102,10 +102,10 @@ export default function ExternalMaintenanceWorkers() {
       } else if (assignmentType === "unit" && data.unitId) {
         payload.unitId = data.unitId;
       }
-      return await apiRequest("POST", "/api/external/maintenance-worker-assignments", payload);
+      return await apiRequest("POST", "/api/external-worker-assignments", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/external/maintenance-worker-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external-worker-assignments'] });
       setIsCreateDialogOpen(false);
       form.reset();
       toast({
@@ -128,10 +128,10 @@ export default function ExternalMaintenanceWorkers() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/external/maintenance-worker-assignments/${id}`, {});
+      return await apiRequest("DELETE", `/api/external-worker-assignments/${id}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/external/maintenance-worker-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external-worker-assignments'] });
       setDeleteAssignmentId(null);
       toast({
         title: language === "es" ? "Asignación eliminada" : "Assignment deleted",

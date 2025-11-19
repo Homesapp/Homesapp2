@@ -20594,6 +20594,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/external-worker-assignments", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const assignmentSchema = z.object({
+        userId: z.string().uuid(),
+        condominiumId: z.string().uuid().optional(),
+        unitId: z.string().uuid().optional(),
+      });
+
+      const data = assignmentSchema.parse(req.body);
+
+      // Verify that the user belongs to this agency
+      const worker = await storage.getUser(data.userId);
+      if (!worker || worker.assignedToUser !== agencyId) {
+        return res.status(403).json({ message: "Worker does not belong to this agency" });
+      }
+
+      // Verify condominium ownership if provided
+      if (data.condominiumId) {
+        const [condo] = await db
+          .select()
+          .from(externalCondominiums)
+          .where(eq(externalCondominiums.id, data.condominiumId))
+          .limit(1);
+        
+        if (!condo || condo.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Condominium does not belong to this agency" });
+        }
+      }
+
+      // Verify unit ownership if provided
+      if (data.unitId) {
+        const [unit] = await db
+          .select()
+          .from(externalUnits)
+          .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+          .where(eq(externalUnits.id, data.unitId))
+          .limit(1);
+        
+        if (!unit || unit.external_condominiums.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Unit does not belong to this agency" });
+        }
+      }
+
+      // Create assignment
+      const [assignment] = await db
+        .insert(externalWorkerAssignments)
+        .values({
+          agencyId,
+          userId: data.userId,
+          condominiumId: data.condominiumId || null,
+          unitId: data.unitId || null,
+        })
+        .returning();
+
+      await createAuditLog(req, "create", "external_worker_assignment", assignment.id, "Created worker assignment");
+
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error("Error creating worker assignment:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  app.delete("/api/external-worker-assignments/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Verify assignment belongs to this agency
+      const [assignment] = await db
+        .select()
+        .from(externalWorkerAssignments)
+        .where(eq(externalWorkerAssignments.id, id))
+        .limit(1);
+
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      if (assignment.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to delete this assignment" });
+      }
+
+      await db
+        .delete(externalWorkerAssignments)
+        .where(eq(externalWorkerAssignments.id, id));
+
+      await createAuditLog(req, "delete", "external_worker_assignment", id, "Deleted worker assignment");
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting worker assignment:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // External All Access Controls Routes (Consolidated view)
   // Send access control by email
   app.post("/api/external-access-controls/send-email", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
