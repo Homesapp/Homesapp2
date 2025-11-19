@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Eye, EyeOff, Search, Copy, Check, Mail } from "lucide-react";
-import { useState } from "react";
+import { Eye, EyeOff, Search, Copy, Check, Mail, Filter } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
-import type { User } from "@shared/schema";
+import type { User, ExternalCondominium } from "@shared/schema";
 
 type AccessControl = {
   id: string;
@@ -38,9 +39,20 @@ export default function ExternalAccesses() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendEmailAccessId, setSendEmailAccessId] = useState<string | null>(null);
   const [selectedMaintenanceUser, setSelectedMaintenanceUser] = useState<string>("");
+  
+  // New filter states
+  const [selectedCondominium, setSelectedCondominium] = useState<string>("all");
+  const [selectedUnit, setSelectedUnit] = useState<string>("all");
+  const [selectedAccessType, setSelectedAccessType] = useState<string>("all");
+  const [selectedAccesses, setSelectedAccesses] = useState<Set<string>>(new Set());
+  const [copiedMultiple, setCopiedMultiple] = useState(false);
 
   const { data: accesses, isLoading } = useQuery<AccessControl[]>({
     queryKey: ['/api/external-all-access-controls'],
+  });
+
+  const { data: condominiums } = useQuery<ExternalCondominium[]>({
+    queryKey: ['/api/external-condominiums'],
   });
 
   const { data: maintenanceUsers } = useQuery<User[]>({
@@ -125,15 +137,111 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
     });
   };
 
+  // Get unique units from selected condominium
+  const availableUnits = useMemo(() => {
+    if (selectedCondominium === "all") return [];
+    return Array.from(
+      new Set(
+        accesses
+          ?.filter(a => a.condominiumId === selectedCondominium)
+          .map(a => ({ id: a.unitId, number: a.unitNumber }))
+          .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i) || []
+      )
+    );
+  }, [accesses, selectedCondominium]);
+
+  // Reset unit filter when condominium changes
+  const handleCondominiumChange = (value: string) => {
+    setSelectedCondominium(value);
+    setSelectedUnit("all");
+  };
+
   const filteredAccesses = accesses?.filter(access => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = !searchTerm || (
       access.unitNumber.toLowerCase().includes(searchLower) ||
       access.condominiumName.toLowerCase().includes(searchLower) ||
       access.accessType.toLowerCase().includes(searchLower) ||
       (access.description && access.description.toLowerCase().includes(searchLower))
     );
+
+    const matchesCondominium = selectedCondominium === "all" || access.condominiumId === selectedCondominium;
+    const matchesUnit = selectedUnit === "all" || access.unitId === selectedUnit;
+    const matchesType = selectedAccessType === "all" || access.accessType === selectedAccessType;
+
+    return matchesSearch && matchesCondominium && matchesUnit && matchesType;
   }) || [];
+
+  const toggleAccessSelection = (accessId: string) => {
+    setSelectedAccesses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(accessId)) {
+        newSet.delete(accessId);
+      } else {
+        newSet.add(accessId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllAccesses = () => {
+    if (selectedAccesses.size === filteredAccesses.length) {
+      setSelectedAccesses(new Set());
+    } else {
+      setSelectedAccesses(new Set(filteredAccesses.map(a => a.id)));
+    }
+  };
+
+  const copySelectedAccesses = async () => {
+    const accessesToCopy = filteredAccesses.filter(a => selectedAccesses.has(a.id));
+    
+    if (accessesToCopy.length === 0) {
+      toast({
+        title: language === "es" ? "Sin selección" : "No selection",
+        description: language === "es"
+          ? "No hay accesos seleccionados para copiar"
+          : "No accesses selected to copy",
+        variant: "default",
+      });
+      return;
+    }
+
+    let text = `${language === "es" ? "CÓDIGOS DE ACCESO" : "ACCESS CODES"}\n\n`;
+
+    accessesToCopy.forEach((access, idx) => {
+      if (idx > 0) text += '\n---\n\n';
+      text += `${language === "es" ? "Condominio" : "Condominium"}: ${access.condominiumName}\n`;
+      text += `${language === "es" ? "Unidad" : "Unit"}: ${access.unitNumber}\n`;
+      text += `${language === "es" ? "Tipo" : "Type"}: ${getAccessTypeLabel(access.accessType)}\n`;
+      if (access.accessCode) {
+        text += `${language === "es" ? "Código" : "Code"}: ${access.accessCode}\n`;
+      }
+      if (access.description) {
+        text += `${language === "es" ? "Descripción" : "Description"}: ${access.description}\n`;
+      }
+    });
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMultiple(true);
+      setTimeout(() => setCopiedMultiple(false), 2000);
+      toast({
+        title: language === "es" ? "Copiado" : "Copied",
+        description: language === "es" 
+          ? `${accessesToCopy.length} accesos copiados al portapapeles`
+          : `${accessesToCopy.length} accesses copied to clipboard`,
+      });
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es"
+          ? "No se pudo copiar al portapapeles"
+          : "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getAccessTypeLabel = (type: string) => {
     const labels: Record<string, { es: string; en: string }> = {
@@ -165,22 +273,121 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
 
       <Card>
         <CardHeader>
-          <CardTitle>{language === "es" ? "Filtros" : "Filters"}</CardTitle>
-          <CardDescription>
-            {language === "es" 
-              ? "Busca por condominio, unidad o tipo de acceso"
-              : "Search by condominium, unit or access type"}
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                {language === "es" ? "Filtros" : "Filters"}
+              </CardTitle>
+              <CardDescription>
+                {language === "es" 
+                  ? "Filtra por condominio, unidad o tipo de acceso"
+                  : "Filter by condominium, unit or access type"}
+              </CardDescription>
+            </div>
+            {selectedAccesses.size > 0 && (
+              <Button
+                onClick={copySelectedAccesses}
+                variant="default"
+                data-testid="button-copy-selected"
+              >
+                {copiedMultiple ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                {language === "es" ? `Copiar ${selectedAccesses.size} Seleccionados` : `Copy ${selectedAccesses.size} Selected`}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={language === "es" ? "Buscar..." : "Search..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              data-testid="input-search"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Condominio" : "Condominium"}
+              </label>
+              <Select value={selectedCondominium} onValueChange={handleCondominiumChange}>
+                <SelectTrigger data-testid="select-condominium">
+                  <SelectValue placeholder={language === "es" ? "Todos" : "All"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {language === "es" ? "Todos los condominios" : "All condominiums"}
+                  </SelectItem>
+                  {condominiums?.map((condo) => (
+                    <SelectItem key={condo.id} value={condo.id}>
+                      {condo.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Unidad" : "Unit"}
+              </label>
+              <Select 
+                value={selectedUnit} 
+                onValueChange={setSelectedUnit}
+                disabled={selectedCondominium === "all"}
+              >
+                <SelectTrigger data-testid="select-unit">
+                  <SelectValue placeholder={language === "es" ? "Todas" : "All"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {language === "es" ? "Todas las unidades" : "All units"}
+                  </SelectItem>
+                  {availableUnits.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Tipo de Acceso" : "Access Type"}
+              </label>
+              <Select value={selectedAccessType} onValueChange={setSelectedAccessType}>
+                <SelectTrigger data-testid="select-access-type">
+                  <SelectValue placeholder={language === "es" ? "Todos" : "All"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {language === "es" ? "Todos los tipos" : "All types"}
+                  </SelectItem>
+                  <SelectItem value="door_code">{getAccessTypeLabel("door_code")}</SelectItem>
+                  <SelectItem value="wifi">{getAccessTypeLabel("wifi")}</SelectItem>
+                  <SelectItem value="gate">{getAccessTypeLabel("gate")}</SelectItem>
+                  <SelectItem value="parking">{getAccessTypeLabel("parking")}</SelectItem>
+                  <SelectItem value="elevator">{getAccessTypeLabel("elevator")}</SelectItem>
+                  <SelectItem value="pool">{getAccessTypeLabel("pool")}</SelectItem>
+                  <SelectItem value="gym">{getAccessTypeLabel("gym")}</SelectItem>
+                  <SelectItem value="other">{getAccessTypeLabel("other")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Buscar" : "Search"}
+              </label>
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-muted-foreground absolute ml-2" />
+                <Input
+                  placeholder={language === "es" ? "Buscar..." : "Search..."}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-search"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -226,6 +433,13 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={selectedAccesses.size === filteredAccesses.length && filteredAccesses.length > 0}
+                        onCheckedChange={toggleAllAccesses}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
                     <TableHead className="min-w-[150px]">
                       {language === "es" ? "Condominio" : "Condominium"}
                     </TableHead>
@@ -252,8 +466,16 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                 <TableBody>
                   {filteredAccesses.map((access) => {
                     const isVisible = visiblePasswords.has(access.id);
+                    const isSelected = selectedAccesses.has(access.id);
                     return (
                       <TableRow key={access.id} data-testid={`row-access-${access.id}`}>
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleAccessSelection(access.id)}
+                            data-testid={`checkbox-access-${access.id}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">
                           {access.condominiumName}
                         </TableCell>
