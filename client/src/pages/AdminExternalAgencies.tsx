@@ -253,7 +253,8 @@ export default function AdminExternalAgencies() {
 
   const setPasswordMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return await apiRequest("POST", `/api/admin/users/${userId}/set-password`, {});
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/set-password`, {});
+      return await response.json();
     },
     onSuccess: (data: any) => {
       setGeneratedPassword({ password: data.temporaryPassword, email: data.email });
@@ -278,13 +279,14 @@ export default function AdminExternalAgencies() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return await apiRequest("POST", `/api/admin/users/${userId}/reset-password`, {});
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/reset-password`, {});
+      return await response.json();
     },
     onSuccess: (data: any) => {
-      console.log("Response data:", data);
-      console.log("Email:", data.email);
-      console.log("Password:", data.temporaryPassword);
-      setGeneratedPassword({ password: data.temporaryPassword, email: data.email });
+      setGeneratedPassword({ 
+        password: data.temporaryPassword, 
+        email: data.email 
+      });
       setIsPasswordDialogOpen(true);
       toast({
         title: language === "es" ? "Contraseña restablecida" : "Password reset",
