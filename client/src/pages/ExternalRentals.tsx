@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -30,7 +30,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Home, 
@@ -45,11 +56,14 @@ import {
   Ban,
   LayoutGrid,
   Table as TableIcon,
-  XCircle
+  XCircle,
+  Check,
+  ChevronsUpDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
 import type { ExternalRentalContract, ExternalUnit, ExternalCondominium } from "@shared/schema";
 
 interface RentalWithDetails {
@@ -75,12 +89,42 @@ export default function ExternalRentals() {
   const [unitFilter, setUnitFilter] = useState<string>("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [contractToCancel, setContractToCancel] = useState<string | null>(null);
+  const [condoComboOpen, setCondoComboOpen] = useState(false);
+  const [unitComboOpen, setUnitComboOpen] = useState(false);
 
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
       ? [`/api/external-rental-contracts?status=${statusFilter}`]
       : ["/api/external-rental-contracts"],
   });
+
+  // Get condominiums for filter dropdown
+  const { data: condominiums } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ["/api/external-condominiums-for-filters"],
+  });
+
+  // Get units for filter dropdown (optionally filtered by condominium)
+  const { data: units } = useQuery<Array<{ id: string; unitNumber: string; condominiumId: string }>>({
+    queryKey: ["/api/external-units-for-filters", condominiumFilter],
+    queryFn: async () => {
+      const url = condominiumFilter 
+        ? `/api/external-units-for-filters?condominiumId=${condominiumFilter}`
+        : "/api/external-units-for-filters";
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch units");
+      return response.json();
+    },
+  });
+
+  // Reset unit filter when units change and selected unit is no longer available
+  useEffect(() => {
+    if (unitFilter && units) {
+      const unitExists = units.some(unit => unit.id === unitFilter);
+      if (!unitExists) {
+        setUnitFilter("");
+      }
+    }
+  }, [units, unitFilter]);
 
   // Cancel rental contract mutation
   const cancelMutation = useMutation({
@@ -109,10 +153,12 @@ export default function ExternalRentals() {
 
   // Filter rentals
   const filteredRentals = rentals?.filter((rental) => {
-    if (condominiumFilter && !rental.condominium?.name.toLowerCase().includes(condominiumFilter.toLowerCase())) {
+    // Filter by condominium ID
+    if (condominiumFilter && rental.condominium?.id !== condominiumFilter) {
       return false;
     }
-    if (unitFilter && !rental.unit?.unitNumber.toLowerCase().includes(unitFilter.toLowerCase())) {
+    // Filter by unit ID
+    if (unitFilter && rental.unit?.id !== unitFilter) {
       return false;
     }
     return true;
@@ -284,27 +330,129 @@ export default function ExternalRentals() {
           </div>
         </div>
 
-        {/* Additional Filters (only in table view) */}
-        {viewMode === "table" && (
-          <div className="flex gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <Input
-                placeholder={language === "es" ? "Filtrar por condominio..." : "Filter by condominium..."}
-                value={condominiumFilter}
-                onChange={(e) => setCondominiumFilter(e.target.value)}
-                data-testid="input-filter-condominium"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Input
-                placeholder={language === "es" ? "Filtrar por número de unidad..." : "Filter by unit number..."}
-                value={unitFilter}
-                onChange={(e) => setUnitFilter(e.target.value)}
-                data-testid="input-filter-unit"
-              />
-            </div>
+        {/* Additional Filters */}
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <Popover open={condoComboOpen} onOpenChange={setCondoComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={condoComboOpen}
+                  className="w-full justify-between"
+                  data-testid="button-filter-condominium"
+                >
+                  {condominiumFilter
+                    ? condominiums?.find((c) => c.id === condominiumFilter)?.name
+                    : (language === "es" ? "Todos los condominios" : "All condominiums")}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0">
+                <Command>
+                  <CommandInput placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."} />
+                  <CommandEmpty>{language === "es" ? "No se encontró" : "Not found"}</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        setCondominiumFilter("");
+                        setUnitFilter("");
+                        setCondoComboOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          condominiumFilter === "" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {language === "es" ? "Todos los condominios" : "All condominiums"}
+                    </CommandItem>
+                    {condominiums?.map((condo) => (
+                      <CommandItem
+                        key={condo.id}
+                        value={condo.name}
+                        onSelect={() => {
+                          setCondominiumFilter(condo.id);
+                          setUnitFilter("");
+                          setCondoComboOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            condominiumFilter === condo.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {condo.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
-        )}
+          <div className="flex-1 min-w-[200px]">
+            <Popover open={unitComboOpen} onOpenChange={setUnitComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={unitComboOpen}
+                  className="w-full justify-between"
+                  data-testid="button-filter-unit"
+                >
+                  {unitFilter
+                    ? units?.find((u) => u.id === unitFilter)?.unitNumber
+                    : (language === "es" ? "Todas las unidades" : "All units")}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0">
+                <Command>
+                  <CommandInput placeholder={language === "es" ? "Buscar unidad..." : "Search unit..."} />
+                  <CommandEmpty>{language === "es" ? "No se encontró" : "Not found"}</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        setUnitFilter("");
+                        setUnitComboOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          unitFilter === "" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {language === "es" ? "Todas las unidades" : "All units"}
+                    </CommandItem>
+                    {units?.map((unit) => (
+                      <CommandItem
+                        key={unit.id}
+                        value={unit.unitNumber}
+                        onSelect={() => {
+                          setUnitFilter(unit.id);
+                          setUnitComboOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            unitFilter === unit.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {unit.unitNumber}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       </div>
 
       {/* Rentals List */}

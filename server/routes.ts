@@ -22097,6 +22097,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Optimized endpoints for rental filters
+  // Get distinct condominiums for filter dropdowns
+  app.get("/api/external-condominiums-for-filters", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      // Get only id and name for filter dropdowns
+      const condominiums = await db.select({
+        id: externalCondominiums.id,
+        name: externalCondominiums.name,
+      })
+        .from(externalCondominiums)
+        .where(eq(externalCondominiums.agencyId, agencyId))
+        .orderBy(asc(externalCondominiums.name));
+      
+      res.json(condominiums);
+    } catch (error: any) {
+      console.error("Error fetching condominiums for filters:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Get distinct units for filter dropdowns
+  app.get("/api/external-units-for-filters", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { condominiumId } = req.query;
+      
+      // If condominiumId is provided, verify it belongs to the user's agency
+      if (condominiumId) {
+        const condominium = await storage.getExternalCondominium(condominiumId as string);
+        if (!condominium || condominium.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Condominium not found or access denied" });
+        }
+      }
+      
+      // Build query with optional condominium filter (already validated above)
+      const whereConditions = condominiumId
+        ? and(
+            eq(externalUnits.agencyId, agencyId),
+            eq(externalUnits.condominiumId, condominiumId as string)
+          )
+        : eq(externalUnits.agencyId, agencyId);
+      
+      // Get only id, unitNumber, and condominiumId for filter dropdowns
+      const units = await db.select({
+        id: externalUnits.id,
+        unitNumber: externalUnits.unitNumber,
+        condominiumId: externalUnits.condominiumId,
+      })
+        .from(externalUnits)
+        .where(whereConditions)
+        .orderBy(asc(externalUnits.unitNumber));
+      
+      res.json(units);
+    } catch (error: any) {
+      console.error("Error fetching units for filters:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // External Rental Contracts Routes
   // Get all rental contracts for user's agency with unit and condominium info
   app.get("/api/external-rental-contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
