@@ -30,8 +30,9 @@ import {
 
 const createAssignmentSchema = z.object({
   userId: z.string().min(1, "Worker required"),
-  condominiumId: z.string().optional(),
-  unitId: z.string().optional(),
+  condominiumIds: z.array(z.string()).optional(),
+  unitIds: z.array(z.string()).optional(),
+  allUnitsPerCondo: z.record(z.boolean()).optional(), // { condoId: true/false }
 });
 
 type CreateAssignmentForm = z.infer<typeof createAssignmentSchema>;
@@ -93,27 +94,59 @@ export default function ExternalMaintenanceWorkers() {
     resolver: zodResolver(createAssignmentSchema),
     defaultValues: {
       userId: "",
-      condominiumId: "",
-      unitId: "",
+      condominiumIds: [],
+      unitIds: [],
+      allUnitsPerCondo: {},
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateAssignmentForm) => {
-      const payload: any = { userId: data.userId };
-      if (assignmentType === "condominium" && data.condominiumId) {
-        payload.condominiumId = data.condominiumId;
-      } else if (assignmentType === "unit" && data.unitId) {
-        payload.unitId = data.unitId;
+      // Build assignments array
+      const assignments: any[] = [];
+      
+      // Add condominium assignments
+      if (data.condominiumIds && data.condominiumIds.length > 0) {
+        for (const condoId of data.condominiumIds) {
+          // Check if "all units" is selected for this condo
+          if (data.allUnitsPerCondo?.[condoId]) {
+            // Get all units for this condo and create individual assignments
+            const condoUnits = units?.filter(u => u.condominiumId === condoId) || [];
+            for (const unit of condoUnits) {
+              assignments.push({
+                userId: data.userId,
+                unitId: unit.id,
+              });
+            }
+          } else {
+            // Just assign to the condominium
+            assignments.push({
+              userId: data.userId,
+              condominiumId: condoId,
+            });
+          }
+        }
       }
-      return await apiRequest("POST", "/api/external-worker-assignments", payload);
+      
+      // Add specific unit assignments
+      if (data.unitIds && data.unitIds.length > 0) {
+        for (const unitId of data.unitIds) {
+          assignments.push({
+            userId: data.userId,
+            unitId: unitId,
+          });
+        }
+      }
+      
+      // Create all assignments in batch
+      return await apiRequest("POST", "/api/external-worker-assignments/batch", { assignments });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-worker-assignments'] });
       setIsCreateDialogOpen(false);
       form.reset();
       toast({
-        title: language === "es" ? "Asignación creada" : "Assignment created",
+        title: language === "es" ? "Asignaciones creadas" : "Assignments created",
         description: language === "es" 
           ? "El trabajador ha sido asignado exitosamente"
           : "Worker has been assigned successfully",
@@ -123,8 +156,8 @@ export default function ExternalMaintenanceWorkers() {
       toast({
         title: language === "es" ? "Error" : "Error",
         description: language === "es"
-          ? "No se pudo crear la asignación"
-          : "Could not create assignment",
+          ? "No se pudieron crear las asignaciones"
+          : "Could not create assignments",
         variant: "destructive",
       });
     },
@@ -235,72 +268,126 @@ export default function ExternalMaintenanceWorkers() {
                   )}
                 />
 
-                <Tabs value={assignmentType} onValueChange={(value) => setAssignmentType(value as "condominium" | "unit")}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="condominium" data-testid="tab-condominium">
-                      <Building2 className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Condominio" : "Condominium"}
-                    </TabsTrigger>
-                    <TabsTrigger value="unit" data-testid="tab-unit">
-                      <Home className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Unidad" : "Unit"}
-                    </TabsTrigger>
-                  </TabsList>
+                {/* Condominiums Section */}
+                <FormField
+                  control={form.control}
+                  name="condominiumIds"
+                  render={() => (
+                    <FormItem>
+                      <div className="mb-4">
+                        <FormLabel className="text-base">
+                          {language === "es" ? "Condominios" : "Condominiums"}
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          {language === "es" ? "Selecciona uno o más condominios" : "Select one or more condominiums"}
+                        </p>
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                        {condominiums?.map((condo) => (
+                          <div key={condo.id} className="space-y-1">
+                            <FormField
+                              control={form.control}
+                              name="condominiumIds"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(condo.id)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...(field.value || []), condo.id])
+                                            : field.onChange(field.value?.filter((value) => value !== condo.id))
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal cursor-pointer">
+                                      {condo.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            {/* "All units" checkbox for this condo */}
+                            {form.watch("condominiumIds")?.includes(condo.id) && (
+                              <FormField
+                                control={form.control}
+                                name="allUnitsPerCondo"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 ml-6">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.[condo.id] || false}
+                                        onCheckedChange={(checked) => {
+                                          field.onChange({
+                                            ...(field.value || {}),
+                                            [condo.id]: checked,
+                                          });
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
+                                      {language === "es" ? "Todas las unidades" : "All units"}
+                                    </FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <TabsContent value="condominium" className="mt-4">
-                    <FormField
-                      control={form.control}
-                      name="condominiumId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{language === "es" ? "Condominio" : "Condominium"}</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-condominium">
-                                <SelectValue placeholder={language === "es" ? "Selecciona condominio..." : "Select condominium..."} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {condominiums?.map((condo) => (
-                                <SelectItem key={condo.id} value={condo.id}>
-                                  {condo.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="unit" className="mt-4">
-                    <FormField
-                      control={form.control}
-                      name="unitId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{language === "es" ? "Unidad" : "Unit"}</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-unit">
-                                <SelectValue placeholder={language === "es" ? "Selecciona unidad..." : "Select unit..."} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {units?.map((unit) => (
-                                <SelectItem key={unit.id} value={unit.id}>
-                                  {unit.unitNumber}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </TabsContent>
-                </Tabs>
+                {/* Units Section */}
+                <FormField
+                  control={form.control}
+                  name="unitIds"
+                  render={() => (
+                    <FormItem>
+                      <div className="mb-4">
+                        <FormLabel className="text-base">
+                          {language === "es" ? "Unidades Específicas" : "Specific Units"}
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          {language === "es" ? "Selecciona unidades específicas adicionales" : "Select additional specific units"}
+                        </p>
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                        {units?.map((unit) => (
+                          <FormField
+                            key={unit.id}
+                            control={form.control}
+                            name="unitIds"
+                            render={({ field }) => {
+                              const condo = condominiums?.find(c => c.id === unit.condominiumId);
+                              return (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(unit.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), unit.id])
+                                          : field.onChange(field.value?.filter((value) => value !== unit.id))
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    {unit.unitNumber} {condo && `(${condo.name})`}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <DialogFooter>
                   <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-assignment">

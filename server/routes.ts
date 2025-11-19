@@ -20671,6 +20671,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/external-worker-assignments/batch", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const batchSchema = z.object({
+        assignments: z.array(z.object({
+          userId: z.string().uuid(),
+          condominiumId: z.string().uuid().optional(),
+          unitId: z.string().uuid().optional(),
+        })),
+      });
+
+      const { assignments } = batchSchema.parse(req.body);
+
+      if (!assignments || assignments.length === 0) {
+        return res.status(400).json({ message: "No assignments provided" });
+      }
+
+      // Verify all resources belong to this agency
+      for (const assignment of assignments) {
+        // Verify worker belongs to agency
+        const worker = await storage.getUser(assignment.userId);
+        if (!worker || worker.assignedToUser !== agencyId) {
+          return res.status(403).json({ message: `Worker ${assignment.userId} does not belong to this agency` });
+        }
+
+        // Verify condominium ownership if provided
+        if (assignment.condominiumId) {
+          const [condo] = await db
+            .select()
+            .from(externalCondominiums)
+            .where(and(
+              eq(externalCondominiums.id, assignment.condominiumId),
+              eq(externalCondominiums.agencyId, agencyId)
+            ))
+            .limit(1);
+          
+          if (!condo) {
+            return res.status(403).json({ message: `Condominium ${assignment.condominiumId} does not belong to this agency` });
+          }
+        }
+
+        // Verify unit ownership if provided
+        if (assignment.unitId) {
+          const [unitWithCondo] = await db
+            .select({
+              unitId: externalUnits.id,
+              agencyId: externalCondominiums.agencyId,
+            })
+            .from(externalUnits)
+            .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+            .where(eq(externalUnits.id, assignment.unitId))
+            .limit(1);
+          
+          if (!unitWithCondo || unitWithCondo.agencyId !== agencyId) {
+            return res.status(403).json({ message: `Unit ${assignment.unitId} does not belong to this agency` });
+          }
+        }
+      }
+
+      // Create all assignments
+      const createdAssignments = [];
+      for (const assignment of assignments) {
+        const [created] = await db
+          .insert(externalWorkerAssignments)
+          .values({
+            agencyId,
+            userId: assignment.userId,
+            condominiumId: assignment.condominiumId || null,
+            unitId: assignment.unitId || null,
+          })
+          .returning();
+        createdAssignments.push(created);
+      }
+
+      await createAuditLog(req, "create", "external_worker_assignment", "batch", `Created ${createdAssignments.length} worker assignments`);
+
+      res.status(201).json({ 
+        count: createdAssignments.length,
+        assignments: createdAssignments 
+      });
+    } catch (error: any) {
+      console.error("Error creating batch worker assignments:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
   app.delete("/api/external-worker-assignments/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
