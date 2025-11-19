@@ -1,12 +1,37 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Home, 
   User, 
@@ -17,7 +42,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Ban
+  Ban,
+  LayoutGrid,
+  Table as TableIcon,
+  XCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -32,12 +60,54 @@ interface RentalWithDetails {
 
 export default function ExternalRentals() {
   const { language } = useLanguage();
+  const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [condominiumFilter, setCondominiumFilter] = useState<string>("");
+  const [unitFilter, setUnitFilter] = useState<string>("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [contractToCancel, setContractToCancel] = useState<string | null>(null);
 
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
       ? [`/api/external-rental-contracts?status=${statusFilter}`]
       : ["/api/external-rental-contracts"],
+  });
+
+  // Cancel rental contract mutation
+  const cancelMutation = useMutation({
+    mutationFn: async (contractId: string) => {
+      return await apiRequest("PATCH", `/api/external-rental-contracts/${contractId}/cancel`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-rental-contracts"] });
+      setCancelDialogOpen(false);
+      setContractToCancel(null);
+      toast({
+        title: language === "es" ? "Renta cancelada" : "Rental cancelled",
+        description: language === "es" 
+          ? "El contrato ha sido cancelado y movido a completados" 
+          : "Contract has been cancelled and moved to completed",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "Error al cancelar la renta" : "Error cancelling rental"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Filter rentals
+  const filteredRentals = rentals?.filter((rental) => {
+    if (condominiumFilter && !rental.condominium?.name.toLowerCase().includes(condominiumFilter.toLowerCase())) {
+      return false;
+    }
+    if (unitFilter && !rental.unit?.unitNumber.toLowerCase().includes(unitFilter.toLowerCase())) {
+      return false;
+    }
+    return true;
   });
 
   const getStatusColor = (status: string) => {
@@ -153,40 +223,89 @@ export default function ExternalRentals() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          variant={statusFilter === null ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter(null)}
-          data-testid="button-filter-all"
-        >
-          {language === "es" ? "Todos" : "All"}
-        </Button>
-        <Button
-          variant={statusFilter === "active" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("active")}
-          data-testid="button-filter-active"
-        >
-          {language === "es" ? "Activos" : "Active"}
-        </Button>
-        <Button
-          variant={statusFilter === "pending" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("pending")}
-          data-testid="button-filter-pending"
-        >
-          {language === "es" ? "Pendientes" : "Pending"}
-        </Button>
-        <Button
-          variant={statusFilter === "completed" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("completed")}
-          data-testid="button-filter-completed"
-        >
-          {language === "es" ? "Completados" : "Completed"}
-        </Button>
+      {/* View Toggle and Filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          {/* View Toggle */}
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === "cards" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              data-testid="button-view-cards"
+            >
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              {language === "es" ? "Cards" : "Cards"}
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              data-testid="button-view-table"
+            >
+              <TableIcon className="h-4 w-4 mr-2" />
+              {language === "es" ? "Tabla" : "Table"}
+            </Button>
+          </div>
+
+          {/* Status Filters */}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={statusFilter === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(null)}
+              data-testid="button-filter-all"
+            >
+              {language === "es" ? "Todos" : "All"}
+            </Button>
+            <Button
+              variant={statusFilter === "active" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("active")}
+              data-testid="button-filter-active"
+            >
+              {language === "es" ? "Activos" : "Active"}
+            </Button>
+            <Button
+              variant={statusFilter === "pending" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("pending")}
+              data-testid="button-filter-pending"
+            >
+              {language === "es" ? "Pendientes" : "Pending"}
+            </Button>
+            <Button
+              variant={statusFilter === "completed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("completed")}
+              data-testid="button-filter-completed"
+            >
+              {language === "es" ? "Completados" : "Completed"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Additional Filters (only in table view) */}
+        {viewMode === "table" && (
+          <div className="flex gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder={language === "es" ? "Filtrar por condominio..." : "Filter by condominium..."}
+                value={condominiumFilter}
+                onChange={(e) => setCondominiumFilter(e.target.value)}
+                data-testid="input-filter-condominium"
+              />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder={language === "es" ? "Filtrar por número de unidad..." : "Filter by unit number..."}
+                value={unitFilter}
+                onChange={(e) => setUnitFilter(e.target.value)}
+                data-testid="input-filter-unit"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Rentals List */}
