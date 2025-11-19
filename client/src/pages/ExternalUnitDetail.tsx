@@ -530,9 +530,20 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
         </div>
         <div className="flex items-center gap-2">
           {activeContract && (
-            <Badge variant="default" className="bg-green-600 dark:bg-green-700" data-testid="badge-active-rental">
-              {language === "es" ? "Renta Activa" : "Active Rental"}
-            </Badge>
+            <>
+              <Badge variant="default" className="bg-green-600 dark:bg-green-700" data-testid="badge-active-rental">
+                {language === "es" ? "Renta Activa" : "Active Rental"}
+              </Badge>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/external/contracts/${activeContract.id}`)}
+                disabled={isLoadingAuth || !user}
+                data-testid="button-view-contract"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {language === "es" ? "Ver Contrato y Pagos" : "View Contract & Payments"}
+              </Button>
+            </>
           )}
           <Button
             onClick={handleAddRental}

@@ -1,6 +1,7 @@
 import { sql, relations } from "drizzle-orm";
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -4895,6 +4896,9 @@ export const externalPayments = pgTable("external_payments", {
   index("idx_external_payments_status").on(table.status),
   index("idx_external_payments_due_date").on(table.dueDate),
   index("idx_external_payments_service_type").on(table.serviceType),
+  // TODO: Add unique index manually with SQL to prevent duplicate payments:
+  // CREATE UNIQUE INDEX idx_external_payments_schedule_date_unique 
+  // ON external_payments (schedule_id, DATE(due_date));
 ]);
 
 export const insertExternalPaymentSchema = createInsertSchema(externalPayments).omit({

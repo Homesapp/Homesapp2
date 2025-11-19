@@ -21034,6 +21034,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate payments from schedules for a contract
+  app.post("/api/external-payment-schedules/generate-payments/:contractId", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
+    try {
+      const { contractId } = req.params;
+      const { monthsAhead = 1 } = req.body; // How many months ahead to generate
+      
+      // Get contract and verify ownership
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Get active schedules for this contract
+      const schedules = await db.select()
+        .from(externalPaymentSchedules)
+        .where(and(
+          eq(externalPaymentSchedules.contractId, contractId),
+          eq(externalPaymentSchedules.isActive, true)
+        ));
+      
+      const generatedPayments = [];
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      
+      // Normalize contract start to UTC midnight for comparison
+      const contractStartDate = new Date(contract.startDate);
+      const contractStartNormalized = new Date(Date.UTC(
+        contractStartDate.getFullYear(),
+        contractStartDate.getMonth(),
+        contractStartDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      for (const schedule of schedules) {
+        // Determine the earliest valid payment date (max of contract start and schedule start)
+        let earliestDate = contractStartNormalized;
+        if (schedule.startDate) {
+          const scheduleStartDate = new Date(schedule.startDate);
+          const scheduleStartNormalized = new Date(Date.UTC(
+            scheduleStartDate.getFullYear(),
+            scheduleStartDate.getMonth(),
+            scheduleStartDate.getDate(),
+            0, 0, 0, 0
+          ));
+          if (scheduleStartNormalized > earliestDate) {
+            earliestDate = scheduleStartNormalized;
+          }
+        }
+        
+        let paymentsCreated = 0;
+        let monthOffset = 0;
+        
+        // Keep iterating until we have created the desired number of valid payments
+        while (paymentsCreated < monthsAhead && monthOffset < 24) { // Cap at 24 months to prevent infinite loops
+          // Properly calculate target date by adding months
+          const targetDate = new Date(currentYear, currentMonth + monthOffset, 1);
+          const targetYear = targetDate.getFullYear();
+          const targetMonth = targetDate.getMonth();
+          
+          // Get last day of target month to clamp dayOfMonth
+          const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+          const clampedDay = Math.min(schedule.dayOfMonth, lastDayOfMonth);
+          
+          // Create date at UTC midnight to avoid timezone issues
+          const dueDateNormalized = new Date(Date.UTC(targetYear, targetMonth, clampedDay, 0, 0, 0, 0));
+          
+          // Format as ISO date for comparison
+          const dueDateStr = dueDateNormalized.toISOString().split('T')[0];
+          
+          // Check if payment already exists for this month and service
+          // Use SQL date comparison to handle any timezone differences in stored data
+          const existingPayment = await db.select()
+            .from(externalPayments)
+            .where(and(
+              eq(externalPayments.scheduleId, schedule.id),
+              sql`DATE(${externalPayments.dueDate}) = ${dueDateStr}`
+            ))
+            .limit(1);
+          
+          // Only create payment if it doesn't exist and is valid (on or after earliest date)
+          if (existingPayment.length === 0 && dueDateNormalized >= earliestDate) {
+            const [payment] = await db.insert(externalPayments).values({
+              id: crypto.randomUUID(),
+              agencyId: schedule.agencyId,
+              contractId: schedule.contractId,
+              scheduleId: schedule.id,
+              serviceType: schedule.serviceType,
+              amount: schedule.amount,
+              currency: schedule.currency,
+              dueDate: dueDateNormalized,
+              status: 'pending',
+              createdBy: req.user.id,
+            }).returning();
+            
+            generatedPayments.push(payment);
+            paymentsCreated++;
+          }
+          
+          monthOffset++;
+        }
+      }
+      
+      await createAuditLog(req, "create", "external_payment", "", `Generated ${generatedPayments.length} payments from schedules`);
+      res.status(201).json({ 
+        generated: generatedPayments.length,
+        payments: generatedPayments 
+      });
+    } catch (error: any) {
+      console.error("Error generating payments from schedules:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // External Payments Routes
   app.get("/api/external-payments", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
@@ -22020,7 +22137,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user.id,
       });
       
-      await createAuditLog(req, "create", "external_rental_contract", contract.id, "Created external rental contract");
+      // Create automatic payment schedule for monthly rent
+      // Use day from start date or default to 1st of month
+      const startDate = new Date(validatedData.startDate);
+      const dayOfMonth = startDate.getDate();
+      
+      const schedule = await storage.createExternalPaymentSchedule({
+        agencyId: unit.agencyId,
+        contractId: contract.id,
+        serviceType: 'rent',
+        amount: validatedData.monthlyRent,
+        currency: validatedData.currency,
+        dayOfMonth: dayOfMonth,
+        isActive: true,
+        sendReminderDaysBefore: 3,
+        createdBy: req.user.id,
+      });
+      
+      // Generate first 3 rent payments automatically
+      // Normalize contract start to UTC midnight for comparison
+      const contractStartNormalized = new Date(Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      const paymentsToGenerate = Math.min(3, validatedData.leaseDurationMonths);
+      let paymentsCreated = 0;
+      let monthOffset = 0;
+      
+      // Keep iterating until we have created the desired number of valid payments
+      while (paymentsCreated < paymentsToGenerate && monthOffset < validatedData.leaseDurationMonths) {
+        // Calculate the target year and month
+        const targetYear = startDate.getFullYear();
+        const targetMonth = startDate.getMonth() + monthOffset;
+        
+        // Get last day of target month to clamp dayOfMonth
+        const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const clampedDay = Math.min(dayOfMonth, lastDayOfMonth);
+        
+        // Create date at UTC midnight to avoid timezone issues
+        const dueDateNormalized = new Date(Date.UTC(targetYear, targetMonth, clampedDay, 0, 0, 0, 0));
+        
+        // Only create payment if due date is on or after contract start
+        if (dueDateNormalized >= contractStartNormalized) {
+          await db.insert(externalPayments).values({
+            id: crypto.randomUUID(),
+            agencyId: unit.agencyId,
+            contractId: contract.id,
+            scheduleId: schedule.id,
+            serviceType: 'rent',
+            amount: validatedData.monthlyRent,
+            currency: validatedData.currency,
+            dueDate: dueDateNormalized,
+            status: 'pending',
+            createdBy: req.user.id,
+          });
+          paymentsCreated++;
+        }
+        
+        monthOffset++;
+      }
+      
+      await createAuditLog(req, "create", "external_rental_contract", contract.id, `Created external rental contract with payment schedule and ${monthsToGenerate} rent payments`);
       res.status(201).json(contract);
     } catch (error: any) {
       console.error("Error creating rental contract:", error);
