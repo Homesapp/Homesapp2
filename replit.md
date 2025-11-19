@@ -70,6 +70,21 @@ Key features include:
         - Comprehensive filtering by unit status, rental status, and condominium
         - Color-coded badges with semantic icons (Power, PowerOff, DoorClosed, DoorOpen, Key)
         - Audit logging of all status changes with user tracking
+    *   **Check-Out Reporting System**: Comprehensive checkout workflow for completed rental contracts with security deposit management. Features include:
+        - Security deposit field in rental contracts for tracking refundable amounts
+        - Check-out report creation with draft/completed workflow states
+        - **Inventory Assessment**: Dynamic inventory item tracking with condition notes and validation
+        - **Maintenance Deductions**: Issue tracking with associated costs, automatic deduction calculation from security deposit
+        - **Cleaning Verification**: Area-by-area cleaning status tracking with detailed notes
+        - **Automatic Refund Calculation**: Real-time computation of security deposit refund (deposit minus maintenance costs)
+        - Tab-based UI for organizing inventory, maintenance, and cleaning sections
+        - Draft-save functionality for incomplete reports with completion workflow
+        - Report completion confirmation with refund amount preview
+        - Read-only mode for completed reports preserving historical data
+        - Multi-tenant security with agency ownership validation on all operations
+        - Integration with contract detail page showing check-out button for completed contracts only
+        - RESTful API endpoints: GET (by contract/id/agency), POST (create), PATCH (update), DELETE, POST /complete (finalize)
+        - Audit logging of all check-out report operations
 
 ## External Dependencies
 *   Google Calendar API
