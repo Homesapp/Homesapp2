@@ -22050,6 +22050,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // External Agency - Maintenance Worker Routes
+  app.get("/api/external/maintenance-workers", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Get all maintenance workers for this agency
+      const workers = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          phone: users.phone,
+          maintenanceSpecialty: users.maintenanceSpecialty,
+        })
+        .from(users)
+        .where(and(
+          eq(users.role, "external_agency_maintenance"),
+          eq(users.assignedToUser, agencyId)
+        ))
+        .orderBy(users.firstName);
+
+      res.json(workers);
+    } catch (error: any) {
+      console.error("Error fetching maintenance workers:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.get("/api/external/maintenance-worker-assignments", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const assignments = await db.query.maintenanceWorkerAssignments.findMany({
+        where: eq(maintenanceWorkerAssignments.agencyId, agencyId),
+        orderBy: desc(maintenanceWorkerAssignments.assignedAt),
+      });
+
+      res.json(assignments);
+    } catch (error: any) {
+      console.error("Error fetching worker assignments:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external/maintenance-worker-assignments", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const assignmentData = insertMaintenanceWorkerAssignmentSchema.parse(req.body);
+
+      // SECURITY: Verify worker belongs to user's agency
+      const [worker] = await db
+        .select({ assignedToUser: users.assignedToUser })
+        .from(users)
+        .where(and(
+          eq(users.id, assignmentData.workerId),
+          eq(users.role, "external_agency_maintenance")
+        ))
+        .limit(1);
+
+      if (!worker || worker.assignedToUser !== agencyId) {
+        return res.status(403).json({ message: "Forbidden: Worker does not belong to your agency" });
+      }
+
+      // SECURITY: If condominium is specified, verify it belongs to user's agency
+      if (assignmentData.condominiumId) {
+        const [condo] = await db
+          .select({ agencyId: externalCondominiums.agencyId })
+          .from(externalCondominiums)
+          .where(eq(externalCondominiums.id, assignmentData.condominiumId))
+          .limit(1);
+
+        if (!condo || condo.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Forbidden: Condominium does not belong to your agency" });
+        }
+      }
+
+      // SECURITY: If unit is specified, verify it belongs to user's agency
+      if (assignmentData.unitId) {
+        const [unit] = await db
+          .select({ agencyId: externalUnits.agencyId })
+          .from(externalUnits)
+          .where(eq(externalUnits.id, assignmentData.unitId))
+          .limit(1);
+
+        if (!unit || unit.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Forbidden: Unit does not belong to your agency" });
+        }
+      }
+
+      const [assignment] = await db
+        .insert(maintenanceWorkerAssignments)
+        .values({
+          ...assignmentData,
+          agencyId,
+        })
+        .returning();
+
+      await createAuditLog(req, "create", "maintenance_worker_assignment", assignment.id, "Created worker assignment");
+      res.json(assignment);
+    } catch (error: any) {
+      console.error("Error creating worker assignment:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external/maintenance-worker-assignments/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // SECURITY: Verify assignment belongs to user's agency
+      const [assignment] = await db
+        .select({ agencyId: maintenanceWorkerAssignments.agencyId })
+        .from(maintenanceWorkerAssignments)
+        .where(eq(maintenanceWorkerAssignments.id, id))
+        .limit(1);
+
+      if (!assignment || assignment.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Forbidden: Cannot delete assignments from other agencies" });
+      }
+
+      await db.delete(maintenanceWorkerAssignments).where(eq(maintenanceWorkerAssignments.id, id));
+      await createAuditLog(req, "delete", "maintenance_worker_assignment", id, "Deleted worker assignment");
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting worker assignment:", error);
+      handleGenericError(error, res);
+    }
+  });
+
   const httpServer = createServer(app);
   const sessionMiddleware = getSession();
   
