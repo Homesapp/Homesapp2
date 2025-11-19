@@ -4814,6 +4814,8 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   startDate: timestamp("start_date").notNull(), // Inicio del contrato
   endDate: timestamp("end_date").notNull(), // Fin del contrato
   status: externalContractStatusEnum("status").notNull().default("active"),
+  leaseContractUrl: text("lease_contract_url"), // URL del contrato de arrendamiento (PDF, imagen, etc)
+  inventoryUrl: text("inventory_url"), // URL del inventario (PDF, imagen, etc)
   notes: text("notes"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
