@@ -97,9 +97,9 @@ export default function ExternalOwners() {
   // Filter owners
   const filteredOwners = owners?.filter(
     (owner) =>
-      owner.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      owner.phone?.includes(searchTerm)
+      (owner.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (owner.email ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (owner.phone ?? "").includes(searchTerm)
   ) || [];
 
   return (
