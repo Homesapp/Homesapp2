@@ -132,6 +132,8 @@ import AdminOfferManagement from "@/pages/AdminOfferManagement";
 import AdminRentalFormManagement from "@/pages/AdminRentalFormManagement";
 import ExternalDashboard from "@/pages/ExternalDashboard";
 import ExternalAgencyConfig from "@/pages/ExternalAgencyConfig";
+import ExternalAccounts from "@/pages/ExternalAccounts";
+import ExternalAccesses from "@/pages/ExternalAccesses";
 import ExternalProperties from "@/pages/ExternalProperties";
 import ExternalPayments from "@/pages/ExternalPayments";
 import ExternalMaintenanceTickets from "@/pages/ExternalMaintenanceTickets";
@@ -410,6 +412,8 @@ function AuthenticatedApp() {
               <Route path="/admin/external-agencies" component={AdminExternalAgencies} />
               <Route path="/external/dashboard" component={ExternalDashboard} />
               <Route path="/external/agency" component={ExternalAgencyConfig} />
+              <Route path="/external/accounts" component={ExternalAccounts} />
+              <Route path="/external/accesses" component={ExternalAccesses} />
               <Route path="/external/properties" component={ExternalProperties} />
               <Route path="/external/payments" component={ExternalPayments} />
               <Route path="/external/tickets" component={ExternalMaintenanceTickets} />

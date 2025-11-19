@@ -20393,6 +20393,215 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // External Agency Users Routes
+  app.get("/api/external-agency-users", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Get all users assigned to this agency via assignedToUser field
+      const externalUsers = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          phone: users.phone,
+          role: users.role,
+          status: users.status,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.assignedToUser, agencyId),
+            inArray(users.role, ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"])
+          )
+        )
+        .orderBy(users.createdAt);
+
+      res.json(externalUsers);
+    } catch (error: any) {
+      console.error("Error fetching external agency users:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.post("/api/external-agency-users", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Zod validation schema for create user request
+      const createUserSchema = z.object({
+        email: z.string().email("Invalid email"),
+        firstName: z.string().min(1, "First name required"),
+        lastName: z.string().min(1, "Last name required"),
+        phone: z.string().optional(),
+        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"]),
+      });
+
+      const validatedData = createUserSchema.parse(req.body);
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      // Generate temporary password
+      const tempPassword = crypto.randomBytes(8).toString('hex');
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+      // Create user
+      const user = await storage.createUserWithPassword({
+        email: validatedData.email,
+        passwordHash,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        phone: validatedData.phone || null,
+        role: validatedData.role,
+        status: "approved",
+        assignedToUser: agencyId, // Link user to agency via assignedToUser field
+      });
+
+      await createAuditLog(req, "create", "user", user.id, `Created external agency user with role ${validatedData.role}`);
+
+      // Return user and temp password (in real app, would send via email)
+      res.status(201).json({ user, tempPassword });
+    } catch (error: any) {
+      console.error("Error creating external agency user:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(error, res);
+      }
+      handleGenericError(error, res);
+    }
+  });
+
+  app.patch("/api/external-agency-users/:id/reset-password", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Verify user belongs to this agency
+      const user = await storage.getUser(id);
+      if (!user || user.assignedToUser !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to reset password for this user" });
+      }
+
+      // Generate new temporary password
+      const tempPassword = crypto.randomBytes(8).toString('hex');
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+      // Update password directly in database
+      await db.update(users).set({ 
+        passwordHash,
+        updatedAt: new Date()
+      }).where(eq(users.id, id));
+
+      await createAuditLog(req, "update", "user", id, "Reset password for external agency user");
+
+      res.json({ tempPassword });
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  app.delete("/api/external-agency-users/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Verify user belongs to this agency
+      const user = await storage.getUser(id);
+      if (!user || user.assignedToUser !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to delete this user" });
+      }
+
+      await storage.deleteUser(id);
+      await createAuditLog(req, "delete", "user", id, "Deleted external agency user");
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external agency user:", error);
+      handleGenericError(error, res);
+    }
+  });
+
+  // External All Access Controls Routes (Consolidated view)
+  app.get("/api/external-all-access-controls", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      // Get all units for this agency
+      const units = await storage.getExternalUnitsByAgency(agencyId);
+      const unitIds = units.map(u => u.id);
+
+      if (unitIds.length === 0) {
+        return res.json([]);
+      }
+
+      // Get all access controls for these units
+      const accessControls = await db
+        .select({
+          id: externalUnitAccessControls.id,
+          unitId: externalUnitAccessControls.unitId,
+          accessType: externalUnitAccessControls.accessType,
+          accessCode: externalUnitAccessControls.accessCode,
+          description: externalUnitAccessControls.description,
+          isActive: externalUnitAccessControls.isActive,
+          canShareWithMaintenance: externalUnitAccessControls.canShareWithMaintenance,
+          createdAt: externalUnitAccessControls.createdAt,
+          updatedAt: externalUnitAccessControls.updatedAt,
+          unitNumber: externalUnits.unitNumber,
+          condominiumId: externalUnits.condominiumId,
+        })
+        .from(externalUnitAccessControls)
+        .innerJoin(externalUnits, eq(externalUnitAccessControls.unitId, externalUnits.id))
+        .where(
+          and(
+            inArray(externalUnitAccessControls.unitId, unitIds),
+            eq(externalUnitAccessControls.isActive, true)
+          )
+        )
+        .orderBy(externalUnits.unitNumber);
+
+      // Get condominium names
+      const condoIds = [...new Set(accessControls.map(ac => ac.condominiumId))];
+      const condominiums = await db
+        .select()
+        .from(externalCondominiums)
+        .where(inArray(externalCondominiums.id, condoIds));
+
+      const condoMap = Object.fromEntries(condominiums.map(c => [c.id, c.name]));
+
+      // Add condominium names to results
+      const enrichedAccessControls = accessControls.map(ac => ({
+        ...ac,
+        condominiumName: condoMap[ac.condominiumId] || 'Unknown',
+      }));
+
+      res.json(enrichedAccessControls);
+    } catch (error: any) {
+      console.error("Error fetching all access controls:", error);
+      handleGenericError(error, res);
+    }
+  });
+
   // External Payment Schedules Routes
   app.get("/api/external-payment-schedules", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
