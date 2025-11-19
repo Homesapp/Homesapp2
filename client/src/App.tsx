@@ -23,6 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import Landing from "@/pages/Landing";
 import AdminLogin from "@/pages/AdminLogin";
 import Login from "@/pages/Login";
+import ExternalLogin from "@/pages/ExternalLogin";
 import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -185,6 +186,7 @@ function AuthenticatedApp() {
       <Switch>
         <Route path="/admin-login" component={AdminLogin} />
         <Route path="/login" component={Login} />
+        <Route path="/external-login" component={ExternalLogin} />
         <Route path="/register" component={Register} />
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/forgot-password" component={ForgotPassword} />
