@@ -172,7 +172,7 @@ import {
   externalMaintenanceTickets,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, sql } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, sql } from "drizzle-orm";
 
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
@@ -22106,8 +22106,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No agency access" });
       }
       
-      const { status } = req.query;
+      const { status, limit, offset } = req.query;
       const filters = status ? { status: status as string } : undefined;
+      
+      // Parse pagination parameters with sensible defaults
+      const limitNum = limit ? parseInt(limit as string, 10) : 100;
+      const offsetNum = offset ? parseInt(offset as string, 10) : 0;
+      
+      // Validate pagination parameters
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 500) {
+        return res.status(400).json({ message: "Invalid limit parameter (must be 1-500)" });
+      }
+      if (isNaN(offsetNum) || offsetNum < 0) {
+        return res.status(400).json({ message: "Invalid offset parameter (must be >= 0)" });
+      }
       
       // Get rental contracts with unit and condominium information using SQL joins
       const contractsWithDetails = await db.select({
@@ -22126,11 +22138,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
               )
             : eq(externalRentalContracts.agencyId, agencyId)
         )
-        .orderBy(desc(externalRentalContracts.createdAt));
+        .orderBy(desc(externalRentalContracts.createdAt))
+        .limit(limitNum)
+        .offset(offsetNum);
       
-      res.json(contractsWithDetails);
+      if (contractsWithDetails.length === 0) {
+        return res.json([]);
+      }
+      
+      // Bulk fetch: Get all active schedules for all contracts in ONE query
+      const contractIds = contractsWithDetails.map(c => c.contract.id);
+      const allSchedules = await db.select()
+        .from(externalPaymentSchedules)
+        .where(
+          and(
+            inArray(externalPaymentSchedules.contractId, contractIds),
+            eq(externalPaymentSchedules.isActive, true)
+          )
+        );
+      
+      // Bulk fetch: Get next upcoming payment for all contracts in ONE query
+      // Use a window function to get first payment per contract
+      const allNextPayments = await db.select()
+        .from(externalPayments)
+        .where(
+          and(
+            inArray(externalPayments.contractId, contractIds),
+            eq(externalPayments.status, 'pending'),
+            sql`${externalPayments.dueDate} >= CURRENT_DATE`
+          )
+        )
+        .orderBy(asc(externalPayments.dueDate));
+      
+      // Group schedules by contract ID
+      const schedulesByContract = allSchedules.reduce((acc, schedule) => {
+        if (!acc[schedule.contractId]) {
+          acc[schedule.contractId] = [];
+        }
+        acc[schedule.contractId].push(schedule);
+        return acc;
+      }, {} as Record<string, typeof allSchedules>);
+      
+      // Get first payment per contract ID
+      const nextPaymentByContract = allNextPayments.reduce((acc, payment) => {
+        if (!acc[payment.contractId]) {
+          acc[payment.contractId] = payment;
+        }
+        return acc;
+      }, {} as Record<string, typeof allNextPayments[0]>);
+      
+      // Combine data in memory (no additional DB queries)
+      const enhancedContracts = contractsWithDetails.map((item) => {
+        const schedules = schedulesByContract[item.contract.id] || [];
+        const nextPayment = nextPaymentByContract[item.contract.id];
+        
+        return {
+          ...item,
+          activeServices: schedules.map(s => ({
+            serviceType: s.serviceType,
+            amount: s.amount,
+            currency: s.currency,
+          })),
+          nextPaymentDue: nextPayment?.dueDate || null,
+          nextPaymentAmount: nextPayment?.amount || null,
+          nextPaymentService: nextPayment?.serviceType || null,
+        };
+      });
+      
+      res.json(enhancedContracts);
     } catch (error: any) {
       console.error("Error fetching rental contracts:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Get individual rental contract by ID
+  app.get("/api/external-rental-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify contract exists
+      const existing = await storage.getExternalRentalContract(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      res.json(existing);
+    } catch (error: any) {
+      console.error("Error fetching rental contract:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Get rental contract overview with services and payment info
+  app.get("/api/external-rental-contracts/:id/overview", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify contract exists
+      const contract = await storage.getExternalRentalContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Get unit and condominium info
+      const unit = contract.unitId ? await storage.getExternalUnit(contract.unitId) : null;
+      const condominium = unit?.condominiumId ? await storage.getExternalCondominium(unit.condominiumId) : null;
+      
+      // Get active payment schedules for this contract
+      const schedules = await db.select()
+        .from(externalPaymentSchedules)
+        .where(
+          and(
+            eq(externalPaymentSchedules.contractId, id),
+            eq(externalPaymentSchedules.isActive, true)
+          )
+        );
+      
+      // Get upcoming payments for this contract (next 30 days, pending only)
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      
+      const upcomingPayments = await db.select()
+        .from(externalPayments)
+        .where(
+          and(
+            eq(externalPayments.contractId, id),
+            eq(externalPayments.status, 'pending'),
+            sql`${externalPayments.dueDate} <= ${thirtyDaysFromNow.toISOString().split('T')[0]}`
+          )
+        )
+        .orderBy(asc(externalPayments.dueDate))
+        .limit(10);
+      
+      // Group upcoming payments by service type with next due date
+      const servicePaymentInfo = schedules.map(schedule => {
+        const nextPayment = upcomingPayments.find(p => p.serviceType === schedule.serviceType);
+        return {
+          serviceType: schedule.serviceType,
+          amount: schedule.amount,
+          currency: schedule.currency,
+          dayOfMonth: schedule.dayOfMonth,
+          nextDueDate: nextPayment?.dueDate || null,
+          paymentId: nextPayment?.id || null,
+        };
+      });
+      
+      res.json({
+        contract,
+        unit,
+        condominium,
+        services: servicePaymentInfo,
+        upcomingPaymentsCount: upcomingPayments.length,
+      });
+    } catch (error: any) {
+      console.error("Error fetching rental contract overview:", error);
       handleGenericError(res, error);
     }
   });

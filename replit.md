@@ -41,6 +41,15 @@ Key features include:
     *   **Google Calendar Sync Infrastructure**: Backend service for automatic synchronization of maintenance tickets to workers' Google Calendars with detailed event descriptions and email notifications.
     *   **Temporary Credentials Management**: Workflow for secure sharing of temporary user credentials with forced password changes on first login.
     *   **Unit Information Quick-Share System**: One-click copy-to-clipboard for unit information and access controls.
+    *   **External Rentals Management**: Comprehensive rental contract dashboard with optimized performance. Features include:
+        - Performance-optimized list endpoint using bulk queries (3 total queries for paginated results, avoiding N+1 problem)
+        - Pagination support (default limit: 100, max: 500) for handling large datasets
+        - Active services display showing rent, electricity, water, internet, gas, and maintenance services
+        - Next payment information with due date, amount, and service type
+        - Dual view modes: card and table layouts
+        - Advanced filtering by status, condominium, and unit number
+        - Rental cancellation with automatic cleanup of future pending payments
+        - Contract detail view with complete overview of services and payment schedules
 
 ## External Dependencies
 *   Google Calendar API

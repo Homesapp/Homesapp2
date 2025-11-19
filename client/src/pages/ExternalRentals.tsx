@@ -56,6 +56,14 @@ interface RentalWithDetails {
   contract: ExternalRentalContract;
   unit: ExternalUnit | null;
   condominium: ExternalCondominium | null;
+  activeServices?: Array<{
+    serviceType: string;
+    amount: string;
+    currency: string;
+  }>;
+  nextPaymentDue?: string | null;
+  nextPaymentAmount?: string | null;
+  nextPaymentService?: string | null;
 }
 
 export default function ExternalRentals() {
@@ -109,6 +117,19 @@ export default function ExternalRentals() {
     }
     return true;
   });
+
+  const getServiceLabel = (serviceType: string) => {
+    const labels: Record<string, { es: string; en: string }> = {
+      rent: { es: "Renta", en: "Rent" },
+      electricity: { es: "Electricidad", en: "Electricity" },
+      water: { es: "Agua", en: "Water" },
+      internet: { es: "Internet", en: "Internet" },
+      gas: { es: "Gas", en: "Gas" },
+      maintenance: { es: "Mantenimiento", en: "Maintenance" },
+      other: { es: "Otro", en: "Other" },
+    };
+    return labels[serviceType]?.[language] || serviceType;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -347,7 +368,7 @@ export default function ExternalRentals() {
       ) : filteredRentals && filteredRentals.length > 0 ? (
         viewMode === "cards" ? (
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {filteredRentals.map(({ contract, unit, condominium }) => (
+            {filteredRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => (
               <Card key={contract.id} className="hover-elevate" data-testid={`card-rental-${contract.id}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
@@ -427,6 +448,49 @@ export default function ExternalRentals() {
                     </div>
                   </div>
 
+                  {/* Services and Next Payment Info */}
+                  {(activeServices && activeServices.length > 0) || nextPaymentDue ? (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        {activeServices && activeServices.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {language === "es" ? "Servicios:" : "Services:"}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {activeServices.map((service, idx) => (
+                                <Badge 
+                                  key={idx} 
+                                  variant="outline" 
+                                  className="text-xs"
+                                  data-testid={`badge-service-${contract.id}-${idx}`}
+                                >
+                                  {getServiceLabel(service.serviceType)}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {nextPaymentDue && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                {language === "es" ? "Próximo pago:" : "Next payment:"}
+                              </p>
+                              <p className="font-semibold text-xs" data-testid={`text-next-payment-${contract.id}`}>
+                                {format(new Date(nextPaymentDue), "dd MMM yyyy", { locale: language === "es" ? es : enUS })}
+                                {nextPaymentService && ` - ${getServiceLabel(nextPaymentService)}`}
+                                {nextPaymentAmount && ` - $${parseFloat(nextPaymentAmount).toLocaleString()}`}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : null}
+
                   <Separator />
 
                   <div className="flex gap-2">
@@ -491,7 +555,7 @@ export default function ExternalRentals() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRentals.map(({ contract, unit, condominium }) => (
+                    {filteredRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => (
                       <TableRow key={contract.id} data-testid={`row-rental-${contract.id}`}>
                         <TableCell data-testid={`cell-condominium-${contract.id}`}>
                           {condominium?.name || "-"}
