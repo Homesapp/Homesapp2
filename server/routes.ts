@@ -22607,6 +22607,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment Schedules CRUD for rental contracts
+  app.post("/api/external-rental-contracts/:id/schedules", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id: contractId } = req.params;
+      
+      // Verify contract exists
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Validate request body
+      const validatedData = insertExternalPaymentScheduleSchema.parse(req.body);
+      
+      // Create schedule
+      const schedule = await storage.createExternalPaymentSchedule({
+        ...validatedData,
+        agencyId: contract.agencyId,
+        contractId,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_payment_schedule", schedule.id, `Created payment schedule for service: ${schedule.serviceType}`);
+      res.status(201).json(schedule);
+    } catch (error: any) {
+      console.error("Error creating payment schedule:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  app.patch("/api/external-rental-contracts/:id/schedules/:scheduleId", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id: contractId, scheduleId } = req.params;
+      
+      // Verify contract exists
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Get schedule to verify it belongs to this contract
+      const existingSchedule = await db.select()
+        .from(externalPaymentSchedules)
+        .where(eq(externalPaymentSchedules.id, scheduleId))
+        .limit(1);
+      
+      if (existingSchedule.length === 0) {
+        return res.status(404).json({ message: "Payment schedule not found" });
+      }
+      
+      if (existingSchedule[0].contractId !== contractId) {
+        return res.status(400).json({ message: "Schedule does not belong to this contract" });
+      }
+      
+      // Validate request body
+      const validatedData = updateExternalPaymentScheduleSchema.parse(req.body);
+      
+      // Update schedule
+      const schedule = await storage.updateExternalPaymentSchedule(scheduleId, validatedData);
+      
+      await createAuditLog(req, "update", "external_payment_schedule", scheduleId, `Updated payment schedule for service: ${schedule.serviceType}`);
+      res.json(schedule);
+    } catch (error: any) {
+      console.error("Error updating payment schedule:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  app.delete("/api/external-rental-contracts/:id/schedules/:scheduleId", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id: contractId, scheduleId } = req.params;
+      
+      // Verify contract exists
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Get schedule to verify it belongs to this contract
+      const existingSchedule = await db.select()
+        .from(externalPaymentSchedules)
+        .where(eq(externalPaymentSchedules.id, scheduleId))
+        .limit(1);
+      
+      if (existingSchedule.length === 0) {
+        return res.status(404).json({ message: "Payment schedule not found" });
+      }
+      
+      if (existingSchedule[0].contractId !== contractId) {
+        return res.status(400).json({ message: "Schedule does not belong to this contract" });
+      }
+      
+      // Delete schedule
+      await storage.deleteExternalPaymentSchedule(scheduleId);
+      
+      await createAuditLog(req, "delete", "external_payment_schedule", scheduleId, `Deleted payment schedule for service: ${existingSchedule[0].serviceType}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting payment schedule:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // External Agency - Owners Routes
   app.get("/api/external/owners", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {

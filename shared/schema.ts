@@ -4872,7 +4872,14 @@ export const insertExternalPaymentScheduleSchema = createInsertSchema(externalPa
   updatedAt: true,
 });
 
+export const updateExternalPaymentScheduleSchema = insertExternalPaymentScheduleSchema.partial().omit({
+  agencyId: true,
+  contractId: true,
+  createdBy: true,
+});
+
 export type InsertExternalPaymentSchedule = z.infer<typeof insertExternalPaymentScheduleSchema>;
+export type UpdateExternalPaymentSchedule = z.infer<typeof updateExternalPaymentScheduleSchema>;
 export type ExternalPaymentSchedule = typeof externalPaymentSchedules.$inferSelect;
 
 // External Payments - Registro de pagos realizados

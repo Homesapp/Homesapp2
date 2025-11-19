@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -45,6 +45,18 @@ const paymentRegistrationSchema = z.object({
 
 type PaymentRegistrationData = z.infer<typeof paymentRegistrationSchema>;
 
+// Contract edit form schema
+const contractEditSchema = z.object({
+  tenantName: z.string().min(1, "Tenant name is required"),
+  tenantEmail: z.string().email("Invalid email").optional().or(z.literal("")),
+  tenantPhone: z.string().optional(),
+  monthlyRent: z.coerce.number().positive("Monthly rent must be greater than 0"),
+  endDate: z.date(),
+  notes: z.string().optional(),
+});
+
+type ContractEditData = z.infer<typeof contractEditSchema>;
+
 const serviceTypeTranslations = {
   rent: { es: "Renta", en: "Rent" },
   electricity: { es: "Electricidad", en: "Electricity" },
@@ -83,6 +95,7 @@ export default function ExternalRentalContractDetail() {
   const [activeTab, setActiveTab] = useState("general");
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [editingPayment, setEditingPayment] = useState<ExternalPayment | null>(null);
+  const [showContractEditDialog, setShowContractEditDialog] = useState(false);
 
   const { data: contract, isLoading: contractLoading } = useQuery<ExternalRentalContract>({
     queryKey: [`/api/external-rental-contracts/${id}`],
@@ -90,7 +103,12 @@ export default function ExternalRentalContractDetail() {
   });
 
   const { data: schedules, isLoading: schedulesLoading } = useQuery<ExternalPaymentSchedule[]>({
-    queryKey: [`/api/external-payment-schedules?contractId=${id}`],
+    queryKey: ["/api/external-payment-schedules", { contractId: id }],
+    queryFn: async () => {
+      const response = await fetch(`/api/external-payment-schedules?contractId=${id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch schedules");
+      return response.json();
+    },
     enabled: !!id,
   });
 
@@ -122,12 +140,40 @@ export default function ExternalRentalContractDetail() {
     },
   });
 
+  const contractEditForm = useForm<ContractEditData>({
+    resolver: zodResolver(contractEditSchema),
+    defaultValues: {
+      tenantName: "",
+      tenantEmail: "",
+      tenantPhone: "",
+      monthlyRent: 0,
+      endDate: new Date(),
+      notes: "",
+    },
+  });
+
+  // Pre-fill contract edit form when contract data loads
+  useEffect(() => {
+    if (contract) {
+      contractEditForm.reset({
+        tenantName: contract.tenantName,
+        tenantEmail: contract.tenantEmail || "",
+        tenantPhone: contract.tenantPhone || "",
+        monthlyRent: parseFloat(contract.monthlyRent.toString()),
+        endDate: new Date(contract.endDate),
+        notes: contract.notes || "",
+      });
+    }
+  }, [contract]);
+
   const createScheduleMutation = useMutation({
     mutationFn: async (data: ScheduleFormData) => {
-      return await apiRequest('POST', '/api/external-payment-schedules', data);
+      if (!id) throw new Error("Contract ID is required");
+      return await apiRequest('POST', `/api/external-rental-contracts/${id}/schedules`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/external-payment-schedules`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-payment-schedules", { contractId: id }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}/overview`] });
       setShowScheduleDialog(false);
       scheduleForm.reset();
       toast({
@@ -145,11 +191,13 @@ export default function ExternalRentalContractDetail() {
   });
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string, data: Partial<ScheduleFormData> }) => {
-      return await apiRequest('PATCH', `/api/external-payment-schedules/${id}`, data);
+    mutationFn: async ({ scheduleId, data }: { scheduleId: string, data: Partial<ScheduleFormData> }) => {
+      if (!id) throw new Error("Contract ID is required");
+      return await apiRequest('PATCH', `/api/external-rental-contracts/${id}/schedules/${scheduleId}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/external-payment-schedules`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-payment-schedules", { contractId: id }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}/overview`] });
       setShowScheduleDialog(false);
       setEditingSchedule(null);
       scheduleForm.reset();
@@ -161,11 +209,13 @@ export default function ExternalRentalContractDetail() {
   });
 
   const deleteScheduleMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest('DELETE', `/api/external-payment-schedules/${id}`, {});
+    mutationFn: async (scheduleId: string) => {
+      if (!id) throw new Error("Contract ID is required");
+      await apiRequest('DELETE', `/api/external-rental-contracts/${id}/schedules/${scheduleId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/external-payment-schedules`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-payment-schedules", { contractId: id }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}/overview`] });
       toast({
         title: language === "es" ? "Eliminado" : "Deleted",
         description: language === "es" ? "El calendario de pagos se eliminó exitosamente" : "The payment schedule was deleted successfully",
@@ -215,6 +265,36 @@ export default function ExternalRentalContractDetail() {
     },
   });
 
+  const updateContractMutation = useMutation({
+    mutationFn: async (data: ContractEditData) => {
+      if (!id) throw new Error("Contract ID is required");
+      return await apiRequest('PATCH', `/api/external-rental-contracts/${id}`, {
+        tenantName: data.tenantName,
+        tenantEmail: data.tenantEmail || undefined,
+        tenantPhone: data.tenantPhone || undefined,
+        monthlyRent: data.monthlyRent,
+        endDate: data.endDate.toISOString(),
+        notes: data.notes || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}/overview`] });
+      setShowContractEditDialog(false);
+      toast({
+        title: language === "es" ? "Éxito" : "Success",
+        description: language === "es" ? "El contrato se actualizó exitosamente" : "Contract updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "Error al actualizar el contrato" : "Error updating contract"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditSchedule = (schedule: ExternalPaymentSchedule) => {
     setEditingSchedule(schedule);
     scheduleForm.reset({
@@ -230,7 +310,7 @@ export default function ExternalRentalContractDetail() {
   };
 
   const handleSubmitSchedule = async (data: ScheduleFormData) => {
-    if (!data.contractId || !id) {
+    if (!id) {
       toast({
         title: language === "es" ? "Error" : "Error",
         description: language === "es" ? "El contrato no está cargado aún" : "Contract not loaded yet",
@@ -240,9 +320,9 @@ export default function ExternalRentalContractDetail() {
     }
     
     if (editingSchedule) {
-      updateScheduleMutation.mutate({ id: editingSchedule.id, data });
+      updateScheduleMutation.mutate({ scheduleId: editingSchedule.id, data });
     } else {
-      createScheduleMutation.mutate({ ...data, contractId: id });
+      createScheduleMutation.mutate(data);
     }
   };
 
@@ -260,6 +340,14 @@ export default function ExternalRentalContractDetail() {
   const handleSubmitPayment = async (data: PaymentRegistrationData) => {
     if (!editingPayment) return;
     registerPaymentMutation.mutate({ paymentId: editingPayment.id, data });
+  };
+
+  const handleEditContract = () => {
+    setShowContractEditDialog(true);
+  };
+
+  const handleSubmitContractEdit = async (data: ContractEditData) => {
+    updateContractMutation.mutate(data);
   };
 
   if (contractLoading || isLoadingAuth) {
@@ -332,10 +420,21 @@ export default function ExternalRentalContractDetail() {
         {/* General Tab */}
         <TabsContent value="general" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
               <CardTitle className="text-lg">
                 {language === "es" ? "Información del Contrato" : "Contract Information"}
               </CardTitle>
+              {contract.status === 'active' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditContract}
+                  data-testid="button-edit-contract"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Editar" : "Edit"}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
@@ -988,6 +1087,186 @@ export default function ExternalRentalContractDetail() {
                   {registerPaymentMutation.isPending
                     ? (language === "es" ? "Guardando..." : "Saving...")
                     : (language === "es" ? "Registrar Pago" : "Register Payment")
+                  }
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contract Edit Dialog */}
+      <Dialog open={showContractEditDialog} onOpenChange={setShowContractEditDialog}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-contract-edit">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Editar Contrato" : "Edit Contract"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Actualice la información del contrato de renta" 
+                : "Update the rental contract information"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...contractEditForm}>
+            <form onSubmit={contractEditForm.handleSubmit(handleSubmitContractEdit)} className="space-y-4">
+              <FormField
+                control={contractEditForm.control}
+                name="tenantName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Nombre del Inquilino *" : "Tenant Name *"}</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder={language === "es" ? "Nombre completo del inquilino" : "Full tenant name"}
+                        data-testid="input-tenant-name" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={contractEditForm.control}
+                  name="tenantEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="email"
+                          placeholder={language === "es" ? "correo@ejemplo.com" : "email@example.com"}
+                          data-testid="input-tenant-email" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contractEditForm.control}
+                  name="tenantPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder={language === "es" ? "+52 998 123 4567" : "+52 998 123 4567"}
+                          data-testid="input-tenant-phone" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={contractEditForm.control}
+                  name="monthlyRent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Renta Mensual *" : "Monthly Rent *"}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value != null ? String(field.value) : ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
+                          placeholder={language === "es" ? "1200.50" : "1200.50"}
+                          data-testid="input-monthly-rent" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contractEditForm.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>{language === "es" ? "Fecha de Fin *" : "End Date *"}</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="button-select-end-date"
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: language === "es" ? es : enUS })
+                              ) : (
+                                <span>{language === "es" ? "Seleccione una fecha" : "Pick a date"}</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date("1900-01-01")}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={contractEditForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        placeholder={language === "es" ? "Notas adicionales sobre el contrato..." : "Additional notes about the contract..."}
+                        rows={3}
+                        data-testid="textarea-contract-notes" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowContractEditDialog(false);
+                    contractEditForm.reset();
+                  }}
+                  data-testid="button-cancel-contract-edit"
+                >
+                  {language === "es" ? "Cancelar" : "Cancel"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateContractMutation.isPending}
+                  data-testid="button-submit-contract-edit"
+                >
+                  {updateContractMutation.isPending
+                    ? (language === "es" ? "Guardando..." : "Saving...")
+                    : (language === "es" ? "Actualizar Contrato" : "Update Contract")
                   }
                 </Button>
               </DialogFooter>
