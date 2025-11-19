@@ -126,21 +126,29 @@ export default function ExternalMaintenance() {
     : [];
 
   // Filter workers by assignments to the selected unit or condominium
+  // If no specific assignments exist, show all maintenance workers
   const getAvailableWorkersForLocation = (unitId: string | undefined) => {
-    if (!workerAssignments || !unitId) return [];
+    if (!unitId) return [];
     
     const unit = units?.find(u => u.id === unitId);
     if (!unit) return [];
     
     // Get workers assigned to this specific unit or to the entire condominium
     const assignedWorkerIds = workerAssignments
-      .filter(a => 
+      ?.filter(a => 
         (a.unitId === unitId) || 
         (a.condominiumId === unit.condominiumId && !a.unitId)
       )
-      .map(a => a.userId);
+      .map(a => a.userId) || [];
     
-    return maintenanceWorkers.filter(w => assignedWorkerIds.includes(w.id));
+    // If there are specific assignments, return those workers
+    // Otherwise, return all maintenance workers (fallback)
+    if (assignedWorkerIds.length > 0) {
+      return maintenanceWorkers.filter(w => assignedWorkerIds.includes(w.id));
+    }
+    
+    // No assignments - return all maintenance workers for this agency
+    return maintenanceWorkers;
   };
 
   useEffect(() => {
@@ -219,8 +227,8 @@ export default function ExternalMaintenance() {
       const combinedDate = new Date(formDate);
       combinedDate.setHours(hours, minutes, 0, 0);
       
-      // Convert to Cancun timezone
-      const cancunDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
+      // Convert FROM Cancun timezone TO UTC
+      const cancunDate = toZonedTime(combinedDate, CANCUN_TIMEZONE);
       data.scheduledDate = cancunDate;
     }
     
@@ -837,11 +845,11 @@ export default function ExternalMaintenance() {
                           })}
                         </select>
                       </FormControl>
-                      {selectedUnitId && availableWorkers.length === 0 && (
+                      {selectedUnitId && availableWorkers.length > 0 && workerAssignments && workerAssignments.length > 0 && (
                         <p className="text-sm text-muted-foreground mt-1">
                           {language === "es" 
-                            ? "No hay trabajadores asignados a esta ubicación" 
-                            : "No workers assigned to this location"}
+                            ? "Mostrando trabajadores asignados a esta ubicación" 
+                            : "Showing workers assigned to this location"}
                         </p>
                       )}
                       <FormMessage />

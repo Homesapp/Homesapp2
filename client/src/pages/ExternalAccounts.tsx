@@ -87,6 +87,7 @@ export default function ExternalAccounts() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [tempEmail, setTempEmail] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: users, isLoading } = useQuery<User[]>({
@@ -111,13 +112,14 @@ export default function ExternalAccounts() {
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-agency-users'] });
       setTempPassword(response.tempPassword);
+      setTempEmail(response.user.email);
       setIsCreateDialogOpen(false);
       form.reset();
       toast({
         title: language === "es" ? "Usuario creado" : "User created",
         description: language === "es" 
-          ? "El usuario ha sido creado exitosamente. Copia la contraseña temporal."
-          : "User has been created successfully. Copy the temporary password.",
+          ? "El usuario ha sido creado exitosamente. Copia las credenciales."
+          : "User has been created successfully. Copy the credentials.",
       });
     },
     onError: () => {
@@ -358,38 +360,68 @@ export default function ExternalAccounts() {
 
       {tempPassword && (
         <Card className="border-primary bg-primary/5">
-          <CardContent className="flex items-center justify-between gap-4 py-4">
-            <div className="flex-1">
-              <p className="font-semibold text-sm">
-                {language === "es" ? "Contraseña Temporal Generada" : "Temporary Password Generated"}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {language === "es" 
-                  ? "Copia esta contraseña y compártela con el usuario. No podrás verla nuevamente."
-                  : "Copy this password and share it with the user. You won't be able to see it again."}
-              </p>
-              <div className="flex items-center gap-2 mt-3">
-                <code className="bg-background px-3 py-1 rounded border text-base font-mono">
-                  {tempPassword}
-                </code>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(tempPassword, 'temp-pass')}
-                  data-testid="button-copy-temp-password"
-                >
-                  {copiedId === 'temp-pass' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+          <CardContent className="py-4 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="font-semibold text-base">
+                  {language === "es" ? "Credenciales Temporales Generadas" : "Temporary Credentials Generated"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {language === "es" 
+                    ? "Copia estas credenciales y compártelas con el usuario. El usuario deberá cambiar la contraseña en el primer inicio de sesión."
+                    : "Copy these credentials and share them with the user. The user must change the password on first login."}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTempPassword(null);
+                  setTempEmail(null);
+                }}
+                data-testid="button-dismiss-password"
+              >
+                {language === "es" ? "Cerrar" : "Dismiss"}
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {tempEmail && (
+                <div>
+                  <p className="text-sm font-medium mb-1">{language === "es" ? "Usuario (Email)" : "Username (Email)"}</p>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-background px-3 py-2 rounded border text-sm font-mono flex-1">
+                      {tempEmail}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(tempEmail, 'temp-email')}
+                      data-testid="button-copy-temp-email"
+                    >
+                      {copiedId === 'temp-email' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <p className="text-sm font-medium mb-1">{language === "es" ? "Contraseña Temporal" : "Temporary Password"}</p>
+                <div className="flex items-center gap-2">
+                  <code className="bg-background px-3 py-2 rounded border text-sm font-mono flex-1">
+                    {tempPassword}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(tempPassword, 'temp-pass')}
+                    data-testid="button-copy-temp-password"
+                  >
+                    {copiedId === 'temp-pass' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTempPassword(null)}
-              data-testid="button-dismiss-password"
-            >
-              {language === "es" ? "Cerrar" : "Dismiss"}
-            </Button>
           </CardContent>
         </Card>
       )}

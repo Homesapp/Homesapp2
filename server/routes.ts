@@ -20470,7 +20470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tempPassword = crypto.randomBytes(8).toString('hex');
       const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-      // Create user
+      // Create user with password change requirement
       const user = await storage.createUserWithPassword({
         email: validatedData.email,
         passwordHash,
@@ -20479,14 +20479,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: validatedData.phone || null,
         role: validatedData.role,
         status: "approved",
+        emailVerified: true, // Auto-verify external agency users
+        requirePasswordChange: true, // Force password change on first login
         assignedToUser: agencyId, // Link user to agency via assignedToUser field
         maintenanceSpecialty: validatedData.maintenanceSpecialty || null,
       });
 
       await createAuditLog(req, "create", "user", user.id, `Created external agency user with role ${validatedData.role}`);
 
-      // Return user and temp password (in real app, would send via email)
-      res.status(201).json({ user, tempPassword });
+      // Return user and temp password
+      res.status(201).json({ 
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          status: user.status,
+          maintenanceSpecialty: user.maintenanceSpecialty,
+        }, 
+        tempPassword 
+      });
     } catch (error: any) {
       console.error("Error creating external agency user:", error);
       if (error.name === "ZodError") {
