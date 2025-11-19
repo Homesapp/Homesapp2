@@ -37,28 +37,28 @@ type CreateAssignmentForm = z.infer<typeof createAssignmentSchema>;
 
 const SPECIALTY_LABELS = {
   es: {
-    encargado: "Encargado",
+    encargado_mantenimiento: "Encargado de Mantenimiento",
+    mantenimiento_general: "Mantenimiento General",
     electrico: "Eléctrico",
     plomero: "Plomero",
     refrigeracion: "Refrigeración",
     carpintero: "Carpintero",
     pintor: "Pintor",
     jardinero: "Jardinero",
+    albanil: "Albañil",
     limpieza: "Limpieza",
-    seguridad: "Seguridad",
-    general: "General",
   },
   en: {
-    encargado: "Manager",
+    encargado_mantenimiento: "Maintenance Manager",
+    mantenimiento_general: "General Maintenance",
     electrico: "Electrician",
     plomero: "Plumber",
     refrigeracion: "HVAC",
     carpintero: "Carpenter",
     pintor: "Painter",
     jardinero: "Gardener",
+    albanil: "Mason",
     limpieza: "Cleaning",
-    seguridad: "Security",
-    general: "General",
   },
 };
 

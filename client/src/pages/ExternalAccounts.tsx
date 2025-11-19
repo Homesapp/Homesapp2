@@ -34,7 +34,7 @@ const createUserSchema = z.object({
   lastName: z.string().min(1, "Apellido requerido"),
   phone: z.string().optional(),
   role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"]),
-  maintenanceSpecialty: z.enum(["encargado", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "limpieza", "seguridad", "general"]).optional(),
+  maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
 });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
@@ -56,28 +56,28 @@ const ROLE_LABELS = {
 
 const SPECIALTY_LABELS = {
   es: {
-    encargado: "Encargado",
+    encargado_mantenimiento: "Encargado de Mantenimiento",
+    mantenimiento_general: "Mantenimiento General",
     electrico: "Eléctrico",
     plomero: "Plomero",
     refrigeracion: "Refrigeración",
     carpintero: "Carpintero",
     pintor: "Pintor",
     jardinero: "Jardinero",
+    albanil: "Albañil",
     limpieza: "Limpieza",
-    seguridad: "Seguridad",
-    general: "General",
   },
   en: {
-    encargado: "Manager",
+    encargado_mantenimiento: "Maintenance Manager",
+    mantenimiento_general: "General Maintenance",
     electrico: "Electrician",
     plomero: "Plumber",
     refrigeracion: "HVAC",
     carpintero: "Carpenter",
     pintor: "Painter",
     jardinero: "Gardener",
+    albanil: "Mason",
     limpieza: "Cleaning",
-    seguridad: "Security",
-    general: "General",
   },
 };
 
@@ -326,16 +326,16 @@ export default function ExternalAccounts() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="encargado">{SPECIALTY_LABELS[language].encargado}</SelectItem>
+                            <SelectItem value="encargado_mantenimiento">{SPECIALTY_LABELS[language].encargado_mantenimiento}</SelectItem>
+                            <SelectItem value="mantenimiento_general">{SPECIALTY_LABELS[language].mantenimiento_general}</SelectItem>
                             <SelectItem value="electrico">{SPECIALTY_LABELS[language].electrico}</SelectItem>
                             <SelectItem value="plomero">{SPECIALTY_LABELS[language].plomero}</SelectItem>
                             <SelectItem value="refrigeracion">{SPECIALTY_LABELS[language].refrigeracion}</SelectItem>
                             <SelectItem value="carpintero">{SPECIALTY_LABELS[language].carpintero}</SelectItem>
                             <SelectItem value="pintor">{SPECIALTY_LABELS[language].pintor}</SelectItem>
                             <SelectItem value="jardinero">{SPECIALTY_LABELS[language].jardinero}</SelectItem>
+                            <SelectItem value="albanil">{SPECIALTY_LABELS[language].albanil}</SelectItem>
                             <SelectItem value="limpieza">{SPECIALTY_LABELS[language].limpieza}</SelectItem>
-                            <SelectItem value="seguridad">{SPECIALTY_LABELS[language].seguridad}</SelectItem>
-                            <SelectItem value="general">{SPECIALTY_LABELS[language].general}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

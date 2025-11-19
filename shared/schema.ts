@@ -580,6 +580,20 @@ export const suspensionTypeEnum = pgEnum("suspension_type", [
   "permanent",   // Permanente
 ]);
 
+// External Maintenance Specialties Enum
+export const maintenanceSpecialtyEnum = pgEnum("maintenance_specialty", [
+  "encargado_mantenimiento", // Supervisor/Manager
+  "mantenimiento_general", // General Maintenance
+  "electrico", // Electrician
+  "plomero", // Plumber
+  "refrigeracion", // HVAC/Refrigeration
+  "carpintero", // Carpenter
+  "pintor", // Painter
+  "jardinero", // Gardener
+  "albanil", // Mason
+  "limpieza", // Cleaning
+]);
+
 // Users table (required for Replit Auth + extended fields)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -623,6 +637,8 @@ export const users = pgTable("users", {
   suspendedAt: timestamp("suspended_at"),
   suspendedById: varchar("suspended_by_id").references((): any => users.id),
   propertyLimit: integer("property_limit").notNull().default(3), // Maximum number of properties an owner can upload
+  assignedToUser: varchar("assigned_to_user"),
+  maintenanceSpecialty: maintenanceSpecialtyEnum("maintenance_specialty"), // Specialty for external_agency_maintenance role
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -5139,26 +5155,11 @@ export const ownerDocumentSubmissionsRelations = relations(ownerDocumentSubmissi
   }),
 }));
 
-// External Maintenance Specialties Enum
-export const maintenanceSpecialtyEnum = pgEnum("maintenance_specialty", [
-  "encargado_mantenimiento", // Supervisor/Manager
-  "mantenimiento_general", // General Maintenance
-  "electrico", // Electrician
-  "plomero", // Plumber
-  "refrigeracion", // HVAC/Refrigeration
-  "carpintero", // Carpenter
-  "pintor", // Painter
-  "jardinero", // Gardener
-  "albanil", // Mason
-  "limpieza", // Cleaning
-]);
-
 // External Worker Assignments - Asignación de trabajadores a condominios/unidades
 export const externalWorkerAssignments = pgTable("external_worker_assignments", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Trabajador
-  specialty: maintenanceSpecialtyEnum("specialty").notNull(), // Especialidad
   condominiumId: varchar("condominium_id").references(() => externalCondominiums.id, { onDelete: "cascade" }), // Opcional: asignado a condominio específico
   unitId: varchar("unit_id").references(() => externalUnits.id, { onDelete: "cascade" }), // Opcional: asignado a unidad específica
   isActive: boolean("is_active").notNull().default(true),
@@ -5171,7 +5172,6 @@ export const externalWorkerAssignments = pgTable("external_worker_assignments", 
   index("idx_external_worker_assignments_user").on(table.userId),
   index("idx_external_worker_assignments_condo").on(table.condominiumId),
   index("idx_external_worker_assignments_unit").on(table.unitId),
-  index("idx_external_worker_assignments_specialty").on(table.specialty),
 ]);
 
 export const insertExternalWorkerAssignmentSchema = createInsertSchema(externalWorkerAssignments).omit({

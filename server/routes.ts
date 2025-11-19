@@ -156,6 +156,7 @@ import {
   updateExternalUnitAccessControlSchema,
   insertExternalOwnerChargeSchema,
   insertExternalOwnerNotificationSchema,
+  insertExternalWorkerAssignmentSchema,
   externalAgencies,
   externalCondominiums,
   externalUnits,
@@ -163,6 +164,7 @@ import {
   externalUnitOwners,
   externalOwnerCharges,
   externalOwnerNotifications,
+  externalWorkerAssignments,
   users,
 } from "@shared/schema";
 import { db } from "./db";
@@ -20021,7 +20023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(agencies);
     } catch (error: any) {
       console.error("Error fetching external agencies:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20037,7 +20039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(agency);
     } catch (error: any) {
       console.error("Error fetching external agency:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20087,9 +20089,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external agency:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20116,9 +20118,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error registering external agency:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20169,7 +20171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       console.error("Error updating external agency:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20183,7 +20185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(agency);
     } catch (error: any) {
       console.error("Error toggling external agency status:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20196,7 +20198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external agency:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20215,7 +20217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(properties);
     } catch (error: any) {
       console.error("Error fetching external properties:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20231,7 +20233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(property);
     } catch (error: any) {
       console.error("Error fetching external property:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20248,9 +20250,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external property:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20263,7 +20265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(property);
     } catch (error: any) {
       console.error("Error updating external property:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20282,7 +20284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(property);
     } catch (error: any) {
       console.error("Error linking external property:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20295,7 +20297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external property:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20319,7 +20321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(contracts);
     } catch (error: any) {
       console.error("Error fetching external contracts:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20335,7 +20337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(contract);
     } catch (error: any) {
       console.error("Error fetching external contract:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20352,9 +20354,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external contract:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20367,7 +20369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(contract);
     } catch (error: any) {
       console.error("Error updating external contract:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20386,7 +20388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(contract);
     } catch (error: any) {
       console.error("Error updating external contract status:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20399,7 +20401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external contract:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20433,7 +20435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(externalUsers);
     } catch (error: any) {
       console.error("Error fetching external agency users:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20486,9 +20488,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external agency user:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20521,7 +20523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ tempPassword });
     } catch (error: any) {
       console.error("Error resetting password:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20545,7 +20547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external agency user:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20634,9 +20636,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error sending access control email:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20698,7 +20700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(enrichedAccessControls);
     } catch (error: any) {
       console.error("Error fetching all access controls:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20722,7 +20724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(schedules);
     } catch (error: any) {
       console.error("Error fetching external payment schedules:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20739,9 +20741,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external payment schedule:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20754,7 +20756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(schedule);
     } catch (error: any) {
       console.error("Error updating external payment schedule:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20768,7 +20770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(schedule);
     } catch (error: any) {
       console.error("Error toggling payment schedule status:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20781,7 +20783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external payment schedule:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20819,7 +20821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payments);
     } catch (error: any) {
       console.error("Error fetching external payments:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20835,7 +20837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payment);
     } catch (error: any) {
       console.error("Error fetching external payment:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20852,9 +20854,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external payment:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20867,7 +20869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payment);
     } catch (error: any) {
       console.error("Error updating external payment:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20886,7 +20888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payment);
     } catch (error: any) {
       console.error("Error updating external payment status:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20899,7 +20901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payment);
     } catch (error: any) {
       console.error("Error marking payment reminder sent:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20912,7 +20914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external payment:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20949,7 +20951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(tickets);
     } catch (error: any) {
       console.error("Error fetching external tickets:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20965,7 +20967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ticket);
     } catch (error: any) {
       console.error("Error fetching external ticket:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20982,9 +20984,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external ticket:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -20997,7 +20999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ticket);
     } catch (error: any) {
       console.error("Error updating external ticket:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21016,7 +21018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ticket);
     } catch (error: any) {
       console.error("Error updating external ticket status:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21035,7 +21037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ticket);
     } catch (error: any) {
       console.error("Error assigning external ticket:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21048,7 +21050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external ticket:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21078,7 +21080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(condominiums);
     } catch (error: any) {
       console.error("Error fetching external condominiums:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21098,7 +21100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(condominium);
     } catch (error: any) {
       console.error("Error fetching external condominium:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21122,9 +21124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external condominium:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21157,9 +21159,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating external condominium:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21190,7 +21192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external condominium:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21221,7 +21223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(units);
     } catch (error: any) {
       console.error("Error fetching external units:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21244,7 +21246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(units);
     } catch (error: any) {
       console.error("Error fetching units by condominium:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21264,7 +21266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(unit);
     } catch (error: any) {
       console.error("Error fetching external unit:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21293,9 +21295,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external unit:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21328,9 +21330,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating external unit:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21353,7 +21355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external unit:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21377,7 +21379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(owners);
     } catch (error: any) {
       console.error("Error fetching unit owners:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21404,7 +21406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(owner);
     } catch (error: any) {
       console.error("Error fetching active unit owner:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21430,7 +21432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(owner);
     } catch (error: any) {
       console.error("Error fetching external unit owner:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21447,9 +21449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external unit owner:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21488,9 +21490,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating external unit owner:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21514,7 +21516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(owner);
     } catch (error: any) {
       console.error("Error setting active unit owner:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21543,7 +21545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external unit owner:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21571,7 +21573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(controls);
     } catch (error: any) {
       console.error("Error fetching unit access controls:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21597,7 +21599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(control);
     } catch (error: any) {
       console.error("Error fetching external unit access control:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21614,9 +21616,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating external unit access control:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21655,9 +21657,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating external unit access control:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21686,7 +21688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external unit access control:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21710,7 +21712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(contracts);
     } catch (error: any) {
       console.error("Error fetching rental contracts:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21739,9 +21741,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating rental contract:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21773,9 +21775,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating rental contract:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21798,7 +21800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting rental contract:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21847,7 +21849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ownersWithUnits);
     } catch (error: any) {
       console.error("Error fetching owners:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21867,7 +21869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(charges);
     } catch (error: any) {
       console.error("Error fetching charges:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21916,9 +21918,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating charge:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -21938,7 +21940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(notifications);
     } catch (error: any) {
       console.error("Error fetching notifications:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -22044,9 +22046,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating notification:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -22078,7 +22080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(workers);
     } catch (error: any) {
       console.error("Error fetching maintenance workers:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -22097,7 +22099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(assignments);
     } catch (error: any) {
       console.error("Error fetching worker assignments:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -22163,9 +22165,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating worker assignment:", error);
       if (error.name === "ZodError") {
-        return handleZodError(error, res);
+        return handleZodError(res, error);
       }
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
@@ -22194,7 +22196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting worker assignment:", error);
-      handleGenericError(error, res);
+      handleGenericError(res, error);
     }
   });
 
