@@ -157,6 +157,67 @@ import {
 import { db } from "./db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
 
+// Helper function to verify external agency ownership
+async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
+  try {
+    // Admin and master users can access all agencies
+    const userRole = req.user?.role || req.session?.adminUser?.role;
+    if (userRole === "master" || userRole === "admin") {
+      return true;
+    }
+
+    // Get user ID from authentication
+    const userId = req.user?.claims?.sub || req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized: User ID not found" });
+      return false;
+    }
+
+    // Get the user's assigned agency
+    const userAgency = await storage.getExternalAgencyByUser(userId);
+    if (!userAgency) {
+      res.status(403).json({ message: "Forbidden: User is not assigned to any agency" });
+      return false;
+    }
+
+    // Verify the agency matches
+    if (userAgency.id !== agencyId) {
+      res.status(403).json({ message: "Forbidden: Cannot access resources from another agency" });
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error verifying agency ownership:", error);
+    res.status(500).json({ message: "Failed to verify agency ownership" });
+    return false;
+  }
+}
+
+// Helper function to get user's agency ID
+async function getUserAgencyId(req: any): Promise<string | null> {
+  try {
+    // Admin and master users don't have an agency
+    const userRole = req.user?.role || req.session?.adminUser?.role;
+    if (userRole === "master" || userRole === "admin") {
+      return null;
+    }
+
+    // Get user ID from authentication
+    const userId = req.user?.claims?.sub || req.user?.id;
+    if (!userId) {
+      return null;
+    }
+
+    // Get the user's assigned agency
+    const userAgency = await storage.getExternalAgencyByUser(userId);
+    return userAgency?.id || null;
+  } catch (error) {
+    console.error("Error getting user agency ID:", error);
+    return null;
+  }
+}
+
 // Helper function to create audit logs
 async function createAuditLog(
   req: Request & { user?: any; session?: any },
@@ -20664,6 +20725,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Agency ID is required" });
       }
       
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return; // Response already sent by helper
+      
       const filters: any = {};
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       
@@ -20684,6 +20749,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!condominium) {
         return res.status(404).json({ message: "Condominium not found" });
       }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, condominium.agencyId);
+      if (!hasAccess) return; // Response already sent by helper
       
       res.json(condominium);
     } catch (error: any) {
@@ -20721,6 +20790,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Condominium not found" });
       }
       
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return; // Response already sent by helper
+      
       // Validate update data
       const validatedData = updateExternalCondominiumSchema.parse(req.body);
       
@@ -20745,6 +20818,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/external-condominiums/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const existing = await storage.getExternalCondominium(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Condominium not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return; // Response already sent by helper
+      
       await storage.deleteExternalCondominium(id);
       
       await createAuditLog(req, "delete", "external_condominium", id, "Deleted external condominium");
@@ -20764,6 +20847,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Agency ID is required" });
       }
       
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+      
       const filters: any = {};
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       if (condominiumId) filters.condominiumId = condominiumId;
@@ -20780,6 +20867,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/external-units/by-condominium/:condominiumId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { condominiumId } = req.params;
+      
+      // Verify condominium exists and get its agency
+      const condominium = await storage.getExternalCondominium(condominiumId);
+      if (!condominium) {
+        return res.status(404).json({ message: "Condominium not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, condominium.agencyId);
+      if (!hasAccess) return;
+      
       const units = await storage.getExternalUnitsByCondominium(condominiumId);
       
       res.json(units);
@@ -20797,6 +20895,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!unit) {
         return res.status(404).json({ message: "Unit not found" });
       }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
       
       res.json(unit);
     } catch (error: any) {
@@ -20834,6 +20936,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Unit not found" });
       }
       
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
       // Validate update data
       const validatedData = updateExternalUnitSchema.parse(req.body);
       
@@ -20858,6 +20964,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/external-units/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const existing = await storage.getExternalUnit(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
       await storage.deleteExternalUnit(id);
       
       await createAuditLog(req, "delete", "external_unit", id, "Deleted external unit");
@@ -20872,6 +20988,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/external-unit-owners/by-unit/:unitId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { unitId } = req.params;
+      
+      // Verify unit exists and get its agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       const owners = await storage.getExternalUnitOwnersByUnit(unitId);
       
       res.json(owners);
@@ -20884,6 +21011,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/external-unit-owners/active/:unitId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { unitId } = req.params;
+      
+      // Verify unit exists and get its agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       const owner = await storage.getActiveExternalUnitOwner(unitId);
       
       if (!owner) {
@@ -20905,6 +21043,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!owner) {
         return res.status(404).json({ message: "Unit owner not found" });
       }
+      
+      // Verify unit ownership through unit
+      const unit = await storage.getExternalUnit(owner.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
       
       res.json(owner);
     } catch (error: any) {
@@ -20942,6 +21090,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Unit owner not found" });
       }
       
+      // Verify unit ownership through unit
+      const unit = await storage.getExternalUnit(existing.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       // Validate update data
       const validatedData = updateExternalUnitOwnerSchema.parse(req.body);
       
@@ -20966,6 +21124,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/external-unit-owners/:unitId/set-active/:ownerId", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { unitId, ownerId } = req.params;
+      
+      // Verify unit exists and get its agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       const owner = await storage.setActiveExternalUnitOwner(unitId, ownerId);
       
       await createAuditLog(req, "update", "external_unit_owner", ownerId, `Set as active owner for unit ${unitId}`);
@@ -20979,6 +21148,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/external-unit-owners/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const existing = await storage.getExternalUnitOwner(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Unit owner not found" });
+      }
+      
+      // Verify unit ownership through unit
+      const unit = await storage.getExternalUnit(existing.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       await storage.deleteExternalUnitOwner(id);
       
       await createAuditLog(req, "delete", "external_unit_owner", id, "Deleted external unit owner");
@@ -20994,6 +21179,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { unitId } = req.params;
       const { isActive } = req.query;
+      
+      // Verify unit exists and get its agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
       
       const filters: any = {};
       if (isActive !== undefined) filters.isActive = isActive === 'true';
@@ -21015,6 +21210,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!control) {
         return res.status(404).json({ message: "Access control not found" });
       }
+      
+      // Verify unit ownership through unit
+      const unit = await storage.getExternalUnit(control.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
       
       res.json(control);
     } catch (error: any) {
@@ -21052,6 +21257,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Access control not found" });
       }
       
+      // Verify unit ownership through unit
+      const unit = await storage.getExternalUnit(existing.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       // Validate update data
       const validatedData = updateExternalUnitAccessControlSchema.parse(req.body);
       
@@ -21076,6 +21291,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/external-unit-access-controls/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const existing = await storage.getExternalUnitAccessControl(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Access control not found" });
+      }
+      
+      // Verify unit ownership through unit
+      const unit = await storage.getExternalUnit(existing.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
       await storage.deleteExternalUnitAccessControl(id);
       
       await createAuditLog(req, "delete", "external_unit_access_control", id, "Deleted external unit access control");

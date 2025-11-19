@@ -44,6 +44,8 @@ Key features include:
 *   **Separate Rental and Sale Pricing**: Independent price and currency fields for rental and sale transactions with deep JSONB merge for data integrity.
 *   **Editable Owner Terms**: Admin-editable property owner terms and conditions with wizard UI enhancements.
 *   **External Property Management System**: Multi-tenant module for managing external agency properties independently, with payment calendar, maintenance tickets, and optional property linking to main system. Includes granular role-based permissions, agency logo upload, user reassignment, backend validation, and a condominium-unit management system (hierarchical property structure for multi-unit condominiums and standalone units).
+    *   **Multi-Tenant Security**: All external agency routes enforce ownership verification via `verifyExternalAgencyOwnership()` helper, preventing cross-agency data access. Users are mapped to agencies via `assignedToUser` field, with admin/master roles retaining system-wide access.
+    *   **Ownership Verification Pattern**: Each endpoint loads target entity (or parent), then validates that authenticated user's agency matches entity's `agencyId` before returning data. Creation endpoints derive `agencyId` from validated input or parent lookups.
 
 ## External Dependencies
 *   Google Calendar API

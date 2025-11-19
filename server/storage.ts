@@ -1105,6 +1105,7 @@ export interface IStorage {
   getExternalAgency(id: string): Promise<ExternalAgency | undefined>;
   getExternalAgencies(filters?: { isActive?: boolean }): Promise<ExternalAgency[]>;
   getExternalAgenciesByCreator(createdBy: string): Promise<ExternalAgency[]>;
+  getExternalAgencyByUser(userId: string): Promise<ExternalAgency | undefined>;
   createExternalAgency(agency: InsertExternalAgency): Promise<ExternalAgency>;
   updateExternalAgency(id: string, updates: Partial<InsertExternalAgency>): Promise<ExternalAgency>;
   toggleExternalAgencyActive(id: string, isActive: boolean): Promise<ExternalAgency>;
@@ -7302,6 +7303,16 @@ export class DatabaseStorage implements IStorage {
       .from(externalAgencies)
       .where(eq(externalAgencies.createdBy, createdBy))
       .orderBy(desc(externalAgencies.createdAt));
+  }
+
+  async getExternalAgencyByUser(userId: string): Promise<ExternalAgency | undefined> {
+    const [result] = await db.select()
+      .from(externalAgencies)
+      .where(and(
+        eq(externalAgencies.assignedToUser, userId),
+        eq(externalAgencies.isActive, true)
+      ));
+    return result;
   }
 
   async createExternalAgency(agency: InsertExternalAgency): Promise<ExternalAgency> {
