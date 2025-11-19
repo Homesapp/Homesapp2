@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, DollarSign, Wrench, Calendar as CalIcon, User, Clock, AlertCircle, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, DollarSign, Wrench, Calendar as CalIcon, User, Clock, AlertCircle, FileText, Filter } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { format, isSameDay, isWithinInterval, addDays, startOfDay } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -19,6 +20,7 @@ type SelectedEvent = {
 export default function ExternalCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
+  const [selectedCondominium, setSelectedCondominium] = useState<string>("all");
   const { language } = useLanguage();
 
   // Fetch payments
@@ -36,29 +38,56 @@ export default function ExternalCalendar() {
     queryKey: ["/api/external-units"],
   });
 
+  // Fetch condominiums for filtering
+  const { data: condominiums = [] } = useQuery<any[]>({
+    queryKey: ["/api/external-condominiums"],
+  });
+
+  // Fetch owners for payment details
+  const { data: owners = [] } = useQuery<any[]>({
+    queryKey: ["/api/external-owners"],
+  });
+
   // Fetch users for assignment details
   const { data: users = [] } = useQuery<SelectUser[]>({
     queryKey: ["/api/external-agency-users"],
   });
+
+  // Filter payments and tickets by condominium
+  const filteredPayments = useMemo(() => {
+    if (selectedCondominium === "all") return payments;
+    return payments.filter((p) => {
+      const unit = units.find(u => u.id === p.unitId);
+      return unit?.condominiumId === selectedCondominium;
+    });
+  }, [payments, units, selectedCondominium]);
+
+  const filteredTickets = useMemo(() => {
+    if (selectedCondominium === "all") return tickets;
+    return tickets.filter((t) => {
+      const unit = units.find(u => u.id === t.unitId);
+      return unit?.condominiumId === selectedCondominium;
+    });
+  }, [tickets, units, selectedCondominium]);
 
   // Calculate statistics
   const stats = useMemo(() => {
     const now = new Date();
     const next30Days = addDays(now, 30);
 
-    const pendingPayments = payments.filter(
+    const pendingPayments = filteredPayments.filter(
       (p) => p.status === "pending" && 
       new Date(p.dueDate) >= startOfDay(now) &&
       new Date(p.dueDate) <= next30Days
     ).length;
 
-    const scheduledTickets = tickets.filter(
+    const scheduledTickets = filteredTickets.filter(
       (t) => t.scheduledDate && 
       (t.status === "open" || t.status === "in_progress") &&
       new Date(t.scheduledDate) >= startOfDay(now)
     ).length;
 
-    const thisMonthEvents = [...payments, ...tickets].filter((item) => {
+    const thisMonthEvents = [...filteredPayments, ...filteredTickets].filter((item) => {
       const date = 'dueDate' in item ? new Date(item.dueDate) : 
                    item.scheduledDate ? new Date(item.scheduledDate) : null;
       if (!date) return false;
@@ -67,53 +96,61 @@ export default function ExternalCalendar() {
     }).length;
 
     return { pendingPayments, scheduledTickets, thisMonthEvents };
-  }, [payments, tickets]);
+  }, [filteredPayments, filteredTickets]);
 
   // Get events for selected date
   const eventsForDate = useMemo(() => {
     if (!selectedDate) return [];
 
-    const dayPayments = payments
+    const dayPayments = filteredPayments
       .filter((p) => isSameDay(new Date(p.dueDate), selectedDate))
-      .map((p) => ({
-        type: 'payment' as const,
-        title: language === "es" 
-          ? `Pago: ${p.serviceType} - ${p.currency} $${p.amount}`
-          : `Payment: ${p.serviceType} - ${p.currency} $${p.amount}`,
-        time: format(new Date(p.dueDate), 'HH:mm'),
-        status: p.status,
-        data: p,
-      }));
+      .map((p) => {
+        const unit = units.find(u => u.id === p.unitId);
+        const location = unit ? `${unit.condominium?.name || ''} - ${unit.unitNumber}` : '';
+        return {
+          type: 'payment' as const,
+          title: language === "es" 
+            ? `Pago: ${p.serviceType} - ${location}`
+            : `Payment: ${p.serviceType} - ${location}`,
+          time: format(new Date(p.dueDate), 'HH:mm'),
+          status: p.status,
+          data: p,
+        };
+      });
 
-    const dayTickets = tickets
+    const dayTickets = filteredTickets
       .filter((t) => t.scheduledDate && isSameDay(new Date(t.scheduledDate), selectedDate))
-      .map((t) => ({
-        type: 'ticket' as const,
-        title: t.title,
-        time: t.scheduledDate ? format(new Date(t.scheduledDate), 'HH:mm') : '--:--',
-        status: t.status,
-        priority: t.priority,
-        data: t,
-      }));
+      .map((t) => {
+        const unit = units.find(u => u.id === t.unitId);
+        const location = unit ? `${unit.condominium?.name || ''} - ${unit.unitNumber}` : '';
+        return {
+          type: 'ticket' as const,
+          title: `${t.title} - ${location}`,
+          time: t.scheduledDate ? format(new Date(t.scheduledDate), 'HH:mm') : '--:--',
+          status: t.status,
+          priority: t.priority,
+          data: t,
+        };
+      });
 
     return [...dayPayments, ...dayTickets].sort((a, b) => 
       a.time.localeCompare(b.time)
     );
-  }, [selectedDate, payments, tickets, language]);
+  }, [selectedDate, filteredPayments, filteredTickets, language, units]);
 
   // Dates with events for highlighting in calendar
   const datesWithEvents = useMemo(() => {
     const dates = new Set<string>();
-    payments.forEach((p) => {
+    filteredPayments.forEach((p) => {
       dates.add(format(new Date(p.dueDate), 'yyyy-MM-dd'));
     });
-    tickets.forEach((t) => {
+    filteredTickets.forEach((t) => {
       if (t.scheduledDate) {
         dates.add(format(new Date(t.scheduledDate), 'yyyy-MM-dd'));
       }
     });
     return dates;
-  }, [payments, tickets]);
+  }, [filteredPayments, filteredTickets]);
 
   return (
     <div className="space-y-6">
@@ -128,6 +165,24 @@ export default function ExternalCalendar() {
               ? "Visualiza pagos, mantenimientos y eventos importantes" 
               : "View payments, maintenance, and important events"}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedCondominium} onValueChange={setSelectedCondominium}>
+            <SelectTrigger className="w-[250px]" data-testid="select-condominium-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {language === "es" ? "Todos los condominios" : "All condominiums"}
+              </SelectItem>
+              {condominiums.map((condo) => (
+                <SelectItem key={condo.id} value={condo.id}>
+                  {condo.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -278,6 +333,8 @@ export default function ExternalCalendar() {
                       // Detalles del pago
                       (() => {
                         const payment = selectedEvent.data as ExternalPayment;
+                        const unit = units.find(u => u.id === payment.unitId);
+                        const owner = owners.find(o => o.unitId === payment.unitId);
                         
                         return (
                           <>
@@ -298,6 +355,30 @@ export default function ExternalCalendar() {
                                   {payment.status}
                                 </Badge>
                               </div>
+
+                              {unit && (
+                                <div className="flex items-start gap-2">
+                                  <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Ubicación" : "Location"}</p>
+                                    <p className="text-muted-foreground">
+                                      {unit.condominium?.name || ""} - {unit.unitNumber}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {owner && (
+                                <div className="flex items-start gap-2">
+                                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium">{language === "es" ? "Propietario" : "Owner"}</p>
+                                    <p className="text-muted-foreground">
+                                      {owner.name}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
 
                               <div className="flex items-start gap-2">
                                 <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
