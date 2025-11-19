@@ -20633,17 +20633,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify unit ownership if provided
       if (data.unitId) {
-        const [unitWithCondo] = await db
-          .select({
-            unitId: externalUnits.id,
-            agencyId: externalCondominiums.agencyId,
-          })
+        const [unit] = await db
+          .select()
           .from(externalUnits)
-          .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-          .where(eq(externalUnits.id, data.unitId))
+          .where(and(
+            eq(externalUnits.id, data.unitId),
+            eq(externalUnits.agencyId, agencyId)
+          ))
           .limit(1);
         
-        if (!unitWithCondo || unitWithCondo.agencyId !== agencyId) {
+        if (!unit) {
           return res.status(403).json({ message: "Unit does not belong to this agency" });
         }
       }
@@ -20718,17 +20717,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Verify unit ownership if provided
         if (assignment.unitId) {
-          const [unitWithCondo] = await db
-            .select({
-              unitId: externalUnits.id,
-              agencyId: externalCondominiums.agencyId,
-            })
+          const [unit] = await db
+            .select()
             .from(externalUnits)
-            .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-            .where(eq(externalUnits.id, assignment.unitId))
+            .where(and(
+              eq(externalUnits.id, assignment.unitId),
+              eq(externalUnits.agencyId, agencyId)
+            ))
             .limit(1);
           
-          if (!unitWithCondo || unitWithCondo.agencyId !== agencyId) {
+          if (!unit) {
             return res.status(403).json({ message: `Unit ${assignment.unitId} does not belong to this agency` });
           }
         }
