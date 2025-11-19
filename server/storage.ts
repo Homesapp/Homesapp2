@@ -341,6 +341,9 @@ import {
   externalUnitAccessControls,
   type ExternalUnitAccessControl,
   type InsertExternalUnitAccessControl,
+  externalCheckoutReports,
+  type ExternalCheckoutReport,
+  type InsertExternalCheckoutReport,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, desc, sql, isNull, count, inArray } from "drizzle-orm";
@@ -1191,6 +1194,15 @@ export interface IStorage {
   createExternalUnitAccessControl(control: InsertExternalUnitAccessControl): Promise<ExternalUnitAccessControl>;
   updateExternalUnitAccessControl(id: string, updates: Partial<InsertExternalUnitAccessControl>): Promise<ExternalUnitAccessControl>;
   deleteExternalUnitAccessControl(id: string): Promise<void>;
+
+  // External Management System - Check-Out Report operations
+  getExternalCheckoutReport(id: string): Promise<ExternalCheckoutReport | undefined>;
+  getExternalCheckoutReportByContract(contractId: string): Promise<ExternalCheckoutReport | undefined>;
+  getExternalCheckoutReportsByAgency(agencyId: string, filters?: { status?: string }): Promise<ExternalCheckoutReport[]>;
+  createExternalCheckoutReport(report: InsertExternalCheckoutReport): Promise<ExternalCheckoutReport>;
+  updateExternalCheckoutReport(id: string, updates: Partial<InsertExternalCheckoutReport>): Promise<ExternalCheckoutReport>;
+  completeExternalCheckoutReport(id: string): Promise<ExternalCheckoutReport>;
+  deleteExternalCheckoutReport(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -7948,6 +7960,74 @@ export class DatabaseStorage implements IStorage {
   async deleteExternalUnitAccessControl(id: string): Promise<void> {
     await db.delete(externalUnitAccessControls)
       .where(eq(externalUnitAccessControls.id, id));
+  }
+
+  // External Management System - Check-Out Report operations
+  async getExternalCheckoutReport(id: string): Promise<ExternalCheckoutReport | undefined> {
+    const [report] = await db.select()
+      .from(externalCheckoutReports)
+      .where(eq(externalCheckoutReports.id, id))
+      .limit(1);
+    return report;
+  }
+
+  async getExternalCheckoutReportByContract(contractId: string): Promise<ExternalCheckoutReport | undefined> {
+    const [report] = await db.select()
+      .from(externalCheckoutReports)
+      .where(eq(externalCheckoutReports.contractId, contractId))
+      .limit(1);
+    return report;
+  }
+
+  async getExternalCheckoutReportsByAgency(agencyId: string, filters?: { status?: string }): Promise<ExternalCheckoutReport[]> {
+    let query = db.select()
+      .from(externalCheckoutReports)
+      .where(eq(externalCheckoutReports.agencyId, agencyId))
+      .orderBy(desc(externalCheckoutReports.createdAt));
+
+    if (filters?.status) {
+      query = query.where(eq(externalCheckoutReports.status, filters.status)) as any;
+    }
+
+    return await query;
+  }
+
+  async createExternalCheckoutReport(report: InsertExternalCheckoutReport): Promise<ExternalCheckoutReport> {
+    const [result] = await db.insert(externalCheckoutReports)
+      .values({
+        ...report,
+        id: crypto.randomUUID(),
+      })
+      .returning();
+    return result;
+  }
+
+  async updateExternalCheckoutReport(id: string, updates: Partial<InsertExternalCheckoutReport>): Promise<ExternalCheckoutReport> {
+    const [result] = await db.update(externalCheckoutReports)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(externalCheckoutReports.id, id))
+      .returning();
+    return result;
+  }
+
+  async completeExternalCheckoutReport(id: string): Promise<ExternalCheckoutReport> {
+    const [result] = await db.update(externalCheckoutReports)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(externalCheckoutReports.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalCheckoutReport(id: string): Promise<void> {
+    await db.delete(externalCheckoutReports)
+      .where(eq(externalCheckoutReports.id, id));
   }
 }
 
