@@ -19896,11 +19896,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================================
 
   // External agency role constants for consistent permissions
+  // ADMIN_ONLY: Only master/admin can perform these operations (agency creation, deletion)
+  const ADMIN_ONLY = ["master", "admin"];
+  // EXTERNAL_ADMIN_ROLES: Admin operations within external agencies
   const EXTERNAL_ADMIN_ROLES = ["master", "admin", "external_agency_admin"];
+  // EXTERNAL_ACCOUNTING_ROLES: Payment and accounting operations
   const EXTERNAL_ACCOUNTING_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting"];
+  // EXTERNAL_MAINTENANCE_ROLES: Property, contract, and maintenance operations
   const EXTERNAL_MAINTENANCE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_maintenance"];
+  // EXTERNAL_ALL_ROLES: Read-only access for all external agency users
   const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
-  const EXTERNAL_VIEW_ONLY_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
 
   // External Agencies Routes
   app.get("/api/external-agencies", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
@@ -19940,7 +19945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/external-agencies", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+  app.post("/api/external-agencies", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
     try {
       const validatedData = insertExternalAgencySchema.parse(req.body);
       
@@ -20034,7 +20039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-agencies/:id/toggle-active", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+  app.patch("/api/external-agencies/:id/toggle-active", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { isActive } = req.body;
@@ -20048,7 +20053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/external-agencies/:id", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+  app.delete("/api/external-agencies/:id", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteExternalAgency(id);
@@ -20128,7 +20133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/external-properties/:id/link", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+  app.patch("/api/external-properties/:id/link", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { linkedPropertyId } = req.body;
