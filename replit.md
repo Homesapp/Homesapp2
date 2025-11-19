@@ -47,9 +47,11 @@ Key features include:
         - Active services display showing rent, electricity, water, internet, gas, and maintenance services
         - Next payment information with due date, amount, and service type
         - Dual view modes: card and table layouts
-        - Advanced filtering by status, condominium, and unit number
+        - Advanced filtering by status, condominium, and unit number with searchable combobox components
         - Rental cancellation with automatic cleanup of future pending payments
         - Contract detail view with complete overview of services and payment schedules
+        - **Contract Editing**: Full CRUD for active rental contracts including tenant information, monthly rent, end date, and notes with backend validation and multi-tenant security
+        - **Payment Schedule Management**: Complete CRUD operations for payment schedules (rent, electricity, water, internet, gas, maintenance) with automatic cache invalidation using TanStack Query v5 array-based query keys
 
 ## External Dependencies
 *   Google Calendar API
