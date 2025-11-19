@@ -20620,24 +20620,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [condo] = await db
           .select()
           .from(externalCondominiums)
-          .where(eq(externalCondominiums.id, data.condominiumId))
+          .where(and(
+            eq(externalCondominiums.id, data.condominiumId),
+            eq(externalCondominiums.agencyId, agencyId)
+          ))
           .limit(1);
         
-        if (!condo || condo.agencyId !== agencyId) {
+        if (!condo) {
           return res.status(403).json({ message: "Condominium does not belong to this agency" });
         }
       }
 
       // Verify unit ownership if provided
       if (data.unitId) {
-        const [unit] = await db
-          .select()
+        const [unitWithCondo] = await db
+          .select({
+            unitId: externalUnits.id,
+            agencyId: externalCondominiums.agencyId,
+          })
           .from(externalUnits)
           .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
           .where(eq(externalUnits.id, data.unitId))
           .limit(1);
         
-        if (!unit || unit.external_condominiums.agencyId !== agencyId) {
+        if (!unitWithCondo || unitWithCondo.agencyId !== agencyId) {
           return res.status(403).json({ message: "Unit does not belong to this agency" });
         }
       }

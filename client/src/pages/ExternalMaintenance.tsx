@@ -196,10 +196,7 @@ export default function ExternalMaintenance() {
   const updateMaintenanceStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       if (!user?.id) throw new Error("User not authenticated");
-      return await apiRequest(`/api/external-tickets/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status, updatedByUserId: user.id }),
-      });
+      return await apiRequest('PATCH', `/api/external-tickets/${id}/status`, { status, updatedByUserId: user.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-tickets'] });
@@ -224,9 +221,9 @@ export default function ExternalMaintenance() {
       const combinedDate = new Date(formDate);
       combinedDate.setHours(hours, minutes, 0, 0);
       
-      // Convert FROM Cancun timezone TO UTC
-      const cancunDate = toZonedTime(combinedDate, CANCUN_TIMEZONE);
-      data.scheduledDate = cancunDate;
+      // Convert FROM Cancun local time TO UTC
+      const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
+      data.scheduledDate = utcDate;
     }
     
     createMaintenanceMutation.mutate(data);
