@@ -362,6 +362,7 @@ export const externalTicketStatusEnum = pgEnum("external_ticket_status", [
   "in_progress",  // En progreso
   "resolved",     // Resuelto
   "closed",       // Cerrado
+  "on_hold",      // En espera
 ]);
 
 export const externalTicketPriorityEnum = pgEnum("external_ticket_priority", [
@@ -369,6 +370,22 @@ export const externalTicketPriorityEnum = pgEnum("external_ticket_priority", [
   "medium",       // Media
   "high",         // Alta
   "urgent",       // Urgente
+]);
+
+export const maintenanceUpdateTypeEnum = pgEnum("maintenance_update_type", [
+  "comment",          // Comentario general
+  "status_change",    // Cambio de estado
+  "assignment",       // Asignación de trabajador
+  "cost_update",      // Actualización de costo
+  "schedule_change",  // Cambio de programación
+  "completion",       // Nota de completación
+]);
+
+export const maintenancePhotoPhaseEnum = pgEnum("maintenance_photo_phase", [
+  "before",   // Antes del trabajo
+  "during",   // Durante el trabajo
+  "after",    // Después del trabajo
+  "other",    // Otra
 ]);
 
 export const financialTransactionDirectionEnum = pgEnum("financial_transaction_direction", [
@@ -5042,9 +5059,14 @@ export const externalMaintenanceTickets = pgTable("external_maintenance_tickets"
   assignedTo: varchar("assigned_to").references(() => users.id), // A quién está asignado
   estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }), // Costo estimado
   actualCost: decimal("actual_cost", { precision: 10, scale: 2 }), // Costo real
-  scheduledDate: timestamp("scheduled_date"), // Fecha programada para resolver
+  scheduledDate: timestamp("scheduled_date"), // Fecha programada para resolver (deprecated - usar scheduledWindowStart/End)
+  scheduledWindowStart: timestamp("scheduled_window_start"), // Inicio de ventana de programación
+  scheduledWindowEnd: timestamp("scheduled_window_end"), // Fin de ventana de programación
   resolvedDate: timestamp("resolved_date"), // Fecha de resolución
-  photos: text("photos").array().default(sql`ARRAY[]::text[]`), // URLs de fotos
+  completionNotes: text("completion_notes"), // Notas de completación
+  closedBy: varchar("closed_by").references(() => users.id), // Usuario que cerró el ticket
+  closedAt: timestamp("closed_at"), // Fecha de cierre
+  photos: text("photos").array().default(sql`ARRAY[]::text[]`), // URLs de fotos (deprecated - usar externalMaintenancePhotos)
   notes: text("notes"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -5057,6 +5079,7 @@ export const externalMaintenanceTickets = pgTable("external_maintenance_tickets"
   index("idx_external_tickets_priority").on(table.priority),
   index("idx_external_tickets_assigned").on(table.assignedTo),
   index("idx_external_tickets_scheduled").on(table.scheduledDate),
+  index("idx_external_tickets_scheduled_window").on(table.scheduledWindowStart),
 ]);
 
 export const insertExternalMaintenanceTicketSchema = createInsertSchema(externalMaintenanceTickets).omit({
@@ -5067,6 +5090,54 @@ export const insertExternalMaintenanceTicketSchema = createInsertSchema(external
 
 export type InsertExternalMaintenanceTicket = z.infer<typeof insertExternalMaintenanceTicketSchema>;
 export type ExternalMaintenanceTicket = typeof externalMaintenanceTickets.$inferSelect;
+
+// External Maintenance Updates - Actualizaciones y seguimiento de tickets de mantenimiento
+export const externalMaintenanceUpdates = pgTable("external_maintenance_updates", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  ticketId: varchar("ticket_id").notNull().references(() => externalMaintenanceTickets.id, { onDelete: "cascade" }),
+  type: maintenanceUpdateTypeEnum("type").notNull(), // comment, status_change, assignment, etc
+  notes: text("notes").notNull(), // Contenido de la actualización
+  statusSnapshot: externalTicketStatusEnum("status_snapshot"), // Estado del ticket en este momento
+  prioritySnapshot: externalTicketPriorityEnum("priority_snapshot"), // Prioridad en este momento
+  assignedToSnapshot: varchar("assigned_to_snapshot"), // Usuario asignado en este momento
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Quien creó la actualización
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_maintenance_updates_ticket").on(table.ticketId),
+  index("idx_maintenance_updates_created").on(table.createdAt),
+]);
+
+export const insertExternalMaintenanceUpdateSchema = createInsertSchema(externalMaintenanceUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExternalMaintenanceUpdate = z.infer<typeof insertExternalMaintenanceUpdateSchema>;
+export type ExternalMaintenanceUpdate = typeof externalMaintenanceUpdates.$inferSelect;
+
+// External Maintenance Photos - Fotos de tickets de mantenimiento
+export const externalMaintenancePhotos = pgTable("external_maintenance_photos", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  ticketId: varchar("ticket_id").notNull().references(() => externalMaintenanceTickets.id, { onDelete: "cascade" }),
+  updateId: varchar("update_id").references(() => externalMaintenanceUpdates.id, { onDelete: "set null" }), // Opcional: asociar con una actualización específica
+  phase: maintenancePhotoPhaseEnum("phase").notNull().default("other"), // before, during, after, other
+  storageKey: text("storage_key").notNull(), // Clave del archivo en object storage
+  caption: text("caption"), // Descripción de la foto
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id), // Quien subió la foto
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_maintenance_photos_ticket").on(table.ticketId),
+  index("idx_maintenance_photos_update").on(table.updateId),
+  index("idx_maintenance_photos_phase").on(table.phase),
+]);
+
+export const insertExternalMaintenancePhotoSchema = createInsertSchema(externalMaintenancePhotos).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertExternalMaintenancePhoto = z.infer<typeof insertExternalMaintenancePhotoSchema>;
+export type ExternalMaintenancePhoto = typeof externalMaintenancePhotos.$inferSelect;
 
 // External Condominiums - Condominios gestionados por agencias externas
 export const externalCondominiums = pgTable("external_condominiums", {
@@ -5534,5 +5605,45 @@ export const externalWorkerAssignmentsRelations = relations(externalWorkerAssign
   unit: one(externalUnits, {
     fields: [externalWorkerAssignments.unitId],
     references: [externalUnits.id],
+  }),
+}));
+
+export const externalMaintenanceTicketsRelations = relations(externalMaintenanceTickets, ({ one, many }) => ({
+  agency: one(externalAgencies, {
+    fields: [externalMaintenanceTickets.agencyId],
+    references: [externalAgencies.id],
+  }),
+  unit: one(externalUnits, {
+    fields: [externalMaintenanceTickets.unitId],
+    references: [externalUnits.id],
+  }),
+  updates: many(externalMaintenanceUpdates),
+  photos: many(externalMaintenancePhotos),
+}));
+
+export const externalMaintenanceUpdatesRelations = relations(externalMaintenanceUpdates, ({ one, many }) => ({
+  ticket: one(externalMaintenanceTickets, {
+    fields: [externalMaintenanceUpdates.ticketId],
+    references: [externalMaintenanceTickets.id],
+  }),
+  createdByUser: one(users, {
+    fields: [externalMaintenanceUpdates.createdBy],
+    references: [users.id],
+  }),
+  photos: many(externalMaintenancePhotos),
+}));
+
+export const externalMaintenancePhotosRelations = relations(externalMaintenancePhotos, ({ one }) => ({
+  ticket: one(externalMaintenanceTickets, {
+    fields: [externalMaintenancePhotos.ticketId],
+    references: [externalMaintenanceTickets.id],
+  }),
+  update: one(externalMaintenanceUpdates, {
+    fields: [externalMaintenancePhotos.updateId],
+    references: [externalMaintenanceUpdates.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [externalMaintenancePhotos.uploadedBy],
+    references: [users.id],
   }),
 }));
