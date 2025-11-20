@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Plus, Edit, Trash2, Calendar, DollarSign, FileText, Download, ExternalLink, CheckCircle2, Home, Building2, PawPrint, Users, IdCard } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Calendar, DollarSign, FileText, Download, ExternalLink, CheckCircle2, Home, Building2, PawPrint, Users, IdCard, Wrench, MessageSquare, AlertCircle, Info, Clock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,9 +29,12 @@ import type {
   ExternalPaymentSchedule,
   ExternalPayment,
   InsertExternalPaymentSchedule,
-  ExternalRentalTenant
+  ExternalRentalTenant,
+  ExternalMaintenanceTicket,
+  ExternalRentalNote,
+  InsertExternalRentalNote
 } from "@shared/schema";
-import { insertExternalPaymentScheduleSchema } from "@shared/schema";
+import { insertExternalPaymentScheduleSchema, insertExternalRentalNoteSchema } from "@shared/schema";
 
 type ScheduleFormData = z.infer<typeof insertExternalPaymentScheduleSchema>;
 
@@ -87,6 +90,27 @@ const rentalPurposeTranslations = {
   sublease: { es: "Para Subarrendar", en: "For Sublease" },
 };
 
+const noteTypeTranslations = {
+  general: { es: "General", en: "General" },
+  incident: { es: "Incidencia", en: "Incident" },
+  reminder: { es: "Recordatorio", en: "Reminder" },
+};
+
+const noteSeverityTranslations = {
+  info: { es: "Informativa", en: "Info" },
+  low: { es: "Baja", en: "Low" },
+  medium: { es: "Media", en: "Medium" },
+  high: { es: "Alta", en: "High" },
+  urgent: { es: "Urgente", en: "Urgent" },
+};
+
+const noteSchema = z.object({
+  noteType: z.enum(["general", "incident", "reminder"]),
+  severity: z.enum(["info", "low", "medium", "high", "urgent"]),
+  content: z.string().min(1, "Content is required"),
+  attachmentUrls: z.array(z.string()).optional(),
+});
+
 export default function ExternalRentalContractDetail() {
   const { id } = useParams();
   const [, navigate] = useLocation();
@@ -102,6 +126,7 @@ export default function ExternalRentalContractDetail() {
   const [showPetPhotoDialog, setShowPetPhotoDialog] = useState(false);
   const [showTenantIdDialog, setShowTenantIdDialog] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<ExternalRentalTenant | null>(null);
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
 
   const { data: contract, isLoading: contractLoading } = useQuery<ExternalRentalContract>({
     queryKey: [`/api/external-rental-contracts/${id}`],
@@ -130,6 +155,16 @@ export default function ExternalRentalContractDetail() {
       if (!response.ok) throw new Error("Failed to fetch tenants");
       return response.json();
     },
+    enabled: !!id,
+  });
+
+  const { data: maintenanceTickets = [], isLoading: maintenanceLoading } = useQuery<ExternalMaintenanceTicket[]>({
+    queryKey: [`/api/external-rental-contracts/${id}/maintenance-tickets`],
+    enabled: !!id,
+  });
+
+  const { data: notes = [], isLoading: notesLoading } = useQuery<ExternalRentalNote[]>({
+    queryKey: [`/api/external-rental-contracts/${id}/notes`],
     enabled: !!id,
   });
 
@@ -166,6 +201,16 @@ export default function ExternalRentalContractDetail() {
       rentalPurpose: "living",
       endDate: new Date(),
       notes: "",
+    },
+  });
+
+  const noteForm = useForm<z.infer<typeof noteSchema>>({
+    resolver: zodResolver(noteSchema),
+    defaultValues: {
+      noteType: "general",
+      severity: "info",
+      content: "",
+      attachmentUrls: [],
     },
   });
 
@@ -240,17 +285,42 @@ export default function ExternalRentalContractDetail() {
     },
   });
 
-  const generatePaymentsMutation = useMutation({
-    mutationFn: async ({ contractId, monthsAhead }: { contractId: string, monthsAhead: number }) => {
-      return await apiRequest('POST', `/api/external-payment-schedules/generate-payments/${contractId}`, { monthsAhead });
+  const createNoteMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof noteSchema>) => {
+      if (!id) throw new Error("Contract ID is required");
+      return await apiRequest('POST', `/api/external-rental-contracts/${id}/notes`, {
+        ...data,
+        contractId: id,
+      });
     },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/external-payments?contractId=${id}`] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}/notes`] });
+      setShowNoteDialog(false);
+      noteForm.reset();
       toast({
         title: language === "es" ? "Éxito" : "Success",
-        description: language === "es" 
-          ? `Se generaron ${data.generated} pagos exitosamente` 
-          : `${data.generated} payments generated successfully`,
+        description: language === "es" ? "La nota se creó exitosamente" : "Note created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "Error al crear la nota" : "Error creating note"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      if (!id) throw new Error("Contract ID is required");
+      return await apiRequest('DELETE', `/api/external-rental-contracts/${id}/notes/${noteId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/external-rental-contracts/${id}/notes`] });
+      toast({
+        title: language === "es" ? "Eliminado" : "Deleted",
+        description: language === "es" ? "La nota se eliminó exitosamente" : "Note deleted successfully",
       });
     },
   });
@@ -744,106 +814,157 @@ export default function ExternalRentalContractDetail() {
                       </div>
                     ))}
                   </div>
-                  
-                  <div className="mt-4 pt-4 border-t sticky bottom-0 bg-card">
-                    <Button
-                      onClick={() => generatePaymentsMutation.mutate({ contractId: id!, monthsAhead: 3 })}
-                      disabled={generatePaymentsMutation.isPending || isLoadingAuth || !user}
-                      variant="outline"
-                      className="w-full"
-                      data-testid="button-generate-payments"
-                    >
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      {generatePaymentsMutation.isPending
-                        ? (language === "es" ? "Generando..." : "Generating...")
-                        : (language === "es" ? "Generar Pagos (3 meses)" : "Generate Payments (3 months)")
-                      }
-                    </Button>
-                  </div>
                 </>
               )}
             </CardContent>
           </Card>
 
-          {/* Generated Payments */}
+          {/* Maintenance History */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                <DollarSign className="inline h-5 w-5 mr-2" />
-                {language === "es" ? "Pagos Generados" : "Generated Payments"}
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span>
+                  <Wrench className="inline h-5 w-5 mr-2" />
+                  {language === "es" ? "Historial de Mantenimiento" : "Maintenance History"}
+                </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="max-h-[500px] overflow-y-auto">
-              {paymentsLoading ? (
+            <CardContent className="max-h-[400px] overflow-y-auto">
+              {maintenanceLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
-              ) : !payments || payments.length === 0 ? (
+              ) : !maintenanceTickets || maintenanceTickets.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  {language === "es" ? "No hay pagos generados" : "No payments generated"}
+                  {language === "es" ? "No hay tickets de mantenimiento" : "No maintenance tickets"}
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {payments.map((payment) => (
+                <div className="space-y-3">
+                  {maintenanceTickets.map((ticket) => (
                     <div 
-                      key={payment.id}
-                      className="flex items-center justify-between p-3 border rounded-md hover-elevate"
-                      data-testid={`payment-item-${payment.id}`}
+                      key={ticket.id}
+                      className="p-3 border rounded-md hover-elevate cursor-pointer"
+                      onClick={() => navigate(`/external/maintenance/${ticket.id}`)}
+                      data-testid={`maintenance-ticket-${ticket.id}`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="text-xs" data-testid={`badge-payment-type-${payment.id}`}>
-                            {serviceTypeTranslations[payment.serviceType][language]}
-                          </Badge>
-                          <Badge 
-                            variant={
-                              payment.status === 'paid' ? 'default' : 
-                              payment.status === 'overdue' ? 'destructive' : 
-                              'secondary'
-                            }
-                            className="text-xs"
-                            data-testid={`badge-payment-status-${payment.id}`}
-                          >
-                            {statusTranslations[payment.status][language]}
-                          </Badge>
-                        </div>
-                        <p className="text-sm mt-1 font-semibold" data-testid={`text-payment-amount-${payment.id}`}>
-                          ${Number(payment.amount).toLocaleString()} {payment.currency}
-                        </p>
-                        <p className="text-xs text-muted-foreground" data-testid={`text-payment-due-${payment.id}`}>
-                          {format(new Date(payment.dueDate), "MMM d, yyyy", { locale: language === "es" ? es : enUS })}
-                        </p>
-                        {payment.status === 'paid' && payment.paymentMethod && (
-                          <p className="text-xs text-muted-foreground mt-1" data-testid={`text-payment-method-${payment.id}`}>
-                            {paymentMethodTranslations[payment.paymentMethod as keyof typeof paymentMethodTranslations]?.[language] || payment.paymentMethod}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge 
+                              variant={
+                                ticket.status === 'resolved' ? 'default' : 
+                                ticket.status === 'in_progress' ? 'secondary' : 
+                                'outline'
+                              }
+                              className="text-xs"
+                            >
+                              {ticket.status === 'resolved' ? (language === "es" ? "Resuelto" : "Resolved") :
+                               ticket.status === 'in_progress' ? (language === "es" ? "En Progreso" : "In Progress") :
+                               language === "es" ? "Abierto" : "Open"}
+                            </Badge>
+                            {ticket.priority && (
+                              <Badge 
+                                variant={ticket.priority === 'urgent' ? 'destructive' : 'outline'}
+                                className="text-xs"
+                              >
+                                {ticket.priority}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm mt-1 font-semibold line-clamp-1">
+                            {ticket.description}
                           </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(ticket.createdAt), "MMM d, yyyy", { locale: language === "es" ? es : enUS })}
+                          </div>
+                        </div>
+                        {ticket.estimatedCost && (
+                          <div className="text-sm font-semibold text-right">
+                            ${Number(ticket.estimatedCost).toLocaleString()}
+                          </div>
                         )}
                       </div>
-                      <div className="ml-3">
-                        {payment.status === 'pending' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRegisterPayment(payment)}
-                            disabled={isLoadingAuth || !user}
-                            data-testid={`button-register-payment-${payment.id}`}
-                          >
-                            {language === "es" ? "Registrar" : "Register"}
-                          </Button>
-                        )}
-                        {payment.status === 'paid' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleRegisterPayment(payment)}
-                            disabled={isLoadingAuth || !user}
-                            data-testid={`button-edit-payment-${payment.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Notes & Incidents */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span>
+                  <MessageSquare className="inline h-5 w-5 mr-2" />
+                  {language === "es" ? "Notas e Incidencias" : "Notes & Incidents"}
+                </span>
+                <Button 
+                  size="sm" 
+                  onClick={() => setShowNoteDialog(true)}
+                  disabled={isLoadingAuth || !user}
+                  data-testid="button-add-note"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {language === "es" ? "Agregar" : "Add"}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-[400px] overflow-y-auto">
+              {notesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : !notes || notes.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  {language === "es" ? "No hay notas registradas" : "No notes registered"}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {notes.map((note) => (
+                    <div 
+                      key={note.id}
+                      className="p-3 border rounded-md hover-elevate"
+                      data-testid={`note-item-${note.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="text-xs">
+                              {noteTypeTranslations[note.noteType][language]}
+                            </Badge>
+                            <Badge 
+                              variant={
+                                note.severity === 'urgent' ? 'destructive' : 
+                                note.severity === 'high' ? 'secondary' : 
+                                'outline'
+                              }
+                              className="text-xs"
+                            >
+                              {noteSeverityTranslations[note.severity][language]}
+                            </Badge>
+                          </div>
+                          <p className="text-sm mt-2 whitespace-pre-wrap">
+                            {note.content}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(note.createdAt), "MMM d, yyyy HH:mm", { locale: language === "es" ? es : enUS })}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => deleteNoteMutation.mutate(note.id)}
+                          disabled={deleteNoteMutation.isPending || isLoadingAuth || !user}
+                          data-testid={`button-delete-note-${note.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1375,6 +1496,117 @@ export default function ExternalRentalContractDetail() {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Note Dialog */}
+      <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
+        <DialogContent data-testid="dialog-note-form">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Agregar Nota" : "Add Note"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Registre una nota, incidencia o recordatorio relacionado con este contrato" 
+                : "Register a note, incident, or reminder related to this contract"
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...noteForm}>
+            <form onSubmit={noteForm.handleSubmit((data) => createNoteMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={noteForm.control}
+                name="noteType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Tipo" : "Type"}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-note-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="general">{noteTypeTranslations.general[language]}</SelectItem>
+                        <SelectItem value="incident">{noteTypeTranslations.incident[language]}</SelectItem>
+                        <SelectItem value="reminder">{noteTypeTranslations.reminder[language]}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={noteForm.control}
+                name="severity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Severidad" : "Severity"}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-note-severity">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="info">{noteSeverityTranslations.info[language]}</SelectItem>
+                        <SelectItem value="low">{noteSeverityTranslations.low[language]}</SelectItem>
+                        <SelectItem value="medium">{noteSeverityTranslations.medium[language]}</SelectItem>
+                        <SelectItem value="high">{noteSeverityTranslations.high[language]}</SelectItem>
+                        <SelectItem value="urgent">{noteSeverityTranslations.urgent[language]}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={noteForm.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Contenido" : "Content"}</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        placeholder={language === "es" ? "Describa la nota o incidencia..." : "Describe the note or incident..."}
+                        className="min-h-[100px] resize-none"
+                        data-testid="textarea-note-content" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowNoteDialog(false);
+                    noteForm.reset();
+                  }}
+                  data-testid="button-cancel-note"
+                >
+                  {language === "es" ? "Cancelar" : "Cancel"}
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createNoteMutation.isPending}
+                  data-testid="button-save-note"
+                >
+                  {createNoteMutation.isPending
+                    ? (language === "es" ? "Guardando..." : "Saving...")
+                    : (language === "es" ? "Guardar" : "Save")
+                  }
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
