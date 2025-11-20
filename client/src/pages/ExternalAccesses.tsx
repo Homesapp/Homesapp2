@@ -605,23 +605,23 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
 
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-between cursor-pointer hover-elevate rounded-md p-2 -m-2" data-testid="button-toggle-filters">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  <div>
-                    <CardTitle className="text-lg">
+              <div className="flex items-center justify-between cursor-pointer" data-testid="button-toggle-filters">
+                <div className="flex items-center gap-3">
+                  <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="space-y-1">
+                    <CardTitle className="text-base font-semibold leading-none">
                       {language === "es" ? "Filtros" : "Filters"}
                     </CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardDescription className="text-sm leading-none">
                       {language === "es" 
                         ? "Filtra por condominio, unidad o tipo de acceso"
                         : "Filter by condominium, unit or access type"}
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {selectedAccesses.size > 0 && (
                     <Button
                       onClick={(e) => {
@@ -641,9 +641,9 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                     </Button>
                   )}
                   {isFiltersOpen ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   )}
                 </div>
               </div>
