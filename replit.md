@@ -44,6 +44,17 @@ The platform implements enterprise-grade security measures compliant with 2025 s
 
 ## Recent Changes
 
+**2025-01-20**: Fixed data normalization and event display in ExternalDashboard and ExternalCalendar:
+- **Consistent contract normalization**: Updated normalization to preserve unit and condominium metadata from API responses, handling both nested `{ contract, unit, condominium }` and flat contract structures with fallback lookups
+- **Fixed event displays**: Corrected all contract property accesses to use `item.contract.property` pattern consistently throughout both pages
+- **Enhanced payment events**: Added tenant names to payment event subtitles using format "Condominium - Unit (Tenant Name)" for better context
+- **Improved event formatting**: Standardized location display to "Condominium - Unit" order across all event types (payments, tickets, contracts)
+- **Fixed statistics**: Separated event counting by type to avoid mixing different data structures, ensuring accurate monthly event totals
+- **Better icon alignment**: Changed from `items-start` to `items-center` for proper vertical alignment in upcoming events list
+- **Corrected navigation**: Updated owner portfolio link to point to `/external/owners/portfolio` consolidated view
+- Files: client/src/pages/ExternalDashboard.tsx, client/src/pages/ExternalCalendar.tsx
+- Architect-reviewed and approved for production readiness
+
 **2025-01-20**: UI/UX improvements in ExternalCondominiums page:
 - **Fixed active rental counter**: Normalized nested contract structure `{ contract: ... }` to correctly count active rentals in both condominiums list and units list
 - **Improved header layout**: Moved "Agregar Condominio" and "Agregar Unidad" buttons to headers alongside titles for cleaner, more compact design
