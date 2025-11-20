@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, DollarSign, Wrench, Calendar as CalIcon, User, Clock, AlertCircle, FileText, Filter, Eye, EyeOff } from "lucide-react";
+import { Calendar as CalendarIcon, DollarSign, Wrench, Calendar as CalIcon, User, Clock, AlertCircle, FileText, Filter, Eye, EyeOff, ChevronDown, ChevronUp, Home } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,19 +9,26 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { format, isSameDay, isWithinInterval, addDays, startOfDay } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import type { ExternalPayment, ExternalMaintenanceTicket, SelectUser, ExternalRentalContract } from "@shared/schema";
 
-type SelectedEvent = {
+type EventData = {
   type: 'payment' | 'ticket' | 'contract';
+  title: string;
+  time: string;
+  status: string;
+  priority?: string;
   data: ExternalPayment | ExternalMaintenanceTicket | ExternalRentalContract;
+  condominium: string;
+  unitNumber: string;
 };
 
 export default function ExternalCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
+  const [expandedEventIndex, setExpandedEventIndex] = useState<number | null>(null);
   const [selectedCondominium, setSelectedCondominium] = useState<string>("all");
   const [showPayments, setShowPayments] = useState(true);
   const [showTickets, setShowTickets] = useState(true);
@@ -62,6 +69,17 @@ export default function ExternalCalendar() {
   const { data: users = [] } = useQuery<SelectUser[]>({
     queryKey: ["/api/external-agency-users"],
   });
+
+  // Helper function to get condominium name from unitId
+  const getCondominiumInfo = (unitId: string | undefined) => {
+    if (!unitId) return { condominium: '', unitNumber: '' };
+    const unit = units.find(u => u.id === unitId);
+    if (!unit) return { condominium: '', unitNumber: '' };
+    return {
+      condominium: unit.condominium?.name || (language === "es" ? "Sin condominio" : "No condominium"),
+      unitNumber: unit.unitNumber || ''
+    };
+  };
 
   // Filter payments and tickets by condominium
   const filteredPayments = useMemo(() => {
@@ -123,37 +141,39 @@ export default function ExternalCalendar() {
   }, [filteredPayments, filteredTickets, filteredContracts, showPayments, showTickets, showContracts]);
 
   // Get events for selected date
-  const eventsForDate = useMemo(() => {
+  const eventsForDate = useMemo((): EventData[] => {
     if (!selectedDate) return [];
 
     const dayPayments = showPayments ? filteredPayments
       .filter((p) => isSameDay(new Date(p.dueDate), selectedDate))
       .map((p) => {
-        const unit = units.find(u => u.id === p.unitId);
-        const location = unit ? `${unit.condominium?.name || ''} - ${unit.unitNumber}` : '';
+        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
         return {
           type: 'payment' as const,
           title: language === "es" 
-            ? `Pago: ${p.serviceType} - ${location}`
-            : `Payment: ${p.serviceType} - ${location}`,
+            ? `Pago: ${p.serviceType}`
+            : `Payment: ${p.serviceType}`,
           time: format(new Date(p.dueDate), 'HH:mm'),
           status: p.status,
           data: p,
+          condominium,
+          unitNumber,
         };
       }) : [];
 
     const dayTickets = showTickets ? filteredTickets
       .filter((t) => t.scheduledDate && isSameDay(new Date(t.scheduledDate), selectedDate))
       .map((t) => {
-        const unit = units.find(u => u.id === t.unitId);
-        const location = unit ? `${unit.condominium?.name || ''} - ${unit.unitNumber}` : '';
+        const { condominium, unitNumber } = getCondominiumInfo(t.unitId);
         return {
           type: 'ticket' as const,
-          title: `${t.title} - ${location}`,
+          title: t.title,
           time: t.scheduledDate ? format(new Date(t.scheduledDate), 'HH:mm') : '--:--',
           status: t.status,
           priority: t.priority,
           data: t,
+          condominium,
+          unitNumber,
         };
       }) : [];
 
@@ -161,16 +181,17 @@ export default function ExternalCalendar() {
     const dayContracts = showContracts ? filteredContracts
       .filter((c: any) => c.startDate && isSameDay(new Date(c.startDate), selectedDate))
       .map((c: any) => {
-        const unit = units.find(u => u.id === c.unitId);
-        const location = unit ? `${unit.condominium?.name || ''} - ${unit.unitNumber}` : '';
+        const { condominium, unitNumber } = getCondominiumInfo(c.unitId);
         return {
           type: 'contract' as const,
           title: language === "es" 
-            ? `Inicio de Renta: ${c.tenantName} - ${location}`
-            : `Rental Start: ${c.tenantName} - ${location}`,
+            ? `Inicio de Renta: ${c.tenantName}`
+            : `Rental Start: ${c.tenantName}`,
           time: '00:00',
           status: c.status,
           data: c,
+          condominium,
+          unitNumber,
         };
       }) : [];
 
@@ -235,154 +256,133 @@ export default function ExternalCalendar() {
   }, [filteredPayments, filteredTickets, filteredContracts, showPayments, showTickets, showContracts]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="text-calendar-title">
-            <CalendarIcon className="h-8 w-8" />
+          <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-calendar-title">
+            <CalendarIcon className="h-6 w-6" />
             {language === "es" ? "Calendario" : "Calendar"}
           </h1>
-          <p className="text-muted-foreground mt-2">
-            {language === "es" 
-              ? "Visualiza pagos, mantenimientos y eventos importantes" 
-              : "View payments, maintenance, and important events"}
-          </p>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{language === "es" ? "Filtros" : "Filters"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Condominium filter */}
-            <div className="flex-1 space-y-2">
-              <Label>{language === "es" ? "Condominio" : "Condominium"}</Label>
-              <Select value={selectedCondominium} onValueChange={setSelectedCondominium}>
-                <SelectTrigger data-testid="select-condominium-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    {language === "es" ? "Todos los condominios" : "All condominiums"}
-                  </SelectItem>
-                  {condominiums.map((condo) => (
-                    <SelectItem key={condo.id} value={condo.id}>
-                      {condo.name}
+      {/* Compact Filters and Stats Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Filters Card */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Condominium filter */}
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs">{language === "es" ? "Condominio" : "Condominium"}</Label>
+                <Select value={selectedCondominium} onValueChange={setSelectedCondominium}>
+                  <SelectTrigger data-testid="select-condominium-filter" className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {language === "es" ? "Todos" : "All"}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    {condominiums.map((condo) => (
+                      <SelectItem key={condo.id} value={condo.id}>
+                        {condo.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Event type filters */}
-            <div className="flex-1 space-y-3">
-              <Label>{language === "es" ? "Tipos de Eventos" : "Event Types"}</Label>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="filter-payments"
-                    checked={showPayments}
-                    onCheckedChange={setShowPayments}
-                    data-testid="checkbox-filter-payments"
-                  />
-                  <Label htmlFor="filter-payments" className="flex items-center gap-2 cursor-pointer">
-                    <div className="h-3 w-3 rounded-full bg-green-500" />
-                    {language === "es" ? "Pagos" : "Payments"}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="filter-tickets"
-                    checked={showTickets}
-                    onCheckedChange={setShowTickets}
-                    data-testid="checkbox-filter-tickets"
-                  />
-                  <Label htmlFor="filter-tickets" className="flex items-center gap-2 cursor-pointer">
-                    <div className="h-3 w-3 rounded-full bg-blue-500" />
-                    {language === "es" ? "Mantenimientos" : "Maintenance"}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="filter-contracts"
-                    checked={showContracts}
-                    onCheckedChange={setShowContracts}
-                    data-testid="checkbox-filter-contracts"
-                  />
-                  <Label htmlFor="filter-contracts" className="flex items-center gap-2 cursor-pointer">
-                    <div className="h-3 w-3 rounded-full bg-purple-500" />
-                    {language === "es" ? "Contratos" : "Contracts"}
-                  </Label>
+              {/* Event type filters */}
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs">{language === "es" ? "Mostrar" : "Show"}</Label>
+                <div className="flex gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="filter-payments"
+                      checked={showPayments}
+                      onCheckedChange={setShowPayments}
+                      data-testid="checkbox-filter-payments"
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="filter-payments" className="flex items-center gap-1.5 cursor-pointer text-sm">
+                      <div className="h-2 w-2 rounded-full bg-green-500" />
+                      <span className="text-xs">{language === "es" ? "Pagos" : "Payments"}</span>
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="filter-tickets"
+                      checked={showTickets}
+                      onCheckedChange={setShowTickets}
+                      data-testid="checkbox-filter-tickets"
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="filter-tickets" className="flex items-center gap-1.5 cursor-pointer text-sm">
+                      <div className="h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="text-xs">{language === "es" ? "Mant." : "Maint."}</span>
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="filter-contracts"
+                      checked={showContracts}
+                      onCheckedChange={setShowContracts}
+                      data-testid="checkbox-filter-contracts"
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="filter-contracts" className="flex items-center gap-1.5 cursor-pointer text-sm">
+                      <div className="h-2 w-2 rounded-full bg-purple-500" />
+                      <span className="text-xs">{language === "es" ? "Rentas" : "Rentals"}</span>
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Pagos Pendientes" : "Pending Payments"}
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-pending-payments">{stats.pendingPayments}</div>
-            <p className="text-xs text-muted-foreground">
-              {language === "es" ? "Próximos 30 días" : "Next 30 days"}
-            </p>
           </CardContent>
         </Card>
 
+        {/* Stats Card */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Mantenimientos" : "Maintenance"}
-            </CardTitle>
-            <Wrench className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-scheduled-tickets">{stats.scheduledTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              {language === "es" ? "Programados" : "Scheduled"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Eventos" : "Events"}
-            </CardTitle>
-            <CalIcon className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-month-events">{stats.thisMonthEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              {language === "es" ? "Este mes" : "This month"}
-            </p>
+          <CardContent className="pt-4 pb-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600" data-testid="text-pending-payments">{stats.pendingPayments}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {language === "es" ? "Pagos 30d" : "Payments 30d"}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600" data-testid="text-scheduled-tickets">{stats.scheduledTickets}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {language === "es" ? "Mant. prog." : "Maint. sched."}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600" data-testid="text-month-events">{stats.thisMonthEvents}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {language === "es" ? "Este mes" : "This month"}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{language === "es" ? "Calendario" : "Calendar"}</CardTitle>
+      {/* Main Calendar and Events - Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Calendar Column */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{language === "es" ? "Calendario" : "Calendar"}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
               locale={language === "es" ? es : enUS}
-              className="rounded-md border [&_.rdp-day_button]:relative"
+              className="rounded-md border w-full [&_.rdp-day_button]:relative"
               data-testid="calendar-main"
               modifiers={{
                 hasPayments: datesWithPayments,
@@ -450,9 +450,10 @@ export default function ExternalCalendar() {
           </CardContent>
         </Card>
 
+        {/* Events Column with Inline Expansion */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
               {selectedDate
                 ? format(selectedDate, language === "es" ? "d 'de' MMMM, yyyy" : "MMMM d, yyyy", { 
                     locale: language === "es" ? es : enUS 
@@ -460,39 +461,232 @@ export default function ExternalCalendar() {
                 : language === "es" ? "Selecciona una fecha" : "Select a date"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="p-3 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2">
               {eventsForDate.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground text-center py-8">
                   {language === "es" 
                     ? "No hay eventos para esta fecha" 
                     : "No events for this date"}
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {eventsForDate.map((event, idx) => (
-                    <div
+                    <Collapsible
                       key={idx}
-                      className="p-3 border rounded-md hover-elevate cursor-pointer"
-                      onClick={() => setSelectedEvent({ type: event.type, data: event.data })}
-                      data-testid={`event-${event.type}-${idx}`}
+                      open={expandedEventIndex === idx}
+                      onOpenChange={() => setExpandedEventIndex(expandedEventIndex === idx ? null : idx)}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">
-                          {event.type === 'payment' ? (
-                            <div className="h-2 w-2 rounded-full bg-green-500" />
-                          ) : event.type === 'ticket' ? (
-                            <div className="h-2 w-2 rounded-full bg-blue-500" />
-                          ) : (
-                            <div className="h-2 w-2 rounded-full bg-purple-500" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{event.title}</p>
-                          <p className="text-xs text-muted-foreground">{event.time}</p>
-                        </div>
+                      <div className="border rounded-md">
+                        <CollapsibleTrigger asChild>
+                          <div
+                            className="p-2.5 hover-elevate cursor-pointer w-full"
+                            data-testid={`event-${event.type}-${idx}`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className="mt-1">
+                                {event.type === 'payment' ? (
+                                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                                ) : event.type === 'ticket' ? (
+                                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                                ) : (
+                                  <div className="h-2 w-2 rounded-full bg-purple-500" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-medium text-sm truncate">{event.title}</p>
+                                  {expandedEventIndex === idx ? (
+                                    <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <p className="text-xs text-muted-foreground">{event.time}</p>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <p className="text-xs text-muted-foreground truncate">{event.condominium}</p>
+                                  {event.unitNumber && (
+                                    <>
+                                      <span className="text-xs text-muted-foreground">•</span>
+                                      <p className="text-xs text-muted-foreground">{event.unitNumber}</p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CollapsibleTrigger>
+                        
+                        <CollapsibleContent>
+                          <div className="px-2.5 pb-2.5 pt-1 border-t">
+                            {event.type === 'payment' && (() => {
+                              const payment = event.data as ExternalPayment;
+                              const parsedAmount = payment.amount ? parseFloat(payment.amount) : NaN;
+                              const hasValidAmount = Number.isFinite(parsedAmount);
+
+                              return (
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center justify-between">
+                                    <Badge variant={payment.status === 'paid' ? 'default' : payment.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
+                                      {payment.status}
+                                    </Badge>
+                                    {hasValidAmount && (
+                                      <p className="text-lg font-bold text-green-600">
+                                        ${parsedAmount.toFixed(2)}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5 text-xs">
+                                    <div className="flex items-start gap-2">
+                                      <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div className="min-w-0">
+                                        <p className="font-medium">{language === "es" ? "Unidad" : "Unit"}</p>
+                                        <p className="text-muted-foreground break-words">
+                                          {event.unitNumber} - {event.condominium}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                      <CalIcon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div>
+                                        <p className="font-medium">{language === "es" ? "Vencimiento" : "Due Date"}</p>
+                                        <p className="text-muted-foreground">
+                                          {format(new Date(payment.dueDate), "PPP", { locale: language === "es" ? es : enUS })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {event.type === 'ticket' && (() => {
+                              const ticket = event.data as ExternalMaintenanceTicket;
+                              const assignedUser = users.find(u => u.id === ticket.assignedTo);
+
+                              return (
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant={ticket.priority === 'high' ? 'destructive' : ticket.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
+                                      {ticket.priority}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">{ticket.category}</Badge>
+                                    <Badge variant={ticket.status === 'in_progress' ? 'default' : 'secondary'} className="text-xs">
+                                      {ticket.status}
+                                    </Badge>
+                                  </div>
+                                  {ticket.description && (
+                                    <p className="text-xs text-muted-foreground">{ticket.description}</p>
+                                  )}
+                                  <div className="space-y-1.5 text-xs">
+                                    <div className="flex items-start gap-2">
+                                      <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div className="min-w-0">
+                                        <p className="font-medium">{language === "es" ? "Ubicación" : "Location"}</p>
+                                        <p className="text-muted-foreground break-words">
+                                          {event.unitNumber} - {event.condominium}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {ticket.scheduledDate && (
+                                      <div className="flex items-start gap-2">
+                                        <Clock className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                        <div>
+                                          <p className="font-medium">{language === "es" ? "Programado" : "Scheduled"}</p>
+                                          <p className="text-muted-foreground">
+                                            {format(new Date(ticket.scheduledDate), "PPP p", { locale: language === "es" ? es : enUS })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {assignedUser && (
+                                      <div className="flex items-start gap-2">
+                                        <User className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                        <div>
+                                          <p className="font-medium">{language === "es" ? "Trabajador" : "Worker"}</p>
+                                          <p className="text-muted-foreground">
+                                            {assignedUser.name}{assignedUser.maintenanceSpecialty ? ` (${assignedUser.maintenanceSpecialty})` : ''}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {event.type === 'contract' && (() => {
+                              const contract = event.data as ExternalRentalContract;
+                              const parsedRent = contract.monthlyRent ? parseFloat(contract.monthlyRent) : NaN;
+                              const hasValidRent = Number.isFinite(parsedRent);
+
+                              return (
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center justify-between">
+                                    <Badge variant={contract.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                      {contract.status}
+                                    </Badge>
+                                    {contract.rentalPurpose && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {contract.rentalPurpose === 'living' ? (
+                                          <><Home className="h-3 w-3 mr-1" />{language === "es" ? "Vivienda" : "Living"}</>
+                                        ) : (
+                                          <>{language === "es" ? "Subarrendamiento" : "Sublease"}</>
+                                        )}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5 text-xs">
+                                    <div className="flex items-start gap-2">
+                                      <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div className="min-w-0">
+                                        <p className="font-medium">{language === "es" ? "Unidad" : "Unit"}</p>
+                                        <p className="text-muted-foreground break-words">
+                                          {event.unitNumber} - {event.condominium}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                      <DollarSign className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div>
+                                        <p className="font-medium">{language === "es" ? "Renta Mensual" : "Monthly Rent"}</p>
+                                        <p className="text-muted-foreground">
+                                          {hasValidRent 
+                                            ? `${contract.currency || 'MXN'} $${parsedRent.toLocaleString()}`
+                                            : (language === "es" ? "Monto no especificado" : "Amount not specified")
+                                          }
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                      <CalIcon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div>
+                                        <p className="font-medium">{language === "es" ? "Duración" : "Duration"}</p>
+                                        <p className="text-muted-foreground">
+                                          {contract.leaseDurationMonths} {language === "es" ? "meses" : "months"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {contract.startDate && (
+                                      <div className="flex items-start gap-2">
+                                        <CalIcon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                        <div>
+                                          <p className="font-medium">{language === "es" ? "Inicio" : "Start"}</p>
+                                          <p className="text-muted-foreground">
+                                            {format(new Date(contract.startDate), "PPP", { locale: language === "es" ? es : enUS })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </CollapsibleContent>
                       </div>
-                    </div>
+                    </Collapsible>
                   ))}
                 </div>
               )}
@@ -500,213 +694,6 @@ export default function ExternalCalendar() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Event detail dialog */}
-      {selectedEvent && (
-        <Card className="fixed inset-0 z-50 m-4 overflow-y-auto max-h-[calc(100vh-2rem)]" data-testid="card-event-detail">
-          <CardHeader className="sticky top-0 bg-card z-10">
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setSelectedEvent(null)}
-                data-testid="button-close-detail"
-              >
-                ← {language === "es" ? "Volver" : "Back"}
-              </Button>
-              {selectedEvent.type === 'payment' ? (
-                <DollarSign className="h-6 w-6 text-green-600" />
-              ) : selectedEvent.type === 'contract' ? (
-                <CalIcon className="h-6 w-6 text-purple-600" />
-              ) : (
-                <Wrench className="h-6 w-6 text-blue-600" />
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedEvent.type === 'payment' && (() => {
-              const payment = selectedEvent.data as ExternalPayment;
-              const unit = units.find(u => u.id === payment.unitId);
-              const parsedAmount = payment.amount ? parseFloat(payment.amount) : NaN;
-              const hasValidAmount = Number.isFinite(parsedAmount);
-
-              return (
-                <>
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {language === "es" ? "Pago" : "Payment"}: {payment.serviceType}
-                    </h3>
-                    {hasValidAmount && (
-                      <p className="text-2xl font-bold mt-2 text-green-600">
-                        ${parsedAmount.toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                  <Separator />
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={payment.status === 'paid' ? 'default' : payment.status === 'pending' ? 'secondary' : 'destructive'}>
-                        {payment.status}
-                      </Badge>
-                    </div>
-                    {unit && (
-                      <div className="flex items-start gap-2">
-                        <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{language === "es" ? "Unidad" : "Unit"}</p>
-                          <p className="text-muted-foreground">
-                            {unit.unitNumber} - {unit.condominium?.name || ""}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-start gap-2">
-                      <CalIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{language === "es" ? "Fecha de Vencimiento" : "Due Date"}</p>
-                        <p className="text-muted-foreground">
-                          {format(new Date(payment.dueDate), "PPP", { locale: language === "es" ? es : enUS })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-
-            {selectedEvent.type === 'ticket' && (() => {
-              const ticket = selectedEvent.data as ExternalMaintenanceTicket;
-              const unit = units.find(u => u.id === ticket.unitId);
-              const assignedUser = users.find(u => u.id === ticket.assignedTo);
-
-              return (
-                <>
-                  <div>
-                    <h3 className="font-semibold text-lg">{ticket.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{ticket.description}</p>
-                  </div>
-                  <Separator />
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant={ticket.priority === 'high' ? 'destructive' : ticket.priority === 'medium' ? 'default' : 'secondary'}>
-                        {ticket.priority}
-                      </Badge>
-                      <Badge variant="outline">{ticket.category}</Badge>
-                      <Badge variant={ticket.status === 'in_progress' ? 'default' : 'secondary'}>
-                        {ticket.status}
-                      </Badge>
-                    </div>
-                    {unit && (
-                      <div className="flex items-start gap-2">
-                        <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{language === "es" ? "Ubicación" : "Location"}</p>
-                          <p className="text-muted-foreground">
-                            {unit.unitNumber} - {unit.condominium?.name || ""}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {ticket.scheduledDate && (
-                      <div className="flex items-start gap-2">
-                        <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{language === "es" ? "Programado" : "Scheduled"}</p>
-                          <p className="text-muted-foreground">
-                            {format(new Date(ticket.scheduledDate), "PPP p", { locale: language === "es" ? es : enUS })}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {assignedUser && (
-                      <div className="flex items-start gap-2">
-                        <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{language === "es" ? "Trabajador asignado" : "Assigned worker"}</p>
-                          <p className="text-muted-foreground">
-                            {assignedUser.name}{assignedUser.maintenanceSpecialty ? ` (${assignedUser.maintenanceSpecialty})` : ''}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-
-            {selectedEvent.type === 'contract' && (() => {
-              const contract = selectedEvent.data as ExternalRentalContract;
-              const unit = units.find(u => u.id === contract.unitId);
-              const parsedRent = contract.monthlyRent ? parseFloat(contract.monthlyRent) : NaN;
-              const hasValidRent = Number.isFinite(parsedRent);
-
-              return (
-                <>
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {language === "es" ? "Inicio de Contrato" : "Contract Start"}
-                    </h3>
-                    <p className="text-xl font-bold mt-2 text-purple-600">
-                      {contract.tenantName}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
-                        {contract.status}
-                      </Badge>
-                    </div>
-                    {unit && (
-                      <div className="flex items-start gap-2">
-                        <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{language === "es" ? "Unidad" : "Unit"}</p>
-                          <p className="text-muted-foreground">
-                            {unit.unitNumber} - {unit.condominium?.name || ""}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-start gap-2">
-                      <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{language === "es" ? "Renta Mensual" : "Monthly Rent"}</p>
-                        <p className="text-muted-foreground">
-                          {hasValidRent 
-                            ? `${contract.currency || 'MXN'} $${parsedRent.toLocaleString()}`
-                            : (language === "es" ? "Monto no especificado" : "Amount not specified")
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CalIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{language === "es" ? "Duración" : "Duration"}</p>
-                        <p className="text-muted-foreground">
-                          {contract.leaseDurationMonths} {language === "es" ? "meses" : "months"}
-                        </p>
-                      </div>
-                    </div>
-                    {contract.startDate && (
-                      <div className="flex items-start gap-2">
-                        <CalIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{language === "es" ? "Fecha de Inicio" : "Start Date"}</p>
-                          <p className="text-muted-foreground">
-                            {format(new Date(contract.startDate), "PPP", { locale: language === "es" ? es : enUS })}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
