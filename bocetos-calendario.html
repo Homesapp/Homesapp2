@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bocetos - Reorganización Calendario</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .option {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .option h2 {
+      color: #2563eb;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e5e7eb;
+      font-size: 18px;
+    }
+    .mockup {
+      background: #fafafa;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 15px;
+    }
+    .header {
+      background: white;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border: 1px solid #d1d5db;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .stat-card {
+      background: white;
+      padding: 15px 10px;
+      border-radius: 4px;
+      text-align: center;
+      border: 1px solid #d1d5db;
+    }
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2563eb;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .filters {
+      background: white;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border: 1px solid #d1d5db;
+    }
+    .filters-compact {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: 11px;
+    }
+    .filter-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #f3f4f6;
+      border-radius: 3px;
+    }
+    .color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .tabs {
+      background: white;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border: 1px solid #d1d5db;
+      display: flex;
+      gap: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 6px;
+      text-align: center;
+      background: #f3f4f6;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .tab.active {
+      background: #2563eb;
+      color: white;
+    }
+    .content {
+      background: white;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #d1d5db;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+    .unified-bar {
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border: 1px solid #d1d5db;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      font-size: 11px;
+    }
+    .select-box {
+      padding: 6px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 3px;
+      background: #f9fafb;
+      font-size: 11px;
+    }
+    .badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+    .description {
+      margin-top: 12px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+    .pros {
+      color: #059669;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Propuestas de Reorganización - Calendario</h1>
+    
+    <div class="options">
+      <!-- OPCIÓN 1 -->
+      <div class="option">
+        <h2>Opción 1: Dashboard Moderno</h2>
+        <div class="mockup">
+          <div class="header">
+            📅 Calendario
+          </div>
+          
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-number">12</div>
+              <div class="stat-label">Renta 30d</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">5</div>
+              <div class="stat-label">Mant. prog.</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">28</div>
+              <div class="stat-label">Este mes</div>
+            </div>
+          </div>
+          
+          <div class="filters">
+            <div style="margin-bottom: 8px; font-size: 10px; color: #6b7280; font-weight: 500;">Filtros</div>
+            <div style="margin-bottom: 6px;">
+              <select class="select-box" style="width: 100%;">
+                <option>Todos los condominios</option>
+              </select>
+            </div>
+            <div class="filters-compact">
+              <div class="filter-item">
+                <div class="color-dot" style="background: #3b82f6;"></div>
+                <span>Renta</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #eab308;"></div>
+                <span>Servicios</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #22c55e;"></div>
+                <span>Mant.</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #a855f7;"></div>
+                <span>Check in</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #f97316;"></div>
+                <span>Check out</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="tabs">
+            <div class="tab active">Calendario</div>
+            <div class="tab">HOY</div>
+            <div class="tab">Agenda</div>
+          </div>
+          
+          <div class="content">
+            [Vista de Calendario / Lista de Eventos]
+          </div>
+        </div>
+        
+        <div class="description">
+          <div class="pros">✓ Ventajas:</div>
+          • Estadísticas muy visibles arriba<br>
+          • Flujo lógico: Stats → Filtros → Vistas<br>
+          • Métricas destacadas<br>
+          • Orden jerárquico claro
+        </div>
+      </div>
+
+      <!-- OPCIÓN 2 -->
+      <div class="option">
+        <h2>Opción 2: Profesional Compacto</h2>
+        <div class="mockup">
+          <div class="header" style="justify-content: space-between;">
+            <span>📅 Calendario</span>
+            <select class="select-box">
+              <option>Todos</option>
+            </select>
+          </div>
+          
+          <div class="badges" style="padding: 0 12px 10px;">
+            <div class="badge">12 Rentas</div>
+            <div class="badge">5 Mant.</div>
+            <div class="badge">28 Total</div>
+          </div>
+          
+          <div class="unified-bar">
+            <div class="filters-compact">
+              <div class="filter-item">
+                <div class="color-dot" style="background: #3b82f6;"></div>
+                <span>Renta</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #eab308;"></div>
+                <span>Servicios</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #22c55e;"></div>
+                <span>Mant.</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #a855f7;"></div>
+                <span>Check in</span>
+              </div>
+              <div class="filter-item">
+                <div class="color-dot" style="background: #f97316;"></div>
+                <span>Check out</span>
+              </div>
+            </div>
+            <div style="margin-left: auto; display: flex; gap: 4px;">
+              <div class="tab active" style="padding: 4px 12px;">Cal</div>
+              <div class="tab" style="padding: 4px 12px;">HOY</div>
+              <div class="tab" style="padding: 4px 12px;">Agenda</div>
+            </div>
+          </div>
+          
+          <div class="content">
+            [Vista de Calendario / Lista de Eventos]
+          </div>
+        </div>
+        
+        <div class="description">
+          <div class="pros">✓ Ventajas:</div>
+          • Muy compacto, maximiza contenido<br>
+          • Filtros y pestañas en una barra<br>
+          • Stats como badges discretos<br>
+          • Menos espacio vertical usado
+        </div>
+      </div>
+
+      <!-- OPCIÓN 3 -->
+      <div class="option">
+        <h2>Opción 3: Minimalista Integrado</h2>
+        <div class="mockup">
+          <div class="header">
+            📅 Calendario
+          </div>
+          
+          <div class="unified-bar" style="background: #f9fafb;">
+            <select class="select-box">
+              <option>Todos los condominios</option>
+            </select>
+            <div style="border-left: 1px solid #d1d5db; height: 20px;"></div>
+            <div class="filters-compact">
+              <div class="filter-item" style="background: white;">
+                <div class="color-dot" style="background: #3b82f6;"></div>
+                <span>Renta</span>
+              </div>
+              <div class="filter-item" style="background: white;">
+                <div class="color-dot" style="background: #eab308;"></div>
+                <span>Servicios</span>
+              </div>
+              <div class="filter-item" style="background: white;">
+                <div class="color-dot" style="background: #22c55e;"></div>
+                <span>Mant.</span>
+              </div>
+              <div class="filter-item" style="background: white;">
+                <div class="color-dot" style="background: #a855f7;"></div>
+                <span>Check in</span>
+              </div>
+              <div class="filter-item" style="background: white;">
+                <div class="color-dot" style="background: #f97316;"></div>
+                <span>Check out</span>
+              </div>
+            </div>
+            <div style="border-left: 1px solid #d1d5db; height: 20px;"></div>
+            <div style="display: flex; gap: 4px;">
+              <div class="tab active" style="padding: 4px 10px;">Calendario</div>
+              <div class="tab" style="padding: 4px 10px;">HOY</div>
+              <div class="tab" style="padding: 4px 10px;">Agenda</div>
+            </div>
+          </div>
+          
+          <div class="content">
+            [Vista de Calendario / Lista de Eventos]
+            <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; font-size: 10px;">
+              <span style="color: #3b82f6; font-weight: 600;">12 rentas</span>
+              <span style="color: #22c55e; font-weight: 600;">5 mant.</span>
+              <span style="color: #6b7280; font-weight: 600;">28 total</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="description">
+          <div class="pros">✓ Ventajas:</div>
+          • TODO en una barra superior<br>
+          • Máximo espacio para calendario<br>
+          • Stats integradas en esquina<br>
+          • Ultra limpio y minimalista<br>
+          • Ideal para pantallas pequeñas
+        </div>
+      </div>
+    </div>
+
+    <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center;">
+      <p style="color: #6b7280; font-size: 14px;">
+        💡 <strong>Recomendación:</strong> La Opción 1 es mejor para dashboards donde las métricas son importantes. 
+        La Opción 2 es más profesional y balanceada. La Opción 3 maximiza el espacio del calendario.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
