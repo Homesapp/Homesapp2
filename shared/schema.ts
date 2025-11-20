@@ -4877,7 +4877,7 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
   unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }), // Unidad/propiedad
   propertyId: varchar("property_id").references(() => externalProperties.id, { onDelete: "cascade" }), // Deprecated - usar unitId
-  tenantName: varchar("tenant_name", { length: 255 }).notNull(), // Nombre del inquilino
+  tenantName: varchar("tenant_name", { length: 255 }).notNull(), // Nombre del inquilino principal
   tenantEmail: varchar("tenant_email", { length: 255 }),
   tenantPhone: varchar("tenant_phone", { length: 50 }),
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(), // Renta mensual
@@ -4888,6 +4888,12 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   startDate: timestamp("start_date").notNull(), // Inicio del contrato
   endDate: timestamp("end_date").notNull(), // Fin del contrato
   status: externalContractStatusEnum("status").notNull().default("active"),
+  // Mascotas
+  hasPet: boolean("has_pet").notNull().default(false), // Si tiene mascota
+  petName: varchar("pet_name", { length: 100 }), // Nombre de la mascota
+  petPhotoUrl: text("pet_photo_url"), // URL de la foto de la mascota
+  petDescription: text("pet_description"), // Descripción de la mascota (raza, tamaño, etc)
+  // Documentos
   leaseContractUrl: text("lease_contract_url"), // URL del contrato de arrendamiento (PDF, imagen, etc)
   inventoryUrl: text("inventory_url"), // URL del inventario (PDF, imagen, etc)
   notes: text("notes"),
@@ -4936,6 +4942,31 @@ export const createRentalContractWithServicesSchema = z.object({
 });
 
 export type CreateRentalContractWithServices = z.infer<typeof createRentalContractWithServicesSchema>;
+
+// External Rental Tenants - Inquilinos adicionales (múltiples inquilinos por contrato)
+export const externalRentalTenants = pgTable("external_rental_tenants", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  contractId: varchar("contract_id").notNull().references(() => externalRentalContracts.id, { onDelete: "cascade" }),
+  fullName: varchar("full_name", { length: 255 }).notNull(), // Nombre completo del inquilino
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  idPhotoUrl: text("id_photo_url"), // URL de la foto de identificación oficial
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_tenants_contract").on(table.contractId),
+]);
+
+export const insertExternalRentalTenantSchema = createInsertSchema(externalRentalTenants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalRentalTenant = z.infer<typeof insertExternalRentalTenantSchema>;
+export type ExternalRentalTenant = typeof externalRentalTenants.$inferSelect;
 
 // Check-Out Reports - Reportes de salida para contratos completados
 export const externalCheckoutReports = pgTable("external_checkout_reports", {

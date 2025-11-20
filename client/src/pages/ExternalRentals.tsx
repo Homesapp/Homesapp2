@@ -61,7 +61,8 @@ import {
   Check,
   ChevronsUpDown,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  PawPrint
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -586,6 +587,13 @@ export default function ExternalRentals() {
                         <span className="truncate" data-testid={`text-rental-tenant-${contract.id}`}>
                           {contract.tenantName}
                         </span>
+                        {contract.hasPet && (
+                          <PawPrint 
+                            className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" 
+                            data-testid={`icon-pet-${contract.id}`}
+                            title={contract.petName || (language === "es" ? "Tiene mascota" : "Has pet")}
+                          />
+                        )}
                       </CardDescription>
                     </div>
                     <Badge 

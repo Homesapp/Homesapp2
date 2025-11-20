@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -23,7 +25,9 @@ import {
   ChevronLeft,
   Building2,
   Plus,
-  Trash2
+  Trash2,
+  PawPrint,
+  Users
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -41,6 +45,11 @@ const rentalFormSchema = z.object({
   rentDayOfMonth: z.number().min(1).max(31),
   securityDeposit: z.string().optional(),
   leaseDurationMonths: z.number().min(1),
+  // Pet fields
+  hasPet: z.boolean().default(false),
+  petName: z.string().optional(),
+  petPhotoUrl: z.string().optional(),
+  petDescription: z.string().optional(),
 });
 
 type RentalFormData = z.infer<typeof rentalFormSchema>;
@@ -64,6 +73,12 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     amount: string;
     dayOfMonth: number;
   }>>([]);
+  const [additionalTenants, setAdditionalTenants] = useState<Array<{
+    fullName: string;
+    email: string;
+    phone: string;
+    idPhotoUrl: string;
+  }>>([]);
 
   const { data: availableUnits, isLoading: unitsLoading } = useQuery<UnitWithDetails[]>({
     queryKey: ["/api/external-units"],
@@ -85,6 +100,10 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       rentDayOfMonth: 1,
       securityDeposit: "",
       leaseDurationMonths: 12,
+      hasPet: false,
+      petName: "",
+      petPhotoUrl: "",
+      petDescription: "",
     },
   });
 
@@ -122,6 +141,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     setStep(1);
     setSelectedUnitId("");
     setAdditionalServices([]);
+    setAdditionalTenants([]);
     form.reset();
   };
 
@@ -155,6 +175,11 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       leaseDurationMonths: data.leaseDurationMonths,
       currency: "MXN",
       rentalPurpose: "living",
+      // Pet fields
+      hasPet: data.hasPet,
+      petName: data.hasPet ? data.petName : undefined,
+      petPhotoUrl: data.hasPet ? data.petPhotoUrl : undefined,
+      petDescription: data.hasPet ? data.petDescription : undefined,
     };
 
     // Build services array with rent + additional services
@@ -173,10 +198,34 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       })),
     ];
 
-    await createMutation.mutateAsync({
+    const createdContract = await createMutation.mutateAsync({
       contract,
       additionalServices: services,
     });
+
+    // Create additional tenants if any
+    if (additionalTenants.length > 0 && createdContract) {
+      const contractId = createdContract.id;
+      for (const tenant of additionalTenants) {
+        if (tenant.fullName.trim()) { // Only create if name is provided
+          try {
+            await apiRequest("/api/external-rental-tenants", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contractId,
+                fullName: tenant.fullName,
+                email: tenant.email || undefined,
+                phone: tenant.phone || undefined,
+                idPhotoUrl: tenant.idPhotoUrl || undefined,
+              }),
+            });
+          } catch (error) {
+            console.error("Error creating additional tenant:", error);
+          }
+        }
+      }
+    }
   };
 
   const addService = () => {
@@ -365,6 +414,195 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                     </FormItem>
                   )}
                 />
+
+                <Separator className="my-4" />
+
+                {/* Pet Information */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <PawPrint className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+                    <h4 className="font-medium">{language === "es" ? "Mascota" : "Pet"}</h4>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="hasPet"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-has-pet"
+                          />
+                        </FormControl>
+                        <FormLabel className="!mt-0 cursor-pointer">
+                          {language === "es" ? "¿El inquilino tiene mascota?" : "Does the tenant have a pet?"}
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch("hasPet") && (
+                    <div className="space-y-3 pl-6 border-l-2">
+                      <FormField
+                        control={form.control}
+                        name="petName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{language === "es" ? "Nombre de la mascota" : "Pet name"}</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Max" data-testid="input-pet-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="petPhotoUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{language === "es" ? "URL de foto de mascota" : "Pet photo URL"}</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="https://..." data-testid="input-pet-photo-url" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="petDescription"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{language === "es" ? "Descripción (raza, tamaño, etc.)" : "Description (breed, size, etc.)"}</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder={language === "es" ? "Pastor Alemán, tamaño grande" : "German Shepherd, large size"} data-testid="textarea-pet-description" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* Additional Tenants */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      <h4 className="font-medium">{language === "es" ? "Inquilinos Adicionales" : "Additional Tenants"}</h4>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAdditionalTenants([...additionalTenants, { fullName: "", email: "", phone: "", idPhotoUrl: "" }])}
+                      data-testid="button-add-tenant"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      {language === "es" ? "Agregar" : "Add"}
+                    </Button>
+                  </div>
+
+                  {additionalTenants.length > 0 && (
+                    <div className="space-y-3">
+                      {additionalTenants.map((tenant, index) => (
+                        <Card key={index} className="p-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-sm font-medium">
+                                {language === "es" ? `Inquilino ${index + 2}` : `Tenant ${index + 2}`}
+                              </h5>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  const newTenants = [...additionalTenants];
+                                  newTenants.splice(index, 1);
+                                  setAdditionalTenants(newTenants);
+                                }}
+                                data-testid={`button-remove-tenant-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div>
+                                <Label htmlFor={`tenant-name-${index}`}>{language === "es" ? "Nombre completo" : "Full name"}</Label>
+                                <Input
+                                  id={`tenant-name-${index}`}
+                                  value={tenant.fullName}
+                                  onChange={(e) => {
+                                    const newTenants = [...additionalTenants];
+                                    newTenants[index].fullName = e.target.value;
+                                    setAdditionalTenants(newTenants);
+                                  }}
+                                  placeholder={language === "es" ? "Nombre completo" : "Full name"}
+                                  data-testid={`input-additional-tenant-name-${index}`}
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor={`tenant-email-${index}`}>{language === "es" ? "Correo electrónico" : "Email"}</Label>
+                                <Input
+                                  id={`tenant-email-${index}`}
+                                  type="email"
+                                  value={tenant.email}
+                                  onChange={(e) => {
+                                    const newTenants = [...additionalTenants];
+                                    newTenants[index].email = e.target.value;
+                                    setAdditionalTenants(newTenants);
+                                  }}
+                                  placeholder="email@example.com"
+                                  data-testid={`input-additional-tenant-email-${index}`}
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor={`tenant-phone-${index}`}>{language === "es" ? "Teléfono" : "Phone"}</Label>
+                                <Input
+                                  id={`tenant-phone-${index}`}
+                                  value={tenant.phone}
+                                  onChange={(e) => {
+                                    const newTenants = [...additionalTenants];
+                                    newTenants[index].phone = e.target.value;
+                                    setAdditionalTenants(newTenants);
+                                  }}
+                                  placeholder="+52 984 123 4567"
+                                  data-testid={`input-additional-tenant-phone-${index}`}
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor={`tenant-id-url-${index}`}>{language === "es" ? "URL de identificación" : "ID photo URL"}</Label>
+                                <Input
+                                  id={`tenant-id-url-${index}`}
+                                  value={tenant.idPhotoUrl}
+                                  onChange={(e) => {
+                                    const newTenants = [...additionalTenants];
+                                    newTenants[index].idPhotoUrl = e.target.value;
+                                    setAdditionalTenants(newTenants);
+                                  }}
+                                  placeholder="https://..."
+                                  data-testid={`input-additional-tenant-id-url-${index}`}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

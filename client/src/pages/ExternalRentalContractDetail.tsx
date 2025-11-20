@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Plus, Edit, Trash2, Calendar, DollarSign, FileText, Download, ExternalLink, CheckCircle2, Home, Building2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Calendar, DollarSign, FileText, Download, ExternalLink, CheckCircle2, Home, Building2, PawPrint, Users, IdCard } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,7 +28,8 @@ import type {
   ExternalRentalContract,
   ExternalPaymentSchedule,
   ExternalPayment,
-  InsertExternalPaymentSchedule
+  InsertExternalPaymentSchedule,
+  ExternalRentalTenant
 } from "@shared/schema";
 import { insertExternalPaymentScheduleSchema } from "@shared/schema";
 
@@ -98,6 +99,9 @@ export default function ExternalRentalContractDetail() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [editingPayment, setEditingPayment] = useState<ExternalPayment | null>(null);
   const [showContractEditDialog, setShowContractEditDialog] = useState(false);
+  const [showPetPhotoDialog, setShowPetPhotoDialog] = useState(false);
+  const [showTenantIdDialog, setShowTenantIdDialog] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<ExternalRentalTenant | null>(null);
 
   const { data: contract, isLoading: contractLoading } = useQuery<ExternalRentalContract>({
     queryKey: [`/api/external-rental-contracts/${id}`],
@@ -116,6 +120,16 @@ export default function ExternalRentalContractDetail() {
 
   const { data: payments, isLoading: paymentsLoading } = useQuery<ExternalPayment[]>({
     queryKey: [`/api/external-payments?contractId=${id}`],
+    enabled: !!id,
+  });
+
+  const { data: additionalTenants = [], isLoading: tenantsLoading } = useQuery<ExternalRentalTenant[]>({
+    queryKey: ["/api/external-rental-tenants", { contractId: id }],
+    queryFn: async () => {
+      const response = await fetch(`/api/external-rental-tenants?contractId=${id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch tenants");
+      return response.json();
+    },
     enabled: !!id,
   });
 
@@ -482,6 +496,86 @@ export default function ExternalRentalContractDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Pet Information */}
+          {contract.hasPet && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <PawPrint className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                  {language === "es" ? "Mascota" : "Pet"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {contract.petName && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">{language === "es" ? "Nombre" : "Name"}</p>
+                    <p className="text-sm font-medium">{contract.petName}</p>
+                  </div>
+                )}
+                {contract.petDescription && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">{language === "es" ? "Descripción" : "Description"}</p>
+                    <p className="text-sm text-muted-foreground">{contract.petDescription}</p>
+                  </div>
+                )}
+                {contract.petPhotoUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPetPhotoDialog(true)}
+                    className="w-full"
+                    data-testid="button-view-pet-photo"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Ver Foto de Mascota" : "View Pet Photo"}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Additional Tenants */}
+          {additionalTenants.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {language === "es" ? "Inquilinos Adicionales" : "Additional Tenants"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {additionalTenants.map((tenant) => (
+                  <div
+                    key={tenant.id}
+                    className="flex items-center justify-between p-2 border rounded-md"
+                    data-testid={`tenant-item-${tenant.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{tenant.fullName}</p>
+                      {tenant.email && (
+                        <p className="text-xs text-muted-foreground truncate">{tenant.email}</p>
+                      )}
+                    </div>
+                    {tenant.idPhotoUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={() => {
+                          setSelectedTenant(tenant);
+                          setShowTenantIdDialog(true);
+                        }}
+                        data-testid={`button-view-tenant-id-${tenant.id}`}
+                      >
+                        <IdCard className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Documents */}
           {(contract.leaseContractUrl || contract.inventoryUrl) && (
@@ -1231,6 +1325,56 @@ export default function ExternalRentalContractDetail() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pet Photo Dialog */}
+      <Dialog open={showPetPhotoDialog} onOpenChange={setShowPetPhotoDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PawPrint className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+              {contract?.petName || (language === "es" ? "Mascota" : "Pet")}
+            </DialogTitle>
+            {contract?.petDescription && (
+              <DialogDescription>{contract.petDescription}</DialogDescription>
+            )}
+          </DialogHeader>
+          {contract?.petPhotoUrl && (
+            <div className="flex justify-center">
+              <img 
+                src={contract.petPhotoUrl} 
+                alt={contract.petName || (language === "es" ? "Mascota" : "Pet")}
+                className="max-w-full max-h-96 rounded-lg object-contain"
+                data-testid="img-pet-photo"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Tenant ID Photo Dialog */}
+      <Dialog open={showTenantIdDialog} onOpenChange={setShowTenantIdDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IdCard className="h-5 w-5" />
+              {language === "es" ? "Identificación de" : "ID of"} {selectedTenant?.fullName}
+            </DialogTitle>
+            {selectedTenant?.email && (
+              <DialogDescription>{selectedTenant.email}</DialogDescription>
+            )}
+          </DialogHeader>
+          {selectedTenant?.idPhotoUrl && (
+            <div className="flex justify-center">
+              <img 
+                src={selectedTenant.idPhotoUrl} 
+                alt={`ID ${selectedTenant.fullName}`}
+                className="max-w-full max-h-96 rounded-lg object-contain"
+                data-testid="img-tenant-id"
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
