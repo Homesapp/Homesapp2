@@ -136,6 +136,18 @@ export default function ExternalRentals() {
     enabled: selectUnitDialogOpen, // Only fetch when dialog is open
   });
 
+  // Fetch all payments to show status indicators
+  const { data: payments = [] } = useQuery<Array<{
+    id: string;
+    contractId: string;
+    serviceType: string;
+    status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+    dueDate: string;
+    amount: string;
+  }>>({
+    queryKey: ["/api/external-payments"],
+  });
+
   // Reset unit filter when units change and selected unit is no longer available
   useEffect(() => {
     if (unitFilter && units) {
@@ -192,6 +204,59 @@ export default function ExternalRentals() {
     }
     return 0;
   });
+
+  // Helper to get next payment status for a service
+  const getNextPaymentStatus = (contractId: string, serviceType: string, dayOfMonth: number): 'paid' | 'pending' | 'overdue' | null => {
+    if (!payments || payments.length === 0) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find all payments for this service
+    const servicePayments = payments
+      .filter(p => p.contractId === contractId && p.serviceType === serviceType)
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    
+    if (servicePayments.length === 0) {
+      // No payments exist - check if we're past this month's due date
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const thisDueDate = new Date(currentYear, currentMonth, dayOfMonth);
+      thisDueDate.setHours(0, 0, 0, 0);
+      
+      // If today is past this month's due date, mark as overdue
+      return today > thisDueDate ? 'overdue' : 'pending';
+    }
+    
+    // Find the next upcoming payment
+    const upcomingPayment = servicePayments.find(p => {
+      const dueDate = new Date(p.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate >= today;
+    });
+    
+    if (upcomingPayment) {
+      // Map cancelled status to overdue (unpaid obligation)
+      if (upcomingPayment.status === 'cancelled') return 'overdue';
+      return upcomingPayment.status;
+    }
+    
+    // All payments are in the past - check if we're missing current month's payment
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const expectedDueDate = new Date(currentYear, currentMonth, dayOfMonth);
+    expectedDueDate.setHours(0, 0, 0, 0);
+    
+    // If we're past the expected due date this month, it's overdue
+    if (today > expectedDueDate) {
+      return 'overdue';
+    }
+    
+    // Otherwise, use the most recent payment status
+    const mostRecent = servicePayments[servicePayments.length - 1];
+    if (mostRecent.status === 'cancelled') return 'overdue';
+    return mostRecent.status;
+  };
 
   const getServiceLabel = (serviceType: string) => {
     const labels: Record<string, { es: string; en: string }> = {
@@ -696,16 +761,38 @@ export default function ExternalRentals() {
                           {displayedServices.map((service, idx) => {
                             const parsedAmount = service.amount ? parseFloat(service.amount) : NaN;
                             const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+                            const paymentStatus = getNextPaymentStatus(contract.id, service.serviceType, service.dayOfMonth);
+                            
+                            // Determine border and badge colors based on payment status
+                            // Paid = green, Pending/Overdue = red (unpaid obligations)
+                            const statusColors = paymentStatus === 'paid' 
+                              ? 'border-green-500 bg-green-50/30 dark:bg-green-950/10'
+                              : (paymentStatus === 'pending' || paymentStatus === 'overdue')
+                              ? 'border-red-500 bg-red-50/30 dark:bg-red-950/10'
+                              : 'border-gray-300 dark:border-gray-700';
+                            
+                            const badgeColors = paymentStatus === 'paid'
+                              ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-800'
+                              : (paymentStatus === 'pending' || paymentStatus === 'overdue')
+                              ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800'
+                              : '';
+                            
                             return (
                               <div 
                                 key={serviceStartIndex + idx}
-                                className="flex items-center justify-between gap-2 p-2 border rounded-md text-xs"
+                                className={cn(
+                                  "flex items-center justify-between gap-2 p-2 border rounded-md text-xs transition-colors",
+                                  statusColors
+                                )}
                                 data-testid={`service-item-${contract.id}-${serviceStartIndex + idx}`}
                               >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <Badge 
                                     variant="outline" 
-                                    className="text-xs flex-shrink-0 whitespace-nowrap"
+                                    className={cn(
+                                      "text-xs flex-shrink-0 whitespace-nowrap",
+                                      badgeColors
+                                    )}
                                   >
                                     {getServiceLabel(service.serviceType)}
                                   </Badge>

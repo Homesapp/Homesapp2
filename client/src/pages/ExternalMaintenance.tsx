@@ -127,7 +127,13 @@ export default function ExternalMaintenance() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [condominiumFilter, setCondominiumFilter] = useState<string>("all");
   const [formCondominiumId, setFormCondominiumId] = useState<string>("");
-  const [formDate, setFormDate] = useState<Date | undefined>(undefined);
+  // Default to tomorrow at 9:00 AM for scheduling
+  const [formDate, setFormDate] = useState<Date | undefined>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
+  });
   const [formTime, setFormTime] = useState<string>("09:00");
 
   const { data: tickets, isLoading: ticketsLoading } = useQuery<ExternalMaintenanceTicket[]>({
@@ -179,13 +185,21 @@ export default function ExternalMaintenance() {
         );
       }
 
-      if (formDate && formTime) {
-        const [hours, minutes] = formTime.split(':').map(Number);
-        const combinedDate = new Date(formDate);
-        combinedDate.setHours(hours, minutes, 0, 0);
-        const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
-        data.scheduledDate = utcDate;
+      // Validate that a schedule date is set for calendar visibility
+      if (!formDate) {
+        throw new Error(language === "es"
+          ? "Por favor selecciona una fecha de programación para que el ticket aparezca en el calendario"
+          : "Please select a scheduled date so the ticket appears in the calendar"
+        );
       }
+
+      // Always set scheduledDate when formDate is present (use default time if empty)
+      const timeToUse = formTime && formTime.trim() !== '' ? formTime : '09:00';
+      const [hours, minutes] = timeToUse.split(':').map(Number);
+      const combinedDate = new Date(formDate);
+      combinedDate.setHours(hours, minutes, 0, 0);
+      const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
+      data.scheduledDate = utcDate;
       
       return await apiRequest('POST', '/api/external-tickets', {
         ...data,
@@ -197,7 +211,11 @@ export default function ExternalMaintenance() {
       setShowDialog(false);
       form.reset();
       setFormCondominiumId("");
-      setFormDate(undefined);
+      // Reset to tomorrow's date
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      setFormDate(tomorrow);
       setFormTime("09:00");
       toast({
         title: language === "es" ? "Ticket creado" : "Ticket created",
@@ -808,27 +826,41 @@ export default function ExternalMaintenance() {
                 )}
               />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">{t.scheduleDate}</label>
-                  <Calendar
-                    mode="single"
-                    selected={formDate}
-                    onSelect={setFormDate}
-                    className="rounded-md border"
-                    locale={language === 'es' ? es : undefined}
-                  />
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'es' 
+                      ? 'Requerido para aparecer en calendario' 
+                      : 'Required to appear in calendar'}
+                  </p>
                 </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Calendar
+                      mode="single"
+                      selected={formDate}
+                      onSelect={(date) => {
+                        // Prevent clearing the date - always keep a schedule for calendar visibility
+                        if (date) {
+                          setFormDate(date);
+                        }
+                      }}
+                      className="rounded-md border"
+                      locale={language === 'es' ? es : undefined}
+                    />
+                  </div>
 
-                <FormItem>
-                  <FormLabel>{t.scheduleTime}</FormLabel>
-                  <Input
-                    type="time"
-                    value={formTime}
-                    onChange={(e) => setFormTime(e.target.value)}
-                    data-testid="input-time"
-                  />
-                </FormItem>
+                  <FormItem>
+                    <FormLabel>{t.scheduleTime}</FormLabel>
+                    <Input
+                      type="time"
+                      value={formTime}
+                      onChange={(e) => setFormTime(e.target.value)}
+                      data-testid="input-time"
+                    />
+                  </FormItem>
+                </div>
               </div>
 
               <FormField
