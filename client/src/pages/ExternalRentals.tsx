@@ -59,7 +59,9 @@ import {
   Table as TableIcon,
   XCircle,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -544,8 +546,16 @@ export default function ExternalRentals() {
         </Card>
       ) : filteredRentals && filteredRentals.length > 0 ? (
         viewMode === "cards" ? (
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {filteredRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => (
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {filteredRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => {
+              const [serviceStartIndex, setServiceStartIndex] = useState(0);
+              const servicesPerPage = 2;
+              const totalServices = activeServices?.length || 0;
+              const displayedServices = activeServices?.slice(serviceStartIndex, serviceStartIndex + servicesPerPage) || [];
+              const canScrollUp = serviceStartIndex > 0;
+              const canScrollDown = serviceStartIndex + servicesPerPage < totalServices;
+              
+              return (
               <Card key={contract.id} className="hover-elevate" data-testid={`card-rental-${contract.id}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
@@ -630,18 +640,44 @@ export default function ExternalRentals() {
                     <>
                       <Separator />
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">
-                          {language === "es" ? "Servicios y próximas fechas de pago:" : "Services and next payment dates:"}
-                        </p>
-                        <div className="space-y-1.5 h-[100px] overflow-y-auto">
-                          {activeServices.map((service, idx) => {
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            {language === "es" ? "Servicios y próximas fechas de pago:" : "Services and next payment dates:"}
+                          </p>
+                          {totalServices > servicesPerPage && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setServiceStartIndex(Math.max(0, serviceStartIndex - 1))}
+                                disabled={!canScrollUp}
+                                data-testid={`button-services-up-${contract.id}`}
+                              >
+                                <ChevronUp className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setServiceStartIndex(Math.min(totalServices - servicesPerPage, serviceStartIndex + 1))}
+                                disabled={!canScrollDown}
+                                data-testid={`button-services-down-${contract.id}`}
+                              >
+                                <ChevronDown className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-1.5 h-[100px]">
+                          {displayedServices.map((service, idx) => {
                             const parsedAmount = service.amount ? parseFloat(service.amount) : NaN;
                             const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
                             return (
                               <div 
-                                key={idx}
+                                key={serviceStartIndex + idx}
                                 className="flex items-center justify-between gap-2 p-2 border rounded-md text-xs"
-                                data-testid={`service-item-${contract.id}-${idx}`}
+                                data-testid={`service-item-${contract.id}-${serviceStartIndex + idx}`}
                               >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <Badge 
@@ -721,7 +757,8 @@ export default function ExternalRentals() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <Card>
