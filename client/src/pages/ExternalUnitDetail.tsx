@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload } from "lucide-react";
+import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload, Clock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -254,6 +254,8 @@ export default function ExternalUnitDetail() {
       tenantPhone: "",
       monthlyRent: "0",
       currency: "MXN",
+      securityDeposit: "0",
+      rentalPurpose: "living",
       leaseDurationMonths: 12,
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
@@ -274,10 +276,12 @@ export default function ExternalUnitDetail() {
         );
       }
       
-      // Transform data: add agencyId from unit, dates remain as Date objects for backend validation
+      // Transform data: add agencyId from unit, coerce numeric fields, dates remain as Date objects for backend validation
       const transformedData = {
         ...data,
         agencyId: unit.agencyId, // Add agencyId from unit (now guaranteed to exist)
+        monthlyRent: Number(data.monthlyRent),
+        securityDeposit: data.securityDeposit ? Number(data.securityDeposit) : undefined,
       };
       return await apiRequest('POST', '/api/external-rental-contracts', transformedData);
     },
@@ -1483,6 +1487,23 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                       </FormItem>
                     )}
                   />
+                </div>
+              </div>
+
+              {/* Payment Schedules Info */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-medium">
+                      {language === "es" ? "Calendarios de Pago de Servicios" : "Service Payment Schedules"}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {language === "es" 
+                        ? "Después de crear el contrato, podrás configurar los calendarios de pago para servicios como luz, agua, internet, gas y mantenimiento en la página de detalles del contrato." 
+                        : "After creating the contract, you can configure payment schedules for services like electricity, water, internet, gas, and maintenance on the contract details page."}
+                    </p>
+                  </div>
                 </div>
               </div>
 
