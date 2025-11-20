@@ -62,7 +62,12 @@ import {
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
-  PawPrint
+  PawPrint,
+  Zap,
+  Droplet,
+  Wifi,
+  Flame,
+  Wrench
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -269,6 +274,19 @@ export default function ExternalRentals() {
       other: { es: "Otro", en: "Other" },
     };
     return labels[serviceType]?.[language] || serviceType;
+  };
+
+  const getServiceIcon = (serviceType: string) => {
+    const iconClass = "h-4 w-4";
+    switch (serviceType) {
+      case "rent": return <Home className={iconClass} />;
+      case "electricity": return <Zap className={iconClass} />;
+      case "water": return <Droplet className={iconClass} />;
+      case "internet": return <Wifi className={iconClass} />;
+      case "gas": return <Flame className={iconClass} />;
+      case "maintenance": return <Wrench className={iconClass} />;
+      default: return <DollarSign className={iconClass} />;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -615,12 +633,14 @@ export default function ExternalRentals() {
         viewMode === "cards" ? (
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             {filteredRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => {
-              const serviceStartIndex = serviceIndices[contract.id] || 0;
-              const servicesPerPage = 2;
-              const totalServices = activeServices?.length || 0;
-              const displayedServices = activeServices?.slice(serviceStartIndex, serviceStartIndex + servicesPerPage) || [];
-              const canScrollUp = serviceStartIndex > 0;
-              const canScrollDown = serviceStartIndex + servicesPerPage < totalServices;
+              // Sort services so rent always appears first
+              const sortedServices = activeServices ? [...activeServices].sort((a, b) => {
+                if (a.serviceType === 'rent') return -1;
+                if (b.serviceType === 'rent') return 1;
+                if (a.serviceType === 'electricity' && b.serviceType !== 'rent') return -1;
+                if (b.serviceType === 'electricity' && a.serviceType !== 'rent') return 1;
+                return 0;
+              }) : [];
               
               const handleScrollUp = () => {
                 setServiceIndices(prev => ({
@@ -724,94 +744,50 @@ export default function ExternalRentals() {
                   </div>
 
                   {/* Services with Payment Dates */}
-                  {activeServices && activeServices.length > 0 && (
+                  {sortedServices && sortedServices.length > 0 && (
                     <>
                       <Separator />
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {language === "es" ? "Servicios y próximas fechas de pago:" : "Services and next payment dates:"}
-                          </p>
-                          {totalServices > servicesPerPage && (
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={handleScrollUp}
-                                disabled={!canScrollUp}
-                                data-testid={`button-services-up-${contract.id}`}
-                              >
-                                <ChevronUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={handleScrollDown}
-                                disabled={!canScrollDown}
-                                data-testid={`button-services-down-${contract.id}`}
-                              >
-                                <ChevronDown className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1.5 h-[100px]">
-                          {displayedServices.map((service, idx) => {
+                        <p className="text-xs text-muted-foreground">
+                          {language === "es" ? "Servicios y próximas fechas de pago:" : "Services and next payment dates:"}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {sortedServices.map((service, idx) => {
                             const parsedAmount = service.amount ? parseFloat(service.amount) : NaN;
                             const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
                             const paymentStatus = getNextPaymentStatus(contract.id, service.serviceType, service.dayOfMonth);
                             
-                            // Determine border and badge colors based on payment status
+                            // Determine background colors based on payment status
                             // Paid = green, Pending/Overdue = red (unpaid obligations)
                             const statusColors = paymentStatus === 'paid' 
-                              ? 'border-green-500 bg-green-50/30 dark:bg-green-950/10'
+                              ? 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-300'
                               : (paymentStatus === 'pending' || paymentStatus === 'overdue')
-                              ? 'border-red-500 bg-red-50/30 dark:bg-red-950/10'
-                              : 'border-gray-300 dark:border-gray-700';
-                            
-                            const badgeColors = paymentStatus === 'paid'
-                              ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-800'
-                              : (paymentStatus === 'pending' || paymentStatus === 'overdue')
-                              ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800'
-                              : '';
+                              ? 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-300'
+                              : 'bg-muted border-muted-foreground/20 text-muted-foreground';
                             
                             return (
                               <div 
-                                key={serviceStartIndex + idx}
+                                key={idx}
                                 className={cn(
-                                  "flex items-center justify-between gap-2 p-2 border rounded-md text-xs transition-colors",
+                                  "flex flex-col items-center justify-center gap-1 p-2 border rounded-md min-w-[90px] transition-colors",
                                   statusColors
                                 )}
-                                data-testid={`service-item-${contract.id}-${serviceStartIndex + idx}`}
+                                data-testid={`service-item-${contract.id}-${idx}`}
                               >
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                      "text-xs flex-shrink-0 whitespace-nowrap",
-                                      badgeColors
-                                    )}
-                                  >
+                                <div className="flex items-center gap-1">
+                                  {getServiceIcon(service.serviceType)}
+                                  <span className="text-xs font-medium">
                                     {getServiceLabel(service.serviceType)}
-                                  </Badge>
-                                  {hasValidAmount ? (
-                                    <span className="font-semibold text-xs whitespace-nowrap">
-                                      ${parsedAmount.toLocaleString()}
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">
-                                      {language === "es" ? "Monto no especificado" : "Amount not specified"}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <Clock className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    {language === "es" ? "Día" : "Day"} {service.dayOfMonth}
                                   </span>
                                 </div>
+                                {hasValidAmount && (
+                                  <span className="text-xs font-bold">
+                                    ${parsedAmount.toLocaleString()}
+                                  </span>
+                                )}
+                                <span className="text-xs opacity-70">
+                                  {language === "es" ? "Día" : "Day"} {service.dayOfMonth}
+                                </span>
                               </div>
                             );
                           })}
