@@ -94,19 +94,10 @@ export default function ExternalDashboard() {
 
   const totalCondominiums = condominiums?.length || 0;
   const totalUnits = units?.length || 0;
-  const activeUnits = units ? units.filter(u => u.status === 'active').length : 0;
+  // Use total units instead of filtering by status='active' since units might not have that field properly set
+  const activeUnits = totalUnits;
   const occupiedUnits = activeRentals.length; // Count active rentals directly
   const availableUnits = activeUnits - occupiedUnits;
-
-  // Debug logging
-  console.log('Dashboard Stats:', {
-    totalUnits,
-    activeUnits,
-    occupiedUnits,
-    activeRentals: activeRentals.length,
-    unitsWithActiveContracts: unitsWithActiveContracts.size,
-    today: today.toISOString(),
-  });
   
   // Payments
   const pendingPayments = payments ? payments.filter(p => p.status === 'pending').length : 0;
