@@ -350,6 +350,25 @@ export const rentalPurposeEnum = pgEnum("rental_purpose", [
   "sublease",     // Para subarrendar
 ]);
 
+export const unitTypologyEnum = pgEnum("unit_typology", [
+  "estudio",
+  "estudio_plus",
+  "1_recamara",
+  "2_recamaras",
+  "3_recamaras",
+  "loft_mini",
+  "loft_normal",
+  "loft_plus",
+]);
+
+export const unitFloorTypeEnum = pgEnum("unit_floor_type", [
+  "planta_baja",
+  "primer_piso",
+  "segundo_piso",
+  "tercer_piso",
+  "penthouse",
+]);
+
 export const externalPaymentStatusEnum = pgEnum("external_payment_status", [
   "pending",      // Pendiente
   "paid",         // Pagado
@@ -5258,10 +5277,11 @@ export const externalUnits = pgTable("external_units", {
   condominiumId: varchar("condominium_id").references(() => externalCondominiums.id, { onDelete: "cascade" }), // Null si es propiedad independiente
   unitNumber: varchar("unit_number", { length: 50 }).notNull(), // Número de unidad/apartamento
   propertyType: varchar("property_type", { length: 50 }), // Tipo de propiedad
+  typology: unitTypologyEnum("typology"), // Tipología de la unidad
   bedrooms: integer("bedrooms"),
   bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }),
   area: decimal("area", { precision: 10, scale: 2 }), // m²
-  floor: integer("floor"), // Piso
+  floor: unitFloorTypeEnum("floor"), // Piso
   airbnbPhotosLink: text("airbnb_photos_link"), // Link de fotos de Airbnb
   isActive: boolean("is_active").notNull().default(true),
   notes: text("notes"),
@@ -5313,10 +5333,11 @@ const optionalString = z.preprocess(
 export const externalUnitFormSchema = z.object({
   unitNumber: z.string().min(1),
   propertyType: z.string().optional(),
+  typology: z.enum(["estudio", "estudio_plus", "1_recamara", "2_recamaras", "3_recamaras", "loft_mini", "loft_normal", "loft_plus"]).optional(),
   bedrooms: optionalNumber,
   bathrooms: optionalString,
   area: optionalString,
-  floor: optionalNumber,
+  floor: z.enum(["planta_baja", "primer_piso", "segundo_piso", "tercer_piso", "penthouse"]).optional(),
   airbnbPhotosLink: z.string().optional(),
   parkingSpots: optionalNumber,
   squareMeters: optionalNumber,
