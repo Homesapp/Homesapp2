@@ -581,7 +581,7 @@ export default function ExternalRentalContractDetail() {
                 {language === "es" ? "Agregar" : "Add"}
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[500px] overflow-y-auto">
               {schedulesLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-16 w-full" />
@@ -651,7 +651,7 @@ export default function ExternalRentalContractDetail() {
                     ))}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t">
+                  <div className="mt-4 pt-4 border-t sticky bottom-0 bg-card">
                     <Button
                       onClick={() => generatePaymentsMutation.mutate({ contractId: id!, monthsAhead: 3 })}
                       disabled={generatePaymentsMutation.isPending || isLoadingAuth || !user}
@@ -679,7 +679,7 @@ export default function ExternalRentalContractDetail() {
                 {language === "es" ? "Pagos Generados" : "Generated Payments"}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[500px] overflow-y-auto">
               {paymentsLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-16 w-full" />
@@ -690,7 +690,7 @@ export default function ExternalRentalContractDetail() {
                   {language === "es" ? "No hay pagos generados" : "No payments generated"}
                 </p>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-2">
                   {payments.map((payment) => (
                     <div 
                       key={payment.id}
