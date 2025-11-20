@@ -1304,34 +1304,61 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                       )}
                     />
                   </div>
-                  <FormField
-                    control={rentalForm.control}
-                    name="leaseDurationMonths"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Duración del Contrato (meses)" : "Lease Duration (months)"} *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            min="1" 
-                            onChange={(e) => {
-                              const months = parseInt(e.target.value) || 12;
-                              field.onChange(months);
-                              const startDate = rentalForm.getValues('startDate');
-                              if (startDate) {
-                                const endDate = new Date(startDate);
-                                endDate.setMonth(endDate.getMonth() + months);
-                                rentalForm.setValue('endDate', endDate);
-                              }
-                            }}
-                            data-testid="input-lease-duration" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={rentalForm.control}
+                      name="leaseDurationMonths"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Duración (meses)" : "Duration (months)"} *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              min="1" 
+                              onChange={(e) => {
+                                const months = parseInt(e.target.value) || 12;
+                                field.onChange(months);
+                                const startDate = rentalForm.getValues('startDate');
+                                if (startDate) {
+                                  const endDate = new Date(startDate);
+                                  endDate.setMonth(endDate.getMonth() + months);
+                                  rentalForm.setValue('endDate', endDate);
+                                }
+                              }}
+                              data-testid="input-lease-duration" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={rentalForm.control}
+                      name="rentalPurpose"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Propósito" : "Purpose"} *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || "living"}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-rental-purpose-create">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="living">
+                                {language === "es" ? "Para Vivir" : "For Living"}
+                              </SelectItem>
+                              <SelectItem value="sublease">
+                                {language === "es" ? "Para Subarrendar" : "For Sublease"}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={rentalForm.control}

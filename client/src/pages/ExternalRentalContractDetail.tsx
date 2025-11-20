@@ -10,13 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Plus, Edit, Trash2, Calendar, DollarSign, FileText, Wrench, Download, ExternalLink, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Calendar, DollarSign, FileText, Download, ExternalLink, CheckCircle2, Home, Building2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,7 +34,6 @@ import { insertExternalPaymentScheduleSchema } from "@shared/schema";
 
 type ScheduleFormData = z.infer<typeof insertExternalPaymentScheduleSchema>;
 
-// Payment registration form schema
 const paymentRegistrationSchema = z.object({
   paidDate: z.date(),
   paymentMethod: z.string().min(1, "Payment method is required"),
@@ -45,12 +43,12 @@ const paymentRegistrationSchema = z.object({
 
 type PaymentRegistrationData = z.infer<typeof paymentRegistrationSchema>;
 
-// Contract edit form schema
 const contractEditSchema = z.object({
   tenantName: z.string().min(1, "Tenant name is required"),
   tenantEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   tenantPhone: z.string().optional(),
   monthlyRent: z.coerce.number().positive("Monthly rent must be greater than 0"),
+  rentalPurpose: z.enum(["living", "sublease"]),
   endDate: z.date(),
   notes: z.string().optional(),
 });
@@ -83,6 +81,11 @@ const paymentMethodTranslations = {
   other: { es: "Otro", en: "Other" },
 };
 
+const rentalPurposeTranslations = {
+  living: { es: "Para Vivir", en: "For Living" },
+  sublease: { es: "Para Subarrendar", en: "For Sublease" },
+};
+
 export default function ExternalRentalContractDetail() {
   const { id } = useParams();
   const [, navigate] = useLocation();
@@ -92,7 +95,6 @@ export default function ExternalRentalContractDetail() {
   
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ExternalPaymentSchedule | null>(null);
-  const [activeTab, setActiveTab] = useState("general");
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [editingPayment, setEditingPayment] = useState<ExternalPayment | null>(null);
   const [showContractEditDialog, setShowContractEditDialog] = useState(false);
@@ -147,12 +149,12 @@ export default function ExternalRentalContractDetail() {
       tenantEmail: "",
       tenantPhone: "",
       monthlyRent: 0,
+      rentalPurpose: "living",
       endDate: new Date(),
       notes: "",
     },
   });
 
-  // Pre-fill contract edit form when contract data loads
   useEffect(() => {
     if (contract) {
       contractEditForm.reset({
@@ -160,6 +162,7 @@ export default function ExternalRentalContractDetail() {
         tenantEmail: contract.tenantEmail || "",
         tenantPhone: contract.tenantPhone || "",
         monthlyRent: parseFloat(contract.monthlyRent.toString()),
+        rentalPurpose: (contract as any).rentalPurpose || "living",
         endDate: new Date(contract.endDate),
         notes: contract.notes || "",
       });
@@ -273,6 +276,7 @@ export default function ExternalRentalContractDetail() {
         tenantEmail: data.tenantEmail || undefined,
         tenantPhone: data.tenantPhone || undefined,
         monthlyRent: data.monthlyRent,
+        rentalPurpose: data.rentalPurpose,
         endDate: data.endDate.toISOString(),
         notes: data.notes || undefined,
       });
@@ -374,10 +378,14 @@ export default function ExternalRentalContractDetail() {
     );
   }
 
+  const rentalPurpose = (contract as any).rentalPurpose || "living";
+  const pendingPayments = payments?.filter(p => p.status === 'pending').length || 0;
+  const paidPayments = payments?.filter(p => p.status === 'paid').length || 0;
+
   return (
-    <div className="container mx-auto px-4 py-6 space-y-4">
+    <div className="container mx-auto px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -389,69 +397,51 @@ export default function ExternalRentalContractDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold" data-testid="text-contract-title">
-              {language === "es" ? "Detalle del Contrato" : "Contract Details"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
               {contract.tenantName}
+            </h1>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+              <Badge variant={contract.status === 'active' ? 'default' : 'secondary'} data-testid="badge-status">
+                {contract.status === 'active' ? (language === "es" ? "Activo" : "Active") : (language === "es" ? "Completado" : "Completed")}
+              </Badge>
+              <Badge variant="outline" data-testid="badge-rental-purpose">
+                {rentalPurpose === 'living' ? <Home className="h-3 w-3 mr-1" /> : <Building2 className="h-3 w-3 mr-1" />}
+                {rentalPurposeTranslations[rentalPurpose as keyof typeof rentalPurposeTranslations][language]}
+              </Badge>
             </p>
           </div>
         </div>
-        {contract.status === 'completed' && (
-          <Button
-            onClick={() => navigate(`/external/checkout/${contract.id}`)}
-            data-testid="button-checkout"
-          >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            {language === "es" ? "Check-Out" : "Check-Out"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {contract.status === 'active' && (
+            <Button
+              variant="outline"
+              onClick={handleEditContract}
+              data-testid="button-edit-contract"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {language === "es" ? "Editar" : "Edit"}
+            </Button>
+          )}
+          {contract.status === 'completed' && (
+            <Button
+              onClick={() => navigate(`/external/checkout/${contract.id}`)}
+              data-testid="button-checkout"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {language === "es" ? "Check-Out" : "Check-Out"}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general" data-testid="tab-general">
-            <FileText className="h-4 w-4 mr-2" />
-            {language === "es" ? "General" : "General"}
-          </TabsTrigger>
-          <TabsTrigger value="payments" data-testid="tab-payments">
-            <DollarSign className="h-4 w-4 mr-2" />
-            {language === "es" ? "Pagos" : "Payments"}
-          </TabsTrigger>
-          <TabsTrigger value="maintenance" data-testid="tab-maintenance">
-            <Wrench className="h-4 w-4 mr-2" />
-            {language === "es" ? "Mantenimientos" : "Maintenance"}
-          </TabsTrigger>
-          <TabsTrigger value="documents" data-testid="tab-documents">
-            <Download className="h-4 w-4 mr-2" />
-            {language === "es" ? "Documentos" : "Documents"}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* General Tab */}
-        <TabsContent value="general" className="space-y-4">
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Contract Info */}
+        <div className="lg:col-span-1 space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-              <CardTitle className="text-lg">
-                {language === "es" ? "Información del Contrato" : "Contract Information"}
-              </CardTitle>
-              {contract.status === 'active' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEditContract}
-                  data-testid="button-edit-contract"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  {language === "es" ? "Editar" : "Edit"}
-                </Button>
-              )}
+            <CardHeader>
+              <CardTitle className="text-lg">{language === "es" ? "Información del Contrato" : "Contract Information"}</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">{language === "es" ? "Inquilino" : "Tenant"}</p>
-                <p className="font-medium" data-testid="text-tenant-name">{contract.tenantName}</p>
-              </div>
+            <CardContent className="space-y-4">
               <div>
                 <p className="text-xs text-muted-foreground">{language === "es" ? "Email" : "Email"}</p>
                 <p className="text-sm" data-testid="text-tenant-email">{contract.tenantEmail || "-"}</p>
@@ -462,44 +452,110 @@ export default function ExternalRentalContractDetail() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{language === "es" ? "Renta Mensual" : "Monthly Rent"}</p>
-                <p className="font-semibold text-lg" data-testid="text-monthly-rent">
-                  {contract.currency === 'MXN' ? '$' : '$'}{contract.monthlyRent.toLocaleString()} {contract.currency}
+                <p className="text-2xl font-bold" data-testid="text-monthly-rent">
+                  ${Number(contract.monthlyRent).toLocaleString()} {contract.currency}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{language === "es" ? "Duración" : "Duration"}</p>
                 <p className="text-sm" data-testid="text-duration">{contract.leaseDurationMonths} {language === "es" ? "meses" : "months"}</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{language === "es" ? "Estado" : "Status"}</p>
-                <Badge variant={contract.status === 'active' ? 'default' : 'secondary'} data-testid="badge-status">
-                  {contract.status === 'active' ? (language === "es" ? "Activo" : "Active") : (language === "es" ? "Inactivo" : "Inactive")}
-                </Badge>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">{language === "es" ? "Inicio" : "Start"}</p>
+                  <p className="text-sm" data-testid="text-start-date">
+                    {format(new Date(contract.startDate), "MMM d, yyyy", { locale: language === "es" ? es : enUS })}
+                  </p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">{language === "es" ? "Fin" : "End"}</p>
+                  <p className="text-sm" data-testid="text-end-date">
+                    {format(new Date(contract.endDate), "MMM d, yyyy", { locale: language === "es" ? es : enUS })}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{language === "es" ? "Inicio" : "Start Date"}</p>
-                <p className="text-sm" data-testid="text-start-date">
-                  {format(new Date(contract.startDate), "PPP", { locale: language === "es" ? es : enUS })}
-                </p>
+              {contract.notes && (
+                <div>
+                  <p className="text-xs text-muted-foreground">{language === "es" ? "Notas" : "Notes"}</p>
+                  <p className="text-sm text-muted-foreground">{contract.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Documents */}
+          {(contract.leaseContractUrl || contract.inventoryUrl) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  <FileText className="inline h-4 w-4 mr-2" />
+                  {language === "es" ? "Documentos" : "Documents"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {contract.leaseContractUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="w-full justify-start"
+                    data-testid="button-view-lease"
+                  >
+                    <a href={contract.leaseContractUrl} target="_blank" rel="noopener noreferrer">
+                      <FileText className="h-4 w-4 mr-2" />
+                      {language === "es" ? "Contrato" : "Lease"}
+                      <ExternalLink className="h-3 w-3 ml-auto" />
+                    </a>
+                  </Button>
+                )}
+                {contract.inventoryUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="w-full justify-start"
+                    data-testid="button-view-inventory"
+                  >
+                    <a href={contract.inventoryUrl} target="_blank" rel="noopener noreferrer">
+                      <FileText className="h-4 w-4 mr-2" />
+                      {language === "es" ? "Inventario" : "Inventory"}
+                      <ExternalLink className="h-3 w-3 ml-auto" />
+                    </a>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Payment Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                <DollarSign className="inline h-4 w-4 mr-2" />
+                {language === "es" ? "Resumen de Pagos" : "Payment Summary"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{language === "es" ? "Pendientes" : "Pending"}</span>
+                <Badge variant="secondary" data-testid="badge-pending-count">{pendingPayments}</Badge>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{language === "es" ? "Fin" : "End Date"}</p>
-                <p className="text-sm" data-testid="text-end-date">
-                  {format(new Date(contract.endDate), "PPP", { locale: language === "es" ? es : enUS })}
-                </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{language === "es" ? "Pagados" : "Paid"}</span>
+                <Badge variant="default" data-testid="badge-paid-count">{paidPayments}</Badge>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        {/* Payments Tab */}
-        <TabsContent value="payments" className="space-y-4">
-          {/* Payment Schedules Card */}
+        {/* Right Column - Schedules & Payments */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Payment Schedules */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
               <CardTitle className="text-lg">
                 <Calendar className="inline h-5 w-5 mr-2" />
-                {language === "es" ? "Calendarios de Pago" : "Payment Schedules"}
+                {language === "es" ? "Servicios y Calendarios" : "Services & Schedules"}
               </CardTitle>
               <Button
                 size="sm"
@@ -532,83 +588,90 @@ export default function ExternalRentalContractDetail() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : !schedules || schedules.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6">
-                  {language === "es" ? "No hay calendarios de pago" : "No payment schedules"}
-                </p>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    {language === "es" ? "No hay servicios configurados" : "No services configured"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "es" 
+                      ? "Agrega calendarios de pago para electricidad, agua, internet, etc." 
+                      : "Add payment schedules for electricity, water, internet, etc."}
+                  </p>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {schedules.map((schedule) => (
-                    <div 
-                      key={schedule.id}
-                      className="flex items-center justify-between p-3 border rounded-md hover-elevate"
-                      data-testid={`schedule-item-${schedule.id}`}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={schedule.isActive ? "default" : "secondary"} data-testid={`badge-schedule-type-${schedule.id}`}>
-                            {serviceTypeTranslations[schedule.serviceType][language]}
-                          </Badge>
-                          {!schedule.isActive && (
-                            <Badge variant="outline" data-testid={`badge-inactive-${schedule.id}`}>
-                              {language === "es" ? "Inactivo" : "Inactive"}
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {schedules.map((schedule) => (
+                      <div 
+                        key={schedule.id}
+                        className="flex items-start justify-between p-4 border rounded-md hover-elevate"
+                        data-testid={`schedule-item-${schedule.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={schedule.isActive ? "default" : "secondary"} data-testid={`badge-schedule-type-${schedule.id}`}>
+                              {serviceTypeTranslations[schedule.serviceType][language]}
                             </Badge>
-                          )}
+                            {!schedule.isActive && (
+                              <Badge variant="outline" data-testid={`badge-inactive-${schedule.id}`}>
+                                {language === "es" ? "Inactivo" : "Inactive"}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-lg font-bold mt-2" data-testid={`text-schedule-amount-${schedule.id}`}>
+                            ${Number(schedule.amount).toLocaleString()} {schedule.currency}
+                          </p>
+                          <p className="text-xs text-muted-foreground" data-testid={`text-schedule-day-${schedule.id}`}>
+                            {language === "es" ? "Día" : "Day"} {schedule.dayOfMonth}
+                          </p>
                         </div>
-                        <p className="text-sm mt-1 font-semibold" data-testid={`text-schedule-amount-${schedule.id}`}>
-                          {schedule.currency === 'MXN' ? '$' : '$'}{schedule.amount.toLocaleString()} {schedule.currency}
-                        </p>
-                        <p className="text-xs text-muted-foreground" data-testid={`text-schedule-day-${schedule.id}`}>
-                          {language === "es" ? "Día" : "Day"} {schedule.dayOfMonth} {language === "es" ? "de cada mes" : "of each month"}
-                        </p>
+                        <div className="flex flex-col gap-1 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEditSchedule(schedule)}
+                            disabled={isLoadingAuth || !user}
+                            data-testid={`button-edit-schedule-${schedule.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => deleteScheduleMutation.mutate(schedule.id)}
+                            disabled={deleteScheduleMutation.isPending || isLoadingAuth || !user}
+                            data-testid={`button-delete-schedule-${schedule.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEditSchedule(schedule)}
-                          disabled={isLoadingAuth || !user}
-                          data-testid={`button-edit-schedule-${schedule.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => deleteScheduleMutation.mutate(schedule.id)}
-                          disabled={deleteScheduleMutation.isPending || isLoadingAuth || !user}
-                          data-testid={`button-delete-schedule-${schedule.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {schedules && schedules.length > 0 && (
-                <div className="mt-4 pt-4 border-t">
-                  <Button
-                    onClick={() => generatePaymentsMutation.mutate({ contractId: id!, monthsAhead: 3 })}
-                    disabled={generatePaymentsMutation.isPending || isLoadingAuth || !user}
-                    variant="outline"
-                    className="w-full"
-                    data-testid="button-generate-payments"
-                  >
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    {generatePaymentsMutation.isPending
-                      ? (language === "es" ? "Generando..." : "Generating...")
-                      : (language === "es" ? "Generar Pagos (3 meses)" : "Generate Payments (3 months)")
-                    }
-                  </Button>
-                </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t">
+                    <Button
+                      onClick={() => generatePaymentsMutation.mutate({ contractId: id!, monthsAhead: 3 })}
+                      disabled={generatePaymentsMutation.isPending || isLoadingAuth || !user}
+                      variant="outline"
+                      className="w-full"
+                      data-testid="button-generate-payments"
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      {generatePaymentsMutation.isPending
+                        ? (language === "es" ? "Generando..." : "Generating...")
+                        : (language === "es" ? "Generar Pagos (3 meses)" : "Generate Payments (3 months)")
+                      }
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
 
-          {/* Generated Payments Card */}
+          {/* Generated Payments */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">
@@ -623,20 +686,20 @@ export default function ExternalRentalContractDetail() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : !payments || payments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6">
+                <p className="text-center text-muted-foreground py-8">
                   {language === "es" ? "No hay pagos generados" : "No payments generated"}
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-96 overflow-y-auto">
                   {payments.map((payment) => (
                     <div 
                       key={payment.id}
                       className="flex items-center justify-between p-3 border rounded-md hover-elevate"
                       data-testid={`payment-item-${payment.id}`}
                     >
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" data-testid={`badge-payment-type-${payment.id}`}>
+                          <Badge variant="outline" className="text-xs" data-testid={`badge-payment-type-${payment.id}`}>
                             {serviceTypeTranslations[payment.serviceType][language]}
                           </Badge>
                           <Badge 
@@ -645,162 +708,57 @@ export default function ExternalRentalContractDetail() {
                               payment.status === 'overdue' ? 'destructive' : 
                               'secondary'
                             }
+                            className="text-xs"
                             data-testid={`badge-payment-status-${payment.id}`}
                           >
                             {statusTranslations[payment.status][language]}
                           </Badge>
                         </div>
-                        <p className="text-sm mt-1 font-medium" data-testid={`text-payment-amount-${payment.id}`}>
-                          {payment.currency === 'MXN' ? '$' : '$'}{payment.amount.toLocaleString()} {payment.currency}
+                        <p className="text-sm mt-1 font-semibold" data-testid={`text-payment-amount-${payment.id}`}>
+                          ${Number(payment.amount).toLocaleString()} {payment.currency}
                         </p>
                         <p className="text-xs text-muted-foreground" data-testid={`text-payment-due-${payment.id}`}>
-                          {language === "es" ? "Vence:" : "Due:"} {format(new Date(payment.dueDate), "PPP", { locale: language === "es" ? es : enUS })}
+                          {format(new Date(payment.dueDate), "MMM d, yyyy", { locale: language === "es" ? es : enUS })}
                         </p>
-                        {payment.status === 'paid' && payment.paidDate && (
-                          <div className="mt-2 pt-2 border-t space-y-1">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-payment-paid-date-${payment.id}`}>
-                              <CheckCircle2 className="h-3 w-3" />
-                              {language === "es" ? "Pagado:" : "Paid:"} {format(new Date(payment.paidDate), "PPP", { locale: language === "es" ? es : enUS })}
-                            </p>
-                            {payment.paymentMethod && (
-                              <p className="text-xs text-muted-foreground" data-testid={`text-payment-method-${payment.id}`}>
-                                {language === "es" ? "Método:" : "Method:"} {
-                                  paymentMethodTranslations[payment.paymentMethod as keyof typeof paymentMethodTranslations]?.[language] || payment.paymentMethod
-                                }
-                              </p>
-                            )}
-                            {payment.paymentReference && (
-                              <p className="text-xs text-muted-foreground" data-testid={`text-payment-reference-${payment.id}`}>
-                                {language === "es" ? "Referencia:" : "Reference:"} {payment.paymentReference}
-                              </p>
-                            )}
-                          </div>
+                        {payment.status === 'paid' && payment.paymentMethod && (
+                          <p className="text-xs text-muted-foreground mt-1" data-testid={`text-payment-method-${payment.id}`}>
+                            {paymentMethodTranslations[payment.paymentMethod as keyof typeof paymentMethodTranslations]?.[language] || payment.paymentMethod}
+                          </p>
                         )}
                       </div>
-                      {payment.status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRegisterPayment(payment)}
-                          disabled={isLoadingAuth || !user}
-                          data-testid={`button-register-payment-${payment.id}`}
-                        >
-                          {language === "es" ? "Registrar" : "Register"}
-                        </Button>
-                      )}
-                      {payment.status === 'paid' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRegisterPayment(payment)}
-                          disabled={isLoadingAuth || !user}
-                          data-testid={`button-edit-payment-${payment.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <div className="ml-3">
+                        {payment.status === 'pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRegisterPayment(payment)}
+                            disabled={isLoadingAuth || !user}
+                            data-testid={`button-register-payment-${payment.id}`}
+                          >
+                            {language === "es" ? "Registrar" : "Register"}
+                          </Button>
+                        )}
+                        {payment.status === 'paid' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleRegisterPayment(payment)}
+                            disabled={isLoadingAuth || !user}
+                            data-testid={`button-edit-payment-${payment.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Maintenance Tab */}
-        <TabsContent value="maintenance">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                <Wrench className="inline h-5 w-5 mr-2" />
-                {language === "es" ? "Tickets de Mantenimiento" : "Maintenance Tickets"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-muted-foreground py-8">
-                {language === "es" 
-                  ? "No hay tickets de mantenimiento registrados para este contrato" 
-                  : "No maintenance tickets registered for this contract"}
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Documents Tab */}
-        <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                <Download className="inline h-5 w-5 mr-2" />
-                {language === "es" ? "Documentos del Contrato" : "Contract Documents"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {contract.leaseContractUrl ? (
-                <div className="flex items-center justify-between p-3 border rounded-md hover-elevate">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium" data-testid="text-lease-contract">
-                        {language === "es" ? "Contrato de Arrendamiento" : "Lease Contract"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {language === "es" ? "Documento del contrato" : "Contract document"}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    data-testid="button-view-lease"
-                  >
-                    <a href={contract.leaseContractUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Ver" : "View"}
-                    </a>
-                  </Button>
-                </div>
-              ) : null}
-
-              {contract.inventoryUrl ? (
-                <div className="flex items-center justify-between p-3 border rounded-md hover-elevate">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium" data-testid="text-inventory">
-                        {language === "es" ? "Inventario" : "Inventory"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {language === "es" ? "Listado de bienes" : "Inventory list"}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    data-testid="button-view-inventory"
-                  >
-                    <a href={contract.inventoryUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Ver" : "View"}
-                    </a>
-                  </Button>
-                </div>
-              ) : null}
-
-              {!contract.leaseContractUrl && !contract.inventoryUrl && (
-                <p className="text-center text-muted-foreground py-8">
-                  {language === "es" 
-                    ? "No hay documentos cargados para este contrato" 
-                    : "No documents uploaded for this contract"}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       {/* Schedule Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
@@ -826,7 +784,7 @@ export default function ExternalRentalContractDetail() {
                 name="serviceType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Tipo de Servicio *" : "Service Type *"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Tipo de Servicio" : "Service Type"}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-service-type">
@@ -834,106 +792,66 @@ export default function ExternalRentalContractDetail() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.entries(serviceTypeTranslations)
-                          .filter(([key]) => key !== 'rent')
-                          .map(([key, translations]) => (
-                            <SelectItem key={key} value={key}>
-                              {translations[language]}
-                            </SelectItem>
-                          ))}
+                        <SelectItem value="electricity">{serviceTypeTranslations.electricity[language]}</SelectItem>
+                        <SelectItem value="water">{serviceTypeTranslations.water[language]}</SelectItem>
+                        <SelectItem value="internet">{serviceTypeTranslations.internet[language]}</SelectItem>
+                        <SelectItem value="gas">{serviceTypeTranslations.gas[language]}</SelectItem>
+                        <SelectItem value="maintenance">{serviceTypeTranslations.maintenance[language]}</SelectItem>
+                        <SelectItem value="other">{serviceTypeTranslations.other[language]}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={scheduleForm.control}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Monto *" : "Amount *"}</FormLabel>
+                      <FormLabel>{language === "es" ? "Monto" : "Amount"}</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
                           type="number" 
                           step="0.01"
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                          data-testid="input-amount" 
+                          {...field}
+                          onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                          data-testid="input-amount"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={scheduleForm.control}
-                  name="currency"
+                  name="dayOfMonth"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Moneda *" : "Currency *"}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-currency">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="MXN">MXN</SelectItem>
-                          <SelectItem value="USD">USD</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>{language === "es" ? "Día del Mes" : "Day of Month"}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max="31"
+                          {...field}
+                          onChange={e => field.onChange(parseInt(e.target.value) || 1)}
+                          data-testid="input-day-of-month"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <FormField
-                control={scheduleForm.control}
-                name="dayOfMonth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Día del Mes *" : "Day of Month *"}</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        type="number" 
-                        min="1"
-                        max="31"
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        data-testid="input-day-of-month" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={scheduleForm.control}
-                name="sendReminderDaysBefore"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Días de Recordatorio" : "Reminder Days"}</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        type="number" 
-                        min="0"
-                        max="30"
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        data-testid="input-reminder-days" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
+                <Button 
+                  type="button" 
+                  variant="outline" 
                   onClick={() => {
                     setShowScheduleDialog(false);
                     setEditingSchedule(null);
@@ -943,16 +861,14 @@ export default function ExternalRentalContractDetail() {
                 >
                   {language === "es" ? "Cancelar" : "Cancel"}
                 </Button>
-                <Button
-                  type="submit"
+                <Button 
+                  type="submit" 
                   disabled={createScheduleMutation.isPending || updateScheduleMutation.isPending}
-                  data-testid="button-submit-schedule"
+                  data-testid="button-save-schedule"
                 >
                   {(createScheduleMutation.isPending || updateScheduleMutation.isPending)
                     ? (language === "es" ? "Guardando..." : "Saving...")
-                    : editingSchedule
-                      ? (language === "es" ? "Actualizar" : "Update")
-                      : (language === "es" ? "Crear" : "Create")
+                    : (language === "es" ? "Guardar" : "Save")
                   }
                 </Button>
               </DialogFooter>
@@ -961,7 +877,7 @@ export default function ExternalRentalContractDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Payment Registration Dialog */}
+      {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent data-testid="dialog-payment-form">
           <DialogHeader>
@@ -970,8 +886,8 @@ export default function ExternalRentalContractDetail() {
             </DialogTitle>
             <DialogDescription>
               {language === "es" 
-                ? "Registre los detalles del pago realizado" 
-                : "Register the payment details"}
+                ? "Ingrese los detalles del pago realizado" 
+                : "Enter the payment details"}
             </DialogDescription>
           </DialogHeader>
           <Form {...paymentForm}>
@@ -981,24 +897,20 @@ export default function ExternalRentalContractDetail() {
                 name="paidDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>{language === "es" ? "Fecha de Pago *" : "Payment Date *"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Fecha de Pago" : "Payment Date"}</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
                             variant="outline"
                             className={cn(
-                              "w-full pl-3 text-left font-normal",
+                              "w-full justify-start text-left font-normal",
                               !field.value && "text-muted-foreground"
                             )}
                             data-testid="button-select-paid-date"
                           >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: language === "es" ? es : enUS })
-                            ) : (
-                              <span>{language === "es" ? "Seleccione una fecha" : "Pick a date"}</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP", { locale: language === "es" ? es : enUS }) : <span>{language === "es" ? "Seleccionar fecha" : "Pick a date"}</span>}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -1007,8 +919,9 @@ export default function ExternalRentalContractDetail() {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                          disabled={(date) => date > new Date()}
                           initialFocus
+                          locale={language === "es" ? es : enUS}
                         />
                       </PopoverContent>
                     </Popover>
@@ -1016,61 +929,55 @@ export default function ExternalRentalContractDetail() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={paymentForm.control}
                 name="paymentMethod"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Método de Pago *" : "Payment Method *"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Método de Pago" : "Payment Method"}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-payment-method">
-                          <SelectValue placeholder={language === "es" ? "Seleccione un método" : "Select a method"} />
+                          <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="cash">{language === "es" ? "Efectivo" : "Cash"}</SelectItem>
-                        <SelectItem value="bank_transfer">{language === "es" ? "Transferencia Bancaria" : "Bank Transfer"}</SelectItem>
-                        <SelectItem value="credit_card">{language === "es" ? "Tarjeta de Crédito" : "Credit Card"}</SelectItem>
-                        <SelectItem value="debit_card">{language === "es" ? "Tarjeta de Débito" : "Debit Card"}</SelectItem>
-                        <SelectItem value="check">{language === "es" ? "Cheque" : "Check"}</SelectItem>
-                        <SelectItem value="other">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                        <SelectItem value="cash">{paymentMethodTranslations.cash[language]}</SelectItem>
+                        <SelectItem value="bank_transfer">{paymentMethodTranslations.bank_transfer[language]}</SelectItem>
+                        <SelectItem value="credit_card">{paymentMethodTranslations.credit_card[language]}</SelectItem>
+                        <SelectItem value="debit_card">{paymentMethodTranslations.debit_card[language]}</SelectItem>
+                        <SelectItem value="check">{paymentMethodTranslations.check[language]}</SelectItem>
+                        <SelectItem value="other">{paymentMethodTranslations.other[language]}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={paymentForm.control}
                 name="paymentReference"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Referencia de Pago" : "Payment Reference"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Referencia (opcional)" : "Reference (optional)"}</FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder={language === "es" ? "Número de referencia, confirmación, etc." : "Reference number, confirmation, etc."}
-                        data-testid="input-payment-reference" 
-                      />
+                      <Input {...field} data-testid="input-payment-reference" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={paymentForm.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Notas (opcional)" : "Notes (optional)"}</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        {...field} 
-                        placeholder={language === "es" ? "Notas adicionales sobre el pago..." : "Additional notes about the payment..."}
-                        rows={3}
-                        data-testid="textarea-payment-notes" 
-                      />
+                      <Textarea {...field} data-testid="textarea-payment-notes" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1078,9 +985,9 @@ export default function ExternalRentalContractDetail() {
               />
 
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
+                <Button 
+                  type="button" 
+                  variant="outline" 
                   onClick={() => {
                     setShowPaymentDialog(false);
                     setEditingPayment(null);
@@ -1090,14 +997,14 @@ export default function ExternalRentalContractDetail() {
                 >
                   {language === "es" ? "Cancelar" : "Cancel"}
                 </Button>
-                <Button
-                  type="submit"
+                <Button 
+                  type="submit" 
                   disabled={registerPaymentMutation.isPending}
-                  data-testid="button-submit-payment"
+                  data-testid="button-save-payment"
                 >
                   {registerPaymentMutation.isPending
                     ? (language === "es" ? "Guardando..." : "Saving...")
-                    : (language === "es" ? "Registrar Pago" : "Register Payment")
+                    : (language === "es" ? "Registrar" : "Register")
                   }
                 </Button>
               </DialogFooter>
@@ -1108,15 +1015,15 @@ export default function ExternalRentalContractDetail() {
 
       {/* Contract Edit Dialog */}
       <Dialog open={showContractEditDialog} onOpenChange={setShowContractEditDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-contract-edit">
+        <DialogContent data-testid="dialog-contract-edit-form">
           <DialogHeader>
             <DialogTitle>
               {language === "es" ? "Editar Contrato" : "Edit Contract"}
             </DialogTitle>
             <DialogDescription>
               {language === "es" 
-                ? "Actualice la información del contrato de renta" 
-                : "Update the rental contract information"}
+                ? "Actualice la información del contrato" 
+                : "Update the contract information"}
             </DialogDescription>
           </DialogHeader>
           <Form {...contractEditForm}>
@@ -1126,132 +1033,143 @@ export default function ExternalRentalContractDetail() {
                 name="tenantName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Nombre del Inquilino *" : "Tenant Name *"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Nombre del Inquilino" : "Tenant Name"}</FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder={language === "es" ? "Nombre completo del inquilino" : "Full tenant name"}
-                        data-testid="input-tenant-name" 
-                      />
+                      <Input {...field} data-testid="input-tenant-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={contractEditForm.control}
-                  name="tenantEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="email"
-                          placeholder={language === "es" ? "correo@ejemplo.com" : "email@example.com"}
-                          data-testid="input-tenant-email" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={contractEditForm.control}
-                  name="tenantPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder={language === "es" ? "+52 998 123 4567" : "+52 998 123 4567"}
-                          data-testid="input-tenant-phone" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <FormField
+                control={contractEditForm.control}
+                name="tenantEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Email (opcional)" : "Email (optional)"}</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} data-testid="input-tenant-email-edit" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={contractEditForm.control}
+                name="tenantPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Teléfono (opcional)" : "Phone (optional)"}</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-tenant-phone-edit" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={contractEditForm.control}
                   name="monthlyRent"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Renta Mensual *" : "Monthly Rent *"}</FormLabel>
+                      <FormLabel>{language === "es" ? "Renta Mensual" : "Monthly Rent"}</FormLabel>
                       <FormControl>
                         <Input 
+                          type="number" 
+                          step="0.01"
                           {...field}
-                          value={field.value != null ? String(field.value) : ''}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
-                          placeholder={language === "es" ? "1200.50" : "1200.50"}
-                          data-testid="input-monthly-rent" 
+                          onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                          data-testid="input-monthly-rent-edit"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={contractEditForm.control}
-                  name="endDate"
+                  name="rentalPurpose"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>{language === "es" ? "Fecha de Fin *" : "End Date *"}</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              data-testid="button-select-end-date"
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: language === "es" ? es : enUS })
-                              ) : (
-                                <span>{language === "es" ? "Seleccione una fecha" : "Pick a date"}</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) => date < new Date("1900-01-01")}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Propósito" : "Purpose"}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-rental-purpose">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="living">
+                            <div className="flex items-center gap-2">
+                              <Home className="h-4 w-4" />
+                              {rentalPurposeTranslations.living[language]}
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="sublease">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {rentalPurposeTranslations.sublease[language]}
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <FormField
+                control={contractEditForm.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>{language === "es" ? "Fecha de Fin" : "End Date"}</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-select-end-date"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP", { locale: language === "es" ? es : enUS }) : <span>{language === "es" ? "Seleccionar fecha" : "Pick a date"}</span>}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date(contract.startDate)}
+                          initialFocus
+                          locale={language === "es" ? es : enUS}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={contractEditForm.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Notas (opcional)" : "Notes (optional)"}</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        {...field} 
-                        placeholder={language === "es" ? "Notas adicionales sobre el contrato..." : "Additional notes about the contract..."}
-                        rows={3}
-                        data-testid="textarea-contract-notes" 
-                      />
+                      <Textarea {...field} data-testid="textarea-contract-notes" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1259,25 +1177,35 @@ export default function ExternalRentalContractDetail() {
               />
 
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
+                <Button 
+                  type="button" 
+                  variant="outline" 
                   onClick={() => {
                     setShowContractEditDialog(false);
-                    contractEditForm.reset();
+                    if (contract) {
+                      contractEditForm.reset({
+                        tenantName: contract.tenantName,
+                        tenantEmail: contract.tenantEmail || "",
+                        tenantPhone: contract.tenantPhone || "",
+                        monthlyRent: parseFloat(contract.monthlyRent.toString()),
+                        rentalPurpose: (contract as any).rentalPurpose || "living",
+                        endDate: new Date(contract.endDate),
+                        notes: contract.notes || "",
+                      });
+                    }
                   }}
                   data-testid="button-cancel-contract-edit"
                 >
                   {language === "es" ? "Cancelar" : "Cancel"}
                 </Button>
-                <Button
-                  type="submit"
+                <Button 
+                  type="submit" 
                   disabled={updateContractMutation.isPending}
-                  data-testid="button-submit-contract-edit"
+                  data-testid="button-save-contract-edit"
                 >
                   {updateContractMutation.isPending
                     ? (language === "es" ? "Guardando..." : "Saving...")
-                    : (language === "es" ? "Actualizar Contrato" : "Update Contract")
+                    : (language === "es" ? "Guardar" : "Save")
                   }
                 </Button>
               </DialogFooter>

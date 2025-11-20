@@ -4842,11 +4842,14 @@ export const insertExternalRentalContractSchema = createInsertSchema(externalRen
 }).extend({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
+  rentalPurpose: z.enum(["living", "sublease"]).default("living"),
 });
 
 export const updateExternalRentalContractSchema = insertExternalRentalContractSchema.partial().omit({
   agencyId: true,
   createdBy: true,
+}).extend({
+  rentalPurpose: z.enum(["living", "sublease"]).optional(),
 });
 
 export type InsertExternalRentalContract = z.infer<typeof insertExternalRentalContractSchema>;
