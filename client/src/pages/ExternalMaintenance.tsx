@@ -1,22 +1,56 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import { Wrench, Plus, AlertCircle, AlertTriangle, Filter, Calendar as CalendarIcon, Clock, Home, FileText, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Wrench,
+  Plus,
+  AlertCircle,
+  AlertTriangle,
+  Filter,
+  Search,
+  Clock,
+  Home,
+  Eye,
+  TrendingUp,
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useEffect } from "react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalMaintenanceTicket, ExternalCondominium, ExternalUnit, ExternalWorkerAssignment } from "@shared/schema";
@@ -24,44 +58,15 @@ import { insertExternalMaintenanceTicketSchema } from "@shared/schema";
 import { z } from "zod";
 import { format, toZonedTime, fromZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
-import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 type MaintenanceFormData = z.infer<typeof insertExternalMaintenanceTicketSchema>;
 
-const serviceTypeColors: Record<string, { bg: string; label: { es: string; en: string } }> = {
-  plumbing: {
-    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-    label: { es: "Plomería", en: "Plumbing" }
-  },
-  electrical: {
-    bg: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300",
-    label: { es: "Eléctrico", en: "Electrical" }
-  },
-  appliances: {
-    bg: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300",
-    label: { es: "Electrodomésticos", en: "Appliances" }
-  },
-  hvac: {
-    bg: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
-    label: { es: "Climatización", en: "HVAC" }
-  },
-  general: {
-    bg: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
-    label: { es: "General", en: "General" }
-  },
-  emergency: {
-    bg: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-    label: { es: "Emergencia", en: "Emergency" }
-  },
-  other: {
-    bg: "bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300",
-    label: { es: "Otro", en: "Other" }
-  },
-};
+const CANCUN_TIMEZONE = "America/Cancun";
 
 const statusColors: Record<string, { bg: string; label: { es: string; en: string } }> = {
   open: {
-    bg: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300",
+    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
     label: { es: "Abierto", en: "Open" }
   },
   in_progress: {
@@ -76,36 +81,64 @@ const statusColors: Record<string, { bg: string; label: { es: string; en: string
     bg: "bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300",
     label: { es: "Cerrado", en: "Closed" }
   },
+  on_hold: {
+    bg: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+    label: { es: "En Espera", en: "On Hold" }
+  },
 };
 
-// Timezone constant for Cancun
-const CANCUN_TIMEZONE = "America/Cancun";
+const priorityColors: Record<string, { bg: string; label: { es: string; en: string } }> = {
+  low: {
+    bg: "bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300",
+    label: { es: "Baja", en: "Low" }
+  },
+  medium: {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    label: { es: "Media", en: "Medium" }
+  },
+  high: {
+    bg: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+    label: { es: "Alta", en: "High" }
+  },
+  urgent: {
+    bg: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+    label: { es: "Urgente", en: "Urgent" }
+  },
+};
+
+const categoryLabels: Record<string, { es: string; en: string }> = {
+  plumbing: { es: "Plomería", en: "Plumbing" },
+  electrical: { es: "Eléctrico", en: "Electrical" },
+  appliances: { es: "Electrodomésticos", en: "Appliances" },
+  hvac: { es: "Climatización", en: "HVAC" },
+  general: { es: "General", en: "General" },
+  emergency: { es: "Emergencia", en: "Emergency" },
+  other: { es: "Otro", en: "Other" },
+};
 
 export default function ExternalMaintenance() {
   const { language } = useLanguage();
   const { toast } = useToast();
-  const { user, isLoading: isLoadingAuth } = useAuth();
-  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "unit" | "condo">("all");
-  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
-  const [selectedCondoId, setSelectedCondoId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [showDialog, setShowDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  
-  // Form-specific states
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [condominiumFilter, setCondominiumFilter] = useState<string>("all");
   const [formCondominiumId, setFormCondominiumId] = useState<string>("");
   const [formDate, setFormDate] = useState<Date | undefined>(undefined);
   const [formTime, setFormTime] = useState<string>("09:00");
 
-  const { data: maintenances, isLoading: maintenancesLoading, isError: maintenancesError } = useQuery<ExternalMaintenanceTicket[]>({
+  const { data: tickets, isLoading: ticketsLoading } = useQuery<ExternalMaintenanceTicket[]>({
     queryKey: ['/api/external-tickets'],
   });
 
-  const { data: condominiums, isLoading: condosLoading } = useQuery<ExternalCondominium[]>({
+  const { data: condominiums } = useQuery<ExternalCondominium[]>({
     queryKey: ['/api/external-condominiums'],
   });
 
-  const { data: units, isLoading: unitsLoading } = useQuery<ExternalUnit[]>({
+  const { data: units } = useQuery<ExternalUnit[]>({
     queryKey: ['/api/external-units'],
   });
 
@@ -117,48 +150,11 @@ export default function ExternalMaintenance() {
     queryKey: ['/api/external-worker-assignments'],
   });
 
-  // Filter to get only maintenance workers
   const maintenanceWorkers = agencyUsers?.filter(u => 
     u.role === 'external_agency_maintenance' && u.maintenanceSpecialty
   ) || [];
 
-  // Filter units by selected condominium in form
-  const filteredUnitsForForm = formCondominiumId 
-    ? (units ?? []).filter(u => u.condominiumId === formCondominiumId)
-    : [];
-
-  // Filter workers by assignments to the selected unit or condominium
-  // If no specific assignments exist, show all maintenance workers
-  const getAvailableWorkersForLocation = (unitId: string | undefined) => {
-    if (!unitId) return [];
-    
-    const unit = units?.find(u => u.id === unitId);
-    if (!unit) return [];
-    
-    // Get workers assigned to this specific unit or to the entire condominium
-    const assignedWorkerIds = workerAssignments
-      ?.filter(a => 
-        (a.unitId === unitId) || 
-        (a.condominiumId === unit.condominiumId && !a.unitId)
-      )
-      .map(a => a.userId) || [];
-    
-    // If there are specific assignments, return those workers
-    // Otherwise, return all maintenance workers (fallback)
-    if (assignedWorkerIds.length > 0) {
-      return maintenanceWorkers.filter(w => assignedWorkerIds.includes(w.id));
-    }
-    
-    // No assignments - return all maintenance workers for this agency
-    return maintenanceWorkers;
-  };
-
-  useEffect(() => {
-    setSelectedUnitId(null);
-    setSelectedCondoId(null);
-  }, [filterType]);
-
-  const maintenanceForm = useForm<MaintenanceFormData>({
+  const form = useForm<MaintenanceFormData>({
     resolver: zodResolver(insertExternalMaintenanceTicketSchema),
     defaultValues: {
       unitId: "",
@@ -173,34 +169,39 @@ export default function ExternalMaintenance() {
     },
   });
 
-  const createMaintenanceMutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: async (data: MaintenanceFormData) => {
-      // Get agencyId from selected unit
       const selectedUnit = units?.find(u => u.id === data.unitId);
-      if (!selectedUnit || !selectedUnit.agencyId) {
+      if (!selectedUnit?.agencyId) {
         throw new Error(language === "es" 
-          ? "Error: No se pudo obtener la información de la unidad. Por favor recargue la página." 
-          : "Error: Could not get unit information. Please reload the page."
+          ? "No se pudo obtener la información de la unidad" 
+          : "Could not get unit information"
         );
       }
+
+      if (formDate && formTime) {
+        const [hours, minutes] = formTime.split(':').map(Number);
+        const combinedDate = new Date(formDate);
+        combinedDate.setHours(hours, minutes, 0, 0);
+        const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
+        data.scheduledDate = utcDate;
+      }
       
-      const dataWithAgency = {
+      return await apiRequest('POST', '/api/external-tickets', {
         ...data,
         agencyId: selectedUnit.agencyId,
-      };
-      
-      return await apiRequest('POST', '/api/external-tickets', dataWithAgency);
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-tickets'] });
-      setShowMaintenanceDialog(false);
-      maintenanceForm.reset();
+      setShowDialog(false);
+      form.reset();
       setFormCondominiumId("");
       setFormDate(undefined);
       setFormTime("09:00");
       toast({
-        title: language === "es" ? "Mantenimiento creado" : "Maintenance created",
-        description: language === "es" ? "El trabajo de mantenimiento se creó exitosamente" : "The maintenance job was created successfully",
+        title: language === "es" ? "Ticket creado" : "Ticket created",
+        description: language === "es" ? "El ticket de mantenimiento se creó exitosamente" : "Maintenance ticket created successfully",
       });
     },
     onError: (error: Error) => {
@@ -212,759 +213,653 @@ export default function ExternalMaintenance() {
     },
   });
 
-  const updateMaintenanceStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      if (!user?.id) throw new Error("User not authenticated");
-      return await apiRequest('PATCH', `/api/external-tickets/${id}/status`, { status, updatedByUserId: user.id });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/external-tickets'] });
-      toast({
-        title: language === "es" ? "Estado actualizado" : "Status updated",
-        description: language === "es" ? "El estado del mantenimiento se actualizó" : "The maintenance status was updated",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: language === "es" ? "Error" : "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const filteredUnitsForForm = formCondominiumId 
+    ? (units ?? []).filter(u => u.condominiumId === formCondominiumId)
+    : [];
 
-  const handleSubmitMaintenance = (data: MaintenanceFormData) => {
-    // Combine date and time into Cancun timezone
-    if (formDate && formTime) {
-      const [hours, minutes] = formTime.split(':').map(Number);
-      const combinedDate = new Date(formDate);
-      combinedDate.setHours(hours, minutes, 0, 0);
-      
-      // Convert FROM Cancun local time TO UTC
-      const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
-      data.scheduledDate = utcDate;
+  const getAvailableWorkersForLocation = (unitId: string | undefined) => {
+    if (!unitId) return [];
+    const unit = units?.find(u => u.id === unitId);
+    if (!unit) return [];
+    
+    const assignedWorkerIds = workerAssignments
+      ?.filter(a => (a.unitId === unitId) || (a.condominiumId === unit.condominiumId && !a.unitId))
+      .map(a => a.userId) || [];
+    
+    if (assignedWorkerIds.length > 0) {
+      return maintenanceWorkers.filter(w => assignedWorkerIds.includes(w.id));
     }
     
-    createMaintenanceMutation.mutate(data);
+    return maintenanceWorkers;
   };
-
-  const handleAddMaintenance = () => {
-    maintenanceForm.reset({
-      unitId: "",
-      title: "",
-      description: "",
-      category: "other",
-      priority: "medium",
-      status: "open",
-      scheduledDate: undefined,
-      assignedTo: undefined,
-      notes: "",
-    });
-    setFormCondominiumId("");
-    setFormDate(undefined);
-    setFormTime("09:00");
-    setShowMaintenanceDialog(true);
-  };
-
-  const getFilteredMaintenances = () => {
-    if (!maintenances) return null;
-    if (unitsLoading || condosLoading) return null;
-    if (!units || !condominiums) return null;
-
-    let filtered = maintenances;
-
-    if (filterType === "unit" && selectedUnitId) {
-      filtered = filtered.filter(m => m.unitId === selectedUnitId);
-    } else if (filterType === "condo" && selectedCondoId) {
-      const condoUnitIds = (units ?? []).filter(u => u.condominiumId === selectedCondoId).map(u => u.id);
-      filtered = filtered.filter(m => condoUnitIds.includes(m.unitId));
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(m => m.status === statusFilter);
-    }
-
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(m => m.category === typeFilter);
-    }
-
-    return filtered.sort((a, b) => {
-      if (!a.scheduledDate) return 1;
-      if (!b.scheduledDate) return -1;
-      return new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime();
-    });
-  };
-
-  const filteredMaintenances = getFilteredMaintenances();
-
-  const getMaintenanceStats = () => {
-    if (!filteredMaintenances) return { total: 0, open: 0, inProgress: 0, resolved: 0 };
-    
-    const total = filteredMaintenances.length;
-    const open = filteredMaintenances.filter(m => m.status === 'open').length;
-    const inProgress = filteredMaintenances.filter(m => m.status === 'in_progress').length;
-    const resolved = filteredMaintenances.filter(m => m.status === 'resolved' || m.status === 'closed').length;
-
-    return { total, open, inProgress, resolved };
-  };
-
-  const stats = getMaintenanceStats();
 
   const getUnitInfo = (unitId: string) => {
-    const unit = (units ?? []).find(u => u.id === unitId);
+    const unit = units?.find(u => u.id === unitId);
     if (!unit) return null;
-    const condo = (condominiums ?? []).find(c => c.id === unit.condominiumId);
+    const condo = condominiums?.find(c => c.id === unit.condominiumId);
     return { unit, condo };
   };
 
   const getAssignedUserName = (userId: string | null) => {
     if (!userId) return null;
-    const user = (agencyUsers ?? []).find(u => u.id === userId);
+    const user = agencyUsers?.find(u => u.id === userId);
     if (!user) return null;
-    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-    const specialty = user.maintenanceSpecialty;
-    if (specialty) {
-      const specialtyLabels: Record<string, { es: string; en: string }> = {
-        encargado_mantenimiento: { es: "Encargado", en: "Manager" },
-        mantenimiento_general: { es: "General", en: "General" },
-        electrico: { es: "Eléctrico", en: "Electrical" },
-        plomero: { es: "Plomero", en: "Plumber" },
-        refrigeracion: { es: "Refrigeración", en: "HVAC" },
-        carpintero: { es: "Carpintero", en: "Carpenter" },
-        pintor: { es: "Pintor", en: "Painter" },
-        jardinero: { es: "Jardinero", en: "Gardener" },
-        albanil: { es: "Albañil", en: "Mason" },
-        limpieza: { es: "Limpieza", en: "Cleaning" },
-      };
-      const specialtyLabel = specialtyLabels[specialty]?.[language] || specialty;
-      return `${name} (${specialtyLabel})`;
-    }
-    return name;
+    return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+  };
+
+  // Filter and search logic
+  const filteredTickets = tickets?.filter(ticket => {
+    const unitInfo = getUnitInfo(ticket.unitId);
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm ||
+      ticket.title.toLowerCase().includes(searchLower) ||
+      ticket.description.toLowerCase().includes(searchLower) ||
+      unitInfo?.unit?.unitNumber?.toLowerCase().includes(searchLower) ||
+      unitInfo?.condo?.name?.toLowerCase().includes(searchLower);
+
+    const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
+    const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
+    const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
+    const matchesCondo = condominiumFilter === "all" || unitInfo?.condo?.id === condominiumFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesCondo;
+  }) || [];
+
+  // Calculate metrics
+  const stats = {
+    total: filteredTickets.length,
+    open: filteredTickets.filter(t => t.status === 'open').length,
+    inProgress: filteredTickets.filter(t => t.status === 'in_progress').length,
+    resolved: filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed').length,
+    totalCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.actualCost || '0'), 0),
+    estimatedCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.estimatedCost || '0'), 0),
+  };
+
+  const handleSubmit = (data: MaintenanceFormData) => {
+    createMutation.mutate(data);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat(language === 'es' ? 'es-MX' : 'en-US', {
+      style: 'currency',
+      currency: 'MXN',
+    }).format(amount);
+  };
+
+  const t = language === 'es' ? {
+    title: 'Mantenimiento',
+    subtitle: 'Gestiona tickets de mantenimiento y servicios',
+    newTicket: 'Nuevo Ticket',
+    totalJobs: 'Total Trabajos',
+    open: 'Abiertos',
+    inProgress: 'En Progreso',
+    resolved: 'Resueltos',
+    estimatedCost: 'Costo Estimado',
+    actualCost: 'Costo Real',
+    search: 'Buscar por título, descripción o unidad...',
+    filters: 'Filtros',
+    status: 'Estado',
+    priority: 'Prioridad',
+    category: 'Categoría',
+    condominium: 'Condominio',
+    all: 'Todos',
+    unit: 'Unidad',
+    assigned: 'Asignado',
+    created: 'Creado',
+    scheduled: 'Programado',
+    actions: 'Acciones',
+    view: 'Ver',
+    noTickets: 'No se encontraron tickets',
+    noTicketsDesc: 'Crea un nuevo ticket para empezar',
+    createTicket: 'Crear Ticket de Mantenimiento',
+    selectCondominium: 'Seleccionar Condominio',
+    selectUnit: 'Seleccionar Unidad',
+    ticketTitle: 'Título del Ticket',
+    description: 'Descripción',
+    selectCategory: 'Seleccionar Categoría',
+    selectPriority: 'Seleccionar Prioridad',
+    selectWorker: 'Seleccionar Trabajador (Opcional)',
+    scheduleDate: 'Fecha Programada (Opcional)',
+    scheduleTime: 'Hora',
+    notes: 'Notas Adicionales (Opcional)',
+    cancel: 'Cancelar',
+    create: 'Crear Ticket',
+    creating: 'Creando...',
+  } : {
+    title: 'Maintenance',
+    subtitle: 'Manage maintenance tickets and services',
+    newTicket: 'New Ticket',
+    totalJobs: 'Total Jobs',
+    open: 'Open',
+    inProgress: 'In Progress',
+    resolved: 'Resolved',
+    estimatedCost: 'Estimated Cost',
+    actualCost: 'Actual Cost',
+    search: 'Search by title, description or unit...',
+    filters: 'Filters',
+    status: 'Status',
+    priority: 'Priority',
+    category: 'Category',
+    condominium: 'Condominium',
+    all: 'All',
+    unit: 'Unit',
+    assigned: 'Assigned',
+    created: 'Created',
+    scheduled: 'Scheduled',
+    actions: 'Actions',
+    view: 'View',
+    noTickets: 'No tickets found',
+    noTicketsDesc: 'Create a new ticket to get started',
+    createTicket: 'Create Maintenance Ticket',
+    selectCondominium: 'Select Condominium',
+    selectUnit: 'Select Unit',
+    ticketTitle: 'Ticket Title',
+    description: 'Description',
+    selectCategory: 'Select Category',
+    selectPriority: 'Select Priority',
+    selectWorker: 'Select Worker (Optional)',
+    scheduleDate: 'Schedule Date (Optional)',
+    scheduleTime: 'Time',
+    notes: 'Additional Notes (Optional)',
+    cancel: 'Cancel',
+    create: 'Create Ticket',
+    creating: 'Creating...',
   };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">
-            {language === "es" ? "Mantenimiento" : "Maintenance"}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {language === "es" 
-              ? "Gestiona el mantenimiento y servicios de tus propiedades"
-              : "Manage maintenance and services for your properties"}
-          </p>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">{t.title}</h1>
+          <p className="text-muted-foreground mt-1">{t.subtitle}</p>
         </div>
-        <Button onClick={handleAddMaintenance} data-testid="button-add-maintenance">
+        <Button onClick={() => setShowDialog(true)} data-testid="button-new-ticket">
           <Plus className="mr-2 h-4 w-4" />
-          {language === "es" ? "Nuevo Mantenimiento" : "New Maintenance"}
+          {t.newTicket}
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Total de Trabajos" : "Total Jobs"}
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.totalJobs}</CardTitle>
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-maintenances">{stats.total}</div>
+            <div className="text-2xl font-bold" data-testid="text-total">{stats.total}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Abiertos" : "Open"}
-            </CardTitle>
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.open}</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-open-maintenances">{stats.open}</div>
+            <div className="text-2xl font-bold text-amber-600" data-testid="text-open">{stats.open}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "En Progreso" : "In Progress"}
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.inProgress}</CardTitle>
+            <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-in-progress-maintenances">{stats.inProgress}</div>
+            <div className="text-2xl font-bold text-blue-600" data-testid="text-in-progress">{stats.inProgress}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Resueltos" : "Resolved"}
-            </CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.resolved}</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-resolved-maintenances">{stats.resolved}</div>
+            <div className="text-2xl font-bold text-green-600" data-testid="text-resolved">{stats.resolved}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.estimatedCost}</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold" data-testid="text-estimated-cost">{formatCurrency(stats.estimatedCost)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.actualCost}</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold" data-testid="text-actual-cost">{formatCurrency(stats.totalCost)}</div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Search and Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            {language === "es" ? "Filtros" : "Filters"}
+            {t.filters}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{language === "es" ? "Vista" : "View"}</label>
-              <Select value={filterType} onValueChange={(value: any) => {
-                setFilterType(value);
-                setSelectedUnitId(null);
-                setSelectedCondoId(null);
-              }}>
-                <SelectTrigger data-testid="select-filter-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
-                  <SelectItem value="condo">{language === "es" ? "Por Condominio" : "By Condominium"}</SelectItem>
-                  <SelectItem value="unit">{language === "es" ? "Por Unidad" : "By Unit"}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t.search}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              data-testid="input-search"
+            />
+          </div>
 
-            {filterType === "condo" && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{language === "es" ? "Condominio" : "Condominium"}</label>
-                <Select 
-                  value={selectedCondoId || ""} 
-                  onValueChange={(value) => setSelectedCondoId(value || null)}
-                >
-                  <SelectTrigger data-testid="select-condominium">
-                    <SelectValue placeholder={language === "es" ? "Seleccionar..." : "Select..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {condominiums?.map(condo => (
-                      <SelectItem key={condo.id} value={condo.id}>{condo.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <div className="grid gap-4 md:grid-cols-5">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger data-testid="select-status">
+                <SelectValue placeholder={t.status} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.all}</SelectItem>
+                <SelectItem value="open">{statusColors.open.label[language]}</SelectItem>
+                <SelectItem value="in_progress">{statusColors.in_progress.label[language]}</SelectItem>
+                <SelectItem value="resolved">{statusColors.resolved.label[language]}</SelectItem>
+                <SelectItem value="closed">{statusColors.closed.label[language]}</SelectItem>
+                <SelectItem value="on_hold">{statusColors.on_hold.label[language]}</SelectItem>
+              </SelectContent>
+            </Select>
 
-            {filterType === "unit" && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{language === "es" ? "Unidad" : "Unit"}</label>
-                <Select 
-                  value={selectedUnitId || ""} 
-                  onValueChange={(value) => setSelectedUnitId(value || null)}
-                >
-                  <SelectTrigger data-testid="select-unit">
-                    <SelectValue placeholder={language === "es" ? "Seleccionar..." : "Select..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units?.map(unit => {
-                      const condo = condominiums?.find(c => c.id === unit.condominiumId);
-                      return (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {condo?.name} - {unit.unitNumber}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger data-testid="select-priority">
+                <SelectValue placeholder={t.priority} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.all}</SelectItem>
+                <SelectItem value="low">{priorityColors.low.label[language]}</SelectItem>
+                <SelectItem value="medium">{priorityColors.medium.label[language]}</SelectItem>
+                <SelectItem value="high">{priorityColors.high.label[language]}</SelectItem>
+                <SelectItem value="urgent">{priorityColors.urgent.label[language]}</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{language === "es" ? "Estado" : "Status"}</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
-                  <SelectItem value="open">{language === "es" ? "Abierto" : "Open"}</SelectItem>
-                  <SelectItem value="in_progress">{language === "es" ? "En Progreso" : "In Progress"}</SelectItem>
-                  <SelectItem value="resolved">{language === "es" ? "Resuelto" : "Resolved"}</SelectItem>
-                  <SelectItem value="closed">{language === "es" ? "Cerrado" : "Closed"}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger data-testid="select-category">
+                <SelectValue placeholder={t.category} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.all}</SelectItem>
+                <SelectItem value="plumbing">{categoryLabels.plumbing[language]}</SelectItem>
+                <SelectItem value="electrical">{categoryLabels.electrical[language]}</SelectItem>
+                <SelectItem value="appliances">{categoryLabels.appliances[language]}</SelectItem>
+                <SelectItem value="hvac">{categoryLabels.hvac[language]}</SelectItem>
+                <SelectItem value="general">{categoryLabels.general[language]}</SelectItem>
+                <SelectItem value="emergency">{categoryLabels.emergency[language]}</SelectItem>
+                <SelectItem value="other">{categoryLabels.other[language]}</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{language === "es" ? "Tipo" : "Type"}</label>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger data-testid="select-type-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
-                  {Object.entries(serviceTypeColors).map(([type, config]) => (
-                    <SelectItem key={type} value={type}>
-                      {config.label[language]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={condominiumFilter} onValueChange={setCondominiumFilter}>
+              <SelectTrigger data-testid="select-condominium">
+                <SelectValue placeholder={t.condominium} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.all}</SelectItem>
+                {condominiums?.map(condo => (
+                  <SelectItem key={condo.id} value={condo.id}>
+                    {condo.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+                setPriorityFilter("all");
+                setCategoryFilter("all");
+                setCondominiumFilter("all");
+              }}
+              data-testid="button-clear-filters"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {language === 'es' ? 'Limpiar' : 'Clear'}
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {maintenancesError ? (
-        <Card data-testid="card-error-state">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-            <p className="text-lg font-medium" data-testid="text-error-title">
-              {language === "es" ? "Error al cargar mantenimientos" : "Error loading maintenances"}
-            </p>
-          </CardContent>
-        </Card>
-      ) : maintenancesLoading || condosLoading || unitsLoading || !filteredMaintenances ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-full" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : filteredMaintenances.length > 0 ? (
-        <div className="space-y-4">
-          {filteredMaintenances.map((maintenance) => {
-            const unitInfo = getUnitInfo(maintenance.unitId);
-            const serviceTypeConfig = serviceTypeColors[maintenance.category] || serviceTypeColors['other'];
-            const statusConfig = statusColors[maintenance.status] || statusColors['open'];
-            const assignedUserName = getAssignedUserName(maintenance.assignedTo);
+      {/* Tickets Table */}
+      <Card>
+        <CardContent className="p-0">
+          {ticketsLoading ? (
+            <div className="p-8 text-center">
+              <Skeleton className="h-8 w-full mb-4" />
+              <Skeleton className="h-8 w-full mb-4" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="py-12 text-center">
+              <Wrench className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-1">{t.noTickets}</h3>
+              <p className="text-sm text-muted-foreground">{t.noTicketsDesc}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t.ticketTitle}</TableHead>
+                    <TableHead>{t.unit}</TableHead>
+                    <TableHead>{t.category}</TableHead>
+                    <TableHead>{t.priority}</TableHead>
+                    <TableHead>{t.status}</TableHead>
+                    <TableHead>{t.assigned}</TableHead>
+                    <TableHead>{t.created}</TableHead>
+                    <TableHead className="text-right">{t.actions}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTickets.map(ticket => {
+                    const unitInfo = getUnitInfo(ticket.unitId);
+                    const assignedName = getAssignedUserName(ticket.assignedTo);
+                    const statusConfig = statusColors[ticket.status] || statusColors.open;
+                    const priorityConfig = priorityColors[ticket.priority] || priorityColors.medium;
 
-            return (
-              <Card key={maintenance.id} data-testid={`card-maintenance-${maintenance.id}`} className="hover-elevate">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="flex-1">
-                        <CardTitle className="text-base">
-                          {unitInfo && (
-                            <span className="font-semibold">
-                              {unitInfo.condo?.name} - {language === "es" ? "Unidad" : "Unit"} {unitInfo.unit.unitNumber}
-                            </span>
-                          )}
-                        </CardTitle>
-                        <CardDescription className="mt-1">
-                          {maintenance.title}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      {maintenance.scheduledDate && (
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(maintenance.scheduledDate), language === "es" ? "d 'de' MMMM, yyyy" : "MMMM d, yyyy", {
-                            locale: language === "es" ? es : undefined
-                          })}
-                        </div>
-                      )}
-                      {assignedUserName && (
-                        <div className="text-sm font-medium mt-1">
-                          {assignedUserName}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge className={serviceTypeConfig.bg} data-testid={`badge-type-${maintenance.id}`}>
-                        {serviceTypeConfig.label[language]}
-                      </Badge>
-                      <Badge className={statusConfig.bg} data-testid={`badge-status-${maintenance.id}`}>
-                        {statusConfig.label[language]}
-                      </Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href={`/external/maintenance/${maintenance.id}`}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          data-testid={`button-view-detail-${maintenance.id}`}
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          {language === "es" ? "Ver Detalle" : "View Detail"}
-                        </Button>
-                      </Link>
-                      {maintenance.status === 'open' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => updateMaintenanceStatusMutation.mutate({ id: maintenance.id, status: 'in_progress' })}
-                          disabled={updateMaintenanceStatusMutation.isPending || isLoadingAuth || !user}
-                          data-testid={`button-start-${maintenance.id}`}
-                        >
-                          {language === "es" ? "Iniciar" : "Start"}
-                        </Button>
-                      )}
-                      {maintenance.status === 'in_progress' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => updateMaintenanceStatusMutation.mutate({ id: maintenance.id, status: 'resolved' })}
-                          disabled={updateMaintenanceStatusMutation.isPending || isLoadingAuth || !user}
-                          data-testid={`button-complete-${maintenance.id}`}
-                        >
-                          {language === "es" ? "Completar" : "Complete"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  {maintenance.notes && (
-                    <div className="mt-3 pt-3 border-t">
-                      <p className="text-sm text-muted-foreground">{maintenance.notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <Card data-testid="card-empty-maintenances-state">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium" data-testid="text-empty-maintenances-title">
-              {language === "es" ? "No hay trabajos de mantenimiento registrados" : "No maintenance jobs registered"}
-            </p>
-            <p className="text-sm text-muted-foreground mt-2" data-testid="text-empty-maintenances-description">
-              {language === "es" 
-                ? "Agrega el primer trabajo para comenzar"
-                : "Add the first job to get started"}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+                    return (
+                      <TableRow key={ticket.id} data-testid={`row-ticket-${ticket.id}`} className="hover-elevate">
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col">
+                            <span className="truncate max-w-xs">{ticket.title}</span>
+                            {ticket.estimatedCost && (
+                              <span className="text-xs text-muted-foreground">
+                                Est: {formatCurrency(parseFloat(ticket.estimatedCost))}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{unitInfo?.unit?.unitNumber || '-'}</span>
+                            <span className="text-xs text-muted-foreground">{unitInfo?.condo?.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{categoryLabels[ticket.category]?.[language] || ticket.category}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={priorityConfig.bg} data-testid={`badge-priority-${ticket.id}`}>
+                            {priorityConfig.label[language]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusConfig.bg} data-testid={`badge-status-${ticket.id}`}>
+                            {statusConfig.label[language]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{assignedName || '-'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">
+                            {format(new Date(ticket.createdAt), 'dd MMM yyyy', { locale: language === 'es' ? es : undefined })}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Link href={`/external/maintenance/${ticket.id}`}>
+                            <Button size="sm" variant="ghost" data-testid={`button-view-${ticket.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-maintenance-form">
+      {/* Create Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5" />
-              {language === "es" ? "Nuevo Mantenimiento" : "New Maintenance"}
-            </DialogTitle>
+            <DialogTitle>{t.createTicket}</DialogTitle>
             <DialogDescription>
-              {language === "es" 
-                ? "Crea un nuevo trabajo de mantenimiento para una unidad"
-                : "Create a new maintenance job for a unit"}
+              {language === 'es' 
+                ? 'Complete la información del ticket de mantenimiento'
+                : 'Fill in the maintenance ticket information'}
             </DialogDescription>
           </DialogHeader>
-          <Form {...maintenanceForm}>
-            <form onSubmit={maintenanceForm.handleSubmit(handleSubmitMaintenance)} className="space-y-5">
-              {/* Location Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Home className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold">{language === "es" ? "Ubicación" : "Location"}</h3>
-                </div>
-                <Separator />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium">{language === "es" ? "Condominio" : "Condominium"} *</label>
-                    <select
-                      value={formCondominiumId}
-                      onChange={(e) => {
-                        const newCondoId = e.target.value;
-                        setFormCondominiumId(newCondoId);
-                        // Reset unit when condo changes
-                        maintenanceForm.setValue("unitId", "", { shouldValidate: true });
-                      }}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1.5"
-                      data-testid="select-maintenance-condominium"
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="unitId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t.selectCondominium}</FormLabel>
+                      <Select 
+                        value={formCondominiumId} 
+                        onValueChange={(value) => {
+                          setFormCondominiumId(value);
+                          field.onChange("");
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-form-condominium">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {condominiums?.map(condo => (
+                            <SelectItem key={condo.id} value={condo.id}>
+                              {condo.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="unitId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t.selectUnit}</FormLabel>
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                        disabled={!formCondominiumId}
+                      >
+                        <SelectTrigger data-testid="select-form-unit">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredUnitsForForm.map(unit => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {unit.unitNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.ticketTitle}</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.description}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} rows={3} data-testid="input-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t.selectCategory}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="select-form-category">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="plumbing">{categoryLabels.plumbing[language]}</SelectItem>
+                          <SelectItem value="electrical">{categoryLabels.electrical[language]}</SelectItem>
+                          <SelectItem value="appliances">{categoryLabels.appliances[language]}</SelectItem>
+                          <SelectItem value="hvac">{categoryLabels.hvac[language]}</SelectItem>
+                          <SelectItem value="general">{categoryLabels.general[language]}</SelectItem>
+                          <SelectItem value="emergency">{categoryLabels.emergency[language]}</SelectItem>
+                          <SelectItem value="other">{categoryLabels.other[language]}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t.selectPriority}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="select-form-priority">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">{priorityColors.low.label[language]}</SelectItem>
+                          <SelectItem value="medium">{priorityColors.medium.label[language]}</SelectItem>
+                          <SelectItem value="high">{priorityColors.high.label[language]}</SelectItem>
+                          <SelectItem value="urgent">{priorityColors.urgent.label[language]}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="assignedTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.selectWorker}</FormLabel>
+                    <Select 
+                      value={field.value || ""} 
+                      onValueChange={field.onChange}
+                      disabled={!form.watch("unitId")}
                     >
-                      <option value="">{language === "es" ? "Seleccionar..." : "Select..."}</option>
-                      {condominiums?.map(condo => (
-                        <option key={condo.id} value={condo.id}>{condo.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <FormField
-                    control={maintenanceForm.control}
-                    name="unitId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Unidad" : "Unit"} *</FormLabel>
-                        <FormControl>
-                          <select
-                            name={field.name}
-                            ref={field.ref}
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            onBlur={field.onBlur}
-                            disabled={!formCondominiumId}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                            data-testid="select-maintenance-unit"
-                          >
-                            <option value="">
-                              {!formCondominiumId 
-                                ? (language === "es" ? "Primero selecciona..." : "First select...")
-                                : (language === "es" ? "Seleccionar..." : "Select...")}
-                            </option>
-                            {filteredUnitsForForm.map(unit => (
-                              <option key={unit.id} value={unit.id}>{unit.unitNumber}</option>
-                            ))}
-                          </select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                      <SelectTrigger data-testid="select-form-worker">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableWorkersForLocation(form.watch("unitId")).map(worker => (
+                          <SelectItem key={worker.id} value={worker.id}>
+                            {`${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t.scheduleDate}</label>
+                  <Calendar
+                    mode="single"
+                    selected={formDate}
+                    onSelect={setFormDate}
+                    className="rounded-md border"
+                    locale={language === 'es' ? es : undefined}
                   />
                 </div>
-              </div>
 
-              {/* Details Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold">{language === "es" ? "Detalles del Problema" : "Problem Details"}</h3>
-                </div>
-                <Separator />
-                <FormField
-                  control={maintenanceForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Título" : "Title"} *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder={language === "es" ? "Ej: Fuga de agua en cocina" : "Ex: Water leak in kitchen"} data-testid="input-maintenance-title" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={maintenanceForm.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Categoría" : "Category"} *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-maintenance-category">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Object.entries(serviceTypeColors).map(([type, config]) => (
-                              <SelectItem key={type} value={type}>{config.label[language]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <FormItem>
+                  <FormLabel>{t.scheduleTime}</FormLabel>
+                  <Input
+                    type="time"
+                    value={formTime}
+                    onChange={(e) => setFormTime(e.target.value)}
+                    data-testid="input-time"
                   />
-                  <FormField
-                    control={maintenanceForm.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Prioridad" : "Priority"} *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-maintenance-priority">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="low">{language === "es" ? "Baja" : "Low"}</SelectItem>
-                            <SelectItem value="medium">{language === "es" ? "Media" : "Medium"}</SelectItem>
-                            <SelectItem value="high">{language === "es" ? "Alta" : "High"}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={maintenanceForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Descripción" : "Description"} *</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          rows={2} 
-                          placeholder={language === "es" ? "Describe el problema con la renta activa..." : "Describe the problem..."} 
-                          data-testid="input-maintenance-description" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                </FormItem>
               </div>
 
-              {/* Scheduling Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold">{language === "es" ? "Programación" : "Scheduling"}</h3>
-                </div>
-                <Separator />
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{language === "es" ? "Fecha" : "Date"}</label>
-                    <Calendar
-                      mode="single"
-                      selected={formDate}
-                      onSelect={setFormDate}
-                      locale={language === "es" ? es : undefined}
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                      className="border rounded-md p-2"
-                      data-testid="calendar-maintenance-date"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      {language === "es" ? "Hora (Cancún)" : "Time (Cancun)"}
-                    </label>
-                    <Input
-                      type="time"
-                      value={formTime}
-                      onChange={(e) => setFormTime(e.target.value)}
-                      data-testid="input-maintenance-time"
-                    />
-                    {formDate && (
-                      <div className="mt-3 p-2.5 bg-muted rounded-md">
-                        <p className="text-xs font-medium mb-1">
-                          {language === "es" ? "Programado para:" : "Scheduled for:"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(formDate, language === "es" ? "d 'de' MMMM, yyyy" : "MMMM d, yyyy", {
-                            locale: language === "es" ? es : undefined
-                          })} - {formTime}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {/* Assignment & Notes Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold">{language === "es" ? "Asignación y Notas" : "Assignment & Notes"}</h3>
-                </div>
-                <Separator />
-                <FormField
-                  control={maintenanceForm.control}
-                  name="assignedTo"
-                  render={({ field }) => {
-                    const selectedUnitId = maintenanceForm.watch("unitId");
-                    const availableWorkers = getAvailableWorkersForLocation(selectedUnitId);
-                    
-                    return (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Asignar a" : "Assign to"}</FormLabel>
-                        <FormControl>
-                          <select
-                            {...field}
-                            value={field.value || ""}
-                            onChange={e => field.onChange(e.target.value || undefined)}
-                            disabled={!selectedUnitId}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                            data-testid="select-maintenance-assigned-user"
-                          >
-                            <option value="">
-                              {!selectedUnitId 
-                                ? (language === "es" ? "Primero selecciona una unidad" : "First select a unit")
-                                : (language === "es" ? "Sin asignar" : "Unassigned")}
-                            </option>
-                            {availableWorkers.map(worker => {
-                              const name = `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email;
-                              const specialtyLabels: Record<string, { es: string; en: string }> = {
-                                encargado_mantenimiento: { es: "Encargado", en: "Manager" },
-                                mantenimiento_general: { es: "General", en: "General" },
-                                electrico: { es: "Eléctrico", en: "Electrical" },
-                                plomero: { es: "Plomero", en: "Plumber" },
-                                refrigeracion: { es: "Refrigeración", en: "HVAC" },
-                                carpintero: { es: "Carpintero", en: "Carpenter" },
-                                pintor: { es: "Pintor", en: "Painter" },
-                                jardinero: { es: "Jardinero", en: "Gardener" },
-                                albanil: { es: "Albañil", en: "Mason" },
-                                limpieza: { es: "Limpieza", en: "Cleaning" },
-                              };
-                              const specialtyLabel = worker.maintenanceSpecialty ? 
-                                (specialtyLabels[worker.maintenanceSpecialty]?.[language] || worker.maintenanceSpecialty) : '';
-                              return (
-                                <option key={worker.id} value={worker.id}>
-                                  {specialtyLabel ? `${name} (${specialtyLabel})` : name}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </FormControl>
-                        {selectedUnitId && availableWorkers.length > 0 && workerAssignments && workerAssignments.length > 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {language === "es" 
-                              ? "Mostrando trabajadores asignados a esta ubicación" 
-                              : "Showing workers assigned to this location"}
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-                <FormField
-                  control={maintenanceForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Notas Adicionales" : "Additional Notes"}</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          value={field.value || ""} 
-                          rows={2} 
-                          placeholder={language === "es" ? "Información adicional..." : "Additional information..."} 
-                          data-testid="input-maintenance-notes" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.notes}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} rows={2} data-testid="input-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <DialogFooter className="gap-2">
+              <DialogFooter>
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setShowMaintenanceDialog(false)}
-                  data-testid="button-cancel-maintenance"
+                  onClick={() => setShowDialog(false)}
+                  data-testid="button-cancel"
                 >
-                  {language === "es" ? "Cancelar" : "Cancel"}
+                  {t.cancel}
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={createMaintenanceMutation.isPending}
-                  data-testid="button-submit-maintenance"
+                  disabled={createMutation.isPending}
+                  data-testid="button-submit"
                 >
-                  {createMaintenanceMutation.isPending
-                    ? (language === "es" ? "Guardando..." : "Saving...")
-                    : (language === "es" ? "Guardar" : "Save")}
+                  {createMutation.isPending ? t.creating : t.create}
                 </Button>
               </DialogFooter>
             </form>
