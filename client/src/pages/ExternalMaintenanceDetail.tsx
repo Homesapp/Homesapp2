@@ -126,6 +126,9 @@ export default function ExternalMaintenanceDetail() {
   const [editingCost, setEditingCost] = useState<'estimated' | 'actual' | null>(null);
   const [costValue, setCostValue] = useState("");
 
+  // Check if user can modify maintenance tickets (admin/maintenance manager roles)
+  const canModifyTicket = user?.role && ['master', 'admin', 'external_agency_admin', 'external_agency_maintenance'].includes(user.role);
+
   const { data: ticket, isLoading: ticketLoading } = useQuery<ExternalMaintenanceTicket>({
     queryKey: ['/api/external-tickets', id],
     enabled: !!id,
@@ -492,16 +495,19 @@ export default function ExternalMaintenanceDetail() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-muted-foreground">{t.estimatedCost}</p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingCost('estimated');
-                        setCostValue(ticket.estimatedCost || "");
-                      }}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
+                    {canModifyTicket && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingCost('estimated');
+                          setCostValue(ticket.estimatedCost || "");
+                        }}
+                        data-testid="button-edit-estimated-cost"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
@@ -512,16 +518,19 @@ export default function ExternalMaintenanceDetail() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-muted-foreground">{t.actualCost}</p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingCost('actual');
-                        setCostValue(ticket.actualCost || "");
-                      }}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
+                    {canModifyTicket && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingCost('actual');
+                          setCostValue(ticket.actualCost || "");
+                        }}
+                        data-testid="button-edit-actual-cost"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-green-600" />
@@ -681,7 +690,9 @@ export default function ExternalMaintenanceDetail() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="comment">{updateTypeLabels.comment[language]}</SelectItem>
-                        <SelectItem value="status_change">{updateTypeLabels.status_change[language]}</SelectItem>
+                        {canModifyTicket && (
+                          <SelectItem value="status_change">{updateTypeLabels.status_change[language]}</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
