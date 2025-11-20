@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import RentalWizard from "@/components/RentalWizard";
 import {
   Table,
   TableBody,
@@ -94,6 +95,7 @@ export default function ExternalRentals() {
   const [condoComboOpen, setCondoComboOpen] = useState(false);
   const [unitComboOpen, setUnitComboOpen] = useState(false);
   const [selectUnitDialogOpen, setSelectUnitDialogOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
@@ -252,7 +254,7 @@ export default function ExternalRentals() {
               : "Manage all rental contracts and payments"}
           </p>
         </div>
-        <Button onClick={() => setSelectUnitDialogOpen(true)} data-testid="button-create-rental">
+        <Button onClick={() => setWizardOpen(true)} data-testid="button-create-rental">
           <Home className="h-4 w-4 mr-2" />
           {language === "es" ? "Nueva Renta" : "New Rental"}
         </Button>
@@ -935,6 +937,9 @@ export default function ExternalRentals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Rental Wizard */}
+      <RentalWizard open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 }

@@ -3,12 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, DollarSign, Wrench, AlertCircle, TrendingUp, Calendar, FileText, ClipboardCheck, ArrowRight, User } from "lucide-react";
+import { Building2, DollarSign, Wrench, AlertCircle, TrendingUp, Calendar, FileText, ClipboardCheck, ArrowRight, User, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Link } from "wouter";
-import { format, addDays, startOfDay, isBefore } from "date-fns";
+import { format, addDays, startOfDay, isBefore, startOfMonth, endOfMonth } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import type { ExternalCondominium, ExternalUnit, ExternalRentalContract, ExternalPayment, ExternalMaintenanceTicket, ExternalOwner } from "@shared/schema";
+import type { ExternalCondominium, ExternalUnit, ExternalRentalContract, ExternalPayment, ExternalMaintenanceTicket, ExternalOwner, ExternalFinancialTransaction } from "@shared/schema";
 
 // Type for the enhanced contract response from the API
 type RentalContractWithDetails = {
@@ -44,6 +44,10 @@ export default function ExternalDashboard() {
 
   const { data: owners, isLoading: ownersLoading } = useQuery<ExternalOwner[]>({
     queryKey: ['/api/external-owners'],
+  });
+
+  const { data: financialTransactions, isLoading: financialLoading } = useQuery<ExternalFinancialTransaction[]>({
+    queryKey: ['/api/external-financial-transactions'],
   });
 
   // Calculate statistics
@@ -99,7 +103,49 @@ export default function ExternalDashboard() {
 
   const totalOwners = owners?.length || 0;
 
-  const isLoading = condosLoading || unitsLoading || contractsLoading || paymentsLoading || ticketsLoading || ownersLoading;
+  // Financial calculations for current month
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  
+  const monthlyIncome = financialTransactions
+    ? financialTransactions
+        .filter(t => {
+          const dueDate = new Date(t.dueDate);
+          return t.direction === 'inflow' && 
+                 t.status === 'completed' &&
+                 dueDate >= monthStart && 
+                 dueDate <= monthEnd;
+        })
+        .reduce((sum, t) => sum + parseFloat(t.netAmount || '0'), 0)
+    : 0;
+
+  const monthlyExpenses = financialTransactions
+    ? financialTransactions
+        .filter(t => {
+          const dueDate = new Date(t.dueDate);
+          return t.direction === 'outflow' && 
+                 t.status === 'completed' &&
+                 dueDate >= monthStart && 
+                 dueDate <= monthEnd;
+        })
+        .reduce((sum, t) => sum + parseFloat(t.netAmount || '0'), 0)
+    : 0;
+
+  const monthlyNetIncome = monthlyIncome - monthlyExpenses;
+
+  // Expected income this month (pending + completed)
+  const expectedMonthlyIncome = financialTransactions
+    ? financialTransactions
+        .filter(t => {
+          const dueDate = new Date(t.dueDate);
+          return t.direction === 'inflow' && 
+                 dueDate >= monthStart && 
+                 dueDate <= monthEnd;
+        })
+        .reduce((sum, t) => sum + parseFloat(t.netAmount || '0'), 0)
+    : 0;
+
+  const isLoading = condosLoading || unitsLoading || contractsLoading || paymentsLoading || ticketsLoading || ownersLoading || financialLoading;
 
   const stats = {
     totalCondominiums,
@@ -234,6 +280,89 @@ export default function ExternalDashboard() {
             ? "Resumen general de tus condominios y unidades"
             : "Overview of your condominiums and units"}
         </p>
+      </div>
+
+      {/* Financial Summary - Month */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card data-testid="card-monthly-income">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Ingresos del Mes" : "Monthly Income"}
+            </CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600" data-testid="text-monthly-income">
+                  ${monthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === "es" ? "Esperado: " : "Expected: "}
+                  ${expectedMonthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-monthly-expenses">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Gastos del Mes" : "Monthly Expenses"}
+            </CardTitle>
+            <ArrowDownRight className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-red-600" data-testid="text-monthly-expenses">
+                  ${monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === "es" ? "Transacciones completadas" : "Completed transactions"}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-monthly-net">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Balance del Mes" : "Monthly Balance"}
+            </CardTitle>
+            {monthlyNetIncome >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div 
+                  className={`text-2xl font-bold ${monthlyNetIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  data-testid="text-monthly-net"
+                >
+                  ${monthlyNetIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {monthlyNetIncome >= 0 
+                    ? (language === "es" ? "Superávit" : "Surplus")
+                    : (language === "es" ? "Déficit" : "Deficit")
+                  }
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Stats Row */}

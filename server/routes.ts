@@ -144,6 +144,7 @@ import {
   insertExternalAgencySchema,
   insertExternalPropertySchema,
   insertExternalRentalContractSchema,
+  createRentalContractWithServicesSchema,
   updateExternalRentalContractSchema,
   insertExternalPaymentScheduleSchema,
   insertExternalPaymentSchema,
@@ -23030,10 +23031,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/external-rental-contracts", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
-      const validatedData = insertExternalRentalContractSchema.parse(req.body);
+      // Try parsing as extended schema first (with services), fall back to basic schema
+      let contractData;
+      let additionalServices: any[] = [];
+      
+      try {
+        const validatedRequest = createRentalContractWithServicesSchema.parse(req.body);
+        contractData = validatedRequest.contract;
+        additionalServices = validatedRequest.additionalServices || [];
+      } catch (e) {
+        // Fall back to basic schema for backward compatibility
+        contractData = insertExternalRentalContractSchema.parse(req.body);
+      }
       
       // Verify unit exists and get its agency
-      const unit = await storage.getExternalUnit(validatedData.unitId);
+      const unit = await storage.getExternalUnit(contractData.unitId);
       if (!unit) {
         return res.status(404).json({ message: "Unit not found" });
       }
@@ -23047,7 +23059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(externalRentalContracts)
         .where(
           and(
-            eq(externalRentalContracts.unitId, validatedData.unitId),
+            eq(externalRentalContracts.unitId, contractData.unitId),
             eq(externalRentalContracts.status, 'active')
           )
         )
@@ -23059,59 +23071,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const contract = await storage.createExternalRentalContract({
-        ...validatedData,
-        agencyId: unit.agencyId,
-        createdBy: req.user.id,
+      // Use transaction to atomically create contract + schedules + payments
+      const result = await db.transaction(async (tx) => {
+        // 1. Create the contract
+        const contract = await storage.createExternalRentalContract({
+          ...contractData,
+          agencyId: unit.agencyId,
+          createdBy: req.user.id,
+        });
+        
+        // 2. Prepare all payment schedules (rent + additional services)
+        const startDate = new Date(contractData.startDate);
+        const defaultDayOfMonth = startDate.getDate();
+        
+        const allSchedules = [
+          // Always create rent schedule
+          {
+            serviceType: 'rent' as const,
+            amount: contractData.monthlyRent,
+            currency: contractData.currency,
+            dayOfMonth: defaultDayOfMonth,
+            sendReminderDaysBefore: 3,
+            notes: undefined,
+          },
+          // Add additional services
+          ...additionalServices.map(service => ({
+            serviceType: service.serviceType as any,
+            amount: String(service.amount), // Convert number to string for decimal type
+            currency: service.currency || contractData.currency,
+            dayOfMonth: service.dayOfMonth || defaultDayOfMonth,
+            sendReminderDaysBefore: service.sendReminderDaysBefore ?? 3,
+            notes: service.notes,
+          }))
+        ];
+        
+        // 3. Create all schedules and collect first payments
+        const createdSchedules = [];
+        for (const scheduleData of allSchedules) {
+          const schedule = await storage.createExternalPaymentSchedule({
+            agencyId: unit.agencyId,
+            contractId: contract.id,
+            ...scheduleData,
+            isActive: true,
+            createdBy: req.user.id,
+          });
+          createdSchedules.push(schedule);
+          
+          // 4. Generate first payment for each schedule (next month from start date)
+          const targetMonth = startDate.getMonth() + 1;
+          const targetYear = targetMonth > 11 
+            ? startDate.getFullYear() + 1 
+            : startDate.getFullYear();
+          const adjustedMonth = targetMonth > 11 ? 0 : targetMonth;
+          
+          const lastDayOfMonth = new Date(targetYear, adjustedMonth + 1, 0).getDate();
+          const clampedDay = Math.min(scheduleData.dayOfMonth, lastDayOfMonth);
+          const firstPaymentDue = new Date(Date.UTC(targetYear, adjustedMonth, clampedDay, 0, 0, 0, 0));
+          
+          await tx.insert(externalPayments).values({
+            id: crypto.randomUUID(),
+            agencyId: unit.agencyId,
+            contractId: contract.id,
+            scheduleId: schedule.id,
+            serviceType: scheduleData.serviceType,
+            amount: scheduleData.amount,
+            currency: scheduleData.currency,
+            dueDate: firstPaymentDue,
+            status: 'pending',
+            createdBy: req.user.id,
+          });
+        }
+        
+        return { contract, schedules: createdSchedules };
       });
       
-      // Create automatic payment schedule for monthly rent
-      // Use day from start date or default to 1st of month
-      const startDate = new Date(validatedData.startDate);
-      const dayOfMonth = startDate.getDate();
+      const serviceCount = additionalServices.length;
+      await createAuditLog(
+        req, 
+        "create", 
+        "external_rental_contract", 
+        result.contract.id, 
+        `Created rental contract with ${result.schedules.length} payment schedule(s) (rent + ${serviceCount} additional service(s))`
+      );
       
-      const schedule = await storage.createExternalPaymentSchedule({
-        agencyId: unit.agencyId,
-        contractId: contract.id,
-        serviceType: 'rent',
-        amount: validatedData.monthlyRent,
-        currency: validatedData.currency,
-        dayOfMonth: dayOfMonth,
-        isActive: true,
-        sendReminderDaysBefore: 3,
-        createdBy: req.user.id,
+      res.status(201).json({
+        contract: result.contract,
+        schedules: result.schedules,
       });
-      
-      // Generate first rent payment automatically (next month from start date)
-      // First month is considered paid (tenant already moved in), so generate payment for next month
-      const targetMonth = startDate.getMonth() + 1;
-      const targetYear = targetMonth > 11 
-        ? startDate.getFullYear() + 1 
-        : startDate.getFullYear();
-      const adjustedMonth = targetMonth > 11 ? 0 : targetMonth;
-      
-      // Get last day of target month to clamp dayOfMonth
-      const lastDayOfMonth = new Date(targetYear, adjustedMonth + 1, 0).getDate();
-      const clampedDay = Math.min(dayOfMonth, lastDayOfMonth);
-      
-      // Create date at UTC midnight to avoid timezone issues
-      const firstPaymentDue = new Date(Date.UTC(targetYear, adjustedMonth, clampedDay, 0, 0, 0, 0));
-      
-      await db.insert(externalPayments).values({
-        id: crypto.randomUUID(),
-        agencyId: unit.agencyId,
-        contractId: contract.id,
-        scheduleId: schedule.id,
-        serviceType: 'rent',
-        amount: validatedData.monthlyRent,
-        currency: validatedData.currency,
-        dueDate: firstPaymentDue,
-        status: 'pending',
-        createdBy: req.user.id,
-      });
-      
-      await createAuditLog(req, "create", "external_rental_contract", contract.id, `Created external rental contract with payment schedule and first rent payment`);
-      res.status(201).json(contract);
     } catch (error: any) {
       console.error("Error creating rental contract:", error);
       if (error.name === "ZodError") {

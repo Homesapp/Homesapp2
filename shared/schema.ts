@@ -4903,6 +4903,21 @@ export const updateExternalRentalContractSchema = insertExternalRentalContractSc
 export type InsertExternalRentalContract = z.infer<typeof insertExternalRentalContractSchema>;
 export type ExternalRentalContract = typeof externalRentalContracts.$inferSelect;
 
+// Extended schema for creating rental contracts with payment schedules in a single request
+export const createRentalContractWithServicesSchema = z.object({
+  contract: insertExternalRentalContractSchema,
+  additionalServices: z.array(z.object({
+    serviceType: z.enum(["rent", "water", "electricity", "internet", "gas", "maintenance", "cleaning", "parking", "other"]),
+    amount: z.number().positive(),
+    currency: z.string().default("MXN"),
+    dayOfMonth: z.number().int().min(1).max(31),
+    sendReminderDaysBefore: z.number().int().min(0).max(30).optional(),
+    notes: z.string().optional(),
+  })).optional().default([]),
+});
+
+export type CreateRentalContractWithServices = z.infer<typeof createRentalContractWithServicesSchema>;
+
 // Check-Out Reports - Reportes de salida para contratos completados
 export const externalCheckoutReports = pgTable("external_checkout_reports", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

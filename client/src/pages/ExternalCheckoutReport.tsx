@@ -63,6 +63,76 @@ export default function ExternalCheckoutReport() {
   const [newCleaningArea, setNewCleaningArea] = useState({ area: "", status: "", notes: "" });
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
 
+  // Common inventory templates
+  const commonInventoryItems = [
+    { item: language === "es" ? "Refrigerador" : "Refrigerator", condition: "" },
+    { item: language === "es" ? "Estufa" : "Stove", condition: "" },
+    { item: language === "es" ? "Microondas" : "Microwave", condition: "" },
+    { item: language === "es" ? "Lavadora" : "Washing machine", condition: "" },
+    { item: language === "es" ? "Cama doble" : "Double bed", condition: "" },
+    { item: language === "es" ? "Sofá" : "Sofa", condition: "" },
+    { item: language === "es" ? "Mesa de comedor" : "Dining table", condition: "" },
+    { item: language === "es" ? "Sillas (4)" : "Chairs (4)", condition: "" },
+    { item: language === "es" ? "TV" : "TV", condition: "" },
+    { item: language === "es" ? "Aire acondicionado" : "Air conditioner", condition: "" },
+  ];
+
+  const commonCleaningAreas = [
+    { area: language === "es" ? "Cocina" : "Kitchen", status: "" },
+    { area: language === "es" ? "Baño" : "Bathroom", status: "" },
+    { area: language === "es" ? "Sala" : "Living room", status: "" },
+    { area: language === "es" ? "Habitación principal" : "Master bedroom", status: "" },
+    { area: language === "es" ? "Balcón/Terraza" : "Balcony/Terrace", status: "" },
+  ];
+
+  const loadInventoryTemplate = () => {
+    // Merge with existing items instead of replacing
+    const existingItems = new Set(inventoryItems.map(item => item.item));
+    const newItems = commonInventoryItems.filter(item => !existingItems.has(item.item));
+    
+    if (newItems.length === 0) {
+      toast({
+        title: language === "es" ? "Template ya cargado" : "Template already loaded",
+        description: language === "es" 
+          ? "Todos los artículos del template ya están en el inventario" 
+          : "All template items are already in inventory",
+      });
+      return;
+    }
+    
+    setInventoryItems([...inventoryItems, ...newItems]);
+    toast({
+      title: language === "es" ? "Template cargado" : "Template loaded",
+      description: language === "es" 
+        ? `Se agregaron ${newItems.length} artículos nuevos al inventario` 
+        : `Added ${newItems.length} new items to inventory`,
+    });
+  };
+
+  const loadCleaningTemplate = () => {
+    // Merge with existing areas instead of replacing
+    const existingAreas = new Set(cleaningAreas.map(area => area.area));
+    const newAreas = commonCleaningAreas.filter(area => !existingAreas.has(area.area));
+    
+    if (newAreas.length === 0) {
+      toast({
+        title: language === "es" ? "Template ya cargado" : "Template already loaded",
+        description: language === "es" 
+          ? "Todas las áreas del template ya están en la lista" 
+          : "All template areas are already in the list",
+      });
+      return;
+    }
+    
+    setCleaningAreas([...cleaningAreas, ...newAreas]);
+    toast({
+      title: language === "es" ? "Template cargado" : "Template loaded",
+      description: language === "es" 
+        ? `Se agregaron ${newAreas.length} áreas nuevas a la verificación` 
+        : `Added ${newAreas.length} new areas to verification`,
+    });
+  };
+
   const { data: contract, isLoading: contractLoading } = useQuery<ExternalRentalContract>({
     queryKey: [`/api/external-rental-contracts/${contractId}`],
     enabled: !!contractId,
@@ -364,7 +434,20 @@ export default function ExternalCheckoutReport() {
         <TabsContent value="inventory" className="space-y-4">
           <Card data-testid="card-inventory">
             <CardHeader>
-              <CardTitle>{language === "es" ? "Inventario de Salida" : "Exit Inventory"}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>{language === "es" ? "Inventario de Salida" : "Exit Inventory"}</CardTitle>
+                {!isCompleted && inventoryItems.length === 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadInventoryTemplate}
+                    data-testid="button-load-inventory-template"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Usar Template" : "Use Template"}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {!isCompleted && (
@@ -520,7 +603,20 @@ export default function ExternalCheckoutReport() {
         <TabsContent value="cleaning" className="space-y-4">
           <Card data-testid="card-cleaning">
             <CardHeader>
-              <CardTitle>{language === "es" ? "Verificación de Limpieza" : "Cleaning Verification"}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>{language === "es" ? "Verificación de Limpieza" : "Cleaning Verification"}</CardTitle>
+                {!isCompleted && cleaningAreas.length === 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadCleaningTemplate}
+                    data-testid="button-load-cleaning-template"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Usar Template" : "Use Template"}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {!isCompleted && (

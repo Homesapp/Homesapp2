@@ -477,7 +477,12 @@ export default function ExternalCalendar() {
                       open={expandedEventIndex === idx}
                       onOpenChange={() => setExpandedEventIndex(expandedEventIndex === idx ? null : idx)}
                     >
-                      <div className="border rounded-md">
+                      <div className={cn(
+                        "border rounded-md",
+                        event.type === 'payment' && "border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-950/10",
+                        event.type === 'ticket' && "border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/10",
+                        event.type === 'contract' && "border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-950/10"
+                      )}>
                         <CollapsibleTrigger asChild>
                           <div
                             className="p-2.5 hover-elevate cursor-pointer w-full"
