@@ -38,7 +38,8 @@ import {
   Wifi,
   Flame,
   Wrench,
-  Building2
+  Building2,
+  ChevronUp
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useForm } from "react-hook-form";
@@ -656,16 +657,200 @@ export default function ExternalAccounting() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold" data-testid="text-financial-title">{t.title}</h1>
-        <p className="text-muted-foreground">{t.subtitle}</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-financial-title">{t.title}</h1>
+          <p className="text-muted-foreground mt-2">{t.subtitle}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            data-testid="button-create-transaction"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t.createTransaction}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={!sortedAndFilteredTransactions || sortedAndFilteredTransactions.length === 0}
+            data-testid="button-export-excel"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            {t.exportExcel}
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="summary" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="summary" data-testid="tab-summary">{t.summaryTab}</TabsTrigger>
-          <TabsTrigger value="transactions" data-testid="tab-transactions">{t.transactionsTab}</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="summary" className="w-full">
+        <div className="flex items-center justify-between gap-2 mb-6">
+          <TabsList>
+            <TabsTrigger value="summary" data-testid="tab-summary">{t.summaryTab}</TabsTrigger>
+            <TabsTrigger value="transactions" data-testid="tab-transactions">{t.transactionsTab}</TabsTrigger>
+          </TabsList>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setFiltersExpanded(!filtersExpanded)}
+              data-testid="button-toggle-filters"
+              title={t.filters}
+            >
+              {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+            </Button>
+            <div className="flex gap-1 border rounded-md p-1">
+              <Button
+                variant={viewMode === "cards" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                data-testid="button-view-cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                data-testid="button-view-table"
+              >
+                <TableIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {filtersExpanded && (
+          <Card className="mb-6">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">{t.filters}</CardTitle>
+                {activeFilters > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearFilters}
+                    data-testid="button-clear-filters"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    {t.clearFilters}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <Select value={directionFilter} onValueChange={setDirectionFilter}>
+                  <SelectTrigger data-testid="select-direction-filter">
+                    <SelectValue placeholder={t.direction} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.all}</SelectItem>
+                    <SelectItem value="inflow">{t.inflow}</SelectItem>
+                    <SelectItem value="outflow">{t.outflow}</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger data-testid="select-category-filter">
+                    <SelectValue placeholder={t.category} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.all}</SelectItem>
+                    <SelectItem value="rent_income">{t.rent_income}</SelectItem>
+                    <SelectItem value="rent_payout">{t.rent_payout}</SelectItem>
+                    <SelectItem value="hoa_fee">{t.hoa_fee}</SelectItem>
+                    <SelectItem value="maintenance_charge">{t.maintenance_charge}</SelectItem>
+                    <SelectItem value="service_electricity">{t.service_electricity}</SelectItem>
+                    <SelectItem value="service_water">{t.service_water}</SelectItem>
+                    <SelectItem value="service_internet">{t.service_internet}</SelectItem>
+                    <SelectItem value="service_gas">{t.service_gas}</SelectItem>
+                    <SelectItem value="service_other">{t.service_other}</SelectItem>
+                    <SelectItem value="adjustment">{t.adjustment}</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger data-testid="select-status-filter">
+                    <SelectValue placeholder={t.status} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.all}</SelectItem>
+                    <SelectItem value="pending">{t.pending}</SelectItem>
+                    <SelectItem value="posted">{t.posted}</SelectItem>
+                    <SelectItem value="reconciled">{t.reconciled}</SelectItem>
+                    <SelectItem value="cancelled">{t.cancelled}</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={condominiumFilter} onValueChange={setCondominiumFilter}>
+                  <SelectTrigger data-testid="select-condominium-filter">
+                    <SelectValue placeholder={t.condominium} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.all}</SelectItem>
+                    {condominiums?.map((condo) => (
+                      <SelectItem key={condo.id} value={condo.id}>
+                        {condo.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={unitFilter} onValueChange={setUnitFilter}>
+                  <SelectTrigger data-testid="select-unit-filter">
+                    <SelectValue placeholder={t.unit} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.all}</SelectItem>
+                    {units?.map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        {unit.unitNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger data-testid="select-date-filter">
+                    <SelectValue placeholder={t.dateRange} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.all}</SelectItem>
+                    <SelectItem value="month">{t.thisMonth}</SelectItem>
+                    <SelectItem value="3months">{t.last3Months}</SelectItem>
+                    <SelectItem value="6months">{t.last6Months}</SelectItem>
+                    <SelectItem value="year">{t.thisYear}</SelectItem>
+                    <SelectItem value="custom">{t.customRange}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {dateFilter === "custom" && (
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t.startDate}</label>
+                    <Input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      data-testid="input-custom-start-date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t.endDate}</label>
+                    <Input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      data-testid="input-custom-end-date"
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <TabsContent value="summary" className="space-y-6">
           {summaryLoading ? (
@@ -815,192 +1000,6 @@ export default function ExternalAccounting() {
         </TabsContent>
 
         <TabsContent value="transactions" className="space-y-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setShowCreateDialog(true)}
-                data-testid="button-create-transaction"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t.createTransaction}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleExportExcel}
-                disabled={!sortedAndFilteredTransactions || sortedAndFilteredTransactions.length === 0}
-                data-testid="button-export-excel"
-              >
-                <Download className="h-4 w-4 mr-1" />
-                {t.exportExcel}
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFiltersExpanded(!filtersExpanded)}
-                data-testid="button-toggle-filters"
-              >
-                <Filter className="h-4 w-4 mr-1" />
-                {t.filters}
-                {activeFilters > 0 && <Badge variant="secondary" className="ml-1">{activeFilters}</Badge>}
-              </Button>
-              <div className="flex gap-1 border rounded-md p-1">
-                <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("cards")}
-                  data-testid="button-view-cards"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  data-testid="button-view-table"
-                >
-                  <TableIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {filtersExpanded && (
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    {t.filters}
-                  </CardTitle>
-                  {activeFilters > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearFilters}
-                      data-testid="button-clear-filters"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      {t.clearFilters}
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                  <SelectTrigger data-testid="select-direction-filter">
-                    <SelectValue placeholder={t.direction} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.all}</SelectItem>
-                    <SelectItem value="inflow">{t.inflow}</SelectItem>
-                    <SelectItem value="outflow">{t.outflow}</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger data-testid="select-category-filter">
-                    <SelectValue placeholder={t.category} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.all}</SelectItem>
-                    <SelectItem value="rent_income">{t.rent_income}</SelectItem>
-                    <SelectItem value="rent_payout">{t.rent_payout}</SelectItem>
-                    <SelectItem value="hoa_fee">{t.hoa_fee}</SelectItem>
-                    <SelectItem value="maintenance_charge">{t.maintenance_charge}</SelectItem>
-                    <SelectItem value="service_electricity">{t.service_electricity}</SelectItem>
-                    <SelectItem value="service_water">{t.service_water}</SelectItem>
-                    <SelectItem value="service_internet">{t.service_internet}</SelectItem>
-                    <SelectItem value="service_gas">{t.service_gas}</SelectItem>
-                    <SelectItem value="service_other">{t.service_other}</SelectItem>
-                    <SelectItem value="adjustment">{t.adjustment}</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger data-testid="select-status-filter">
-                    <SelectValue placeholder={t.status} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.all}</SelectItem>
-                    <SelectItem value="pending">{t.pending}</SelectItem>
-                    <SelectItem value="posted">{t.posted}</SelectItem>
-                    <SelectItem value="reconciled">{t.reconciled}</SelectItem>
-                    <SelectItem value="cancelled">{t.cancelled}</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={condominiumFilter} onValueChange={setCondominiumFilter}>
-                  <SelectTrigger data-testid="select-condominium-filter">
-                    <SelectValue placeholder={t.condominium} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.all}</SelectItem>
-                    {condominiums?.map(condo => (
-                      <SelectItem key={condo.id} value={condo.id}>
-                        {condo.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={unitFilter} onValueChange={setUnitFilter}>
-                  <SelectTrigger data-testid="select-unit-filter">
-                    <SelectValue placeholder={t.unit} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.all}</SelectItem>
-                    {units?.filter(u => condominiumFilter === "all" || u.condominiumId === condominiumFilter).map(unit => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.unitNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={dateFilter} onValueChange={setDateFilter}>
-                  <SelectTrigger data-testid="select-date-filter">
-                    <SelectValue placeholder={t.dateRange} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.all}</SelectItem>
-                    <SelectItem value="this_month">{t.thisMonth}</SelectItem>
-                    <SelectItem value="last_3_months">{t.last3Months}</SelectItem>
-                    <SelectItem value="last_6_months">{t.last6Months}</SelectItem>
-                    <SelectItem value="this_year">{t.thisYear}</SelectItem>
-                    <SelectItem value="custom">{t.customRange}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {dateFilter === "custom" && (
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t.startDate}</label>
-                    <Input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      data-testid="input-custom-start-date"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t.endDate}</label>
-                    <Input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      data-testid="input-custom-end-date"
-                    />
-                  </div>
-                </div>
-              )}
-              </CardContent>
-            </Card>
-          )}
-
           {transactionsLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
