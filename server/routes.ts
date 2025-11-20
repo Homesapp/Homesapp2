@@ -145,6 +145,8 @@ import {
   insertExternalPropertySchema,
   insertExternalRentalContractSchema,
   insertExternalRentalTenantSchema,
+  insertExternalRentalNoteSchema,
+  updateExternalRentalNoteSchema,
   createRentalContractWithServicesSchema,
   updateExternalRentalContractSchema,
   insertExternalPaymentScheduleSchema,
@@ -23346,6 +23348,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Contract cancelled successfully" });
     } catch (error: any) {
       console.error("Error cancelling rental contract:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Rental Notes Routes - Notes and incidents for rental contracts
+  // Get all notes for a rental contract
+  app.get("/api/external-rental-contracts/:id/notes", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id: contractId } = req.params;
+      const { isArchived, noteType } = req.query;
+      
+      // Verify contract exists and access
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      const filters: any = {};
+      if (isArchived !== undefined) filters.isArchived = isArchived === 'true';
+      if (noteType) filters.noteType = noteType;
+      
+      const notes = await storage.getExternalRentalNotesByContract(contractId, filters);
+      res.json(notes);
+    } catch (error: any) {
+      console.error("Error fetching rental notes:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Create a new note for a rental contract
+  app.post("/api/external-rental-contracts/:id/notes", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id: contractId } = req.params;
+      
+      // Verify contract exists
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      const noteData = insertExternalRentalNoteSchema.parse({
+        ...req.body,
+        agencyId: contract.agencyId,
+        contractId,
+        createdBy: req.user.id,
+      });
+      
+      const note = await storage.createExternalRentalNote(noteData);
+      
+      await createAuditLog(req, "create", "external_rental_note", note.id, `Created ${note.noteType} note for rental contract`);
+      res.status(201).json(note);
+    } catch (error: any) {
+      console.error("Error creating rental note:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Archive/unarchive a rental note
+  app.patch("/api/external-rental-notes/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify note exists
+      const note = await storage.getExternalRentalNote(id);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, note.agencyId);
+      if (!hasAccess) return;
+      
+      const updates = updateExternalRentalNoteSchema.parse(req.body);
+      const updatedNote = await storage.updateExternalRentalNote(id, updates);
+      
+      await createAuditLog(req, "update", "external_rental_note", id, `Updated rental note (archived: ${updatedNote.isArchived})`);
+      res.json(updatedNote);
+    } catch (error: any) {
+      console.error("Error updating rental note:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Get maintenance tickets for a rental contract
+  app.get("/api/external-rental-contracts/:id/maintenance-tickets", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id: contractId } = req.params;
+      const { status } = req.query;
+      
+      // Verify contract exists
+      const contract = await storage.getExternalRentalContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      const filters = status ? { status: status as string } : undefined;
+      const tickets = await storage.getExternalMaintenanceTicketsByContract(contractId, filters);
+      
+      res.json(tickets);
+    } catch (error: any) {
+      console.error("Error fetching maintenance tickets for contract:", error);
       handleGenericError(res, error);
     }
   });

@@ -350,6 +350,24 @@ export const rentalPurposeEnum = pgEnum("rental_purpose", [
   "sublease",     // Para subarrendar
 ]);
 
+export const rentalNoteTypeEnum = pgEnum("rental_note_type", [
+  "general",      // Nota general
+  "incident",     // Incidente
+  "reminder",     // Recordatorio
+  "inspection",   // Inspección
+  "complaint",    // Queja
+  "maintenance",  // Mantenimiento programado
+  "violation",    // Violación de contrato
+]);
+
+export const rentalNoteSeverityEnum = pgEnum("rental_note_severity", [
+  "info",         // Informativa
+  "low",          // Baja
+  "medium",       // Media
+  "high",          // Alta
+  "critical",     // Crítica
+]);
+
 export const unitTypologyEnum = pgEnum("unit_typology", [
   "estudio",
   "estudio_plus",
@@ -4967,6 +4985,38 @@ export const insertExternalRentalTenantSchema = createInsertSchema(externalRenta
 
 export type InsertExternalRentalTenant = z.infer<typeof insertExternalRentalTenantSchema>;
 export type ExternalRentalTenant = typeof externalRentalTenants.$inferSelect;
+
+// External Rental Notes - Notas e incidencias del contrato de renta (immutable audit log)
+export const externalRentalNotes = pgTable("external_rental_notes", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  contractId: varchar("contract_id").notNull().references(() => externalRentalContracts.id, { onDelete: "cascade" }),
+  noteType: rentalNoteTypeEnum("note_type").notNull().default("general"), // Tipo de nota
+  severity: rentalNoteSeverityEnum("severity").default("info"), // Severidad (opcional)
+  content: text("content").notNull(), // Contenido de la nota
+  attachments: jsonb("attachments"), // URLs de archivos adjuntos {type: 'image'|'document', url: string, name: string}[]
+  isArchived: boolean("is_archived").notNull().default(false), // Soft delete para ocultar sin perder historial
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Usuario que creó la nota
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_rental_notes_agency").on(table.agencyId),
+  index("idx_external_rental_notes_contract").on(table.contractId),
+  index("idx_external_rental_notes_type").on(table.noteType),
+  index("idx_external_rental_notes_created").on(table.createdAt),
+]);
+
+export const insertExternalRentalNoteSchema = createInsertSchema(externalRentalNotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updateExternalRentalNoteSchema = z.object({
+  isArchived: z.boolean().optional(), // Solo permitir archivar/desarchivar
+});
+
+export type InsertExternalRentalNote = z.infer<typeof insertExternalRentalNoteSchema>;
+export type UpdateExternalRentalNote = z.infer<typeof updateExternalRentalNoteSchema>;
+export type ExternalRentalNote = typeof externalRentalNotes.$inferSelect;
 
 // Check-Out Reports - Reportes de salida para contratos completados
 export const externalCheckoutReports = pgTable("external_checkout_reports", {

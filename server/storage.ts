@@ -320,6 +320,10 @@ import {
   externalRentalContracts,
   type ExternalRentalContract,
   type InsertExternalRentalContract,
+  externalRentalNotes,
+  type ExternalRentalNote,
+  type InsertExternalRentalNote,
+  type UpdateExternalRentalNote,
   externalPaymentSchedules,
   type ExternalPaymentSchedule,
   type InsertExternalPaymentSchedule,
@@ -1139,6 +1143,13 @@ export interface IStorage {
   updateExternalRentalContract(id: string, updates: Partial<InsertExternalRentalContract>): Promise<ExternalRentalContract>;
   updateExternalContractStatus(id: string, status: string): Promise<ExternalRentalContract>;
   deleteExternalRentalContract(id: string): Promise<void>;
+
+  // External Management System - Rental Notes operations
+  getExternalRentalNote(id: string): Promise<ExternalRentalNote | undefined>;
+  getExternalRentalNotesByContract(contractId: string, filters?: { isArchived?: boolean; noteType?: string }): Promise<ExternalRentalNote[]>;
+  createExternalRentalNote(note: InsertExternalRentalNote): Promise<ExternalRentalNote>;
+  updateExternalRentalNote(id: string, updates: UpdateExternalRentalNote): Promise<ExternalRentalNote>;
+  getExternalMaintenanceTicketsByContract(contractId: string, filters?: { status?: string }): Promise<ExternalMaintenanceTicket[]>;
 
   // External Management System - Payment Schedule operations
   getExternalPaymentSchedule(id: string): Promise<ExternalPaymentSchedule | undefined>;
@@ -7512,6 +7523,85 @@ export class DatabaseStorage implements IStorage {
   async deleteExternalRentalContract(id: string): Promise<void> {
     await db.delete(externalRentalContracts)
       .where(eq(externalRentalContracts.id, id));
+  }
+
+  // External Management System - Rental Notes operations
+  async getExternalRentalNote(id: string): Promise<ExternalRentalNote | undefined> {
+    const [note] = await db.select()
+      .from(externalRentalNotes)
+      .where(eq(externalRentalNotes.id, id))
+      .limit(1);
+    return note;
+  }
+
+  async getExternalRentalNotesByContract(contractId: string, filters?: { isArchived?: boolean; noteType?: string }): Promise<ExternalRentalNote[]> {
+    const conditions = [eq(externalRentalNotes.contractId, contractId)];
+    
+    if (filters?.isArchived !== undefined) {
+      conditions.push(eq(externalRentalNotes.isArchived, filters.isArchived));
+    }
+    
+    if (filters?.noteType) {
+      conditions.push(eq(externalRentalNotes.noteType, filters.noteType as any));
+    }
+    
+    return await db.select()
+      .from(externalRentalNotes)
+      .where(and(...conditions))
+      .orderBy(desc(externalRentalNotes.createdAt));
+  }
+
+  async createExternalRentalNote(note: InsertExternalRentalNote): Promise<ExternalRentalNote> {
+    const [result] = await db.insert(externalRentalNotes)
+      .values(note)
+      .returning();
+    return result;
+  }
+
+  async updateExternalRentalNote(id: string, updates: UpdateExternalRentalNote): Promise<ExternalRentalNote> {
+    const [result] = await db.update(externalRentalNotes)
+      .set(updates)
+      .where(eq(externalRentalNotes.id, id))
+      .returning();
+    return result;
+  }
+
+  async getExternalMaintenanceTicketsByContract(contractId: string, filters?: { status?: string }): Promise<ExternalMaintenanceTicket[]> {
+    // Get the contract to verify agency and extract metadata
+    const contract = await this.getExternalRentalContract(contractId);
+    if (!contract) return [];
+
+    // Filter by contractId directly OR by unitId + agency + date range for tickets created before contractId was linked
+    const conditions = [
+      eq(externalMaintenanceTickets.agencyId, contract.agencyId), // Multi-tenant security
+      or(
+        eq(externalMaintenanceTickets.contractId, contractId), // Direct contract link
+        and( // Legacy tickets linked by unit and date
+          eq(externalMaintenanceTickets.unitId, contract.unitId),
+          or(
+            and( // Tickets with scheduledWindowStart within contract dates
+              sql`${externalMaintenanceTickets.scheduledWindowStart} IS NOT NULL`,
+              sql`${externalMaintenanceTickets.scheduledWindowStart} >= ${contract.startDate}`,
+              sql`${externalMaintenanceTickets.scheduledWindowStart} <= ${contract.endDate}`
+            ),
+            and( // Tickets created within contract dates but no scheduled window
+              sql`${externalMaintenanceTickets.scheduledWindowStart} IS NULL`,
+              sql`${externalMaintenanceTickets.createdAt} >= ${contract.startDate}`,
+              sql`${externalMaintenanceTickets.createdAt} <= ${contract.endDate}`
+            )
+          )
+        )
+      )
+    ];
+    
+    if (filters?.status) {
+      conditions.push(eq(externalMaintenanceTickets.status, filters.status as any));
+    }
+    
+    return await db.select()
+      .from(externalMaintenanceTickets)
+      .where(and(...conditions))
+      .orderBy(desc(externalMaintenanceTickets.createdAt));
   }
 
   // External Management System - Payment Schedule operations
