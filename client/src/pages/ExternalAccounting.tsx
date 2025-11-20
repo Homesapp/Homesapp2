@@ -89,7 +89,7 @@ export default function ExternalAccounting() {
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   const { data: summary, isLoading: summaryLoading } = useQuery<AccountingSummary>({
     queryKey: ['/api/external/accounting/summary'],
@@ -868,9 +868,12 @@ export default function ExternalAccounting() {
 
           {filtersExpanded && (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">{t.filters}</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    {t.filters}
+                  </CardTitle>
                   {activeFilters > 0 && (
                     <Button
                       variant="ghost"
@@ -884,8 +887,8 @@ export default function ExternalAccounting() {
                   )}
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Select value={directionFilter} onValueChange={setDirectionFilter}>
                   <SelectTrigger data-testid="select-direction-filter">
                     <SelectValue placeholder={t.direction} />
@@ -973,7 +976,7 @@ export default function ExternalAccounting() {
               </div>
 
               {dateFilter === "custom" && (
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-2 gap-4 mt-6">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t.startDate}</label>
                     <Input
