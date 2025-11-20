@@ -7819,13 +7819,36 @@ export class DatabaseStorage implements IStorage {
 
   // External Maintenance Updates implementation
   async getExternalMaintenanceUpdates(ticketId: string): Promise<ExternalMaintenanceUpdate[]> {
-    return await db.select()
+    // Join with ticket to verify agency ownership
+    const results = await db.select({
+      id: externalMaintenanceUpdates.id,
+      ticketId: externalMaintenanceUpdates.ticketId,
+      type: externalMaintenanceUpdates.type,
+      notes: externalMaintenanceUpdates.notes,
+      statusSnapshot: externalMaintenanceUpdates.statusSnapshot,
+      prioritySnapshot: externalMaintenanceUpdates.prioritySnapshot,
+      assignedToSnapshot: externalMaintenanceUpdates.assignedToSnapshot,
+      createdBy: externalMaintenanceUpdates.createdBy,
+      createdAt: externalMaintenanceUpdates.createdAt,
+    })
       .from(externalMaintenanceUpdates)
+      .innerJoin(
+        externalMaintenanceTickets, 
+        eq(externalMaintenanceUpdates.ticketId, externalMaintenanceTickets.id)
+      )
       .where(eq(externalMaintenanceUpdates.ticketId, ticketId))
       .orderBy(desc(externalMaintenanceUpdates.createdAt));
+    
+    return results;
   }
 
   async createExternalMaintenanceUpdate(update: InsertExternalMaintenanceUpdate): Promise<ExternalMaintenanceUpdate> {
+    // Verify ticket exists and belongs to user's agency
+    const ticket = await this.getExternalMaintenanceTicket(update.ticketId);
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+    
     const [newUpdate] = await db.insert(externalMaintenanceUpdates)
       .values(update)
       .returning();
@@ -7847,13 +7870,35 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalMaintenancePhotos.updateId, filters.updateId));
     }
 
-    return await db.select()
+    // Join with ticket to verify agency ownership
+    const results = await db.select({
+      id: externalMaintenancePhotos.id,
+      ticketId: externalMaintenancePhotos.ticketId,
+      updateId: externalMaintenancePhotos.updateId,
+      phase: externalMaintenancePhotos.phase,
+      storageKey: externalMaintenancePhotos.storageKey,
+      caption: externalMaintenancePhotos.caption,
+      uploadedBy: externalMaintenancePhotos.uploadedBy,
+      uploadedAt: externalMaintenancePhotos.uploadedAt,
+    })
       .from(externalMaintenancePhotos)
+      .innerJoin(
+        externalMaintenanceTickets,
+        eq(externalMaintenancePhotos.ticketId, externalMaintenanceTickets.id)
+      )
       .where(and(...conditions))
       .orderBy(desc(externalMaintenancePhotos.uploadedAt));
+    
+    return results;
   }
 
   async createExternalMaintenancePhoto(photo: InsertExternalMaintenancePhoto): Promise<ExternalMaintenancePhoto> {
+    // Verify ticket exists and belongs to user's agency
+    const ticket = await this.getExternalMaintenanceTicket(photo.ticketId);
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+    
     const [newPhoto] = await db.insert(externalMaintenancePhotos)
       .values(photo)
       .returning();
@@ -7861,6 +7906,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteExternalMaintenancePhoto(id: string): Promise<void> {
+    // Verify photo exists and ticket belongs to user's agency via join
+    const [photo] = await db.select()
+      .from(externalMaintenancePhotos)
+      .innerJoin(
+        externalMaintenanceTickets,
+        eq(externalMaintenancePhotos.ticketId, externalMaintenanceTickets.id)
+      )
+      .where(eq(externalMaintenancePhotos.id, id))
+      .limit(1);
+    
+    if (!photo) {
+      throw new Error("Photo not found or access denied");
+    }
+    
     await db.delete(externalMaintenancePhotos)
       .where(eq(externalMaintenancePhotos.id, id));
   }

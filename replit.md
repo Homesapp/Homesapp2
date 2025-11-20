@@ -17,6 +17,8 @@ Data is stored in PostgreSQL (Neon serverless) and accessed via Drizzle ORM for 
 
 Key architectural features include unified middleware for authentication and logging, content adaptation for public dashboards, and real-time chat via WebSockets with session-based authentication. The platform includes advanced features such as role-based access control, a sophisticated appointment system, full property management lifecycle support (submission to digital agreement), comprehensive rental management with an offer system, automated contract elaboration, an HOA module for condominium management, and a robust notification system. AI capabilities include predictive analytics, automated legal document generation, intelligent tenant screening, and a virtual assistant powered by OpenAI GPT-4. The system also features a CRM lead management system, a referral system, Airbnb-style role switching, full i18n support, and an advanced External Property Management System with multi-tenant capabilities, detailed maintenance worker and owner management, an external calendar system (payments, tickets, rental contracts), rental purpose classification, Google Calendar sync, temporary credential management, unit information sharing, and comprehensive financial accounting with a unified ledger and advanced filtering.
 
+The maintenance system includes an enhanced tracking architecture with update timelines, photo documentation categorized by phase (before/during/after), scheduled maintenance windows, role-based closure permissions (admin and maintenance managers only), completion notes, and multi-tenant security with agency ownership verification on all CRUD operations for maintenance updates and photos.
+
 ## External Dependencies
 *   Google Calendar API
 *   Gmail API
