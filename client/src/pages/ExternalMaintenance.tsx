@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +64,30 @@ type MaintenanceFormData = z.infer<typeof insertExternalMaintenanceTicketSchema>
 
 const CANCUN_TIMEZONE = "America/Cancun";
 
+// Schedule state that never allows undefined to guarantee calendar visibility
+type ScheduleState = {
+  date: Date;
+  time: string;
+};
+
+// Helper to get default schedule (tomorrow at 9:00 AM)
+function getDefaultSchedule(): ScheduleState {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  return { date: tomorrow, time: "09:00" };
+}
+
+// Helper to convert ScheduleState to ISO string for React Hook Form
+function scheduleToISOString(schedule: ScheduleState): string {
+  const timeToUse = schedule.time && schedule.time.trim() !== '' ? schedule.time : '09:00';
+  const [hours, minutes] = timeToUse.split(':').map(Number);
+  const combinedDate = new Date(schedule.date);
+  combinedDate.setHours(hours, minutes, 0, 0);
+  const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
+  return utcDate.toISOString();
+}
+
 const statusColors: Record<string, { bg: string; label: { es: string; en: string } }> = {
   open: {
     bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
@@ -127,14 +151,8 @@ export default function ExternalMaintenance() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [condominiumFilter, setCondominiumFilter] = useState<string>("all");
   const [formCondominiumId, setFormCondominiumId] = useState<string>("");
-  // Default to tomorrow at 9:00 AM for scheduling
-  const [formDate, setFormDate] = useState<Date | undefined>(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    return tomorrow;
-  });
-  const [formTime, setFormTime] = useState<string>("09:00");
+  // Schedule state that guarantees calendar visibility
+  const [schedule, setSchedule] = useState<ScheduleState>(getDefaultSchedule());
 
   const { data: tickets, isLoading: ticketsLoading } = useQuery<ExternalMaintenanceTicket[]>({
     queryKey: ['/api/external-tickets'],
@@ -169,10 +187,32 @@ export default function ExternalMaintenance() {
       category: "other",
       priority: "medium",
       status: "open",
-      scheduledDate: undefined,
+      scheduledDate: scheduleToISOString(getDefaultSchedule()),
       assignedTo: undefined,
       notes: "",
     },
+  });
+
+  // Initialize form with default schedule on mount
+  useEffect(() => {
+    const defaultSchedule = getDefaultSchedule();
+    setSchedule(defaultSchedule);
+    form.setValue('scheduledDate', scheduleToISOString(defaultSchedule));
+  }, []);
+
+  const handleSubmit = form.handleSubmit((data) => {
+    // scheduledDate is already set via form.setValue in calendar/time onChange
+    // Just validate it exists before submission
+    if (!data.scheduledDate) {
+      form.setError('scheduledDate', {
+        message: language === "es"
+          ? "Por favor selecciona una fecha de programación para que el ticket aparezca en el calendario"
+          : "Please select a scheduled date so the ticket appears in the calendar"
+      });
+      return;
+    }
+
+    createMutation.mutate(data);
   });
 
   const createMutation = useMutation({
@@ -185,22 +225,6 @@ export default function ExternalMaintenance() {
         );
       }
 
-      // Validate that a schedule date is set for calendar visibility
-      if (!formDate) {
-        throw new Error(language === "es"
-          ? "Por favor selecciona una fecha de programación para que el ticket aparezca en el calendario"
-          : "Please select a scheduled date so the ticket appears in the calendar"
-        );
-      }
-
-      // Always set scheduledDate when formDate is present (use default time if empty)
-      const timeToUse = formTime && formTime.trim() !== '' ? formTime : '09:00';
-      const [hours, minutes] = timeToUse.split(':').map(Number);
-      const combinedDate = new Date(formDate);
-      combinedDate.setHours(hours, minutes, 0, 0);
-      const utcDate = fromZonedTime(combinedDate, CANCUN_TIMEZONE);
-      data.scheduledDate = utcDate;
-      
       return await apiRequest('POST', '/api/external-tickets', {
         ...data,
         agencyId: selectedUnit.agencyId,
@@ -209,14 +233,21 @@ export default function ExternalMaintenance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-tickets'] });
       setShowDialog(false);
-      form.reset();
       setFormCondominiumId("");
-      // Reset to tomorrow's date
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      setFormDate(tomorrow);
-      setFormTime("09:00");
+      // Reset schedule and sync with form
+      const defaultSchedule = getDefaultSchedule();
+      setSchedule(defaultSchedule);
+      form.reset({
+        unitId: "",
+        title: "",
+        description: "",
+        category: "other",
+        priority: "medium",
+        status: "open",
+        scheduledDate: scheduleToISOString(defaultSchedule),
+        assignedTo: undefined,
+        notes: "",
+      });
       toast({
         title: language === "es" ? "Ticket creado" : "Ticket created",
         description: language === "es" ? "El ticket de mantenimiento se creó exitosamente" : "Maintenance ticket created successfully",
@@ -291,10 +322,6 @@ export default function ExternalMaintenance() {
     resolved: filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed').length,
     totalCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.actualCost || '0'), 0),
     estimatedCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.estimatedCost || '0'), 0),
-  };
-
-  const handleSubmit = (data: MaintenanceFormData) => {
-    createMutation.mutate(data);
   };
 
   const formatCurrency = (amount: number) => {
@@ -663,7 +690,7 @@ export default function ExternalMaintenance() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -839,11 +866,17 @@ export default function ExternalMaintenance() {
                   <div className="space-y-2">
                     <Calendar
                       mode="single"
-                      selected={formDate}
+                      selected={schedule.date}
                       onSelect={(date) => {
                         // Prevent clearing the date - always keep a schedule for calendar visibility
                         if (date) {
-                          setFormDate(date);
+                          setSchedule(prev => {
+                            const newSchedule = { ...prev, date };
+                            // Sync with React Hook Form for validation and persistence
+                            form.setValue('scheduledDate', scheduleToISOString(newSchedule));
+                            form.clearErrors('scheduledDate');
+                            return newSchedule;
+                          });
                         }
                       }}
                       className="rounded-md border"
@@ -855,8 +888,16 @@ export default function ExternalMaintenance() {
                     <FormLabel>{t.scheduleTime}</FormLabel>
                     <Input
                       type="time"
-                      value={formTime}
-                      onChange={(e) => setFormTime(e.target.value)}
+                      value={schedule.time}
+                      onChange={(e) => {
+                        setSchedule(prev => {
+                          const newSchedule = { ...prev, time: e.target.value };
+                          // Sync with React Hook Form for validation and persistence
+                          form.setValue('scheduledDate', scheduleToISOString(newSchedule));
+                          form.clearErrors('scheduledDate');
+                          return newSchedule;
+                        });
+                      }}
                       data-testid="input-time"
                     />
                   </FormItem>
