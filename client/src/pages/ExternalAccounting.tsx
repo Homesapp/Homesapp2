@@ -698,6 +698,17 @@ export default function ExternalAccounting() {
             >
               <Filter className="h-4 w-4" />
             </Button>
+            {activeFilters > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                data-testid="button-clear-filters"
+              >
+                <X className="h-4 w-4 mr-1" />
+                {t.clearFilters}
+              </Button>
+            )}
             <div className="flex gap-1 border rounded-md p-1">
               <Button
                 variant={viewMode === "cards" ? "default" : "ghost"}
@@ -721,23 +732,7 @@ export default function ExternalAccounting() {
 
         {filtersExpanded && (
           <Card className="mb-6">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{t.filters}</CardTitle>
-                {activeFilters > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearFilters}
-                    data-testid="button-clear-filters"
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    {t.clearFilters}
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t.direction}</label>

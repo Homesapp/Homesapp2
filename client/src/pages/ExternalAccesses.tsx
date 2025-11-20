@@ -613,33 +613,9 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
       </div>
 
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-        <Card>
-          <CardHeader className="pb-3">
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-between cursor-pointer" data-testid="div-filters-header">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="space-y-1">
-                    <CardTitle className="text-base font-semibold leading-none">
-                      {language === "es" ? "Filtros" : "Filters"}
-                    </CardTitle>
-                    <CardDescription className="text-sm leading-none">
-                      {language === "es" 
-                        ? "Filtra por condominio, unidad o tipo de acceso"
-                        : "Filter by condominium, unit or access type"}
-                    </CardDescription>
-                  </div>
-                </div>
-                {isFiltersOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                )}
-              </div>
-            </CollapsibleTrigger>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent>
+        <CollapsibleContent>
+          <Card>
+            <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
@@ -728,8 +704,8 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                 </div>
               </div>
             </CardContent>
-          </CollapsibleContent>
-        </Card>
+          </Card>
+        </CollapsibleContent>
       </Collapsible>
 
       {selectedAccesses.size > 0 && (
