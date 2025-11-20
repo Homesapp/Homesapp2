@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp } from "lucide-react";
+import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -37,6 +38,7 @@ export default function ExternalCondominiums() {
   const [editingUnit, setEditingUnit] = useState<ExternalUnit | null>(null);
   const [deletingCondo, setDeletingCondo] = useState<ExternalCondominium | null>(null);
   const [selectedCondoId, setSelectedCondoId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"condominiums" | "units">("condominiums");
   
   // For creating condominium with multiple units
   const [tempUnits, setTempUnits] = useState<Array<{ unitNumber: string; typology?: string; floor?: string; bedrooms?: number; bathrooms?: number; squareMeters?: number }>>([]);
@@ -75,9 +77,14 @@ export default function ExternalCondominiums() {
   const { data: rawContracts, isLoading: contractsLoading, isError: contractsError, refetch: refetchContracts } = contractsQuery;
 
   // Normalize contracts - unwrap nested structure if present
-  const rentalContracts = (rawContracts ?? []).map((c: any) => 
-    'contract' in c ? c.contract : c
-  );
+  // Normalize contracts to handle both flat and nested structures
+  const rentalContracts = (rawContracts ?? []).map((c: any) => {
+    if ('contract' in c && c.contract) {
+      // Merge top-level and nested contract properties
+      return { ...c, ...c.contract };
+    }
+    return c;
+  });
 
   // Get services for all units - we'll create a map of unitId -> services[]
   const { data: allUnitServices } = useQuery<Record<string, ExternalPaymentSchedule[]>>({
@@ -566,9 +573,18 @@ export default function ExternalCondominiums() {
   const hasActiveRental = (unitId: string): boolean | undefined => {
     if (contractsLoading || contractsError) return undefined;
     if (!rentalContracts || rentalContracts.length === 0) return false;
+    // rentalContracts is already normalized, so we can directly access properties
     return rentalContracts.some((contract: any) => 
       contract.unitId === unitId && contract.status === 'active'
     );
+  };
+
+  const getActiveRentalContract = (unitId: string): any | null => {
+    if (contractsLoading || contractsError || !rentalContracts) return null;
+    // rentalContracts is already normalized, so we can directly access properties
+    return rentalContracts.find((contract: any) => 
+      contract.unitId === unitId && contract.status === 'active'
+    ) || null;
   };
 
   const getCondominiumName = (condoId: string): string => {
@@ -629,32 +645,29 @@ export default function ExternalCondominiums() {
         </Button>
       </div>
 
-      <Tabs defaultValue="condominiums" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="condominiums" data-testid="tab-condominiums">
-            <Building2 className="mr-2 h-4 w-4" />
-            {language === "es" ? "Condominios" : "Condominiums"}
-          </TabsTrigger>
-          <TabsTrigger value="units" data-testid="tab-units">
-            <Home className="mr-2 h-4 w-4" />
-            {language === "es" ? "Unidades" : "Units"}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="condominiums" className="space-y-4">
-          <div className="flex items-center justify-between">
-            {selectedCondoId ? (
-              <Button 
-                variant="outline" 
-                onClick={() => setSelectedCondoId(null)}
-                data-testid="button-back-to-condos"
-              >
-                ← {language === "es" ? "Volver a Condominios" : "Back to Condominiums"}
-              </Button>
-            ) : (
-              <div className="flex-1" />
-            )}
-            {!selectedCondoId && (
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value as "condominiums" | "units");
+        // Close filters when switching tabs
+        if (value === "condominiums") {
+          setFiltersExpanded(false);
+        } else {
+          setCondoFiltersExpanded(false);
+        }
+      }} className="w-full">
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="condominiums" data-testid="tab-condominiums">
+              <Building2 className="mr-2 h-4 w-4" />
+              {language === "es" ? "Condominios" : "Condominiums"}
+            </TabsTrigger>
+            <TabsTrigger value="units" data-testid="tab-units">
+              <Home className="mr-2 h-4 w-4" />
+              {language === "es" ? "Unidades" : "Units"}
+            </TabsTrigger>
+          </TabsList>
+          
+          {!selectedCondoId && (
+            activeTab === "condominiums" ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -662,14 +675,48 @@ export default function ExternalCondominiums() {
                 data-testid="button-toggle-condo-filters"
                 title={language === "es" ? "Filtros" : "Filters"}
               >
-                <Filter className="h-4 w-4" />
+                {condoFiltersExpanded ? <ChevronUp className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
               </Button>
-            )}
-          </div>
-          
-          {!selectedCondoId && condoFiltersExpanded && (
-            <Card>
-              <CardContent className="pt-6">
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                data-testid="button-toggle-unit-filters"
+                title={language === "es" ? "Filtros" : "Filters"}
+              >
+                {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+              </Button>
+            )
+          )}
+        </div>
+        
+        {!selectedCondoId && condoFiltersExpanded && (
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {language === "es" ? "Buscar" : "Search"}
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={language === "es" ? "Nombre o dirección de condominio..." : "Condominium name or address..."}
+                    value={condoSearchText}
+                    onChange={(e) => setCondoSearchText(e.target.value)}
+                    className="pl-8"
+                    data-testid="input-search-condos"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {filtersExpanded && (
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
                     {language === "es" ? "Buscar" : "Search"}
@@ -677,17 +724,93 @@ export default function ExternalCondominiums() {
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder={language === "es" ? "Nombre o dirección de condominio..." : "Condominium name or address..."}
-                      value={condoSearchText}
-                      onChange={(e) => setCondoSearchText(e.target.value)}
+                      placeholder={language === "es" ? "Número de unidad o condominio..." : "Unit number or condominium..."}
+                      value={unitSearchText}
+                      onChange={(e) => setUnitSearchText(e.target.value)}
                       className="pl-8"
-                      data-testid="input-search-condos"
+                      data-testid="input-search-units"
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Condominio" : "Condominium"}
+                  </label>
+                  <Select 
+                    value={selectedCondoFilter} 
+                    onValueChange={setSelectedCondoFilter}
+                    disabled={condosLoading}
+                  >
+                    <SelectTrigger data-testid="select-filter-condominium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {language === "es" ? "Todos los condominios" : "All condominiums"}
+                      </SelectItem>
+                      {condominiums?.map(condo => (
+                        <SelectItem key={condo.id} value={condo.id}>
+                          {condo.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Estado de Unidad" : "Unit Status"}
+                  </label>
+                  <Select 
+                    value={unitStatusFilter} 
+                    onValueChange={setUnitStatusFilter}
+                  >
+                    <SelectTrigger data-testid="select-filter-unit-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {language === "es" ? "Todas" : "All"}
+                      </SelectItem>
+                      <SelectItem value="active">
+                        {language === "es" ? "Activas" : "Active"}
+                      </SelectItem>
+                      <SelectItem value="suspended">
+                        {language === "es" ? "Suspendidas" : "Suspended"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Estado de Renta" : "Rental Status"}
+                  </label>
+                  <Select 
+                    value={rentalStatusFilter} 
+                    onValueChange={setRentalStatusFilter}
+                    disabled={contractsLoading || contractsError}
+                  >
+                    <SelectTrigger data-testid="select-filter-rental-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {language === "es" ? "Todas las unidades" : "All units"}
+                      </SelectItem>
+                      <SelectItem value="with-rental">
+                        {language === "es" ? "Con renta activa" : "With active rental"}
+                      </SelectItem>
+                      <SelectItem value="without-rental">
+                        {language === "es" ? "Sin renta activa" : "Without active rental"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <TabsContent value="condominiums" className="space-y-4">
 
           {condosError ? (
             <Card data-testid="card-error-state">
@@ -725,6 +848,14 @@ export default function ExternalCondominiums() {
                 
                 return (
                   <div className="space-y-4">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setSelectedCondoId(null)}
+                      data-testid="button-back-to-condos"
+                      className="mb-2"
+                    >
+                      ← {language === "es" ? "Volver a Condominios" : "Back to Condominiums"}
+                    </Button>
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 justify-between">
@@ -992,6 +1123,74 @@ export default function ExternalCondominiums() {
                           </Badge>
                         </div>
 
+                        {/* Units Table */}
+                        {condoUnits.length > 0 && (
+                          <div className="pt-3 border-t">
+                            <h4 className="text-sm font-medium mb-2">{language === "es" ? "Unidades" : "Units"}</h4>
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                              {condoUnits.map((unit) => {
+                                const activeContract = getActiveRentalContract(unit.id);
+                                const isRented = activeContract !== null;
+                                
+                                return (
+                                  <div 
+                                    key={unit.id} 
+                                    className="flex items-center justify-between p-2 text-xs rounded-md bg-muted/50 hover:bg-muted"
+                                    data-testid={`unit-row-${unit.id}`}
+                                  >
+                                    <div className="flex-1 grid grid-cols-3 gap-2">
+                                      <div>
+                                        <span className="font-medium">{unit.unitNumber}</span>
+                                        {unit.typology && (
+                                          <span className="text-muted-foreground ml-1">
+                                            ({formatTypology(unit.typology, language)})
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-muted-foreground">
+                                        {unit.floor ? formatFloor(unit.floor, language) : "-"}
+                                      </div>
+                                      <div>
+                                        {isRented ? (
+                                          <div className="flex flex-col">
+                                            <Badge variant="secondary" className="text-xs w-fit">
+                                              {language === "es" ? "Rentada" : "Rented"}
+                                            </Badge>
+                                            {(() => {
+                                              // activeContract is already normalized
+                                              const endDate = activeContract?.endDate;
+                                              if (endDate) {
+                                                try {
+                                                  const date = new Date(endDate);
+                                                  if (!isNaN(date.getTime())) {
+                                                    return (
+                                                      <span className="text-muted-foreground text-[10px] mt-0.5">
+                                                        {language === "es" ? "Hasta: " : "Until: "}
+                                                        {format(date, "dd/MM/yy")}
+                                                      </span>
+                                                    );
+                                                  }
+                                                } catch (e) {
+                                                  // Invalid date, don't show anything
+                                                }
+                                              }
+                                              return null;
+                                            })()}
+                                          </div>
+                                        ) : (
+                                          <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400 border-green-200 dark:border-green-800">
+                                            {language === "es" ? "Disponible" : "Available"}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {condo.description && (
                           <p className="text-xs text-muted-foreground mt-2 line-clamp-2 pt-2 border-t">{condo.description}</p>
                         )}
@@ -1019,119 +1218,6 @@ export default function ExternalCondominiums() {
         </TabsContent>
 
         <TabsContent value="units" className="space-y-4">
-          {/* Filters Section */}
-          <div className="flex items-center justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
-              data-testid="button-toggle-unit-filters"
-              title={language === "es" ? "Filtros" : "Filters"}
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {filtersExpanded && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {language === "es" ? "Buscar" : "Search"}
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder={language === "es" ? "Número de unidad o condominio..." : "Unit number or condominium..."}
-                        value={unitSearchText}
-                        onChange={(e) => setUnitSearchText(e.target.value)}
-                        className="pl-8"
-                        data-testid="input-search-units"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {language === "es" ? "Condominio" : "Condominium"}
-                    </label>
-                    <Select 
-                      value={selectedCondoFilter} 
-                      onValueChange={setSelectedCondoFilter}
-                      disabled={condosLoading}
-                    >
-                      <SelectTrigger data-testid="select-filter-condominium">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          {language === "es" ? "Todos los condominios" : "All condominiums"}
-                        </SelectItem>
-                        {condominiums?.map(condo => (
-                          <SelectItem key={condo.id} value={condo.id}>
-                            {condo.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {language === "es" ? "Estado de Unidad" : "Unit Status"}
-                    </label>
-                    <Select 
-                      value={unitStatusFilter} 
-                      onValueChange={setUnitStatusFilter}
-                    >
-                      <SelectTrigger data-testid="select-filter-unit-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          {language === "es" ? "Todas" : "All"}
-                        </SelectItem>
-                        <SelectItem value="active">
-                          {language === "es" ? "Activas" : "Active"}
-                        </SelectItem>
-                        <SelectItem value="suspended">
-                          {language === "es" ? "Suspendidas" : "Suspended"}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {language === "es" ? "Estado de Renta" : "Rental Status"}
-                    </label>
-                    <Select 
-                      value={rentalStatusFilter} 
-                      onValueChange={setRentalStatusFilter}
-                      disabled={contractsLoading || contractsError}
-                    >
-                      <SelectTrigger data-testid="select-filter-rental-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          {language === "es" ? "Todas las unidades" : "All units"}
-                        </SelectItem>
-                        <SelectItem value="with-rental">
-                          {language === "es" ? "Con renta activa" : "With active rental"}
-                        </SelectItem>
-                        <SelectItem value="without-rental">
-                          {language === "es" ? "Sin renta activa" : "Without active rental"}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Error Alert for Rental Contracts */}
           {contractsError && (
             <Card className="border-destructive bg-destructive/10">
