@@ -67,7 +67,7 @@ export default function ExternalOwnerPortfolio() {
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
 
   const { data: owners, isLoading: ownersLoading } = useQuery<ExternalUnitOwner[]>({
-    queryKey: ['/api/external-unit-owners'],
+    queryKey: ['/api/external-owners'],
   });
 
   const { data: units } = useQuery<ExternalUnit[]>({
