@@ -37,7 +37,7 @@ import {
   Droplet,
   Wifi,
   Flame,
-  Tool,
+  Wrench,
   Building2
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -478,7 +478,7 @@ export default function ExternalAccounting() {
       rent_income: Home,
       rent_payout: Home,
       hoa_fee: Building2,
-      maintenance_charge: Tool,
+      maintenance_charge: Wrench,
       service_electricity: Zap,
       service_water: Droplet,
       service_internet: Wifi,
