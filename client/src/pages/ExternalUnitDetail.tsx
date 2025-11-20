@@ -32,6 +32,7 @@ import type {
   InsertExternalRentalContract
 } from "@shared/schema";
 import { insertExternalUnitOwnerSchema, insertExternalUnitAccessControlSchema, insertExternalRentalContractSchema } from "@shared/schema";
+import { formatTypology, formatFloor } from "@/lib/unitHelpers";
 
 type OwnerFormData = z.infer<typeof insertExternalUnitOwnerSchema>;
 type AccessControlFormData = z.infer<typeof insertExternalUnitAccessControlSchema>;
@@ -621,6 +622,25 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
               )}
             </div>
             
+            <div className="grid grid-cols-2 gap-4">
+              {unit.typology && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    {language === "es" ? "Tipología" : "Typology"}
+                  </Label>
+                  <p className="text-sm font-medium mt-1" data-testid="text-typology">{formatTypology(unit.typology, language)}</p>
+                </div>
+              )}
+              {unit.floor && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    {language === "es" ? "Piso" : "Floor"}
+                  </Label>
+                  <p className="text-sm font-medium mt-1" data-testid="text-floor">{formatFloor(unit.floor, language)}</p>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               {unit.bedrooms && (
                 <div>
@@ -647,15 +667,6 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                 </div>
               )}
             </div>
-
-            {unit.floor !== null && unit.floor !== undefined && (
-              <div>
-                <Label className="text-xs text-muted-foreground">
-                  {language === "es" ? "Piso" : "Floor"}
-                </Label>
-                <p className="text-sm font-medium mt-1" data-testid="text-floor">{unit.floor}</p>
-              </div>
-            )}
             
             <div>
               <Label className="text-xs text-muted-foreground">

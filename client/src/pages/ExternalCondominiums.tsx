@@ -21,43 +21,10 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalCondominium, ExternalUnit, ExternalRentalContract, ExternalPaymentSchedule } from "@shared/schema";
 import { insertExternalCondominiumSchema, insertExternalUnitSchema, externalUnitFormSchema } from "@shared/schema";
 import { z } from "zod";
+import { typologyOptions, floorOptions, formatTypology, formatFloor } from "@/lib/unitHelpers";
 
 type CondominiumFormData = z.infer<typeof insertExternalCondominiumSchema>;
 type UnitFormData = z.infer<typeof insertExternalUnitSchema>;
-
-// Tipología options
-const typologyOptions = [
-  { value: "estudio", labelEs: "Estudio", labelEn: "Studio" },
-  { value: "estudio_plus", labelEs: "Estudio Plus", labelEn: "Studio Plus" },
-  { value: "1_recamara", labelEs: "1 Recámara", labelEn: "1 Bedroom" },
-  { value: "2_recamaras", labelEs: "2 Recámaras", labelEn: "2 Bedrooms" },
-  { value: "3_recamaras", labelEs: "3 Recámaras", labelEn: "3 Bedrooms" },
-  { value: "loft_mini", labelEs: "Loft Mini", labelEn: "Mini Loft" },
-  { value: "loft_normal", labelEs: "Loft Normal", labelEn: "Normal Loft" },
-  { value: "loft_plus", labelEs: "Loft Plus", labelEn: "Loft Plus" },
-];
-
-// Floor options
-const floorOptions = [
-  { value: "planta_baja", labelEs: "Planta Baja", labelEn: "Ground Floor" },
-  { value: "primer_piso", labelEs: "Primer Piso", labelEn: "First Floor" },
-  { value: "segundo_piso", labelEs: "Segundo Piso", labelEn: "Second Floor" },
-  { value: "tercer_piso", labelEs: "Tercer Piso", labelEn: "Third Floor" },
-  { value: "penthouse", labelEs: "Penthouse", labelEn: "Penthouse" },
-];
-
-// Helper functions to format typology and floor for display
-const formatTypology = (typology: string | null | undefined, language: string): string => {
-  if (!typology) return '-';
-  const option = typologyOptions.find(opt => opt.value === typology);
-  return option ? (language === "es" ? option.labelEs : option.labelEn) : typology;
-};
-
-const formatFloor = (floor: string | null | undefined, language: string): string => {
-  if (!floor) return '-';
-  const option = floorOptions.find(opt => opt.value === floor);
-  return option ? (language === "es" ? option.labelEs : option.labelEn) : floor;
-};
 
 export default function ExternalCondominiums() {
   const { language } = useLanguage();
@@ -787,10 +754,16 @@ export default function ExternalCondominiums() {
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {unit.floor !== null && (
+                              {unit.typology && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">{language === "es" ? "Tipología:" : "Typology:"}</span>
+                                  <span data-testid={`text-typology-detail-${unit.id}`}>{formatTypology(unit.typology, language)}</span>
+                                </div>
+                              )}
+                              {unit.floor && (
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">{language === "es" ? "Piso:" : "Floor:"}</span>
-                                  <span data-testid={`text-floor-detail-${unit.id}`}>{unit.floor}</span>
+                                  <span data-testid={`text-floor-detail-${unit.id}`}>{formatFloor(unit.floor, language)}</span>
                                 </div>
                               )}
                               {unit.bedrooms !== null && (

@@ -5303,6 +5303,8 @@ export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
   updatedAt: true,
   isActive: true,
 }).extend({
+  typology: z.enum(["estudio", "estudio_plus", "1_recamara", "2_recamaras", "3_recamaras", "loft_mini", "loft_normal", "loft_plus"]).optional(),
+  floor: z.enum(["planta_baja", "primer_piso", "segundo_piso", "tercer_piso", "penthouse"]).optional(),
   bathrooms: z.union([z.string(), z.number()]).transform(val => val === undefined ? undefined : String(val)).optional(),
   area: z.union([z.string(), z.number()]).transform(val => val === undefined ? undefined : String(val)).optional(),
 });
