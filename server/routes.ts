@@ -21468,6 +21468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userRole = req.user?.role || req.session?.adminUser?.role;
       
       // Verify ticket exists and belongs to user's agency
       const ticket = await storage.getExternalMaintenanceTicket(id);
@@ -21482,6 +21483,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
       if (!hasAccess) return;
+      
+      // Check if user is trying to modify privileged fields
+      const privilegedFields = ['status', 'priority', 'category', 'estimatedCost', 'actualCost', 'assignedTo'];
+      const isModifyingPrivilegedFields = privilegedFields.some(field => req.body.hasOwnProperty(field));
+      
+      // Only admins and maintenance managers can modify privileged fields
+      if (isModifyingPrivilegedFields && !storage.canModifyMaintenanceTicket(userRole)) {
+        return res.status(403).json({ 
+          message: "Only administrators and maintenance managers can modify ticket status, priority, costs, or assignments" 
+        });
+      }
       
       const updatedTicket = await storage.updateExternalMaintenanceTicket(id, req.body);
       
@@ -21519,8 +21531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hasAccess) return;
       
       // Only admin and maintenance managers can close/complete tickets
-      if ((status === 'closed' || status === 'resolved') && 
-          !['master', 'admin', 'external_agency_admin', 'external_agency_maintenance'].includes(userRole)) {
+      if ((status === 'closed' || status === 'resolved') && !storage.canModifyMaintenanceTicket(userRole)) {
         return res.status(403).json({ 
           message: "Only administrators and maintenance managers can close or complete tickets" 
         });

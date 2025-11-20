@@ -7825,6 +7825,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // External Management System - Maintenance Ticket operations
+  
+  // Helper: Check if user can modify/close maintenance tickets
+  canModifyMaintenanceTicket(userRole: string): boolean {
+    const privilegedRoles = ['master', 'admin', 'admin_jr'];
+    return privilegedRoles.includes(userRole);
+  }
+
   async getExternalMaintenanceTicket(id: string): Promise<ExternalMaintenanceTicket | undefined> {
     const [ticket] = await db.select()
       .from(externalMaintenanceTickets)
