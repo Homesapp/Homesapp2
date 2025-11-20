@@ -639,10 +639,12 @@ export default function ExternalCondominiums() {
               : "Manage your condominiums and units"}
           </p>
         </div>
-        <Button onClick={handleOpenUnifiedDialog} data-testid="button-add-unified">
-          <Plus className="mr-2 h-4 w-4" />
-          {language === "es" ? "Agregar" : "Add"}
-        </Button>
+        {!selectedCondoId && (
+          <Button onClick={handleOpenUnifiedDialog} data-testid="button-add-unified">
+            <Plus className="mr-2 h-4 w-4" />
+            {language === "es" ? "Agregar" : "Add"}
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => {
@@ -1127,7 +1129,7 @@ export default function ExternalCondominiums() {
                         {condoUnits.length > 0 && (
                           <div className="pt-3 border-t">
                             <h4 className="text-sm font-medium mb-2">{language === "es" ? "Unidades" : "Units"}</h4>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                            <div className="space-y-2 max-h-36 overflow-y-auto">
                               {condoUnits.map((unit) => {
                                 const activeContract = getActiveRentalContract(unit.id);
                                 const isRented = activeContract !== null;
