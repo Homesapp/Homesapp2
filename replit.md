@@ -44,6 +44,16 @@ The platform implements enterprise-grade security measures compliant with 2025 s
 
 ## Recent Changes
 
+**2025-01-20**: Enhanced payment tracking with comprehensive audit trail:
+- **Payment Audit Fields**: Added `paidBy`, `confirmedBy`, and `confirmedAt` fields to external_payments table for full payment processing traceability
+- **Who Paid**: `paidBy` tracks which user registered the payment in the system
+- **Who Confirmed**: `confirmedBy` tracks which user verified/approved the payment
+- **When Confirmed**: `confirmedAt` timestamp records payment confirmation date
+- **Database Migration**: Executed ALTER TABLE to add new columns with foreign key references to users table
+- **Next Steps**: Backend routes for marking payments as paid, automatic financial transaction creation, UI updates for payment processing
+- Files: shared/schema.ts, database schema
+- Status: Schema updated, pending route implementation and UI
+
 **2025-01-20**: Implemented unified atomic condominium and unit creation flow:
 - **Unified Creation Button**: Replaced separate "Agregar Condominio" and "Agregar Unidad" buttons with single "Agregar" button that opens a dialog with type selection
 - **Multi-unit Creation**: Enabled adding multiple units to a condominium in a single workflow using a "+" button to add additional unit forms

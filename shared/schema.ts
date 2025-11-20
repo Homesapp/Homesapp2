@@ -5135,6 +5135,10 @@ export const externalPayments = pgTable("external_payments", {
   paymentProofUrl: text("payment_proof_url"), // URL del comprobante
   reminderSentAt: timestamp("reminder_sent_at"), // Cuándo se envió el recordatorio
   notes: text("notes"),
+  // Audit trail for payment processing
+  paidBy: varchar("paid_by").references(() => users.id), // Usuario que registró el pago
+  confirmedBy: varchar("confirmed_by").references(() => users.id), // Usuario que confirmó el pago
+  confirmedAt: timestamp("confirmed_at"), // Cuándo se confirmó el pago
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
