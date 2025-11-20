@@ -154,6 +154,7 @@ import {
   insertExternalCondominiumSchema,
   updateExternalCondominiumSchema,
   createCondominiumWithUnitsSchema,
+  addUnitsToCondominiumSchema,
   insertExternalUnitSchema,
   updateExternalUnitSchema,
   insertExternalUnitOwnerSchema,
@@ -21858,6 +21859,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating external condominium with units:", error);
       if (error.name === "ZodError") {
         return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Add multiple units to an existing condominium
+  app.post("/api/external-condominiums/:id/units/bulk", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get agency ID from authenticated user
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+      
+      const validatedData = addUnitsToCondominiumSchema.parse(req.body);
+      
+      // Add units to existing condominium atomically via storage layer
+      const units = await storage.addUnitsToCondominium(
+        id,
+        validatedData.units,
+        agencyId,
+        req.user.id
+      );
+      
+      await createAuditLog(
+        req, 
+        "create", 
+        "external_units", 
+        id, 
+        `Added ${units.length} units to condominium`
+      );
+      
+      res.status(201).json(units);
+    } catch (error: any) {
+      console.error("Error adding units to condominium:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      if (error.message.includes("not found")) {
+        return res.status(404).json({ message: error.message });
       }
       handleGenericError(res, error);
     }

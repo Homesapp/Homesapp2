@@ -5328,8 +5328,13 @@ export const createCondominiumWithUnitsSchema = z.object({
   units: z.array(externalUnitFormSchema).default([]),
 });
 
+export const addUnitsToCondominiumSchema = z.object({
+  units: z.array(externalUnitFormSchema).min(1, "At least one unit is required"),
+});
+
 export type ExternalUnitForm = z.infer<typeof externalUnitFormSchema>;
 export type CreateCondominiumWithUnits = z.infer<typeof createCondominiumWithUnitsSchema>;
+export type AddUnitsToCondominium = z.infer<typeof addUnitsToCondominiumSchema>;
 
 // External Unit Owners - Propietarios de unidades
 export const externalUnitOwners = pgTable("external_unit_owners", {

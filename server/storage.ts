@@ -1187,6 +1187,7 @@ export interface IStorage {
   getExternalCondominiumsByAgency(agencyId: string, filters?: { isActive?: boolean }): Promise<ExternalCondominium[]>;
   createExternalCondominium(condominium: InsertExternalCondominium): Promise<ExternalCondominium>;
   createCondominiumWithUnits(condominium: InsertExternalCondominium, units: any[], agencyId: string, userId: string): Promise<{ condominium: ExternalCondominium; units: ExternalUnit[] }>;
+  addUnitsToCondominium(condominiumId: string, units: any[], agencyId: string, userId: string): Promise<ExternalUnit[]>;
   updateExternalCondominium(id: string, updates: Partial<InsertExternalCondominium>): Promise<ExternalCondominium>;
   deleteExternalCondominium(id: string): Promise<void>;
 
@@ -7986,6 +7987,47 @@ export class DatabaseStorage implements IStorage {
       }
       
       return { condominium: createdCondominium, units: createdUnits };
+    });
+  }
+
+  async addUnitsToCondominium(
+    condominiumId: string,
+    units: any[],
+    agencyId: string,
+    userId: string
+  ): Promise<ExternalUnit[]> {
+    return await db.transaction(async (tx) => {
+      // Verify the condominium exists and belongs to the agency
+      const [condominium] = await tx.select()
+        .from(externalCondominiums)
+        .where(
+          and(
+            eq(externalCondominiums.id, condominiumId),
+            eq(externalCondominiums.agencyId, agencyId)
+          )
+        );
+      
+      if (!condominium) {
+        throw new Error('Condominium not found or does not belong to this agency');
+      }
+      
+      // Create all units for the existing condominium
+      const createdUnits: ExternalUnit[] = [];
+      if (units && units.length > 0) {
+        const unitValues = units.map(unit => ({
+          ...unit,
+          condominiumId,
+          agencyId,
+          createdBy: userId,
+        }));
+        
+        const result = await tx.insert(externalUnits)
+          .values(unitValues)
+          .returning();
+        createdUnits.push(...result);
+      }
+      
+      return createdUnits;
     });
   }
 
