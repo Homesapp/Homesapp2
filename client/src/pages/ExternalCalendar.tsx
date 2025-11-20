@@ -44,7 +44,7 @@ export default function ExternalCalendar() {
   const [eventPage, setEventPage] = useState(0);
   const { language } = useLanguage();
   
-  const EVENTS_PER_PAGE = 4;
+  const EVENTS_PER_PAGE = 5;
 
   // Reset event page when date changes
   useEffect(() => {
