@@ -381,26 +381,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 border rounded-md p-1">
-            <Button
-              variant={viewMode === 'table' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('table')}
-              data-testid="button-view-table"
-            >
-              <LayoutList className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'cards' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('cards')}
-              data-testid="button-view-cards"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-          </div>
-
+        <div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-access">
