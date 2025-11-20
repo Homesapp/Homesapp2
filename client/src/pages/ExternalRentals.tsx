@@ -98,6 +98,7 @@ export default function ExternalRentals() {
   const [unitComboOpen, setUnitComboOpen] = useState(false);
   const [selectUnitDialogOpen, setSelectUnitDialogOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [serviceIndices, setServiceIndices] = useState<Record<string, number>>({});
 
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
@@ -548,12 +549,26 @@ export default function ExternalRentals() {
         viewMode === "cards" ? (
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             {filteredRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => {
-              const [serviceStartIndex, setServiceStartIndex] = useState(0);
+              const serviceStartIndex = serviceIndices[contract.id] || 0;
               const servicesPerPage = 2;
               const totalServices = activeServices?.length || 0;
               const displayedServices = activeServices?.slice(serviceStartIndex, serviceStartIndex + servicesPerPage) || [];
               const canScrollUp = serviceStartIndex > 0;
               const canScrollDown = serviceStartIndex + servicesPerPage < totalServices;
+              
+              const handleScrollUp = () => {
+                setServiceIndices(prev => ({
+                  ...prev,
+                  [contract.id]: Math.max(0, serviceStartIndex - 1)
+                }));
+              };
+              
+              const handleScrollDown = () => {
+                setServiceIndices(prev => ({
+                  ...prev,
+                  [contract.id]: Math.min(totalServices - servicesPerPage, serviceStartIndex + 1)
+                }));
+              };
               
               return (
               <Card key={contract.id} className="hover-elevate" data-testid={`card-rental-${contract.id}`}>
@@ -650,7 +665,7 @@ export default function ExternalRentals() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
-                                onClick={() => setServiceStartIndex(Math.max(0, serviceStartIndex - 1))}
+                                onClick={handleScrollUp}
                                 disabled={!canScrollUp}
                                 data-testid={`button-services-up-${contract.id}`}
                               >
@@ -660,7 +675,7 @@ export default function ExternalRentals() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
-                                onClick={() => setServiceStartIndex(Math.min(totalServices - servicesPerPage, serviceStartIndex + 1))}
+                                onClick={handleScrollDown}
                                 disabled={!canScrollDown}
                                 data-testid={`button-services-down-${contract.id}`}
                               >
