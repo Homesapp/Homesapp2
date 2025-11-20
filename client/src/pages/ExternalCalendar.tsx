@@ -104,6 +104,15 @@ export default function ExternalCalendar() {
     });
   }, [contracts, units, condominiums]);
 
+  // Helper function to get unitId from contractId
+  const getUnitIdFromContract = (contractId: string | undefined) => {
+    if (!contractId) return undefined;
+    const contractItem = normalizedContracts.find((item: any) => 
+      (item.contract?.id === contractId) || (item.id === contractId)
+    );
+    return contractItem?.contract?.unitId || contractItem?.unitId;
+  };
+
   // Helper function to get condominium name from unitId
   const getCondominiumInfo = (unitId: string | undefined) => {
     if (!unitId) return { condominium: '', unitNumber: '' };
@@ -116,14 +125,21 @@ export default function ExternalCalendar() {
     };
   };
 
+  // Helper function to get condominium info from contractId
+  const getCondominiumInfoFromContract = (contractId: string | undefined) => {
+    const unitId = getUnitIdFromContract(contractId);
+    return getCondominiumInfo(unitId);
+  };
+
   // Filter payments and tickets by condominium
   const filteredPayments = useMemo(() => {
     if (selectedCondominium === "all") return payments;
     return payments.filter((p) => {
-      const unit = units.find(u => u.id === p.unitId);
+      const unitId = getUnitIdFromContract(p.contractId);
+      const unit = units.find(u => u.id === unitId);
       return unit?.condominiumId === selectedCondominium;
     });
-  }, [payments, units, selectedCondominium]);
+  }, [payments, units, selectedCondominium, normalizedContracts]);
 
   // Filter payment schedules (services) by condominium
   const filteredServices = useMemo(() => {
@@ -215,11 +231,11 @@ export default function ExternalCalendar() {
     const dayPayments = showPayments && units.length > 0 && condominiums.length > 0 ? filteredPayments
       .filter((p) => p.dueDate && isSameDay(new Date(p.dueDate), selectedDate) && p.serviceType === 'rent')
       .map((p) => {
-        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
+        const { condominium, unitNumber } = getCondominiumInfoFromContract(p.contractId);
         const contractItem = normalizedContracts.find((item: any) => 
-          item.contract.unitId === p.unitId && item.contract.status === 'active'
+          (item.contract?.id === p.contractId) || (item.id === p.contractId)
         );
-        const tenantName = contractItem?.contract.tenantName || '';
+        const tenantName = contractItem?.contract?.tenantName || contractItem?.tenantName || '';
         
         return {
           type: 'payment' as const,
@@ -237,7 +253,7 @@ export default function ExternalCalendar() {
     const dayServicePayments = showServices && units.length > 0 && condominiums.length > 0 ? filteredPayments
       .filter((p) => p.dueDate && isSameDay(new Date(p.dueDate), selectedDate) && p.serviceType !== 'rent')
       .map((p) => {
-        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
+        const { condominium, unitNumber } = getCondominiumInfoFromContract(p.contractId);
         const serviceTypeLabel = language === "es"
           ? (p.serviceType === 'electricity' ? 'Electricidad' :
              p.serviceType === 'water' ? 'Agua' :
@@ -335,11 +351,11 @@ export default function ExternalCalendar() {
     const todayPayments = showPayments && units.length > 0 && condominiums.length > 0 ? filteredPayments
       .filter((p) => p.dueDate && isSameDay(new Date(p.dueDate), today) && p.serviceType === 'rent')
       .map((p) => {
-        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
+        const { condominium, unitNumber } = getCondominiumInfoFromContract(p.contractId);
         const contractItem = normalizedContracts.find((item: any) => 
-          item.contract.unitId === p.unitId && item.contract.status === 'active'
+          (item.contract?.id === p.contractId) || (item.id === p.contractId)
         );
-        const tenantName = contractItem?.contract.tenantName || '';
+        const tenantName = contractItem?.contract?.tenantName || contractItem?.tenantName || '';
         
         return {
           type: 'payment' as const,
@@ -357,7 +373,7 @@ export default function ExternalCalendar() {
     const todayServicePayments = showServices && units.length > 0 && condominiums.length > 0 ? filteredPayments
       .filter((p) => p.dueDate && isSameDay(new Date(p.dueDate), today) && p.serviceType !== 'rent')
       .map((p) => {
-        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
+        const { condominium, unitNumber } = getCondominiumInfoFromContract(p.contractId);
         const serviceTypeLabel = language === "es"
           ? (p.serviceType === 'electricity' ? 'Electricidad' :
              p.serviceType === 'water' ? 'Agua' :
@@ -450,11 +466,11 @@ export default function ExternalCalendar() {
     const allPayments = showPayments && units.length > 0 && condominiums.length > 0 ? filteredPayments
       .filter((p) => p.dueDate && p.serviceType === 'rent')
       .map((p) => {
-        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
+        const { condominium, unitNumber } = getCondominiumInfoFromContract(p.contractId);
         const contractItem = normalizedContracts.find((item: any) => 
-          item.contract.unitId === p.unitId && item.contract.status === 'active'
+          (item.contract?.id === p.contractId) || (item.id === p.contractId)
         );
-        const tenantName = contractItem?.contract.tenantName || '';
+        const tenantName = contractItem?.contract?.tenantName || contractItem?.tenantName || '';
         
         return {
           type: 'payment' as const,
@@ -472,7 +488,7 @@ export default function ExternalCalendar() {
     const allServicePayments = showServices && units.length > 0 && condominiums.length > 0 ? filteredPayments
       .filter((p) => p.dueDate && p.serviceType !== 'rent')
       .map((p) => {
-        const { condominium, unitNumber } = getCondominiumInfo(p.unitId);
+        const { condominium, unitNumber } = getCondominiumInfoFromContract(p.contractId);
         const serviceTypeLabel = language === "es"
           ? (p.serviceType === 'electricity' ? 'Electricidad' :
              p.serviceType === 'water' ? 'Agua' :
