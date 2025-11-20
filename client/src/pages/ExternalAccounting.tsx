@@ -916,10 +916,10 @@ export default function ExternalAccounting() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t.all}</SelectItem>
-                      <SelectItem value="month">{t.thisMonth}</SelectItem>
-                      <SelectItem value="3months">{t.last3Months}</SelectItem>
-                      <SelectItem value="6months">{t.last6Months}</SelectItem>
-                      <SelectItem value="year">{t.thisYear}</SelectItem>
+                      <SelectItem value="this_month">{t.thisMonth}</SelectItem>
+                      <SelectItem value="last_3_months">{t.last3Months}</SelectItem>
+                      <SelectItem value="last_6_months">{t.last6Months}</SelectItem>
+                      <SelectItem value="this_year">{t.thisYear}</SelectItem>
                       <SelectItem value="custom">{t.customRange}</SelectItem>
                     </SelectContent>
                   </Select>
