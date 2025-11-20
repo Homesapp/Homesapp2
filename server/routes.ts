@@ -23410,7 +23410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No agency access" });
       }
 
-      const { direction, category, status, ownerId, contractId, unitId, startDate, endDate } = req.query;
+      const { direction, category, status, ownerId, contractId, unitId, condominiumId, startDate, endDate } = req.query;
 
       const filters: any = {};
       if (direction) filters.direction = direction;
@@ -23419,6 +23419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (ownerId) filters.ownerId = ownerId as string;
       if (contractId) filters.contractId = contractId as string;
       if (unitId) filters.unitId = unitId as string;
+      if (condominiumId) filters.condominiumId = condominiumId as string;
       if (startDate) filters.startDate = new Date(startDate as string);
       if (endDate) filters.endDate = new Date(endDate as string);
 

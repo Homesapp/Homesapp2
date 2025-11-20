@@ -1218,6 +1218,7 @@ export interface IStorage {
       ownerId?: string;
       contractId?: string;
       unitId?: string;
+      condominiumId?: string;
       startDate?: Date;
       endDate?: Date;
     }
@@ -8078,6 +8079,7 @@ export class DatabaseStorage implements IStorage {
       ownerId?: string;
       contractId?: string;
       unitId?: string;
+      condominiumId?: string;
       startDate?: Date;
       endDate?: Date;
     }
@@ -8101,6 +8103,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.unitId) {
       conditions.push(eq(externalFinancialTransactions.unitId, filters.unitId));
+    }
+    if (filters?.condominiumId) {
+      conditions.push(eq(externalFinancialTransactions.condominiumId, filters.condominiumId));
     }
     if (filters?.startDate) {
       conditions.push(gte(externalFinancialTransactions.dueDate, filters.startDate));
