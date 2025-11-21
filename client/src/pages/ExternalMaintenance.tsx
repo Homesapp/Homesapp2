@@ -69,6 +69,9 @@ import {
   Calendar as CalendarIcon,
   MoreVertical,
   Pencil,
+  Upload,
+  Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,7 +80,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { ExternalMaintenanceTicket, ExternalCondominium, ExternalUnit, ExternalWorkerAssignment } from "@shared/schema";
+import type { ExternalMaintenanceTicket, ExternalCondominium, ExternalUnit, ExternalWorkerAssignment, ExternalMaintenancePhoto } from "@shared/schema";
 import { insertExternalMaintenanceTicketSchema } from "@shared/schema";
 import { z } from "zod";
 import { format, toZonedTime, fromZonedTime } from "date-fns-tz";
@@ -204,6 +207,10 @@ export default function ExternalMaintenance() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>('created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Photo upload states
+  const [ticketPhotos, setTicketPhotos] = useState<ExternalMaintenancePhoto[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
   // Auto-switch view mode on genuine breakpoint transitions
   useEffect(() => {
@@ -461,6 +468,99 @@ export default function ExternalMaintenance() {
     if (!user) return null;
     return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
   };
+
+  // Photo management functions
+  const loadPhotos = async (ticketId: string) => {
+    try {
+      const response = await fetch(`/api/external-tickets/${ticketId}/photos`, { credentials: 'include' });
+      if (response.ok) {
+        const photos = await response.json();
+        setTicketPhotos(photos);
+      }
+    } catch (error) {
+      console.error("Error loading photos:", error);
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingTicket || !e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('photo', file);
+    
+    setUploadingPhoto(true);
+    try {
+      // First upload the file
+      const uploadResponse = await fetch('/api/upload/maintenance-photo', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload photo');
+      }
+      
+      const { url } = await uploadResponse.json();
+      
+      // Then create the photo record
+      const photoData = {
+        ticketId: editingTicket.id,
+        storageKey: url,
+        phase: 'other' as const,
+        uploadedBy: user?.id || '',
+      };
+      
+      const createResponse = await apiRequest('POST', `/api/external-tickets/${editingTicket.id}/photos`, photoData);
+      
+      // Reload photos
+      await loadPhotos(editingTicket.id);
+      
+      toast({
+        title: language === "es" ? "Foto subida" : "Photo uploaded",
+        description: language === "es" ? "La foto se subió exitosamente" : "Photo uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error?.message || (language === "es" ? "No se pudo subir la foto" : "Failed to upload photo"),
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    try {
+      await apiRequest('DELETE', `/api/external-maintenance-photos/${photoId}`, undefined);
+      
+      // Remove from local state
+      setTicketPhotos(prev => prev.filter(p => p.id !== photoId));
+      
+      toast({
+        title: language === "es" ? "Foto eliminada" : "Photo deleted",
+        description: language === "es" ? "La foto se eliminó exitosamente" : "Photo deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error?.message || (language === "es" ? "No se pudo eliminar la foto" : "Failed to delete photo"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load photos when edit dialog opens
+  useEffect(() => {
+    if (showEditDialog && editingTicket) {
+      loadPhotos(editingTicket.id);
+    } else if (!showEditDialog) {
+      setTicketPhotos([]);
+    }
+  }, [showEditDialog, editingTicket]);
 
   // Filter and search logic
   const filteredTickets = tickets?.filter(ticket => {
@@ -1782,6 +1882,72 @@ export default function ExternalMaintenance() {
                   </FormItem>
                 )}
               />
+
+              {/* Photos Section */}
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    {language === 'es' ? 'Fotos' : 'Photos'}
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingPhoto}
+                    onClick={() => document.getElementById('photo-upload')?.click()}
+                    data-testid="button-upload-photo"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploadingPhoto 
+                      ? (language === 'es' ? 'Subiendo...' : 'Uploading...') 
+                      : (language === 'es' ? 'Subir foto' : 'Upload photo')}
+                  </Button>
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                  />
+                </div>
+
+                {ticketPhotos.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {ticketPhotos.map((photo) => (
+                      <div
+                        key={photo.id}
+                        className="relative group rounded-md border overflow-hidden aspect-square"
+                        data-testid={`photo-${photo.id}`}
+                      >
+                        <img
+                          src={photo.storageKey}
+                          alt={photo.caption || 'Maintenance photo'}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleDeletePhoto(photo.id)}
+                            data-testid={`button-delete-photo-${photo.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border rounded-md bg-muted/20">
+                    <ImageIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {language === 'es' ? 'No hay fotos adjuntas' : 'No photos attached'}
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <DialogFooter>
                 <Button 
