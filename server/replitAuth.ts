@@ -274,13 +274,22 @@ export const requireRole = (allowedRoles: string[]): RequestHandler => {
       return next();
     }
 
-    // Check user authenticated via local login or Replit Auth
-    const user = req.user as any;
-    if (!user || !user.claims) {
+    // Get user ID from either local session or Replit Auth
+    let userId: string | undefined;
+    
+    // Check for local login session
+    if (req.session && req.session.userId) {
+      userId = req.session.userId;
+    }
+    // Check for Replit Auth
+    else if (req.user && (req.user as any).claims) {
+      userId = (req.user as any).claims.sub;
+    }
+
+    if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = user.claims.sub;
     const dbUser = await storage.getUser(userId);
 
     if (!dbUser) {
