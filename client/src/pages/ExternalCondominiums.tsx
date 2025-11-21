@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -720,12 +720,19 @@ export default function ExternalCondominiums() {
   const condoEndIndex = condoStartIndex + condoItemsPerPage;
   const paginatedCondominiums = filteredCondominiums.slice(condoStartIndex, condoEndIndex);
 
+  // Pre-render page clamping using useLayoutEffect
+  useLayoutEffect(() => {
+    if (condoCurrentPage > condoTotalPages) {
+      setCondoCurrentPage(condoTotalPages);
+    }
+  }, [condoCurrentPage, condoTotalPages]);
+
   // Clamp page when data changes
   useEffect(() => {
     if (condoCurrentPage > condoTotalPages && condoTotalPages > 0) {
       setCondoCurrentPage(condoTotalPages);
     }
-  }, [filteredCondominiums.length]);
+  }, [filteredCondominiums.length, condoItemsPerPage]);
 
   // Reset page when search changes
   useEffect(() => {

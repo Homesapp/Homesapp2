@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,12 +112,19 @@ export default function ExternalOwners() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedOwners = filteredOwners.slice(startIndex, endIndex);
 
+  // Pre-render page clamping using useLayoutEffect
+  useLayoutEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   // Clamp page when data changes
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
     }
-  }, [filteredOwners.length]);
+  }, [filteredOwners.length, itemsPerPage]);
 
   // Reset page when search changes
   useEffect(() => {

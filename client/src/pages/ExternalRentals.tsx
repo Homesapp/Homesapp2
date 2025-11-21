@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -220,12 +220,19 @@ export default function ExternalRentals() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedRentals = filteredRentals.slice(startIndex, endIndex);
 
+  // Pre-render page clamping using useLayoutEffect
+  useLayoutEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   // Clamp page when data changes
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
     }
-  }, [filteredRentals.length]);
+  }, [filteredRentals.length, itemsPerPage]);
 
   // Reset page when filters change
   useEffect(() => {
