@@ -1113,25 +1113,35 @@ export default function ExternalCondominiums() {
         )}
         
         <TabsContent value="condominiums" className="space-y-4">
-          <Card>
-            <CardContent className="pt-6">
-              {condosError ? (
-                <div className="flex flex-col items-center justify-center py-12" data-testid="div-error-state">
-                  <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                  <p className="text-lg font-medium" data-testid="text-error-title">
-                    {language === "es" ? "Error al cargar condominios" : "Error loading condominiums"}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2" data-testid="text-error-message">
-                    {condosErrorMsg instanceof Error ? condosErrorMsg.message : language === "es" ? "Ocurrió un error inesperado" : "An unexpected error occurred"}
-                  </p>
+          {condosError ? (
+            <Card className="border-destructive bg-destructive/10">
+              <CardContent className="flex items-center justify-between gap-4 py-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                  <div>
+                    <p className="text-sm" data-testid="text-error-title">
+                      {language === "es" ? "Error al cargar condominios" : "Error loading condominiums"}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1" data-testid="text-error-message">
+                      {condosErrorMsg instanceof Error ? condosErrorMsg.message : language === "es" ? "Ocurrió un error inesperado" : "An unexpected error occurred"}
+                    </p>
+                  </div>
                 </div>
-              ) : condosLoading ? (
+              </CardContent>
+            </Card>
+          ) : condosLoading ? (
+            <Card>
+              <CardContent className="pt-6">
                 <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                 </div>
-              ) : !sortedCondominiums || sortedCondominiums.length === 0 ? (
+              </CardContent>
+            </Card>
+          ) : !sortedCondominiums || sortedCondominiums.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
                 <div className="text-center py-8" data-testid="div-empty-state">
                   <p className="text-muted-foreground">
                     {language === "es" 
@@ -1139,9 +1149,11 @@ export default function ExternalCondominiums() {
                       : "No condominiums match the filters"}
                   </p>
                 </div>
-              ) : (
-                <>
-                  {selectedCondoId ? (
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {selectedCondoId ? (
                     // Detail view for selected condominium
                     (() => {
                       const selectedCondo = sortedCondominiums.find(c => c.id === selectedCondoId);
@@ -1633,7 +1645,7 @@ export default function ExternalCondominiums() {
                 </div>
               </div>
             ) : (
-              <div>
+              <>
                 {/* Pagination Controls */}
                 {sortedCondominiums.length > 0 && (
                   <ExternalPaginationControls
@@ -1650,12 +1662,17 @@ export default function ExternalCondominiums() {
                   />
                 )}
 
+                {/* Space between pagination and table */}
+                <div className="h-4" />
+
                 {/* Table view of condominiums */}
-                <Table>
+                <Card className="border">
+                  <CardContent className="p-0">
+                    <Table className="text-sm">
                   <TableHeader>
                     <TableRow>
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="h-10 px-3 cursor-pointer hover:bg-muted/50"
                         onClick={() => handleCondosSort('name')}
                         data-testid="th-condo-name"
                       >
@@ -1666,7 +1683,7 @@ export default function ExternalCondominiums() {
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="h-10 px-3 cursor-pointer hover:bg-muted/50"
                         onClick={() => handleCondosSort('address')}
                         data-testid="th-condo-address"
                       >
@@ -1677,7 +1694,7 @@ export default function ExternalCondominiums() {
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="h-10 px-3 cursor-pointer hover:bg-muted/50"
                         onClick={() => handleCondosSort('totalUnits')}
                         data-testid="th-condo-total-units"
                       >
@@ -1688,7 +1705,7 @@ export default function ExternalCondominiums() {
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="h-10 px-3 cursor-pointer hover:bg-muted/50"
                         onClick={() => handleCondosSort('activeUnits')}
                         data-testid="th-condo-active-units"
                       >
@@ -1699,7 +1716,7 @@ export default function ExternalCondominiums() {
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="h-10 px-3 cursor-pointer hover:bg-muted/50"
                         onClick={() => handleCondosSort('rentedUnits')}
                         data-testid="th-condo-rented-units"
                       >
@@ -1709,7 +1726,7 @@ export default function ExternalCondominiums() {
                           {getCondosSortIcon('rentedUnits') && <span className="text-xs">{getCondosSortIcon('rentedUnits')}</span>}
                         </div>
                       </TableHead>
-                      <TableHead data-testid="th-condo-actions">
+                      <TableHead className="h-10 px-3" data-testid="th-condo-actions">
                         {language === "es" ? "Acciones" : "Actions"}
                       </TableHead>
                     </TableRow>
@@ -1727,25 +1744,25 @@ export default function ExternalCondominiums() {
                           onClick={() => setSelectedCondoId(condo.id)}
                           data-testid={`row-condo-${condo.id}`}
                         >
-                          <TableCell className="font-medium" data-testid={`cell-name-${condo.id}`}>
+                          <TableCell className="px-3 py-3" data-testid={`cell-name-${condo.id}`}>
                             <div className="flex items-center gap-2">
                               <Building2 className="h-4 w-4 text-muted-foreground" />
                               {condo.name}
                             </div>
                           </TableCell>
-                          <TableCell data-testid={`cell-address-${condo.id}`}>
+                          <TableCell className="px-3 py-3" data-testid={`cell-address-${condo.id}`}>
                             {condo.address || '-'}
                           </TableCell>
-                          <TableCell data-testid={`cell-total-${condo.id}`}>
+                          <TableCell className="px-3 py-3" data-testid={`cell-total-${condo.id}`}>
                             {condoUnits.length}
                           </TableCell>
-                          <TableCell data-testid={`cell-active-${condo.id}`}>
+                          <TableCell className="px-3 py-3" data-testid={`cell-active-${condo.id}`}>
                             {activeUnits.length}
                           </TableCell>
-                          <TableCell data-testid={`cell-rented-${condo.id}`}>
+                          <TableCell className="px-3 py-3" data-testid={`cell-rented-${condo.id}`}>
                             {rentedUnits.length}
                           </TableCell>
-                          <TableCell data-testid={`cell-actions-${condo.id}`}>
+                          <TableCell className="px-3 py-3" data-testid={`cell-actions-${condo.id}`}>
                             <div className="flex items-center gap-1">
                               <Button
                                 size="icon"
@@ -1788,12 +1805,12 @@ export default function ExternalCondominiums() {
                     })}
                   </TableBody>
                 </Table>
-              </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+          </>
+        )}
         </TabsContent>
 
         <TabsContent value="units" className="space-y-4">
@@ -1925,40 +1942,62 @@ export default function ExternalCondominiums() {
                 })}
               </div>
             ) : (
-            <Card>
-              <div className="w-full overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('unitNumber')}>
-                        {language === "es" ? "Número" : "Number"} {getUnitsSortIcon('unitNumber')}
-                      </TableHead>
-                      <TableHead className="min-w-[180px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('condominiumName')}>
-                        {language === "es" ? "Condominio" : "Condominium"} {getUnitsSortIcon('condominiumName')}
-                      </TableHead>
-                      <TableHead className="min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('typology')}>
-                        {language === "es" ? "Tipología" : "Typology"} {getUnitsSortIcon('typology')}
-                      </TableHead>
-                      <TableHead className="min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('floor')}>
-                        {language === "es" ? "Piso" : "Floor"} {getUnitsSortIcon('floor')}
-                      </TableHead>
-                      <TableHead className="min-w-[100px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('bedrooms')}>
-                        {language === "es" ? "Recámaras" : "Bedrooms"} {getUnitsSortIcon('bedrooms')}
-                      </TableHead>
-                      <TableHead className="min-w-[80px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('bathrooms')}>
-                        {language === "es" ? "Baños" : "Bathrooms"} {getUnitsSortIcon('bathrooms')}
-                      </TableHead>
-                      <TableHead className="min-w-[80px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('squareMeters')}>
-                        {language === "es" ? "m²" : "sqm"} {getUnitsSortIcon('squareMeters')}
-                      </TableHead>
-                      <TableHead className="min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('isActive')}>
-                        {language === "es" ? "Estado Unidad" : "Unit Status"} {getUnitsSortIcon('isActive')}
-                      </TableHead>
-                      <TableHead className="min-w-[120px]">{language === "es" ? "Renta" : "Rental"}</TableHead>
-                      <TableHead className="min-w-[100px]">{language === "es" ? "Servicios" : "Services"}</TableHead>
-                      <TableHead className="text-right min-w-[150px]">{language === "es" ? "Acciones" : "Actions"}</TableHead>
-                    </TableRow>
-                  </TableHeader>
+              <>
+                {/* Units Pagination Controls */}
+                {sortedUnits.length > 0 && (
+                  <ExternalPaginationControls
+                    currentPage={unitsPage}
+                    totalPages={Math.ceil(sortedUnits.length / unitsPerPage)}
+                    itemsPerPage={unitsPerPage}
+                    onPageChange={setUnitsPage}
+                    onItemsPerPageChange={(items) => {
+                      setUnitsPerPage(items);
+                      setUnitsPage(1);
+                    }}
+                    language={language}
+                    testIdPrefix="units"
+                  />
+                )}
+
+                {/* Space between pagination and table */}
+                <div className="h-4" />
+
+                {/* Table view of units */}
+                <Card className="border">
+                  <CardContent className="p-0">
+                    <div className="w-full overflow-x-auto">
+                      <Table className="text-sm">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('unitNumber')}>
+                              {language === "es" ? "Número" : "Number"} {getUnitsSortIcon('unitNumber')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[180px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('condominiumName')}>
+                              {language === "es" ? "Condominio" : "Condominium"} {getUnitsSortIcon('condominiumName')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('typology')}>
+                              {language === "es" ? "Tipología" : "Typology"} {getUnitsSortIcon('typology')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('floor')}>
+                              {language === "es" ? "Piso" : "Floor"} {getUnitsSortIcon('floor')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[100px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('bedrooms')}>
+                              {language === "es" ? "Recámaras" : "Bedrooms"} {getUnitsSortIcon('bedrooms')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[80px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('bathrooms')}>
+                              {language === "es" ? "Baños" : "Bathrooms"} {getUnitsSortIcon('bathrooms')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[80px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('squareMeters')}>
+                              {language === "es" ? "m²" : "sqm"} {getUnitsSortIcon('squareMeters')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('isActive')}>
+                              {language === "es" ? "Estado Unidad" : "Unit Status"} {getUnitsSortIcon('isActive')}
+                            </TableHead>
+                            <TableHead className="h-10 px-3 min-w-[120px]">{language === "es" ? "Renta" : "Rental"}</TableHead>
+                            <TableHead className="h-10 px-3 min-w-[100px]">{language === "es" ? "Servicios" : "Services"}</TableHead>
+                            <TableHead className="h-10 px-3 text-right min-w-[150px]">{language === "es" ? "Acciones" : "Actions"}</TableHead>
+                          </TableRow>
+                        </TableHeader>
                   <TableBody>
                     {paginatedUnits.map((unit) => {
                       const condo = condominiums?.find(c => c.id === unit.condominiumId);
@@ -1983,19 +2022,19 @@ export default function ExternalCondominiums() {
                           className="cursor-pointer hover-elevate"
                           onClick={() => navigate(`/external/units/${unit.id}`)}
                         >
-                          <TableCell className="font-medium">
+                          <TableCell className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               <Home className="h-4 w-4 text-muted-foreground" />
                               {unit.unitNumber}
                             </div>
                           </TableCell>
-                          <TableCell>{condo?.name || '-'}</TableCell>
-                          <TableCell>{formatTypology(unit.typology, language)}</TableCell>
-                          <TableCell>{formatFloor(unit.floor, language)}</TableCell>
-                          <TableCell>{unit.bedrooms ?? '-'}</TableCell>
-                          <TableCell>{unit.bathrooms ?? '-'}</TableCell>
-                          <TableCell>{unit.squareMeters ?? '-'}</TableCell>
-                          <TableCell>
+                          <TableCell className="px-3 py-3">{condo?.name || '-'}</TableCell>
+                          <TableCell className="px-3 py-3">{formatTypology(unit.typology, language)}</TableCell>
+                          <TableCell className="px-3 py-3">{formatFloor(unit.floor, language)}</TableCell>
+                          <TableCell className="px-3 py-3">{unit.bedrooms ?? '-'}</TableCell>
+                          <TableCell className="px-3 py-3">{unit.bathrooms ?? '-'}</TableCell>
+                          <TableCell className="px-3 py-3">{unit.squareMeters ?? '-'}</TableCell>
+                          <TableCell className="px-3 py-3">
                             {unit.isActive ? (
                               <Badge variant="outline" className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800" data-testid={`badge-unit-active-${unit.id}`}>
                                 <Power className="h-3 w-3 mr-1" />
@@ -2008,7 +2047,7 @@ export default function ExternalCondominiums() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-3 py-3">
                             {hasRental === undefined ? (
                               contractsLoading ? (
                                 <Skeleton className="h-5 w-20" />
@@ -2029,7 +2068,7 @@ export default function ExternalCondominiums() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-3 py-3">
                             {unitServices.length > 0 ? (
                               <div className="flex items-center gap-1" title={serviceTypes.join(', ')}>
                                 <Badge 
@@ -2047,7 +2086,7 @@ export default function ExternalCondominiums() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="px-3 py-3 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 size="icon"
@@ -2086,92 +2125,11 @@ export default function ExternalCondominiums() {
                       );
                     })}
                   </TableBody>
-                </Table>
-              </div>
-              
-              {/* Units Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {language === 'es' ? 'Mostrar' : 'Show'}
-                  </span>
-                  <Select value={unitsPerPage.toString()} onValueChange={(value) => {
-                    setUnitsPerPage(Number(value));
-                    setUnitsPage(1);
-                  }}>
-                    <SelectTrigger className="w-[70px]" data-testid="select-units-per-page">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="30">30</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {language === 'es' ? 'registros' : 'records'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {language === 'es' 
-                      ? `Mostrando ${sortedUnits.length === 0 ? 0 : (unitsPage - 1) * unitsPerPage + 1}-${Math.min(unitsPage * unitsPerPage, sortedUnits.length)} de ${sortedUnits.length}`
-                      : `Showing ${sortedUnits.length === 0 ? 0 : (unitsPage - 1) * unitsPerPage + 1}-${Math.min(unitsPage * unitsPerPage, sortedUnits.length)} of ${sortedUnits.length}`
-                    }
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUnitsPage(p => Math.max(1, p - 1))}
-                    disabled={unitsPage === 1}
-                    data-testid="button-units-prev-page"
-                  >
-                    {language === 'es' ? 'Anterior' : 'Previous'}
-                  </Button>
-                  
-                  {Array.from({ length: Math.min(5, unitsTotalPages) }, (_, i) => {
-                    let pageNum;
-                    if (unitsTotalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (unitsPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (unitsPage >= unitsTotalPages - 2) {
-                      pageNum = unitsTotalPages - 4 + i;
-                    } else {
-                      pageNum = unitsPage - 2 + i;
-                    }
-                    
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={unitsPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setUnitsPage(pageNum)}
-                        data-testid={`button-units-page-${pageNum}`}
-                        className="min-w-[40px]"
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUnitsPage(p => Math.min(unitsTotalPages, p + 1))}
-                    disabled={unitsPage === unitsTotalPages || unitsTotalPages === 0}
-                    data-testid="button-units-next-page"
-                  >
-                    {language === 'es' ? 'Siguiente' : 'Next'}
-                  </Button>
-                </div>
-              </div>
-            </Card>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )
           ) : units && units.length > 0 ? (
             <Card data-testid="card-no-results-state">
