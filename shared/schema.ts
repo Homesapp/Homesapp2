@@ -5491,6 +5491,9 @@ export const insertExternalClientIncidentSchema = createInsertSchema(externalCli
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  occurredAt: z.coerce.date(),
+  resolvedAt: z.coerce.date().optional(),
 });
 
 export const updateExternalClientIncidentSchema = insertExternalClientIncidentSchema.partial();
