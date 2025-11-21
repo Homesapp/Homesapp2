@@ -173,6 +173,13 @@ export default function ExternalMaintenanceWorkers() {
     queryKey: ['/api/external-worker-assignments'],
   });
 
+  // Filter workers: only show those without any assignments (for new assignment dialog)
+  const workersWithoutAssignments = useMemo(() => {
+    if (!workers || !assignments) return [];
+    const assignedWorkerIds = new Set(assignments.map(a => a.userId));
+    return workers.filter(w => !assignedWorkerIds.has(w.id));
+  }, [workers, assignments]);
+
   // Static/semi-static data: condominiums for dropdowns
   const { data: condominiums } = useQuery<any[]>({
     queryKey: ['/api/external-condominiums'],
@@ -622,7 +629,7 @@ export default function ExternalMaintenanceWorkers() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {workers?.map((worker) => (
+                          {(editingWorkerId ? workers : workersWithoutAssignments)?.map((worker) => (
                             <SelectItem key={worker.id} value={worker.id}>
                               {worker.firstName} {worker.lastName}
                               {worker.maintenanceSpecialty && ` (${SPECIALTY_LABELS[language][worker.maintenanceSpecialty as keyof typeof SPECIALTY_LABELS['es']]})`}
