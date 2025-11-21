@@ -1032,32 +1032,21 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
           </CardContent>
         </Card>
       ) : viewMode === 'table' ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <CardTitle>{language === "es" ? "Códigos de Acceso" : "Access Codes"}</CardTitle>
-                <CardDescription>
-                  {language === "es" 
-                    ? `${filteredAccesses.length} de ${accesses?.length || 0} registros`
-                    : `${filteredAccesses.length} of ${accesses?.length || 0} records`}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ExternalPaginationControls
-              currentPage={tablePage}
-              totalPages={tableTotalPages}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setTablePage}
-              onItemsPerPageChange={setItemsPerPage}
-              language={language}
-              testIdPrefix="table"
-            />
+        <>
+          <ExternalPaginationControls
+            currentPage={tablePage}
+            totalPages={tableTotalPages}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setTablePage}
+            onItemsPerPageChange={setItemsPerPage}
+            language={language}
+            testIdPrefix="table"
+          />
 
-            <div className="w-full overflow-x-auto">
-              <Table>
+          <Card className="border">
+            <CardContent className="p-0">
+              <div className="w-full overflow-x-auto">
+                <Table className="text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px]">
@@ -1071,7 +1060,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       <Button
                         variant="ghost"
                         onClick={() => handleSort('condominium')}
-                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-normal"
                         data-testid="button-sort-condominium"
                       >
                         {language === "es" ? "Condominio" : "Condominium"}
@@ -1086,7 +1075,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       <Button
                         variant="ghost"
                         onClick={() => handleSort('unit')}
-                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-normal"
                         data-testid="button-sort-unit"
                       >
                         {language === "es" ? "Unidad" : "Unit"}
@@ -1101,7 +1090,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       <Button
                         variant="ghost"
                         onClick={() => handleSort('type')}
-                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-normal"
                         data-testid="button-sort-type"
                       >
                         {language === "es" ? "Tipo" : "Type"}
@@ -1116,7 +1105,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       <Button
                         variant="ghost"
                         onClick={() => handleSort('code')}
-                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-normal"
                         data-testid="button-sort-code"
                       >
                         {language === "es" ? "Código/Contraseña" : "Code/Password"}
@@ -1131,7 +1120,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       <Button
                         variant="ghost"
                         onClick={() => handleSort('description')}
-                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-normal"
                         data-testid="button-sort-description"
                       >
                         {language === "es" ? "Descripción" : "Description"}
@@ -1163,7 +1152,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                             data-testid={`checkbox-access-${access.id}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell>
                           {access.condominiumName}
                         </TableCell>
                         <TableCell>
@@ -1240,40 +1229,24 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                   })}
                 </TableBody>
               </Table>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       ) : (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              {language === "es" 
-                ? `${groupedAccesses.length} unidades con ${filteredAccesses.length} accesos`
-                : `${groupedAccesses.length} units with ${filteredAccesses.length} accesses`}
-            </p>
-
-            {/* Cards Items Per Page Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {language === "es" ? "Por página:" : "Per page:"}
-              </span>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => setItemsPerPage(Number(value))}
-              >
-                <SelectTrigger className="w-[70px]" data-testid="select-cards-items-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 20, 30, 40].map((option) => (
-                    <SelectItem key={option} value={option.toString()}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        <>
+          <ExternalPaginationControls
+            currentPage={cardsPage}
+            totalPages={cardsTotalPages}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCardsPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCardsPage(1);
+            }}
+            language={language}
+            testIdPrefix="cards"
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {paginatedGroupedAccesses.map((group) => (
@@ -1389,21 +1362,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
               </Card>
             ))}
           </div>
-
-          {/* Cards Pagination Controls */}
-          <ExternalPaginationControls
-            currentPage={cardsPage}
-            totalPages={cardsTotalPages}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCardsPage}
-            onItemsPerPageChange={(value) => {
-              setItemsPerPage(value);
-              setCardsPage(1);
-            }}
-            language={language}
-            testIdPrefix="cards"
-          />
-        </div>
+        </>
       )}
 
       <Dialog open={!!sendEmailAccessId} onOpenChange={(open) => !open && setSendEmailAccessId(null)}>
