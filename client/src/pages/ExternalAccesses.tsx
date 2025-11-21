@@ -62,7 +62,7 @@ export default function ExternalAccesses() {
   const [selectedMaintenanceUser, setSelectedMaintenanceUser] = useState<string>("");
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   
   // New filter states
   const [selectedCondominium, setSelectedCondominium] = useState<string>("all");
@@ -73,7 +73,7 @@ export default function ExternalAccesses() {
 
   // Table pagination and sorting states
   const [tablePage, setTablePage] = useState(1);
-  const [tableItemsPerPage, setTableItemsPerPage] = useState(10);
+  const [tableItemsPerPage, setTableItemsPerPage] = useState(5);
   const [sortColumn, setSortColumn] = useState<string>("condominium");
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -1195,7 +1195,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {paginatedGroupedAccesses.map((group) => (
               <Card key={group.unitId} className="overflow-hidden" data-testid={`card-unit-${group.unitId}`}>
                 <CardHeader className="bg-muted/50">
