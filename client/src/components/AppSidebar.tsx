@@ -295,7 +295,6 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.externalOwners", url: "/external/owners/portfolio", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalMaintenanceWorkers", url: "/external/maintenance-workers", icon: HardHat, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
     { titleKey: "sidebar.externalClients", url: "/external/clients", icon: UserCircle2, roles: ["master", "admin", "external_agency_admin", "external_agency_staff"] },
-    { titleKey: "sidebar.externalUsers", url: "/external/users", icon: Users, roles: ["master", "admin", "external_agency_admin"] },
   ];
 
   const serviceItems = [
