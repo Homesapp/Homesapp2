@@ -42,19 +42,17 @@ interface ClientDocumentsTabProps {
 }
 
 const documentTypes = [
-  { value: "id", label: "Identificación Oficial" },
+  { value: "id_card", label: "Identificación Oficial" },
   { value: "passport", label: "Pasaporte" },
+  { value: "drivers_license", label: "Licencia de Conducir" },
   { value: "visa", label: "Visa" },
-  { value: "proof_of_address", label: "Comprobante de Domicilio" },
-  { value: "proof_of_income", label: "Comprobante de Ingresos" },
-  { value: "contract", label: "Contrato" },
   { value: "other", label: "Otro" },
 ];
 
 export default function ClientDocumentsTab({ clientId, documents, isLoading, isError }: ClientDocumentsTabProps) {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [documentType, setDocumentType] = useState("id");
+  const [documentType, setDocumentType] = useState("id_card");
   const [notes, setNotes] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -95,7 +93,7 @@ export default function ClientDocumentsTab({ clientId, documents, isLoading, isE
         description: "El documento se ha subido exitosamente.",
       });
       setSelectedFile(null);
-      setDocumentType("id");
+      setDocumentType("id_card");
       setNotes("");
       // Reset file input
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
