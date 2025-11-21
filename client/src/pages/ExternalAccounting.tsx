@@ -1108,7 +1108,7 @@ export default function ExternalAccounting() {
                   <Button
                     variant={dateFilter === "today" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setDateFilter("today")}
+                    onClick={() => setDateFilter(dateFilter === "today" ? "all" : "today")}
                     data-testid="button-filter-date-today"
                   >
                     {t.today}
