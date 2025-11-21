@@ -106,9 +106,9 @@ export default function ExternalRentals() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [serviceIndices, setServiceIndices] = useState<Record<string, number>>({});
   
-  // Pagination state (3 rows x 3 cols = 9 cards per page)
+  // Pagination state (max 3 rows x 3 cols = 9 cards per page)
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9;
+  const [itemsPerPage, setItemsPerPage] = useState(9); // Default: 3 rows
 
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
@@ -166,6 +166,11 @@ export default function ExternalRentals() {
       }
     }
   }, [units, unitFilter]);
+
+  // Reset page to 1 when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   // Cancel rental contract mutation
   const cancelMutation = useMutation({
@@ -648,6 +653,7 @@ export default function ExternalRentals() {
       ) : filteredRentals && filteredRentals.length > 0 ? (
         <div className="space-y-4">
           {viewMode === "cards" ? (
+            <>
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
               {paginatedRentals.map(({ contract, unit, condominium, activeServices, nextPaymentDue, nextPaymentAmount, nextPaymentService }) => {
               // Sort services so rent always appears first
@@ -897,6 +903,71 @@ export default function ExternalRentals() {
               );
               })}
             </div>
+
+            {/* Pagination Controls for Cards View */}
+            {filteredRentals.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {language === 'es' ? 'Mostrar' : 'Show'}
+                  </span>
+                  <Select 
+                    value={itemsPerPage.toString()} 
+                    onValueChange={(value) => setItemsPerPage(Number(value))}
+                  >
+                    <SelectTrigger className="w-[70px]" data-testid="select-cards-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="6">6</SelectItem>
+                      <SelectItem value="9">9</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {language === 'es' ? 'por página' : 'per page'}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {language === 'es' 
+                      ? `Mostrando ${filteredRentals.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredRentals.length)} de ${filteredRentals.length}`
+                      : `Showing ${filteredRentals.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredRentals.length)} of ${filteredRentals.length}`
+                    }
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    data-testid="button-cards-prev-page"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    {language === 'es' ? 'Anterior' : 'Previous'}
+                  </Button>
+                  
+                  <span className="text-sm text-muted-foreground px-2">
+                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
+                  </span>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    data-testid="button-cards-next-page"
+                  >
+                    {language === 'es' ? 'Siguiente' : 'Next'}
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           ) : (
             <Card>
               <CardContent className="p-0">
