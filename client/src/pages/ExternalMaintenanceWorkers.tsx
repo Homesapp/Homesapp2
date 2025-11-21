@@ -1273,7 +1273,7 @@ export default function ExternalMaintenanceWorkers() {
                             <TableBody>
                               {paginatedGroupedAssignments.map(({ worker, assignments: workerAssignments }) => (
                               <TableRow key={worker.id} data-testid={`row-worker-${worker.id}`}>
-                                <TableCell className="px-3 py-3 font-medium">
+                                <TableCell className="px-3 py-3">
                                   <div className="flex items-center gap-2">
                                     <Wrench className="h-4 w-4 text-muted-foreground" />
                                     {worker.firstName} {worker.lastName}
@@ -1519,7 +1519,7 @@ export default function ExternalMaintenanceWorkers() {
                         <TableBody>
                           {paginatedWorkers.map((worker) => (
                             <TableRow key={worker.id} data-testid={`row-worker-${worker.id}`}>
-                              <TableCell className="px-3 py-3 font-medium">
+                              <TableCell className="px-3 py-3">
                                 {worker.firstName} {worker.lastName}
                               </TableCell>
                               <TableCell className="px-3 py-3">{worker.email}</TableCell>
