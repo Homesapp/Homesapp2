@@ -31,18 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Home, 
@@ -58,8 +46,6 @@ import {
   LayoutGrid,
   Table as TableIcon,
   XCircle,
-  Check,
-  ChevronsUpDown,
   ChevronUp,
   ChevronDown,
   ChevronLeft,
@@ -102,8 +88,6 @@ export default function ExternalRentals() {
   const [unitFilter, setUnitFilter] = useState<string>("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [contractToCancel, setContractToCancel] = useState<string | null>(null);
-  const [condoComboOpen, setCondoComboOpen] = useState(false);
-  const [unitComboOpen, setUnitComboOpen] = useState(false);
   const [selectUnitDialogOpen, setSelectUnitDialogOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [serviceIndices, setServiceIndices] = useState<Record<string, number>>({});
