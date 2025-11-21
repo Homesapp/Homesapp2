@@ -966,7 +966,7 @@ export default function ExternalCondominiums() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="mb-0.5">
+            <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   {/* Search Input */}
@@ -1152,7 +1152,7 @@ export default function ExternalCondominiums() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 mt-[2px]">
               {selectedCondoId ? (
                     // Detail view for selected condominium
                     (() => {
@@ -1362,7 +1362,7 @@ export default function ExternalCondominiums() {
                     testIdPrefix="cards"
                   />
 
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-[2px]">
                   {paginatedCondominiums.map((condo) => {
                   const condoUnits = getUnitsForCondo(condo.id);
                   const activeUnits = condoUnits.filter(u => u.isActive);
@@ -1659,7 +1659,7 @@ export default function ExternalCondominiums() {
                 )}
 
                 {/* Table view of condominiums */}
-                <Card className="border">
+                <Card className="border mt-[2px]">
                   <CardContent className="p-0">
                     <Table className="text-sm">
                   <TableHeader>
@@ -1844,7 +1844,7 @@ export default function ExternalCondominiums() {
               </CardContent>
             </Card>
           ) : filteredUnits.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-6 mt-[2px]">
               {viewMode === "cards" ? (
                 <div className="p-6">
                   <ExternalPaginationControls
@@ -1860,7 +1860,7 @@ export default function ExternalCondominiums() {
                     testIdPrefix="units-cards"
                   />
 
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-[2px]">
                 {paginatedUnits.map((unit) => {
                   const condo = condominiums?.find(c => c.id === unit.condominiumId);
                   const hasRental = hasActiveRental(unit.id);
@@ -1969,7 +1969,7 @@ export default function ExternalCondominiums() {
                 )}
 
                 {/* Table view of units */}
-                <Card className="border">
+                <Card className="border mt-[2px]">
                   <CardContent className="p-0">
                     <div className="w-full overflow-x-auto">
                       <Table className="text-sm">
