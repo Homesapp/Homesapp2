@@ -159,7 +159,7 @@ export default function ExternalMaintenance() {
   
   // Pagination and sorting states
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const [sortColumn, setSortColumn] = useState<string>('created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 

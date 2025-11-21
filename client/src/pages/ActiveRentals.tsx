@@ -104,21 +104,21 @@ export default function ActiveRentals() {
 
   // Payment history pagination & sorting
   const [paymentsPage, setPaymentsPage] = useState(1);
-  const [paymentsPerPage, setPaymentsPerPage] = useState(10);
+  const [paymentsPerPage, setPaymentsPerPage] = useState(5);
   const [paymentsSortColumn, setPaymentsSortColumn] = useState<string>("");
   const [paymentsSortDirection, setPaymentsSortDirection] = useState<"asc" | "desc">("asc");
   const [currentServiceType, setCurrentServiceType] = useState<string>("rent");
 
   // Maintenance requests pagination & sorting
   const [maintenancePage, setMaintenancePage] = useState(1);
-  const [maintenancePerPage, setMaintenancePerPage] = useState(10);
+  const [maintenancePerPage, setMaintenancePerPage] = useState(5);
   const [maintenanceSortColumn, setMaintenanceSortColumn] = useState<string>("createdAt");
   const [maintenanceSortDirection, setMaintenanceSortDirection] = useState<"asc" | "desc">("desc");
   const [showMaintenanceFilters, setShowMaintenanceFilters] = useState(false);
 
   // Rentals table pagination & sorting
   const [rentalsPage, setRentalsPage] = useState(1);
-  const [rentalsPerPage, setRentalsPerPage] = useState(10);
+  const [rentalsPerPage, setRentalsPerPage] = useState(5);
   const [rentalsSortColumn, setRentalsSortColumn] = useState<string>("condoName");
   const [rentalsSortDirection, setRentalsSortDirection] = useState<"asc" | "desc">("asc");
 
