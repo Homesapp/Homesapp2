@@ -584,7 +584,22 @@ export default function ExternalMaintenance() {
         </Card>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search - Always visible outside filters */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={t.search}
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="pl-10"
+          data-testid="input-search"
+        />
+      </div>
+
+      {/* Collapsible Filters */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between w-full">
@@ -607,23 +622,7 @@ export default function ExternalMaintenance() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search - Always visible */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t.search}
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-10"
-              data-testid="input-search"
-            />
-          </div>
-
-          {/* Collapsible Filters */}
+        <CardContent>
           {filtersExpanded && (
             <div className="space-y-4">
             <div className="space-y-2">
