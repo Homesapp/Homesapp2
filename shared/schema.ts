@@ -12,6 +12,7 @@ import {
   pgEnum,
   decimal,
   unique,
+  date,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -5332,6 +5333,85 @@ export const insertExternalMaintenancePhotoSchema = createInsertSchema(externalM
 export type InsertExternalMaintenancePhoto = z.infer<typeof insertExternalMaintenancePhotoSchema>;
 export type ExternalMaintenancePhoto = typeof externalMaintenancePhotos.$inferSelect;
 
+// External Clients - Registro de clientes/inquilinos gestionados por agencias externas
+export const externalClients = pgTable("external_clients", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Personal Information
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  alternatePhone: varchar("alternate_phone", { length: 50 }),
+  dateOfBirth: date("date_of_birth"),
+  nationality: varchar("nationality", { length: 100 }),
+  
+  // Document Information
+  idType: varchar("id_type", { length: 50 }), // passport, dni, driver_license, etc
+  idNumber: varchar("id_number", { length: 100 }),
+  idCountry: varchar("id_country", { length: 100 }),
+  idExpirationDate: date("id_expiration_date"),
+  
+  // Contact Information
+  address: varchar("address", { length: 500 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  country: varchar("country", { length: 100 }),
+  
+  // Emergency Contact
+  emergencyContactName: varchar("emergency_contact_name", { length: 200 }),
+  emergencyContactPhone: varchar("emergency_contact_phone", { length: 50 }),
+  emergencyContactRelation: varchar("emergency_contact_relation", { length: 100 }),
+  
+  // Preferences
+  preferredLanguage: varchar("preferred_language", { length: 10 }).default("es"), // es, en
+  propertyTypePreference: varchar("property_type_preference", { length: 100 }), // apartment, house, studio, etc
+  budgetMin: decimal("budget_min", { precision: 10, scale: 2 }),
+  budgetMax: decimal("budget_max", { precision: 10, scale: 2 }),
+  bedroomsPreference: integer("bedrooms_preference"),
+  bathroomsPreference: integer("bathrooms_preference"),
+  
+  // Status & Verification
+  status: varchar("status", { length: 50 }).notNull().default("active"), // active, inactive, archived
+  isVerified: boolean("is_verified").notNull().default(false),
+  source: varchar("source", { length: 100 }), // referral, website, agent, social_media, etc
+  
+  // Notes & Tags
+  notes: text("notes"),
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`), // Array de etiquetas para categorizar
+  
+  // History
+  firstContactDate: timestamp("first_contact_date"),
+  lastContactDate: timestamp("last_contact_date"),
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_clients_agency").on(table.agencyId),
+  index("idx_external_clients_email").on(table.email),
+  index("idx_external_clients_phone").on(table.phone),
+  index("idx_external_clients_status").on(table.status),
+  index("idx_external_clients_verified").on(table.isVerified),
+]);
+
+export const insertExternalClientSchema = createInsertSchema(externalClients).omit({
+  id: true,
+  agencyId: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateExternalClientSchema = insertExternalClientSchema.partial();
+
+export type InsertExternalClient = z.infer<typeof insertExternalClientSchema>;
+export type UpdateExternalClient = z.infer<typeof updateExternalClientSchema>;
+export type ExternalClient = typeof externalClients.$inferSelect;
+
 // External Condominiums - Condominios gestionados por agencias externas
 export const externalCondominiums = pgTable("external_condominiums", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -5885,6 +5965,17 @@ export const externalMaintenancePhotosRelations = relations(externalMaintenanceP
   }),
   uploadedByUser: one(users, {
     fields: [externalMaintenancePhotos.uploadedBy],
+    references: [users.id],
+  }),
+}));
+
+export const externalClientsRelations = relations(externalClients, ({ one }) => ({
+  agency: one(externalAgencies, {
+    fields: [externalClients.agencyId],
+    references: [externalAgencies.id],
+  }),
+  createdByUser: one(users, {
+    fields: [externalClients.createdBy],
     references: [users.id],
   }),
 }));
