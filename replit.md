@@ -31,6 +31,32 @@ The maintenance system includes an enhanced tracking architecture with update ti
 
 Security features include enterprise-grade measures compliant with 2025 standards for multi-tenant SaaS platforms: Data Encryption at Rest using AES-256-GCM with per-record random IVs, an encryption module for secure key derivation and constant-time comparison, enhanced audit logging for all sensitive operations, comprehensive rate limiting on critical endpoints, and strict multi-tenant isolation with agency ownership verification. The platform also supports GDPR/PCI-DSS compliance.
 
+## UI Design Standards
+
+### Icon Sizing Guidelines
+The platform maintains visual harmony through context-based icon sizing rules:
+
+**Small Context (text-xs elements):**
+- Badge icons paired with small text: `h-3 w-3`
+- Examples: Status badges, direction badges, count badges
+- Maintains proportionality between icon and text size
+
+**Standard Context (text-sm and larger):**
+- Button icons: `h-4 w-4`
+- Card title icons: `h-4 w-4`
+- Normal text elements: `h-4 w-4`
+- Examples: Action buttons, navigation items, section headers
+
+**Large Decorative Context:**
+- Empty state illustrations: `h-12 w-12`
+- Section header icons: `h-6 w-6`
+- Used for visual emphasis and hierarchical separation
+
+**Filter UX Pattern:**
+- Filter button rows use horizontal scroll (`flex-nowrap overflow-x-auto`)
+- Each filter button: `flex-shrink-0` to prevent wrapping
+- Maintains clean single-row layout across all sections
+
 ## External Dependencies
 *   Google Calendar API
 *   Gmail API
