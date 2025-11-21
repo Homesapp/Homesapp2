@@ -1265,7 +1265,7 @@ export default function ExternalAccounting() {
 
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
+                        <Calendar className="h-4 w-4" />
                         {formatDate(transaction.dueDate)}
                       </div>
                       {getStatusBadge(transaction.status)}

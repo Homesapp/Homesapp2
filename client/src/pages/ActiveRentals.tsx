@@ -697,7 +697,7 @@ export default function ActiveRentals() {
                       <div className="flex items-start justify-between">
                         <div className="space-y-1 flex-1">
                           <CardTitle className="flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
+                            <FileText className="h-4 w-4" />
                             Contrato de Renta
                           </CardTitle>
                           <CardDescription>
@@ -979,7 +979,7 @@ export default function ActiveRentals() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Home className="h-5 w-5" />
+                <Home className="h-4 w-4" />
                 {currentRental.propertyTitle || t("activeRentals.property", "Propiedad")}
               </div>
               <Button
@@ -1603,8 +1603,9 @@ export default function ActiveRentals() {
                     onClick={handleSendChatMessage}
                     disabled={!chatMessage.trim() || sendChatMessageMutation.isPending}
                     data-testid="button-send-message"
+                    size="icon"
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

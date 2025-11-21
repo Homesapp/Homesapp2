@@ -1063,7 +1063,7 @@ export default function ExternalCondominiums() {
                               <CardHeader className="pb-3">
                                 <CardTitle className="flex items-center gap-2 justify-between">
                                   <div className="flex items-center gap-2">
-                                    <Home className="h-5 w-5" />
+                                    <Home className="h-4 w-4" />
                                     <span>{language === "es" ? "Unidad" : "Unit"} {unit.unitNumber}</span>
                                   </div>
                                   <Button
@@ -1192,7 +1192,7 @@ export default function ExternalCondominiums() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 justify-between">
                           <div className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
+                            <Building2 className="h-4 w-4" />
                             <span>{condo.name}</span>
                           </div>
                           <div className="flex items-center gap-1">
@@ -1550,7 +1550,7 @@ export default function ExternalCondominiums() {
             <Card className="border-destructive bg-destructive/10">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-sm">
                       {language === "es" 
@@ -2589,7 +2589,7 @@ export default function ExternalCondominiums() {
         <DialogContent data-testid="dialog-delete-condo">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <AlertTriangle className="h-4 w-4 text-destructive" />
               {language === "es" ? "Eliminar Condominio" : "Delete Condominium"}
             </DialogTitle>
             <DialogDescription>

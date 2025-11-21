@@ -624,7 +624,7 @@ export default function ExternalRentals() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Home className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <span className="truncate" data-testid={`text-rental-unit-${contract.id}`}>
                           {condominium?.name} - {unit?.unitNumber}
                         </span>
