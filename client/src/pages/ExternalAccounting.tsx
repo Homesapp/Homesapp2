@@ -1234,27 +1234,25 @@ export default function ExternalAccounting() {
               <div className="flex gap-2">
                 <Button
                   variant={viewMode === "cards" ? "default" : "outline"}
-                  size="sm"
+                  size="icon"
                   onClick={() => {
                     setViewMode("cards");
                     setManualViewModeOverride(false);
                   }}
                   data-testid="button-accounting-view-cards"
                 >
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  {language === "es" ? "Tarjetas" : "Cards"}
+                  <LayoutGrid className="h-4 w-4" />
                 </Button>
                 <Button
                   variant={viewMode === "table" ? "default" : "outline"}
-                  size="sm"
+                  size="icon"
                   onClick={() => {
                     setViewMode("table");
                     setManualViewModeOverride(true);
                   }}
                   data-testid="button-accounting-view-table"
                 >
-                  <TableIcon className="h-4 w-4 mr-2" />
-                  {language === "es" ? "Tabla" : "Table"}
+                  <TableIcon className="h-4 w-4" />
                 </Button>
               </div>
             )}

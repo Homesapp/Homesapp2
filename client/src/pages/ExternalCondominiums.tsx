@@ -900,6 +900,38 @@ export default function ExternalCondominiums() {
             </TabsTrigger>
           </TabsList>
           
+          <div className="flex items-center gap-2">
+            {/* View Toggle - Desktop only */}
+            {!isMobile && (
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === "cards" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    setViewMode("cards");
+                    setManualViewModeOverride(false);
+                  }}
+                  data-testid="button-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    setViewMode("table");
+                    setManualViewModeOverride(true);
+                  }}
+                  data-testid="button-view-table"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-4">
           {!selectedCondoId && (
             activeTab === "condominiums" ? (
               <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -1047,49 +1079,7 @@ export default function ExternalCondominiums() {
         
         <TabsContent value="condominiums" className="space-y-4">
           <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <CardTitle>{language === "es" ? "Condominios" : "Condominiums"}</CardTitle>
-                  <CardDescription>
-                    {language === "es" 
-                      ? "Gestiona los condominios de tu agencia"
-                      : "Manage your agency's condominiums"}
-                  </CardDescription>
-                </div>
-                
-                {/* View Toggle - Desktop only */}
-                {!isMobile && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant={viewMode === "cards" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setViewMode("cards");
-                        setManualViewModeOverride(false);
-                      }}
-                      data-testid="button-condos-view-cards"
-                    >
-                      <LayoutGrid className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Tarjetas" : "Cards"}
-                    </Button>
-                    <Button
-                      variant={viewMode === "table" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setViewMode("table");
-                        setManualViewModeOverride(true);
-                      }}
-                      data-testid="button-condos-view-table"
-                    >
-                      <TableIcon className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Tabla" : "Table"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {condosError ? (
                 <div className="flex flex-col items-center justify-center py-12" data-testid="div-error-state">
                   <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
@@ -1927,6 +1917,97 @@ export default function ExternalCondominiums() {
               </CardContent>
             </Card>
           ) : filteredUnits.length > 0 ? (
+            viewMode === "cards" ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {paginatedUnits.map((unit) => {
+                  const condo = condominiums?.find(c => c.id === unit.condominiumId);
+                  const hasRental = hasActiveRental(unit.id);
+                  const unitServices = allUnitServices?.[unit.id] || [];
+                  
+                  return (
+                    <Card 
+                      key={unit.id}
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => navigate(`/external/units/${unit.id}`)}
+                      data-testid={`card-unit-${unit.id}`}
+                    >
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Home className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">{unit.unitNumber}</CardTitle>
+                          </div>
+                          {unit.isActive ? (
+                            <Badge variant="outline" className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
+                              <Power className="h-3 w-3 mr-1" />
+                              {language === "es" ? "Activa" : "Active"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-50 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300">
+                              <PowerOff className="h-3 w-3 mr-1" />
+                              {language === "es" ? "Suspendida" : "Suspended"}
+                            </Badge>
+                          )}
+                        </div>
+                        <CardDescription className="text-sm">
+                          {condo?.name || '-'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">{language === "es" ? "Tipología:" : "Type:"}</span>
+                            <div className="font-medium">{formatTypology(unit.typology, language)}</div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">{language === "es" ? "Piso:" : "Floor:"}</span>
+                            <div className="font-medium">{formatFloor(unit.floor, language)}</div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">{language === "es" ? "Recámaras:" : "Beds:"}</span>
+                            <div className="font-medium">{unit.bedrooms ?? '-'}</div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">{language === "es" ? "Baños:" : "Baths:"}</span>
+                            <div className="font-medium">{unit.bathrooms ?? '-'}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            {hasRental === undefined ? (
+                              contractsLoading ? (
+                                <Skeleton className="h-5 w-20" />
+                              ) : (
+                                <Badge variant="outline">
+                                  {language === "es" ? "Desconocido" : "Unknown"}
+                                </Badge>
+                              )
+                            ) : hasRental ? (
+                              <Badge variant="default">
+                                <DoorClosed className="h-3 w-3 mr-1" />
+                                {language === "es" ? "Rentada" : "Rented"}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                <DoorOpen className="h-3 w-3 mr-1" />
+                                {language === "es" ? "Disponible" : "Available"}
+                              </Badge>
+                            )}
+                          </div>
+                          {unitServices.length > 0 && (
+                            <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                              <Key className="h-3 w-3 mr-1" />
+                              {unitServices.length} {language === "es" ? "servicios" : "services"}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
             <Card>
               <div className="w-full overflow-x-auto">
                 <Table>
@@ -2174,6 +2255,7 @@ export default function ExternalCondominiums() {
                 </div>
               </div>
             </Card>
+            )
           ) : units && units.length > 0 ? (
             <Card data-testid="card-no-results-state">
               <CardContent className="flex flex-col items-center justify-center py-12">

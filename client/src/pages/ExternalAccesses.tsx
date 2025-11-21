@@ -742,28 +742,26 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
           {!isMobile && (
             <div className="flex gap-2">
               <Button
-                variant={viewMode === 'table' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setViewMode('table');
-                  setManualViewModeOverride(true);
-                }}
-                data-testid="button-accesses-view-table"
-              >
-                <LayoutList className="h-4 w-4 mr-2" />
-                {language === 'es' ? 'Tabla' : 'Table'}
-              </Button>
-              <Button
                 variant={viewMode === 'cards' ? 'default' : 'outline'}
-                size="sm"
+                size="icon"
                 onClick={() => {
                   setViewMode('cards');
                   setManualViewModeOverride(false);
                 }}
                 data-testid="button-accesses-view-cards"
               >
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                {language === 'es' ? 'Tarjetas' : 'Cards'}
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => {
+                  setViewMode('table');
+                  setManualViewModeOverride(true);
+                }}
+                data-testid="button-accesses-view-table"
+              >
+                <LayoutList className="h-4 w-4" />
               </Button>
             </div>
           )}
