@@ -19,7 +19,7 @@ Key architectural features include unified middleware for authentication and log
 
 The platform implements extensive pagination and sortable columns across all tabular data, with consistent page reset and clamping logic to ensure a stable user experience during filtering and data updates. Mobile responsiveness is a core design principle, featuring SSR-safe auto-switching between card and table views based on device, with a manual override for desktop users. Unified filter UX is managed through Popover modals, and performance is optimized using TanStack Query caching strategies and React memoization techniques. Enterprise-grade security measures include data encryption at rest (AES-256-GCM), enhanced audit logging, rate limiting, and strict multi-tenant isolation.
 
-The External Management System includes a comprehensive payment collection system accessible both as a standalone page (/external/payments) and as an integrated tab within the Financial Accounting section (/external/accounting), featuring automated rent collection, payment tracking with visual status indicators, and email reminder functionality for overdue payments.
+The External Management System includes a comprehensive payment collection system accessible as an integrated tab within the Financial Accounting section (/external/accounting), featuring automated rent collection, payment tracking with visual status indicators, and email reminder functionality for overdue payments.
 
 ## External Dependencies
 *   Google Calendar API
