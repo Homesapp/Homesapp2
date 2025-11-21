@@ -77,6 +77,10 @@ export default function ExternalCondominiums() {
   const [condoCurrentPage, setCondoCurrentPage] = useState(1);
   const [condoItemsPerPage, setCondoItemsPerPage] = useState(10); // Default: table mode
   
+  // Pagination options
+  const cardsPerPageOptions = [3, 6, 9, 12];
+  const tablePerPageOptions = [5, 10, 20, 30];
+  
   // Condominiums table sorting
   const [condosSortColumn, setCondosSortColumn] = useState<string>("");
   const [condosSortDirection, setCondosSortDirection] = useState<"asc" | "desc">("asc");
@@ -104,15 +108,10 @@ export default function ExternalCondominiums() {
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
-  // Reset page to 1 when view mode changes
+  // Auto-adjust itemsPerPage when switching view modes
   useEffect(() => {
-    const defaultPerPage = viewMode === "cards" ? 9 : 10;
-    const validOptions = viewMode === "cards" ? [3, 6, 9, 12] : [5, 10, 20, 30];
-    
-    // Only auto-adjust if current value is not valid for the new mode
-    if (!validOptions.includes(condoItemsPerPage)) {
-      setCondoItemsPerPage(defaultPerPage);
-    }
+    const defaultForMode = viewMode === "cards" ? cardsPerPageOptions[1] : tablePerPageOptions[1];
+    setCondoItemsPerPage(defaultForMode);
     setCondoCurrentPage(1);
   }, [viewMode]);
   
@@ -888,107 +887,116 @@ export default function ExternalCondominiums() {
           setCondoFiltersExpanded(false);
         }
       }} className="w-full">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-4">
-          <TabsList className="grid w-full sm:max-w-md grid-cols-2">
-            <TabsTrigger value="condominiums" data-testid="tab-condominiums">
-              <Building2 className="mr-2 h-4 w-4" />
-              {language === "es" ? "Condominios" : "Condominiums"}
-            </TabsTrigger>
-            <TabsTrigger value="units" data-testid="tab-units">
-              <Home className="mr-2 h-4 w-4" />
-              {language === "es" ? "Unidades" : "Units"}
-            </TabsTrigger>
-          </TabsList>
-          
-          <div className="flex items-center gap-2">
-            {/* View Toggle - Desktop only */}
-            {!isMobile && (
-              <div className="flex gap-2">
-                <Button
-                  variant={viewMode === "cards" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => {
-                    setViewMode("cards");
-                    setManualViewModeOverride(false);
-                  }}
-                  data-testid="button-view-cards"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "table" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => {
-                    setViewMode("table");
-                    setManualViewModeOverride(true);
-                  }}
-                  data-testid="button-view-table"
-                >
-                  <TableIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
+        <TabsList className="grid w-full sm:max-w-md grid-cols-2 mb-4">
+          <TabsTrigger value="condominiums" data-testid="tab-condominiums">
+            <Building2 className="mr-2 h-4 w-4" />
+            {language === "es" ? "Condominios" : "Condominiums"}
+          </TabsTrigger>
+          <TabsTrigger value="units" data-testid="tab-units">
+            <Home className="mr-2 h-4 w-4" />
+            {language === "es" ? "Unidades" : "Units"}
+          </TabsTrigger>
+        </TabsList>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-4">
-          {!selectedCondoId && (
-            activeTab === "condominiums" ? (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex-1 sm:flex-initial sm:w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={language === "es" ? "Nombre o dirección de condominio..." : "Condominium name or address..."}
-                    value={condoSearchText}
-                    onChange={(e) => setCondoSearchText(e.target.value)}
-                    className="pl-8"
-                    data-testid="input-search-condos"
-                  />
-                </div>
-                <Popover open={condoFiltersExpanded} onOpenChange={setCondoFiltersExpanded}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      data-testid="button-toggle-condo-filters"
-                      className="flex-shrink-0"
-                    >
-                      <Filter className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
-                    <div className="space-y-4">
-                      <Button variant="outline" className="w-full" onClick={clearCondoFilters}>
-                        <XCircle className="mr-2 h-4 w-4" />
-                        {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+        {!selectedCondoId && (
+          activeTab === "condominiums" ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={language === "es" ? "Buscar condominios..." : "Search condominiums..."}
+                      value={condoSearchText}
+                      onChange={(e) => setCondoSearchText(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-search-condos"
+                    />
+                  </div>
+
+                  {/* Filter Button with Popover */}
+                  <Popover open={condoFiltersExpanded} onOpenChange={setCondoFiltersExpanded}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="relative flex-shrink-0"
+                        data-testid="button-toggle-condo-filters"
+                      >
+                        <Filter className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex-1 sm:flex-initial sm:w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={language === "es" ? "Número de unidad o condominio..." : "Unit number or condominium..."}
-                    value={unitSearchText}
-                    onChange={(e) => setUnitSearchText(e.target.value)}
-                    className="pl-8"
-                    data-testid="input-search-units"
-                  />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+                      <div className="space-y-4">
+                        <Button variant="outline" className="w-full" onClick={clearCondoFilters}>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* View Toggle Buttons - Desktop Only */}
+                  {!isMobile && (
+                    <>
+                      <Button
+                        variant={viewMode === "cards" ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => {
+                          setViewMode("cards");
+                          setManualViewModeOverride(false);
+                        }}
+                        className="flex-shrink-0"
+                        data-testid="button-view-cards"
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={viewMode === "table" ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => {
+                          setViewMode("table");
+                          setManualViewModeOverride(true);
+                        }}
+                        className="flex-shrink-0"
+                        data-testid="button-view-table"
+                      >
+                        <TableIcon className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
-                <Popover open={filtersExpanded} onOpenChange={setFiltersExpanded}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      data-testid="button-toggle-unit-filters"
-                      className="flex-shrink-0"
-                    >
-                      <Filter className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={language === "es" ? "Buscar unidades..." : "Search units..."}
+                      value={unitSearchText}
+                      onChange={(e) => setUnitSearchText(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-search-units"
+                    />
+                  </div>
+
+                  {/* Filter Button with Popover */}
+                  <Popover open={filtersExpanded} onOpenChange={setFiltersExpanded}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="relative flex-shrink-0"
+                        data-testid="button-toggle-unit-filters"
+                      >
+                        <Filter className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
                   <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -1072,10 +1080,41 @@ export default function ExternalCondominiums() {
                   </div>
                 </PopoverContent>
               </Popover>
-              </div>
-            )
-          )}
-        </div>
+
+                  {/* View Toggle Buttons - Desktop Only */}
+                  {!isMobile && (
+                    <>
+                      <Button
+                        variant={viewMode === "cards" ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => {
+                          setViewMode("cards");
+                          setManualViewModeOverride(false);
+                        }}
+                        className="flex-shrink-0"
+                        data-testid="button-view-cards"
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={viewMode === "table" ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => {
+                          setViewMode("table");
+                          setManualViewModeOverride(true);
+                        }}
+                        className="flex-shrink-0"
+                        data-testid="button-view-table"
+                      >
+                        <TableIcon className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        )}
         
         <TabsContent value="condominiums" className="space-y-4">
           <Card>
