@@ -1741,25 +1741,25 @@ export default function ExternalCondominiums() {
                           onClick={() => setSelectedCondoId(condo.id)}
                           data-testid={`row-condo-${condo.id}`}
                         >
-                          <TableCell className="px-3 py-3" data-testid={`cell-name-${condo.id}`}>
+                          <TableCell data-testid={`cell-name-${condo.id}`}>
                             <div className="flex items-center gap-2">
                               <Building2 className="h-4 w-4 text-muted-foreground" />
                               {condo.name}
                             </div>
                           </TableCell>
-                          <TableCell className="px-3 py-3" data-testid={`cell-address-${condo.id}`}>
+                          <TableCell data-testid={`cell-address-${condo.id}`}>
                             {condo.address || '-'}
                           </TableCell>
-                          <TableCell className="px-3 py-3" data-testid={`cell-total-${condo.id}`}>
+                          <TableCell data-testid={`cell-total-${condo.id}`}>
                             {condoUnits.length}
                           </TableCell>
-                          <TableCell className="px-3 py-3" data-testid={`cell-active-${condo.id}`}>
+                          <TableCell data-testid={`cell-active-${condo.id}`}>
                             {activeUnits.length}
                           </TableCell>
-                          <TableCell className="px-3 py-3" data-testid={`cell-rented-${condo.id}`}>
+                          <TableCell data-testid={`cell-rented-${condo.id}`}>
                             {rentedUnits.length}
                           </TableCell>
-                          <TableCell className="px-3 py-3" data-testid={`cell-actions-${condo.id}`}>
+                          <TableCell data-testid={`cell-actions-${condo.id}`}>
                             <div className="flex items-center gap-1">
                               <Button
                                 size="icon"
@@ -2034,19 +2034,19 @@ export default function ExternalCondominiums() {
                           className="cursor-pointer hover-elevate"
                           onClick={() => navigate(`/external/units/${unit.id}`)}
                         >
-                          <TableCell className="px-3 py-3">
+                          <TableCell>
                             <div className="flex items-center gap-2">
                               <Home className="h-4 w-4 text-muted-foreground" />
                               {unit.unitNumber}
                             </div>
                           </TableCell>
-                          <TableCell className="px-3 py-3">{condo?.name || '-'}</TableCell>
-                          <TableCell className="px-3 py-3">{formatTypology(unit.typology, language)}</TableCell>
-                          <TableCell className="px-3 py-3">{formatFloor(unit.floor, language)}</TableCell>
-                          <TableCell className="px-3 py-3">{unit.bedrooms ?? '-'}</TableCell>
-                          <TableCell className="px-3 py-3">{unit.bathrooms ?? '-'}</TableCell>
-                          <TableCell className="px-3 py-3">{unit.squareMeters ?? '-'}</TableCell>
-                          <TableCell className="px-3 py-3">
+                          <TableCell>{condo?.name || '-'}</TableCell>
+                          <TableCell>{formatTypology(unit.typology, language)}</TableCell>
+                          <TableCell>{formatFloor(unit.floor, language)}</TableCell>
+                          <TableCell>{unit.bedrooms ?? '-'}</TableCell>
+                          <TableCell>{unit.bathrooms ?? '-'}</TableCell>
+                          <TableCell>{unit.squareMeters ?? '-'}</TableCell>
+                          <TableCell>
                             {unit.isActive ? (
                               <Badge variant="outline" className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800" data-testid={`badge-unit-active-${unit.id}`}>
                                 <Power className="h-3 w-3 mr-1" />
@@ -2059,7 +2059,7 @@ export default function ExternalCondominiums() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="px-3 py-3">
+                          <TableCell>
                             {hasRental === undefined ? (
                               contractsLoading ? (
                                 <Skeleton className="h-5 w-20" />
@@ -2080,7 +2080,7 @@ export default function ExternalCondominiums() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="px-3 py-3">
+                          <TableCell>
                             {unitServices.length > 0 ? (
                               <div className="flex items-center gap-1" title={serviceTypes.join(', ')}>
                                 <Badge 
@@ -2098,7 +2098,7 @@ export default function ExternalCondominiums() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="px-3 py-3 text-right">
+                          <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 size="icon"
