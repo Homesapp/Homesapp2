@@ -606,87 +606,264 @@ export default function ExternalMaintenance() {
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-5">
-            <Select 
-              value={statusFilter} 
-              onValueChange={(value) => {
-                setStatusFilter(value);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger data-testid="select-status">
-                <SelectValue placeholder={t.status} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.all}</SelectItem>
-                <SelectItem value="open">{statusColors.open.label[language]}</SelectItem>
-                <SelectItem value="in_progress">{statusColors.in_progress.label[language]}</SelectItem>
-                <SelectItem value="resolved">{statusColors.resolved.label[language]}</SelectItem>
-                <SelectItem value="closed">{statusColors.closed.label[language]}</SelectItem>
-                <SelectItem value="on_hold">{statusColors.on_hold.label[language]}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.status}</label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={statusFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-status-all"
+                >
+                  {t.all}
+                </Button>
+                <Button
+                  variant={statusFilter === "open" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("open");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-status-open"
+                >
+                  {statusColors.open.label[language]}
+                </Button>
+                <Button
+                  variant={statusFilter === "in_progress" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("in_progress");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-status-progress"
+                >
+                  {statusColors.in_progress.label[language]}
+                </Button>
+                <Button
+                  variant={statusFilter === "resolved" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("resolved");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-status-resolved"
+                >
+                  {statusColors.resolved.label[language]}
+                </Button>
+                <Button
+                  variant={statusFilter === "closed" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("closed");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-status-closed"
+                >
+                  {statusColors.closed.label[language]}
+                </Button>
+                <Button
+                  variant={statusFilter === "on_hold" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("on_hold");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-status-hold"
+                >
+                  {statusColors.on_hold.label[language]}
+                </Button>
+              </div>
+            </div>
 
-            <Select 
-              value={priorityFilter} 
-              onValueChange={(value) => {
-                setPriorityFilter(value);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger data-testid="select-priority">
-                <SelectValue placeholder={t.priority} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.all}</SelectItem>
-                <SelectItem value="low">{priorityColors.low.label[language]}</SelectItem>
-                <SelectItem value="medium">{priorityColors.medium.label[language]}</SelectItem>
-                <SelectItem value="high">{priorityColors.high.label[language]}</SelectItem>
-                <SelectItem value="urgent">{priorityColors.urgent.label[language]}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.priority}</label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={priorityFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPriorityFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-priority-all"
+                >
+                  {t.all}
+                </Button>
+                <Button
+                  variant={priorityFilter === "low" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPriorityFilter("low");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-priority-low"
+                >
+                  {priorityColors.low.label[language]}
+                </Button>
+                <Button
+                  variant={priorityFilter === "medium" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPriorityFilter("medium");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-priority-medium"
+                >
+                  {priorityColors.medium.label[language]}
+                </Button>
+                <Button
+                  variant={priorityFilter === "high" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPriorityFilter("high");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-priority-high"
+                >
+                  {priorityColors.high.label[language]}
+                </Button>
+                <Button
+                  variant={priorityFilter === "urgent" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setPriorityFilter("urgent");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-priority-urgent"
+                >
+                  {priorityColors.urgent.label[language]}
+                </Button>
+              </div>
+            </div>
 
-            <Select 
-              value={categoryFilter} 
-              onValueChange={(value) => {
-                setCategoryFilter(value);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger data-testid="select-category">
-                <SelectValue placeholder={t.category} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.all}</SelectItem>
-                <SelectItem value="plumbing">{categoryLabels.plumbing[language]}</SelectItem>
-                <SelectItem value="electrical">{categoryLabels.electrical[language]}</SelectItem>
-                <SelectItem value="appliances">{categoryLabels.appliances[language]}</SelectItem>
-                <SelectItem value="hvac">{categoryLabels.hvac[language]}</SelectItem>
-                <SelectItem value="general">{categoryLabels.general[language]}</SelectItem>
-                <SelectItem value="emergency">{categoryLabels.emergency[language]}</SelectItem>
-                <SelectItem value="other">{categoryLabels.other[language]}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.category}</label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={categoryFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-all"
+                >
+                  {t.all}
+                </Button>
+                <Button
+                  variant={categoryFilter === "plumbing" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("plumbing");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-plumbing"
+                >
+                  {categoryLabels.plumbing[language]}
+                </Button>
+                <Button
+                  variant={categoryFilter === "electrical" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("electrical");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-electrical"
+                >
+                  {categoryLabels.electrical[language]}
+                </Button>
+                <Button
+                  variant={categoryFilter === "appliances" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("appliances");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-appliances"
+                >
+                  {categoryLabels.appliances[language]}
+                </Button>
+                <Button
+                  variant={categoryFilter === "hvac" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("hvac");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-hvac"
+                >
+                  {categoryLabels.hvac[language]}
+                </Button>
+                <Button
+                  variant={categoryFilter === "general" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("general");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-general"
+                >
+                  {categoryLabels.general[language]}
+                </Button>
+                <Button
+                  variant={categoryFilter === "emergency" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("emergency");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-emergency"
+                >
+                  {categoryLabels.emergency[language]}
+                </Button>
+                <Button
+                  variant={categoryFilter === "other" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("other");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-category-other"
+                >
+                  {categoryLabels.other[language]}
+                </Button>
+              </div>
+            </div>
 
-            <Select 
-              value={condominiumFilter} 
-              onValueChange={(value) => {
-                setCondominiumFilter(value);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger data-testid="select-condominium">
-                <SelectValue placeholder={t.condominium} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.all}</SelectItem>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.condominium}</label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={condominiumFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setCondominiumFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  data-testid="button-filter-condo-all"
+                >
+                  {t.all}
+                </Button>
                 {condominiums?.map(condo => (
-                  <SelectItem key={condo.id} value={condo.id}>
+                  <Button
+                    key={condo.id}
+                    variant={condominiumFilter === condo.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setCondominiumFilter(condo.id);
+                      setCurrentPage(1);
+                    }}
+                    data-testid={`button-filter-condo-${condo.id}`}
+                  >
                     {condo.name}
-                  </SelectItem>
+                  </Button>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            </div>
 
             <Button 
               variant="outline" 

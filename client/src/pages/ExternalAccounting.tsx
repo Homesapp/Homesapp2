@@ -891,114 +891,285 @@ export default function ExternalAccounting() {
 
         {filtersExpanded && (
           <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.direction}</label>
-                  <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                    <SelectTrigger data-testid="select-direction-filter">
-                      <SelectValue placeholder={t.direction} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      <SelectItem value="inflow">{t.inflow}</SelectItem>
-                      <SelectItem value="outflow">{t.outflow}</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.direction}</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={directionFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDirectionFilter("all")}
+                    data-testid="button-filter-direction-all"
+                  >
+                    {t.all}
+                  </Button>
+                  <Button
+                    variant={directionFilter === "inflow" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDirectionFilter("inflow")}
+                    data-testid="button-filter-direction-inflow"
+                  >
+                    {t.inflow}
+                  </Button>
+                  <Button
+                    variant={directionFilter === "outflow" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDirectionFilter("outflow")}
+                    data-testid="button-filter-direction-outflow"
+                  >
+                    {t.outflow}
+                  </Button>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.category}</label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger data-testid="select-category-filter">
-                      <SelectValue placeholder={t.category} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      <SelectItem value="rent_income">{t.rent_income}</SelectItem>
-                      <SelectItem value="rent_payout">{t.rent_payout}</SelectItem>
-                      <SelectItem value="hoa_fee">{t.hoa_fee}</SelectItem>
-                      <SelectItem value="maintenance_charge">{t.maintenance_charge}</SelectItem>
-                      <SelectItem value="service_electricity">{t.service_electricity}</SelectItem>
-                      <SelectItem value="service_water">{t.service_water}</SelectItem>
-                      <SelectItem value="service_internet">{t.service_internet}</SelectItem>
-                      <SelectItem value="service_gas">{t.service_gas}</SelectItem>
-                      <SelectItem value="service_other">{t.service_other}</SelectItem>
-                      <SelectItem value="adjustment">{t.adjustment}</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.category}</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={categoryFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("all")}
+                    data-testid="button-filter-category-all"
+                  >
+                    {t.all}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "rent_income" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("rent_income")}
+                    data-testid="button-filter-category-rent-income"
+                  >
+                    {t.rent_income}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "rent_payout" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("rent_payout")}
+                    data-testid="button-filter-category-rent-payout"
+                  >
+                    {t.rent_payout}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "hoa_fee" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("hoa_fee")}
+                    data-testid="button-filter-category-hoa-fee"
+                  >
+                    {t.hoa_fee}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "maintenance_charge" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("maintenance_charge")}
+                    data-testid="button-filter-category-maintenance"
+                  >
+                    {t.maintenance_charge}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "service_electricity" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("service_electricity")}
+                    data-testid="button-filter-category-electricity"
+                  >
+                    {t.service_electricity}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "service_water" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("service_water")}
+                    data-testid="button-filter-category-water"
+                  >
+                    {t.service_water}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "service_internet" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("service_internet")}
+                    data-testid="button-filter-category-internet"
+                  >
+                    {t.service_internet}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "service_gas" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("service_gas")}
+                    data-testid="button-filter-category-gas"
+                  >
+                    {t.service_gas}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "service_other" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("service_other")}
+                    data-testid="button-filter-category-service-other"
+                  >
+                    {t.service_other}
+                  </Button>
+                  <Button
+                    variant={categoryFilter === "adjustment" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter("adjustment")}
+                    data-testid="button-filter-category-adjustment"
+                  >
+                    {t.adjustment}
+                  </Button>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.status}</label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger data-testid="select-status-filter">
-                      <SelectValue placeholder={t.status} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      <SelectItem value="pending">{t.pending}</SelectItem>
-                      <SelectItem value="posted">{t.posted}</SelectItem>
-                      <SelectItem value="reconciled">{t.reconciled}</SelectItem>
-                      <SelectItem value="cancelled">{t.cancelled}</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.status}</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={statusFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("all")}
+                    data-testid="button-filter-status-all"
+                  >
+                    {t.all}
+                  </Button>
+                  <Button
+                    variant={statusFilter === "pending" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("pending")}
+                    data-testid="button-filter-status-pending"
+                  >
+                    {t.pending}
+                  </Button>
+                  <Button
+                    variant={statusFilter === "posted" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("posted")}
+                    data-testid="button-filter-status-posted"
+                  >
+                    {t.posted}
+                  </Button>
+                  <Button
+                    variant={statusFilter === "reconciled" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("reconciled")}
+                    data-testid="button-filter-status-reconciled"
+                  >
+                    {t.reconciled}
+                  </Button>
+                  <Button
+                    variant={statusFilter === "cancelled" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("cancelled")}
+                    data-testid="button-filter-status-cancelled"
+                  >
+                    {t.cancelled}
+                  </Button>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.condominium}</label>
-                  <Select value={condominiumFilter} onValueChange={setCondominiumFilter}>
-                    <SelectTrigger data-testid="select-condominium-filter">
-                      <SelectValue placeholder={t.condominium} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      {condominiums?.map((condo) => (
-                        <SelectItem key={condo.id} value={condo.id}>
-                          {condo.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.condominium}</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={condominiumFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCondominiumFilter("all")}
+                    data-testid="button-filter-condo-all"
+                  >
+                    {t.all}
+                  </Button>
+                  {condominiums?.map((condo) => (
+                    <Button
+                      key={condo.id}
+                      variant={condominiumFilter === condo.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCondominiumFilter(condo.id)}
+                      data-testid={`button-filter-condo-${condo.id}`}
+                    >
+                      {condo.name}
+                    </Button>
+                  ))}
                 </div>
+              </div>
 
+              {condominiumFilter !== "all" && units && units.length > 0 && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t.unit}</label>
-                  <Select value={unitFilter} onValueChange={setUnitFilter}>
-                    <SelectTrigger data-testid="select-unit-filter">
-                      <SelectValue placeholder={t.unit} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      {units?.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {unit.unitNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={unitFilter === "all" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setUnitFilter("all")}
+                      data-testid="button-filter-unit-all"
+                    >
+                      {t.all}
+                    </Button>
+                    {units?.map((unit) => (
+                      <Button
+                        key={unit.id}
+                        variant={unitFilter === unit.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setUnitFilter(unit.id)}
+                        data-testid={`button-filter-unit-${unit.id}`}
+                      >
+                        {unit.unitNumber}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.dateRange}</label>
-                  <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger data-testid="select-date-filter">
-                      <SelectValue placeholder={t.dateRange} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      <SelectItem value="this_month">{t.thisMonth}</SelectItem>
-                      <SelectItem value="last_3_months">{t.last3Months}</SelectItem>
-                      <SelectItem value="last_6_months">{t.last6Months}</SelectItem>
-                      <SelectItem value="this_year">{t.thisYear}</SelectItem>
-                      <SelectItem value="custom">{t.customRange}</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.dateRange}</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={dateFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("all")}
+                    data-testid="button-filter-date-all"
+                  >
+                    {t.all}
+                  </Button>
+                  <Button
+                    variant={dateFilter === "this_month" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("this_month")}
+                    data-testid="button-filter-date-month"
+                  >
+                    {t.thisMonth}
+                  </Button>
+                  <Button
+                    variant={dateFilter === "last_3_months" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("last_3_months")}
+                    data-testid="button-filter-date-3months"
+                  >
+                    {t.last3Months}
+                  </Button>
+                  <Button
+                    variant={dateFilter === "last_6_months" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("last_6_months")}
+                    data-testid="button-filter-date-6months"
+                  >
+                    {t.last6Months}
+                  </Button>
+                  <Button
+                    variant={dateFilter === "this_year" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("this_year")}
+                    data-testid="button-filter-date-year"
+                  >
+                    {t.thisYear}
+                  </Button>
+                  <Button
+                    variant={dateFilter === "custom" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("custom")}
+                    data-testid="button-filter-date-custom"
+                  >
+                    {t.customRange}
+                  </Button>
                 </div>
               </div>
 
               {dateFilter === "custom" && (
-                <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t.startDate}</label>
                     <Input
