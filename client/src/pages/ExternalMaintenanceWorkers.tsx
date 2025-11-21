@@ -573,53 +573,52 @@ export default function ExternalMaintenanceWorkers() {
                           
                           return (
                             <AccordionItem key={condo.id} value={condo.id} data-testid={`accordion-condo-${condo.id}`}>
-                              <AccordionTrigger className="hover:no-underline py-3">
-                                <div className="flex items-center justify-between flex-1 pr-4">
-                                  <div className="flex items-center gap-3">
-                                    <FormField
-                                      control={form.control}
-                                      name="condominiumIds"
-                                      render={({ field }) => (
-                                        <FormControl>
-                                          <Checkbox
-                                            checked={isCondoSelected}
-                                            onCheckedChange={(checked) => {
-                                              if (checked) {
-                                                field.onChange([...(field.value || []), condo.id]);
-                                              } else {
-                                                field.onChange(field.value?.filter((value) => value !== condo.id));
-                                                // Also clear the allUnitsPerCondo flag for this condo
-                                                const currentAllUnits = form.getValues("allUnitsPerCondo") || {};
-                                                form.setValue("allUnitsPerCondo", {
-                                                  ...currentAllUnits,
-                                                  [condo.id]: false,
-                                                });
-                                              }
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                            data-testid={`checkbox-condo-${condo.id}`}
-                                          />
-                                        </FormControl>
-                                      )}
-                                    />
+                              <div className="flex items-center gap-3 py-3">
+                                <FormField
+                                  control={form.control}
+                                  name="condominiumIds"
+                                  render={({ field }) => (
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={isCondoSelected}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            field.onChange([...(field.value || []), condo.id]);
+                                          } else {
+                                            field.onChange(field.value?.filter((value) => value !== condo.id));
+                                            // Also clear the allUnitsPerCondo flag for this condo
+                                            const currentAllUnits = form.getValues("allUnitsPerCondo") || {};
+                                            form.setValue("allUnitsPerCondo", {
+                                              ...currentAllUnits,
+                                              [condo.id]: false,
+                                            });
+                                          }
+                                        }}
+                                        data-testid={`checkbox-condo-${condo.id}`}
+                                      />
+                                    </FormControl>
+                                  )}
+                                />
+                                <AccordionTrigger className="hover:no-underline flex-1">
+                                  <div className="flex items-center justify-between flex-1 pr-4">
                                     <div className="flex flex-col items-start">
                                       <span className="font-medium text-sm">{condo.name}</span>
                                       <span className="text-xs text-muted-foreground">
                                         {condoUnits.length} {language === "es" ? "unidades" : "units"}
                                       </span>
                                     </div>
+                                    {(isCondoSelected || condoSelectedUnitsCount > 0) && (
+                                      <Badge variant="secondary" className="ml-2">
+                                        {allUnitsSelected 
+                                          ? `${condoUnits.length} ${language === "es" ? "unidades" : "units"}`
+                                          : condoSelectedUnitsCount > 0
+                                            ? `${condoSelectedUnitsCount} ${language === "es" ? "unidades" : "units"}`
+                                            : language === "es" ? "Condominio" : "Condominium"}
+                                      </Badge>
+                                    )}
                                   </div>
-                                  {(isCondoSelected || condoSelectedUnitsCount > 0) && (
-                                    <Badge variant="secondary" className="ml-2">
-                                      {allUnitsSelected 
-                                        ? `${condoUnits.length} ${language === "es" ? "unidades" : "units"}`
-                                        : condoSelectedUnitsCount > 0
-                                          ? `${condoSelectedUnitsCount} ${language === "es" ? "unidades" : "units"}`
-                                          : language === "es" ? "Condominio" : "Condominium"}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </AccordionTrigger>
+                                </AccordionTrigger>
+                              </div>
                               <AccordionContent className="pb-4">
                                 <div className="space-y-3 pl-8">
                                   {/* All Units Toggle */}
