@@ -1335,183 +1335,183 @@ export default function ExternalAccounting() {
               </CardContent>
             </Card>
           ) : viewMode === "cards" ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sortedAndFilteredTransactions.map((transaction) => (
-                <Card key={transaction.id} className="hover-elevate" data-testid={`card-transaction-${transaction.id}`}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div className="flex items-center gap-2">
-                      {getCategoryIcon(transaction.category)}
-                      <span className="font-semibold text-sm">{getCategoryLabel(transaction.category)}</span>
-                    </div>
-                    {getDirectionBadge(transaction.direction)}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="text-2xl font-bold">
-                        {formatCurrency(transaction.netAmount)}
+            <>
+              <ExternalPaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                language={language}
+                testIdPrefix="accounting-cards"
+              />
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {paginatedTransactions.map((transaction) => (
+                  <Card key={transaction.id} className="hover-elevate" data-testid={`card-transaction-${transaction.id}`}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                      <div className="flex items-center gap-2">
+                        {getCategoryIcon(transaction.category)}
+                        <span className="text-sm">{getCategoryLabel(transaction.category)}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1 truncate">
-                        {transaction.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        {formatDate(transaction.dueDate)}
+                      {getDirectionBadge(transaction.direction)}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <div className="text-2xl font-bold">
+                          {formatCurrency(transaction.netAmount)}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1 truncate">
+                          {transaction.description}
+                        </p>
                       </div>
-                      {getStatusBadge(transaction.status)}
-                    </div>
 
-                    <Separator />
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {formatDate(transaction.dueDate)}
+                        </div>
+                        {getStatusBadge(transaction.status)}
+                      </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleViewDetails(transaction)}
-                        data-testid={`button-view-details-${transaction.id}`}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        {t.viewDetails}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(transaction)}
-                        data-testid={`button-edit-${transaction.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {transaction.status !== 'cancelled' && (
+                      <Separator />
+
+                      <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleCancel(transaction)}
-                          data-testid={`button-cancel-${transaction.id}`}
+                          className="flex-1"
+                          onClick={() => handleViewDetails(transaction)}
+                          data-testid={`button-view-details-${transaction.id}`}
                         >
-                          <XCircle className="h-4 w-4" />
+                          <Eye className="h-4 w-4 mr-1" />
+                          {t.viewDetails}
                         </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(transaction)}
+                          data-testid={`button-edit-${transaction.id}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {transaction.status !== 'cancelled' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancel(transaction)}
+                            data-testid={`button-cancel-${transaction.id}`}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
-            <Card>
-              <CardContent className="p-0">
-                <div className="p-4">
-                  <ExternalPaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    language={language}
-                    testIdPrefix="accounting-table"
-                  />
-                </div>
+            <>
+              <ExternalPaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                language={language}
+                testIdPrefix="accounting-table"
+              />
 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('dueDate')}>
-                          {t.dueDate} {getSortIcon('dueDate')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('direction')}>
-                          {t.direction} {getSortIcon('direction')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('category')}>
-                          {t.category} {getSortIcon('category')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('description')}>
-                          {t.description} {getSortIcon('description')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('payerRole')}>
-                          {t.payerRole} {getSortIcon('payerRole')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('payeeRole')}>
-                          {t.payeeRole} {getSortIcon('payeeRole')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('netAmount')}>
-                          {t.amount} {getSortIcon('netAmount')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('status')}>
-                          {t.status} {getSortIcon('status')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('paymentMethod')}>
-                          {t.paymentMethod} {getSortIcon('paymentMethod')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('paymentReference')}>
-                          {t.paymentReference} {getSortIcon('paymentReference')}
-                        </TableHead>
-                        <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('performedDate')}>
-                          {t.performedDate} {getSortIcon('performedDate')}
-                        </TableHead>
-                        <TableHead className="text-right">{t.actions}</TableHead>
+              <Card className="border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="h-10">
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('dueDate')}>
+                        {t.dueDate} {getSortIcon('dueDate')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('direction')}>
+                        {t.direction} {getSortIcon('direction')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('category')}>
+                        {t.category} {getSortIcon('category')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('description')}>
+                        {t.description} {getSortIcon('description')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('payerRole')}>
+                        {t.payerRole} {getSortIcon('payerRole')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('payeeRole')}>
+                        {t.payeeRole} {getSortIcon('payeeRole')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('netAmount')}>
+                        {t.amount} {getSortIcon('netAmount')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('status')}>
+                        {t.status} {getSortIcon('status')}
+                      </TableHead>
+                      <TableHead className="cursor-pointer hover:bg-muted text-sm" onClick={() => handleSort('performedDate')}>
+                        {t.performedDate} {getSortIcon('performedDate')}
+                      </TableHead>
+                      <TableHead className="text-right text-sm">{t.actions}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTransactions.map((transaction) => (
+                      <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
+                        <TableCell className="text-sm px-3 py-3">{formatDate(transaction.dueDate)}</TableCell>
+                        <TableCell className="text-sm px-3 py-3">{getDirectionBadge(transaction.direction)}</TableCell>
+                        <TableCell className="text-sm px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            {getCategoryIcon(transaction.category)}
+                            <Badge variant="outline">{getCategoryLabel(transaction.category)}</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-sm px-3 py-3">{transaction.description}</TableCell>
+                        <TableCell className="text-sm px-3 py-3"><Badge variant="outline">{getRoleLabel(transaction.payerRole)}</Badge></TableCell>
+                        <TableCell className="text-sm px-3 py-3"><Badge variant="outline">{getRoleLabel(transaction.payeeRole)}</Badge></TableCell>
+                        <TableCell className="text-sm px-3 py-3">
+                          {formatCurrency(transaction.netAmount)}
+                        </TableCell>
+                        <TableCell className="text-sm px-3 py-3">{getStatusBadge(transaction.status)}</TableCell>
+                        <TableCell className="text-sm px-3 py-3">{formatDate(transaction.performedDate)}</TableCell>
+                        <TableCell className="text-right text-sm px-3 py-3">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewDetails(transaction)}
+                              data-testid={`button-view-details-${transaction.id}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(transaction)}
+                              data-testid={`button-edit-${transaction.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            {transaction.status !== 'cancelled' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleCancel(transaction)}
+                                data-testid={`button-cancel-${transaction.id}`}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedTransactions.map((transaction) => (
-                        <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
-                          <TableCell>{formatDate(transaction.dueDate)}</TableCell>
-                          <TableCell>{getDirectionBadge(transaction.direction)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getCategoryIcon(transaction.category)}
-                              <Badge variant="outline">{getCategoryLabel(transaction.category)}</Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
-                          <TableCell><Badge variant="outline">{getRoleLabel(transaction.payerRole)}</Badge></TableCell>
-                          <TableCell><Badge variant="outline">{getRoleLabel(transaction.payeeRole)}</Badge></TableCell>
-                          <TableCell className="font-semibold">
-                            {formatCurrency(transaction.netAmount)}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                          <TableCell>{transaction.paymentMethod || 'N/A'}</TableCell>
-                          <TableCell>{transaction.paymentReference || 'N/A'}</TableCell>
-                          <TableCell>{formatDate(transaction.performedDate)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleViewDetails(transaction)}
-                                data-testid={`button-view-details-${transaction.id}`}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEdit(transaction)}
-                                data-testid={`button-edit-${transaction.id}`}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              {transaction.status !== 'cancelled' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleCancel(transaction)}
-                                  data-testid={`button-cancel-${transaction.id}`}
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </>
           )}
         </TabsContent>
 
