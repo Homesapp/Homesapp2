@@ -732,7 +732,7 @@ export default function ExternalOwnerPortfolio() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {/* Search Input - Always visible */}
-            <div className="relative flex-1 sm:max-w-md">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t.search}
@@ -743,18 +743,18 @@ export default function ExternalOwnerPortfolio() {
               />
             </div>
 
-            {/* Filter Button with Popover */}
+            {/* Filter Button with Popover - Icon only */}
             <Popover open={showFilters} onOpenChange={setShowFilters}>
               <PopoverTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="flex-shrink-0"
+                  size="icon"
+                  className="flex-shrink-0 relative"
                   data-testid="button-filters"
                 >
-                  <Filter className="h-4 w-4 mr-2" />
-                  {language === 'es' ? 'Filtros' : 'Filters'}
+                  <Filter className="h-4 w-4" />
                   {hasActiveFilters && (
-                    <Badge variant="default" className="ml-2 h-5 px-1 text-xs">
+                    <Badge variant="default" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                       {[minUnits > 0, minOccupancy > 0, selectedCondominium !== null, selectedUnit !== null].filter(Boolean).length}
                     </Badge>
                   )}
@@ -882,37 +882,39 @@ export default function ExternalOwnerPortfolio() {
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* View Mode Toggle - Desktop only */}
+            {!isMobile && (
+              <>
+                <Button
+                  variant={viewMode === "cards" ? "default" : "outline"}
+                  size="icon"
+                  className="flex-shrink-0"
+                  onClick={() => {
+                    setViewMode("cards");
+                    setManualViewModeOverride(false);
+                  }}
+                  data-testid="button-owners-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "outline"}
+                  size="icon"
+                  className="flex-shrink-0"
+                  onClick={() => {
+                    setViewMode("table");
+                    setManualViewModeOverride(true);
+                  }}
+                  data-testid="button-owners-view-table"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      {/* View Mode Toggle - Desktop only */}
-      {!isMobile && (
-        <div className="flex justify-end gap-2">
-          <Button
-            variant={viewMode === "cards" ? "default" : "outline"}
-            size="icon"
-            onClick={() => {
-              setViewMode("cards");
-              setManualViewModeOverride(false);
-            }}
-            data-testid="button-owners-view-cards"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "table" ? "default" : "outline"}
-            size="icon"
-            onClick={() => {
-              setViewMode("table");
-              setManualViewModeOverride(true);
-            }}
-            data-testid="button-owners-view-table"
-          >
-            <TableIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
 
       {/* Owners Table */}
       <Card>
