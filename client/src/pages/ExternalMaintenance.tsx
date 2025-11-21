@@ -211,6 +211,9 @@ export default function ExternalMaintenance() {
   // Photo upload states
   const [ticketPhotos, setTicketPhotos] = useState<ExternalMaintenancePhoto[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [selectedPhotoPhase, setSelectedPhotoPhase] = useState<"before" | "during" | "after" | "other">("before");
+  const [editingPhotoPhase, setEditingPhotoPhase] = useState<{ photoId: string; currentPhase: string } | null>(null);
+  const [showPhotoPhaseDialog, setShowPhotoPhaseDialog] = useState(false);
   
   // Auto-switch view mode on genuine breakpoint transitions
   useEffect(() => {
@@ -469,6 +472,17 @@ export default function ExternalMaintenance() {
     return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
   };
 
+  // Helper to translate photo phases
+  const getPhaseLabel = (phase: string) => {
+    const labels: Record<string, { es: string; en: string }> = {
+      before: { es: 'Antes', en: 'Before' },
+      during: { es: 'Durante', en: 'During' },
+      after: { es: 'Después', en: 'After' },
+      other: { es: 'Otro', en: 'Other' },
+    };
+    return language === 'es' ? labels[phase]?.es || phase : labels[phase]?.en || phase;
+  };
+
   // Photo management functions
   const loadPhotos = async (ticketId: string) => {
     try {
@@ -508,7 +522,7 @@ export default function ExternalMaintenance() {
       const photoData = {
         ticketId: editingTicket.id,
         storageKey: url,
-        phase: 'other' as const,
+        phase: selectedPhotoPhase,
         uploadedBy: user?.id || '',
       };
       
@@ -553,12 +567,42 @@ export default function ExternalMaintenance() {
     }
   };
 
+  const handleUpdatePhotoPhase = async (photoId: string, newPhase: string) => {
+    try {
+      await apiRequest('PATCH', `/api/external-maintenance-photos/${photoId}`, { phase: newPhase });
+      
+      // Update local state
+      setTicketPhotos(prev => prev.map(p => p.id === photoId ? { ...p, phase: newPhase as any } : p));
+      setEditingPhotoPhase(null);
+      setShowPhotoPhaseDialog(false);
+      
+      toast({
+        title: language === "es" ? "Fase actualizada" : "Phase updated",
+        description: language === "es" ? "La fase de la foto se actualizó exitosamente" : "Photo phase updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error?.message || (language === "es" ? "No se pudo actualizar la fase" : "Failed to update phase"),
+        variant: "destructive",
+      });
+    }
+  };
+
   // Load photos when edit dialog opens
   useEffect(() => {
     if (showEditDialog && editingTicket) {
       loadPhotos(editingTicket.id);
+      // Reset photo phase to default when opening ticket
+      setSelectedPhotoPhase("before");
+      setEditingPhotoPhase(null);
+      setShowPhotoPhaseDialog(false);
     } else if (!showEditDialog) {
       setTicketPhotos([]);
+      // Reset photo phase when closing dialog
+      setSelectedPhotoPhase("before");
+      setEditingPhotoPhase(null);
+      setShowPhotoPhaseDialog(false);
     }
   }, [showEditDialog, editingTicket]);
 
@@ -1885,31 +1929,52 @@ export default function ExternalMaintenance() {
 
               {/* Photos Section */}
               <div className="space-y-3 border-t pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
                   <label className="text-sm font-medium">
                     {language === 'es' ? 'Fotos' : 'Photos'}
                   </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingPhoto}
-                    onClick={() => document.getElementById('photo-upload')?.click()}
-                    data-testid="button-upload-photo"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploadingPhoto 
-                      ? (language === 'es' ? 'Subiendo...' : 'Uploading...') 
-                      : (language === 'es' ? 'Subir foto' : 'Upload photo')}
-                  </Button>
-                  <input
-                    id="photo-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoUpload}
-                    disabled={uploadingPhoto}
-                  />
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Select value={selectedPhotoPhase} onValueChange={(value: any) => setSelectedPhotoPhase(value)}>
+                      <SelectTrigger className="w-[140px]" data-testid="select-photo-phase">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="before">
+                          {language === 'es' ? 'Antes' : 'Before'}
+                        </SelectItem>
+                        <SelectItem value="during">
+                          {language === 'es' ? 'Durante' : 'During'}
+                        </SelectItem>
+                        <SelectItem value="after">
+                          {language === 'es' ? 'Después' : 'After'}
+                        </SelectItem>
+                        <SelectItem value="other">
+                          {language === 'es' ? 'Otro' : 'Other'}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingPhoto}
+                      onClick={() => document.getElementById('photo-upload')?.click()}
+                      data-testid="button-upload-photo"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {uploadingPhoto 
+                        ? (language === 'es' ? 'Subiendo...' : 'Uploading...') 
+                        : (language === 'es' ? 'Subir foto' : 'Upload photo')}
+                    </Button>
+                    <input
+                      id="photo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={uploadingPhoto}
+                    />
+                  </div>
                 </div>
 
                 {ticketPhotos.length > 0 ? (
@@ -1925,15 +1990,31 @@ export default function ExternalMaintenance() {
                           alt={photo.caption || 'Maintenance photo'}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {/* Phase Badge - clickable to edit */}
+                        <Badge 
+                          variant="secondary" 
+                          className="absolute top-2 left-2 text-xs cursor-pointer hover-elevate"
+                          onClick={() => {
+                            setEditingPhotoPhase({ photoId: photo.id, currentPhase: photo.phase });
+                            setShowPhotoPhaseDialog(true);
+                          }}
+                          data-testid={`badge-photo-phase-${photo.id}`}
+                          title={language === 'es' ? 'Clic para editar fase' : 'Click to edit phase'}
+                        >
+                          {getPhaseLabel(photo.phase)}
+                        </Badge>
+                        {/* Action button - always visible on mobile, hover on desktop */}
+                        <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <Button
                             type="button"
                             variant="destructive"
                             size="icon"
+                            className="h-8 w-8"
                             onClick={() => handleDeletePhoto(photo.id)}
                             data-testid={`button-delete-photo-${photo.id}`}
+                            title={language === 'es' ? 'Eliminar foto' : 'Delete photo'}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
@@ -1973,6 +2054,75 @@ export default function ExternalMaintenance() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Photo Phase Dialog */}
+      <Dialog open={showPhotoPhaseDialog} onOpenChange={(open) => {
+        setShowPhotoPhaseDialog(open);
+        if (!open) setEditingPhotoPhase(null);
+      }}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-edit-photo-phase">
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'es' ? 'Editar Fase de Foto' : 'Edit Photo Phase'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === 'es' ? 'Seleccionar Fase' : 'Select Phase'}
+              </label>
+              <Select 
+                value={editingPhotoPhase?.currentPhase || 'other'} 
+                onValueChange={(value) => 
+                  setEditingPhotoPhase(prev => prev ? { ...prev, currentPhase: value } : null)
+                }
+              >
+                <SelectTrigger data-testid="select-edit-photo-phase">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="before">
+                    {language === 'es' ? 'Antes' : 'Before'}
+                  </SelectItem>
+                  <SelectItem value="during">
+                    {language === 'es' ? 'Durante' : 'During'}
+                  </SelectItem>
+                  <SelectItem value="after">
+                    {language === 'es' ? 'Después' : 'After'}
+                  </SelectItem>
+                  <SelectItem value="other">
+                    {language === 'es' ? 'Otro' : 'Other'}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setEditingPhotoPhase(null);
+                setShowPhotoPhaseDialog(false);
+              }}
+              data-testid="button-cancel-edit-phase"
+            >
+              {language === 'es' ? 'Cancelar' : 'Cancel'}
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => {
+                if (editingPhotoPhase) {
+                  handleUpdatePhotoPhase(editingPhotoPhase.photoId, editingPhotoPhase.currentPhase);
+                }
+              }}
+              data-testid="button-save-edit-phase"
+            >
+              {language === 'es' ? 'Guardar' : 'Save'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

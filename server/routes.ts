@@ -21929,6 +21929,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/external-maintenance-photos/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify photo exists and belongs to user's agency
+      const photo = await storage.getExternalMaintenancePhoto(id);
+      if (!photo) {
+        return res.status(404).json({ message: "Photo not found" });
+      }
+      
+      // Verify ticket ownership through photo
+      const ticket = await storage.getExternalMaintenanceTicket(photo.ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Associated ticket not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, ticket.agencyId);
+      if (!hasAccess) return;
+      
+      // Validate only phase and caption can be updated
+      const updateSchema = z.object({
+        phase: z.enum(["before", "during", "after", "other"]).optional(),
+        caption: z.string().optional(),
+      });
+      
+      const validated = updateSchema.parse(req.body);
+      const updatedPhoto = await storage.updateExternalMaintenancePhoto(id, validated);
+      
+      await createAuditLog(req, "update", "external_ticket_photo", id, `Updated maintenance photo`);
+      res.json(updatedPhoto);
+    } catch (error: any) {
+      console.error("Error updating external maintenance photo:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
   app.delete("/api/external-maintenance-photos/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;

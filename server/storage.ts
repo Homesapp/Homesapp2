@@ -1200,7 +1200,9 @@ export interface IStorage {
   
   // External Maintenance Photos
   getExternalMaintenancePhotos(ticketId: string, filters?: { phase?: string; updateId?: string }): Promise<ExternalMaintenancePhoto[]>;
+  getExternalMaintenancePhoto(id: string): Promise<ExternalMaintenancePhoto | undefined>;
   createExternalMaintenancePhoto(photo: InsertExternalMaintenancePhoto): Promise<ExternalMaintenancePhoto>;
+  updateExternalMaintenancePhoto(id: string, updates: Partial<Pick<InsertExternalMaintenancePhoto, 'phase' | 'caption'>>): Promise<ExternalMaintenancePhoto>;
   deleteExternalMaintenancePhoto(id: string): Promise<void>;
 
   // External Management System - Condominium operations
@@ -8159,6 +8161,30 @@ export class DatabaseStorage implements IStorage {
       .values(photo)
       .returning();
     return newPhoto;
+  }
+
+  async getExternalMaintenancePhoto(id: string): Promise<ExternalMaintenancePhoto | undefined> {
+    const [result] = await db.select()
+      .from(externalMaintenancePhotos)
+      .where(eq(externalMaintenancePhotos.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async updateExternalMaintenancePhoto(
+    id: string,
+    updates: Partial<Pick<InsertExternalMaintenancePhoto, 'phase' | 'caption'>>
+  ): Promise<ExternalMaintenancePhoto> {
+    const [result] = await db.update(externalMaintenancePhotos)
+      .set(updates)
+      .where(eq(externalMaintenancePhotos.id, id))
+      .returning();
+    
+    if (!result) {
+      throw new Error("Photo not found");
+    }
+    
+    return result;
   }
 
   async deleteExternalMaintenancePhoto(id: string): Promise<void> {
