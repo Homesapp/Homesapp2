@@ -1269,11 +1269,14 @@ export default function ExternalAccounting() {
                 </PopoverContent>
               </Popover>
               
-              {/* HOY Button - Navigate to Receivables Tab */}
+              {/* HOY Button - Filter Today's Transactions */}
               <Button
-                variant="outline"
+                variant={dateFilter === "today" ? "default" : "outline"}
                 className="flex-shrink-0"
-                onClick={() => setActiveTab("receivables")}
+                onClick={() => {
+                  setDateFilter(dateFilter === "today" ? "all" : "today");
+                  setCurrentPage(1);
+                }}
                 data-testid="button-today"
               >
                 <Calendar className="h-4 w-4 mr-2" />
