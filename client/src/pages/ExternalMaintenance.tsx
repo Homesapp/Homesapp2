@@ -1254,7 +1254,7 @@ export default function ExternalMaintenance() {
         </Card>
       ) : viewMode === "cards" ? (
             // Cards View
-            <div>
+            <div className="p-6">
               <ExternalPaginationControls
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -1267,9 +1267,6 @@ export default function ExternalMaintenance() {
                 language={language}
                 testIdPrefix="cards"
               />
-
-              {/* Space between pagination and content */}
-              <div className="h-4" />
 
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedTickets.map(ticket => {
@@ -1355,9 +1352,6 @@ export default function ExternalMaintenance() {
                 language={language}
                 testIdPrefix="table"
               />
-
-              {/* Space between pagination and table */}
-              <div className="h-4" />
 
               <Card>
                 <div className="overflow-x-auto">
