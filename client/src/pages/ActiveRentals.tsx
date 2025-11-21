@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Home, DollarSign, Wrench, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Upload, X, MessageSquare, Send, ExternalLink, Zap, Droplet, Wifi, Flame, Eye, FileText, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, DollarSign, Wrench, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Upload, X, MessageSquare, Send, ExternalLink, Zap, Droplet, Wifi, Flame, Eye, FileText, ArrowUpDown, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useForm } from "react-hook-form";
@@ -114,11 +114,23 @@ export default function ActiveRentals() {
   const [maintenancePerPage, setMaintenancePerPage] = useState(10);
   const [maintenanceSortColumn, setMaintenanceSortColumn] = useState<string>("createdAt");
   const [maintenanceSortDirection, setMaintenanceSortDirection] = useState<"asc" | "desc">("desc");
+  const [showMaintenanceFilters, setShowMaintenanceFilters] = useState(false);
+
+  // Rentals table pagination & sorting
+  const [rentalsPage, setRentalsPage] = useState(1);
+  const [rentalsPerPage, setRentalsPerPage] = useState(10);
+  const [rentalsSortColumn, setRentalsSortColumn] = useState<string>("condoName");
+  const [rentalsSortDirection, setRentalsSortDirection] = useState<"asc" | "desc">("asc");
 
   // Reset payments page when items per page changes
   useEffect(() => {
     setPaymentsPage(1);
   }, [paymentsPerPage]);
+
+  // Reset rentals page when data changes (useLayoutEffect for synchronous execution)
+  useLayoutEffect(() => {
+    setRentalsPage(1);
+  }, [rentals.length]);
   
   // Handler for service type change - resets page synchronously
   const handleServiceTypeChange = (serviceType: string) => {
@@ -130,6 +142,12 @@ export default function ActiveRentals() {
   const handleMaintenancePerPageChange = (value: string) => {
     setMaintenancePerPage(Number(value));
     setMaintenancePage(1);
+  };
+
+  // Handler for rentals per page change - resets page synchronously
+  const handleRentalsPerPageChange = (value: string) => {
+    setRentalsPerPage(Number(value));
+    setRentalsPage(1);
   };
 
   const isOwner = user?.role === "owner";
@@ -564,6 +582,64 @@ export default function ActiveRentals() {
     }
   };
 
+  // Sorted and paginated rentals
+  const sortedRentals = useMemo(() => {
+    if (!rentalsSortColumn) return rentals;
+
+    return [...rentals].sort((a, b) => {
+      let aVal: any = (a as any)[rentalsSortColumn];
+      let bVal: any = (b as any)[rentalsSortColumn];
+
+      // Handle date fields
+      if (rentalsSortColumn === 'contractStartDate' || rentalsSortColumn === 'contractEndDate') {
+        if (!aVal) return rentalsSortDirection === "asc" ? 1 : -1;
+        if (!bVal) return rentalsSortDirection === "asc" ? -1 : 1;
+        const aTime = new Date(aVal).getTime();
+        const bTime = new Date(bVal).getTime();
+        return rentalsSortDirection === "asc" ? aTime - bTime : bTime - aTime;
+      }
+
+      // Handle numeric fields
+      if (rentalsSortColumn === 'monthlyRent') {
+        const aNum = parseFloat(aVal || '0');
+        const bNum = parseFloat(bVal || '0');
+        return rentalsSortDirection === "asc" ? aNum - bNum : bNum - aNum;
+      }
+
+      // Handle string fields
+      if (typeof aVal === "string" || typeof bVal === "string") {
+        aVal = (aVal || '').toString().toLowerCase();
+        bVal = (bVal || '').toString().toLowerCase();
+      }
+
+      if (aVal < bVal) return rentalsSortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return rentalsSortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [rentals, rentalsSortColumn, rentalsSortDirection]);
+
+  const rentalsTotalPages = Math.ceil(sortedRentals.length / rentalsPerPage) || 1;
+  const paginatedRentals = sortedRentals.slice(
+    (rentalsPage - 1) * rentalsPerPage,
+    rentalsPage * rentalsPerPage
+  );
+
+  // Clamp rentals page if it exceeds total pages
+  useEffect(() => {
+    if (rentalsPage > rentalsTotalPages && rentalsTotalPages > 0) {
+      setRentalsPage(rentalsTotalPages);
+    }
+  }, [rentalsPage, rentalsTotalPages, sortedRentals.length, rentalsPerPage]);
+
+  const handleRentalsSort = (column: string) => {
+    if (rentalsSortColumn === column) {
+      setRentalsSortDirection(rentalsSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setRentalsSortColumn(column);
+      setRentalsSortDirection("asc");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -695,18 +771,207 @@ export default function ActiveRentals() {
           )}
         </TabsContent>
 
-        <TabsContent value="rentals" className="mt-6 space-y-6">
-          {rentals.length === 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("activeRentals.noRentals", "No tienes rentas activas")}</CardTitle>
-                <CardDescription>
-                  {t("activeRentals.noRentalsDesc", "Cuando tengas una propiedad rentada, aparecerá aquí")}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ) : (
-            <div className="space-y-6">
+        <TabsContent value="rentals" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("activeRentals.allRentals", "Todas las Rentas")}</CardTitle>
+              <CardDescription>
+                {t("activeRentals.allRentalsDesc", "Gestiona todos tus contratos de renta activos")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {rentalsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : rentals.length === 0 ? (
+                <p className="text-center text-secondary-foreground py-8">
+                  {t("activeRentals.noRentals", "No tienes rentas activas")}
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRentalsSort("condoName")}
+                            className="hover-elevate gap-1"
+                            data-testid="sort-condo"
+                          >
+                            {t("activeRentals.condominium", "Condominio")}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRentalsSort("unitNumber")}
+                            className="hover-elevate gap-1"
+                            data-testid="sort-unit"
+                          >
+                            {t("activeRentals.unit", "Unidad")}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRentalsSort("monthlyRent")}
+                            className="hover-elevate gap-1"
+                            data-testid="sort-rent"
+                          >
+                            {t("activeRentals.monthlyRent", "Renta Mensual")}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRentalsSort("contractStartDate")}
+                            className="hover-elevate gap-1"
+                            data-testid="sort-start-date"
+                          >
+                            {t("activeRentals.startDate", "Inicio")}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRentalsSort("contractEndDate")}
+                            className="hover-elevate gap-1"
+                            data-testid="sort-end-date"
+                          >
+                            {t("activeRentals.endDate", "Fin")}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRentalsSort("status")}
+                            className="hover-elevate gap-1"
+                            data-testid="sort-status"
+                          >
+                            {t("activeRentals.status", "Estado")}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("activeRentals.actions", "Acciones")}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedRentals.map((rental) => (
+                        <TableRow key={rental.id} data-testid={`row-rental-${rental.id}`}>
+                          <TableCell className="font-medium">
+                            {rental.condoName || "-"}
+                          </TableCell>
+                          <TableCell>
+                            {rental.unitNumber || "-"}
+                          </TableCell>
+                          <TableCell>
+                            ${rental.monthlyRent} MXN
+                          </TableCell>
+                          <TableCell className="text-secondary-foreground">
+                            {rental.contractStartDate ? format(new Date(rental.contractStartDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined }) : "-"}
+                          </TableCell>
+                          <TableCell className="text-secondary-foreground">
+                            {rental.contractEndDate ? format(new Date(rental.contractEndDate), "dd MMM yyyy", { locale: language === "es" ? es : undefined }) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={rental.status === "active" ? "default" : "secondary"}
+                              data-testid={`badge-status-${rental.id}`}
+                            >
+                              {rental.status === "active" ? t("activeRentals.active", "Activo") : rental.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedRental(rental.id)}
+                              data-testid={`button-view-rental-${rental.id}`}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              {t("activeRentals.view", "Ver")}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {language === "es" ? "Mostrar" : "Show"}
+                      </span>
+                      <Select
+                        value={String(rentalsPerPage)}
+                        onValueChange={handleRentalsPerPageChange}
+                      >
+                        <SelectTrigger className="w-20" data-testid="select-rentals-per-page">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="30">30</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">
+                        {language === "es" ? "por página" : "per page"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {language === "es" ? "Página" : "Page"} {rentalsPage} {language === "es" ? "de" : "of"} {rentalsTotalPages}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setRentalsPage(Math.max(1, rentalsPage - 1))}
+                          disabled={rentalsPage === 1}
+                          data-testid="button-rentals-prev-page"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setRentalsPage(Math.min(rentalsTotalPages, rentalsPage + 1))}
+                          disabled={rentalsPage === rentalsTotalPages}
+                          data-testid="button-rentals-next-page"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Detail view when a rental is selected */}
+          {selectedRental && rentals.length > 0 && (
+            <div className="space-y-6 mt-6">
 
       {/* Property Information */}
       {currentRental && (
@@ -1079,10 +1344,20 @@ export default function ActiveRentals() {
                     {t("activeRentals.maintenanceRequestsDesc", "Reporta problemas con la propiedad")}
                   </CardDescription>
                 </div>
-                <Button onClick={() => setShowMaintenanceDialog(true)} data-testid="button-new-maintenance-request">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("activeRentals.newRequest", "Nueva Solicitud")}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setShowMaintenanceFilters(!showMaintenanceFilters)}
+                    data-testid="button-toggle-maintenance-filters"
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                  <Button onClick={() => setShowMaintenanceDialog(true)} data-testid="button-new-maintenance-request">
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t("activeRentals.newRequest", "Nueva Solicitud")}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
