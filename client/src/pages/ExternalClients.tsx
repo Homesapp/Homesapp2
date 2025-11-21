@@ -211,11 +211,8 @@ export default function ExternalClients() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ClientFormData) => {
-      console.log("Creating client with data:", data);
-      return await apiRequest("/api/external-clients", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest("POST", "/api/external-clients", data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-clients"] });
@@ -241,10 +238,8 @@ export default function ExternalClients() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: EditClientFormData }) => {
-      return await apiRequest(`/api/external-clients/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest("PATCH", `/api/external-clients/${id}`, data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-clients"] });
@@ -271,9 +266,7 @@ export default function ExternalClients() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/external-clients/${id}`, {
-        method: "DELETE",
-      });
+      await apiRequest("DELETE", `/api/external-clients/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-clients"] });
@@ -761,13 +754,7 @@ export default function ExternalClients() {
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => {
-              console.log("Form submitted with data:", data);
-              console.log("Form errors:", form.formState.errors);
-              createMutation.mutate(data);
-            }, (errors) => {
-              console.log("Form validation errors:", errors);
-            })} className="space-y-4">
+            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
