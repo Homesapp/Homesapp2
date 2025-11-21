@@ -436,11 +436,10 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
     });
   }, [filteredAccesses]);
 
-  // Cards pagination (3 cards per row)
-  const cardsPerPage = cardsRowsPerPage * 3;
-  const cardsTotalPages = Math.max(1, Math.ceil(groupedAccesses.length / cardsPerPage));
-  const cardsStartIndex = (cardsPage - 1) * cardsPerPage;
-  const cardsEndIndex = cardsStartIndex + cardsPerPage;
+  // Cards pagination
+  const cardsTotalPages = Math.max(1, Math.ceil(groupedAccesses.length / cardsItemsPerPage));
+  const cardsStartIndex = (cardsPage - 1) * cardsItemsPerPage;
+  const cardsEndIndex = cardsStartIndex + cardsItemsPerPage;
   const paginatedGroupedAccesses = groupedAccesses.slice(cardsStartIndex, cardsEndIndex);
 
   // Pre-render page clamping for cards using useLayoutEffect
@@ -455,12 +454,17 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
     if (cardsPage > cardsTotalPages && cardsTotalPages > 0) {
       setCardsPage(cardsTotalPages);
     }
-  }, [groupedAccesses.length, cardsPerPage]);
+  }, [groupedAccesses.length, cardsItemsPerPage]);
 
   // Reset cards page when filters change
   useEffect(() => {
     setCardsPage(1);
   }, [selectedCondominium, selectedUnit, selectedAccessType, searchTerm]);
+
+  // Reset cards page when items per page changes
+  useEffect(() => {
+    setCardsPage(1);
+  }, [cardsItemsPerPage]);
 
   // Handle sort column click
   const handleSort = (column: string) => {
@@ -1325,22 +1329,24 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                 : `${groupedAccesses.length} units with ${filteredAccesses.length} accesses`}
             </p>
 
-            {/* Cards Rows Per Page Selector */}
+            {/* Cards Items Per Page Selector */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {language === "es" ? "Filas por página:" : "Rows per page:"}
+                {language === "es" ? "Por página:" : "Per page:"}
               </span>
               <Select
-                value={cardsRowsPerPage.toString()}
-                onValueChange={(value) => setCardsRowsPerPage(Number(value))}
+                value={cardsItemsPerPage.toString()}
+                onValueChange={(value) => setCardsItemsPerPage(Number(value))}
               >
-                <SelectTrigger className="w-[70px]" data-testid="select-cards-rows-per-page">
+                <SelectTrigger className="w-[70px]" data-testid="select-cards-items-per-page">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="3">3</SelectItem>
+                  {cardsPerPageOptions.map((option) => (
+                    <SelectItem key={option} value={option.toString()}>
+                      {option}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
