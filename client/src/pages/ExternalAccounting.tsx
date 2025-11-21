@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -450,7 +455,7 @@ export default function ExternalAccounting() {
     financialInfo: 'Información Financiera',
     additionalInfo: 'Información Adicional',
     // Receivables tab
-    today: 'HOY',
+    todaySection: 'HOY',
     todayTransactions: 'Transacciones de Hoy',
     upcomingPayments: 'Próximos Pagos',
     overduePayments: 'Pagos Vencidos',
@@ -561,7 +566,7 @@ export default function ExternalAccounting() {
     financialInfo: 'Financial Information',
     additionalInfo: 'Additional Information',
     // Receivables tab
-    today: 'TODAY',
+    todaySection: 'TODAY',
     todayTransactions: 'Today\'s Transactions',
     upcomingPayments: 'Upcoming Payments',
     overduePayments: 'Overdue Payments',
@@ -854,64 +859,21 @@ export default function ExternalAccounting() {
           </TabsList>
           
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
-              data-testid="button-toggle-filters"
-              title={t.filters}
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={dateFilter === "today" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setDateFilter("today");
-                setCurrentPage(1);
-              }}
-              data-testid="button-filter-today"
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              {t.today}
-            </Button>
-            {activeFilters > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearFilters}
-                data-testid="button-clear-filters"
-              >
-                <X className="h-4 w-4 mr-1" />
-                {t.clearFilters}
-              </Button>
-            )}
-            <div className="flex gap-1 border rounded-md p-1">
-              <Button
-                variant={viewMode === "cards" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("cards")}
-                data-testid="button-view-cards"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-                data-testid="button-view-table"
-              >
-                <TableIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {filtersExpanded && (
-          <Card className="mb-6">
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t.direction}</label>
+            <Popover open={filtersExpanded} onOpenChange={setFiltersExpanded}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  data-testid="button-toggle-filters"
+                  title={t.filters}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t.direction}</label>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant={directionFilter === "all" ? "default" : "outline"}
@@ -1216,9 +1178,51 @@ export default function ExternalAccounting() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )}
+
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleClearFilters}
+                data-testid="button-clear-all-filters"
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                {language === 'es' ? 'Limpiar Filtros' : 'Clear Filters'}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+            <Button
+              variant={dateFilter === "today" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setDateFilter("today");
+                setCurrentPage(1);
+              }}
+              data-testid="button-filter-today"
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              {t.today}
+            </Button>
+            <div className="flex gap-1 border rounded-md p-1">
+              <Button
+                variant={viewMode === "cards" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                data-testid="button-view-cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                data-testid="button-view-table"
+              >
+                <TableIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <TabsContent value="transactions" className="space-y-6">
           {transactionsLoading ? (
@@ -1544,7 +1548,7 @@ export default function ExternalAccounting() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Calendar className="h-6 w-6 text-primary" />
-                {t.today}
+                {t.todaySection}
               </CardTitle>
               <p className="text-sm text-muted-foreground">{t.todayTransactions}</p>
             </CardHeader>

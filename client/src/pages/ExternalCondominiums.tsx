@@ -23,6 +23,11 @@ import type { ExternalCondominium, ExternalUnit, ExternalRentalContract, Externa
 import { insertExternalCondominiumSchema, insertExternalUnitSchema, externalUnitFormSchema } from "@shared/schema";
 import { z } from "zod";
 import { typologyOptions, floorOptions, formatTypology, formatFloor } from "@/lib/unitHelpers";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type CondominiumFormData = z.infer<typeof insertExternalCondominiumSchema>;
 type UnitFormData = z.infer<typeof insertExternalUnitSchema>;
@@ -597,6 +602,19 @@ export default function ExternalCondominiums() {
     );
   };
 
+  const clearCondoFilters = () => {
+    setCondoSearchText("");
+    setCondoCurrentPage(1);
+  };
+
+  const clearUnitFilters = () => {
+    setUnitSearchText("");
+    setSelectedCondoFilter("all");
+    setRentalStatusFilter("all");
+    setUnitStatusFilter("all");
+    setUnitsPage(1);
+  };
+
   const getActiveRentalContract = (unitId: string): any | null => {
     if (contractsLoading || contractsError || !rentalContracts) return null;
     // rentalContracts is already normalized, so we can directly access properties
@@ -789,148 +807,154 @@ export default function ExternalCondominiums() {
           
           {!selectedCondoId && (
             activeTab === "condominiums" ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCondoFiltersExpanded(!condoFiltersExpanded)}
-                data-testid="button-toggle-condo-filters"
-                title={language === "es" ? "Filtros" : "Filters"}
-              >
-                {condoFiltersExpanded ? <ChevronUp className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
-              </Button>
+              <Popover open={condoFiltersExpanded} onOpenChange={setCondoFiltersExpanded}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    data-testid="button-toggle-condo-filters"
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {language === "es" ? "Buscar" : "Search"}
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={language === "es" ? "Nombre o dirección de condominio..." : "Condominium name or address..."}
+                          value={condoSearchText}
+                          onChange={(e) => setCondoSearchText(e.target.value)}
+                          className="pl-8"
+                          data-testid="input-search-condos"
+                        />
+                      </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full" onClick={clearCondoFilters}>
+                      <XCircle className="mr-2 h-4 w-4" />
+                      {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setFiltersExpanded(!filtersExpanded)}
-                data-testid="button-toggle-unit-filters"
-                title={language === "es" ? "Filtros" : "Filters"}
-              >
-                {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
-              </Button>
+              <Popover open={filtersExpanded} onOpenChange={setFiltersExpanded}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    data-testid="button-toggle-unit-filters"
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {language === "es" ? "Buscar" : "Search"}
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={language === "es" ? "Número de unidad o condominio..." : "Unit number or condominium..."}
+                          value={unitSearchText}
+                          onChange={(e) => setUnitSearchText(e.target.value)}
+                          className="pl-8"
+                          data-testid="input-search-units"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {language === "es" ? "Condominio" : "Condominium"}
+                      </label>
+                      <Select 
+                        value={selectedCondoFilter} 
+                        onValueChange={setSelectedCondoFilter}
+                        disabled={condosLoading}
+                      >
+                        <SelectTrigger data-testid="select-filter-condominium">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {language === "es" ? "Todos los condominios" : "All condominiums"}
+                          </SelectItem>
+                          {condominiums?.map(condo => (
+                            <SelectItem key={condo.id} value={condo.id}>
+                              {condo.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {language === "es" ? "Estado de Unidad" : "Unit Status"}
+                      </label>
+                      <Select 
+                        value={unitStatusFilter} 
+                        onValueChange={setUnitStatusFilter}
+                      >
+                        <SelectTrigger data-testid="select-filter-unit-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {language === "es" ? "Todas" : "All"}
+                          </SelectItem>
+                          <SelectItem value="active">
+                            {language === "es" ? "Activas" : "Active"}
+                          </SelectItem>
+                          <SelectItem value="suspended">
+                            {language === "es" ? "Suspendidas" : "Suspended"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {language === "es" ? "Estado de Renta" : "Rental Status"}
+                      </label>
+                      <Select 
+                        value={rentalStatusFilter} 
+                        onValueChange={setRentalStatusFilter}
+                        disabled={contractsLoading || contractsError}
+                      >
+                        <SelectTrigger data-testid="select-filter-rental-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {language === "es" ? "Todas las unidades" : "All units"}
+                          </SelectItem>
+                          <SelectItem value="with-rental">
+                            {language === "es" ? "Con renta activa" : "With active rental"}
+                          </SelectItem>
+                          <SelectItem value="without-rental">
+                            {language === "es" ? "Sin renta activa" : "Without active rental"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button variant="outline" className="w-full" onClick={clearUnitFilters}>
+                      <XCircle className="mr-2 h-4 w-4" />
+                      {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )
           )}
         </div>
         
-        {!selectedCondoId && condoFiltersExpanded && (
-          <Card className="mb-4">
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {language === "es" ? "Buscar" : "Search"}
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={language === "es" ? "Nombre o dirección de condominio..." : "Condominium name or address..."}
-                    value={condoSearchText}
-                    onChange={(e) => setCondoSearchText(e.target.value)}
-                    className="pl-8"
-                    data-testid="input-search-condos"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {filtersExpanded && (
-          <Card className="mb-4">
-            <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    {language === "es" ? "Buscar" : "Search"}
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder={language === "es" ? "Número de unidad o condominio..." : "Unit number or condominium..."}
-                      value={unitSearchText}
-                      onChange={(e) => setUnitSearchText(e.target.value)}
-                      className="pl-8"
-                      data-testid="input-search-units"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    {language === "es" ? "Condominio" : "Condominium"}
-                  </label>
-                  <Select 
-                    value={selectedCondoFilter} 
-                    onValueChange={setSelectedCondoFilter}
-                    disabled={condosLoading}
-                  >
-                    <SelectTrigger data-testid="select-filter-condominium">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {language === "es" ? "Todos los condominios" : "All condominiums"}
-                      </SelectItem>
-                      {condominiums?.map(condo => (
-                        <SelectItem key={condo.id} value={condo.id}>
-                          {condo.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    {language === "es" ? "Estado de Unidad" : "Unit Status"}
-                  </label>
-                  <Select 
-                    value={unitStatusFilter} 
-                    onValueChange={setUnitStatusFilter}
-                  >
-                    <SelectTrigger data-testid="select-filter-unit-status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {language === "es" ? "Todas" : "All"}
-                      </SelectItem>
-                      <SelectItem value="active">
-                        {language === "es" ? "Activas" : "Active"}
-                      </SelectItem>
-                      <SelectItem value="suspended">
-                        {language === "es" ? "Suspendidas" : "Suspended"}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    {language === "es" ? "Estado de Renta" : "Rental Status"}
-                  </label>
-                  <Select 
-                    value={rentalStatusFilter} 
-                    onValueChange={setRentalStatusFilter}
-                    disabled={contractsLoading || contractsError}
-                  >
-                    <SelectTrigger data-testid="select-filter-rental-status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {language === "es" ? "Todas las unidades" : "All units"}
-                      </SelectItem>
-                      <SelectItem value="with-rental">
-                        {language === "es" ? "Con renta activa" : "With active rental"}
-                      </SelectItem>
-                      <SelectItem value="without-rental">
-                        {language === "es" ? "Sin renta activa" : "Without active rental"}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <TabsContent value="condominiums" className="space-y-4">
 
           {condosError ? (
