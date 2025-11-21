@@ -1348,7 +1348,7 @@ export default function ExternalCondominiums() {
                 );
               })()
             ) : viewMode === "cards" ? (
-              <div className="p-6">
+              <>
                 <ExternalPaginationControls
                     currentPage={condoCurrentPage}
                     totalPages={condoTotalPages}
@@ -1639,9 +1639,9 @@ export default function ExternalCondominiums() {
                   );
                   })}
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="space-y-4">
+              <>
                 {/* Pagination Controls */}
                 {sortedCondominiums.length > 0 && (
                   <ExternalPaginationControls
@@ -1800,7 +1800,7 @@ export default function ExternalCondominiums() {
                 </Table>
                   </CardContent>
                 </Card>
-              </div>
+              </>
             )}
             </div>
         )}
@@ -1846,7 +1846,7 @@ export default function ExternalCondominiums() {
           ) : filteredUnits.length > 0 ? (
             <div className="space-y-6 mt-[2px]">
               {viewMode === "cards" ? (
-                <div className="p-6">
+                <>
                   <ExternalPaginationControls
                     currentPage={unitsPage}
                     totalPages={Math.ceil(sortedUnits.length / unitsPerPage)}
@@ -1949,7 +1949,7 @@ export default function ExternalCondominiums() {
                   );
                 })}
                   </div>
-                </div>
+                </>
               ) : (
                 <>
                 {/* Units Pagination Controls */}
