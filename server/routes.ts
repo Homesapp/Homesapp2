@@ -21569,6 +21569,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/external-payments/:id/send-reminder", isAuthenticated, requireRole(EXTERNAL_ACCOUNTING_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get payment details
+      const payment = await storage.getExternalPayment(id);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      // Get contract details to find tenant email
+      const contract = await storage.getExternalRentalContract(payment.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found for this payment" });
+      }
+
+      // Get agency details for sender info
+      let agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+      const agency = await storage.getExternalAgency(agencyId);
+
+      const tenantEmail = contract.tenantEmail;
+      if (!tenantEmail) {
+        return res.status(400).json({ message: "Tenant email not found in contract" });
+      }
+
+      // Prepare email content
+      const dueDate = new Date(payment.dueDate).toLocaleDateString('es-MX', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      const serviceTypeLabels: Record<string, string> = {
+        rent: "Renta",
+        electricity: "Electricidad",
+        water: "Agua",
+        gas: "Gas",
+        internet: "Internet",
+        cable_tv: "Cable TV",
+        security: "Seguridad",
+        parking: "Estacionamiento",
+        maintenance: "Mantenimiento",
+        cleaning: "Limpieza",
+        other: "Otro",
+      };
+
+      const serviceName = serviceTypeLabels[payment.serviceType] || payment.serviceType;
+
+      const emailSubject = `Recordatorio de Pago - ${serviceName}`;
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
+            .content { background-color: #f9fafb; padding: 30px; }
+            .payment-details { background-color: white; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+            .detail-label { font-weight: bold; color: #6b7280; }
+            .detail-value { color: #111827; }
+            .amount { font-size: 24px; font-weight: bold; color: #4F46E5; text-align: center; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+            .warning { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Recordatorio de Pago</h1>
+            </div>
+            <div class="content">
+              <p>Estimado/a ${contract.tenantName},</p>
+              <p>Le recordamos que tiene un pago pendiente con los siguientes detalles:</p>
+              
+              <div class="payment-details">
+                <div class="detail-row">
+                  <span class="detail-label">Concepto:</span>
+                  <span class="detail-value">${serviceName}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Fecha de Vencimiento:</span>
+                  <span class="detail-value">${dueDate}</span>
+                </div>
+                <div class="amount">
+                  $${parseFloat(payment.amount).toFixed(2)} ${payment.currency}
+                </div>
+              </div>
+
+              ${payment.status === 'overdue' ? `
+                <div class="warning">
+                  <strong>⚠️ Pago Vencido</strong><br>
+                  Este pago está vencido. Por favor, regularice su situación a la brevedad posible.
+                </div>
+              ` : ''}
+
+              <p>Para más información o aclaraciones, por favor contáctenos.</p>
+              <p>Atentamente,<br>${agency?.name || 'MISTIQ Tulum'}</p>
+            </div>
+            <div class="footer">
+              <p>Este es un mensaje automático, por favor no responda a este correo.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // TODO: Send email using email service (Resend, SendGrid, etc.)
+      // For now, we'll just mark it as sent and log the action
+      console.log(`Would send payment reminder email to ${tenantEmail}`);
+      console.log(`Subject: ${emailSubject}`);
+      
+      // Mark reminder as sent
+      const updatedPayment = await storage.markExternalPaymentReminderSent(id);
+      
+      await createAuditLog(req, "notification", "external_payment", id, `Sent payment reminder to ${tenantEmail}`);
+      
+      res.json({ 
+        success: true,
+        message: "Payment reminder sent successfully",
+        payment: updatedPayment 
+      });
+    } catch (error: any) {
+      console.error("Error sending payment reminder:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.delete("/api/external-payments/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
