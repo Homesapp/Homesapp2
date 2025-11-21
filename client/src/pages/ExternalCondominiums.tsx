@@ -1905,7 +1905,6 @@ export default function ExternalCondominiums() {
         </TabsContent>
 
         <TabsContent value="units" className="space-y-4">
-          {/* Error Alert for Rental Contracts */}
           {contractsError && (
             <Card className="border-destructive bg-destructive/10">
               <CardContent className="flex items-center justify-between gap-4 py-4">
@@ -1913,14 +1912,10 @@ export default function ExternalCondominiums() {
                   <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-sm">
-                      {language === "es" 
-                        ? "Error al cargar contratos de renta"
-                        : "Error loading rental contracts"}
+                      {language === "es" ? "Error al cargar contratos de renta" : "Error loading rental contracts"}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {language === "es" 
-                        ? "No se puede determinar el estado de disponibilidad de las unidades. El filtro de estado de renta está deshabilitado."
-                        : "Cannot determine unit availability status. Rental status filter is disabled."}
+                      {language === "es" ? "No se puede determinar el estado de disponibilidad de las unidades" : "Cannot determine unit availability status"}
                     </p>
                   </div>
                 </div>

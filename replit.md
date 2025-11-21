@@ -80,13 +80,51 @@ The platform maintains visual harmony through context-based icon sizing rules:
 - Maintains clean single-row layout across all sections
 
 ### Mobile Responsive Patterns
-All External sections (Condominiums, Rentals, Accounting, OwnerPortfolio, Accesses, MaintenanceWorkers) implement consistent mobile-responsive patterns:
+All External sections (Condominiums, Rentals, Accounting, OwnerPortfolio, Accesses, MaintenanceWorkers) implement consistent mobile-responsive patterns with SSR-safe auto-switching:
 
-**Default View Modes:**
-- Mobile (< 768px): Card view by default for optimal touch interaction
-- Desktop (≥ 768px): Table view by default for data-dense display
-- View mode detection: `window.innerWidth < 768 ? "cards" : "table"`
-- Items per page auto-adjust: 9 for cards, 10 for table
+**SSR-Safe useMobile Hook:**
+- Located at `client/src/hooks/use-mobile.ts`
+- Initializes as `false` to prevent hydration mismatches
+- Sets actual viewport value in `useEffect` after mount
+- Updates reactively on window resize with proper cleanup
+
+**Auto-Switching View Mode System:**
+- Uses genuine breakpoint transition detection (prevIsMobile state)
+- Only switches views when crossing the 768px breakpoint
+- Mobile (< 768px): Auto-switches to card view for optimal touch interaction
+- Desktop (≥ 768px): Auto-switches to table view for data-dense display
+- Prevents thrashing during same-breakpoint resizes
+- Items per page auto-adjust based on view mode
+
+**Manual Override System:**
+- Tracks user manual view mode selections via `manualViewModeOverride` flag
+- Cards button: Clears override if mobile (default), sets override if desktop (non-default)
+- Table button: Clears override if desktop (default), sets override if mobile (non-default)
+- Override preserves user choice across viewport changes
+- Override automatically resets when user returns to default mode for their viewport
+- Allows responsiveness to resume after reverting to defaults
+
+**View Mode State Pattern (each section):**
+```typescript
+const isMobile = useMobile();
+const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
+const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
+```
+
+**Auto-Switch useEffect Pattern:**
+```typescript
+useEffect(() => {
+  if (isMobile !== prevIsMobile) {
+    setPrevIsMobile(isMobile);
+    if (!manualViewModeOverride) {
+      const preferredMode = isMobile ? "cards" : "table";
+      setViewMode(preferredMode);
+      setItemsPerPage(preferredMode === "cards" ? 9 : 10);
+    }
+  }
+}, [isMobile, prevIsMobile, manualViewModeOverride]);
+```
 
 **Headers:**
 - Desktop: `flex flex-row justify-between items-center`
