@@ -400,6 +400,8 @@ export default function ExternalAccounting() {
     financialInfo: 'Información Financiera',
     additionalInfo: 'Información Adicional',
     // Receivables tab
+    today: 'HOY',
+    todayTransactions: 'Transacciones de Hoy',
     upcomingPayments: 'Próximos Pagos',
     overduePayments: 'Pagos Vencidos',
     totalReceivables: 'Total por Cobrar',
@@ -407,6 +409,9 @@ export default function ExternalAccounting() {
     paymentDue: 'Vencimiento',
     noUpcomingPayments: 'No hay pagos próximos',
     noOverduePayments: 'No hay pagos vencidos',
+    noTodayTransactions: 'No hay transacciones para hoy',
+    toCollect: 'Por Cobrar',
+    toPay: 'Por Pagar',
     // Reports tab
     monthlyTrends: 'Tendencias Mensuales',
     categoryBreakdown: 'Desglose por Categoría',
@@ -505,6 +510,8 @@ export default function ExternalAccounting() {
     financialInfo: 'Financial Information',
     additionalInfo: 'Additional Information',
     // Receivables tab
+    today: 'TODAY',
+    todayTransactions: 'Today\'s Transactions',
     upcomingPayments: 'Upcoming Payments',
     overduePayments: 'Overdue Payments',
     totalReceivables: 'Total Receivables',
@@ -512,6 +519,9 @@ export default function ExternalAccounting() {
     paymentDue: 'Due Date',
     noUpcomingPayments: 'No upcoming payments',
     noOverduePayments: 'No overdue payments',
+    noTodayTransactions: 'No transactions for today',
+    toCollect: 'To Collect',
+    toPay: 'To Pay',
     // Reports tab
     monthlyTrends: 'Monthly Trends',
     categoryBreakdown: 'Category Breakdown',
@@ -671,24 +681,40 @@ export default function ExternalAccounting() {
 
   // Calculate receivables data
   const receivablesData = useMemo(() => {
-    if (!transactions) return { upcoming: [], overdue: [], totalAmount: 0 };
+    if (!transactions) return { today: [], upcoming: [], overdue: [], totalAmount: 0 };
     
     const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    
+    // Today: all pending transactions (inflow and outflow) due today
+    const today = transactions.filter(t => {
+      if (t.status === 'cancelled') return false;
+      const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+      return dueDate && dueDate >= todayStart && dueDate <= todayEnd && t.status === 'pending';
+    }).sort((a, b) => {
+      // Sort by direction (inflow first), then by amount
+      if (a.direction !== b.direction) {
+        return a.direction === 'inflow' ? -1 : 1;
+      }
+      return parseFloat(b.netAmount || '0') - parseFloat(a.netAmount || '0');
+    });
+    
     const pending = transactions.filter(t => t.status === 'pending' && t.direction === 'inflow');
     
     const upcoming = pending.filter(t => {
       const dueDate = t.dueDate ? new Date(t.dueDate) : null;
-      return dueDate && dueDate >= now;
+      return dueDate && dueDate > todayEnd;
     }).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
     
     const overdue = pending.filter(t => {
       const dueDate = t.dueDate ? new Date(t.dueDate) : null;
-      return dueDate && dueDate < now;
+      return dueDate && dueDate < todayStart;
     }).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
     
     const totalAmount = pending.reduce((sum, t) => sum + parseFloat(t.netAmount || '0'), 0);
     
-    return { upcoming, overdue, totalAmount };
+    return { today, upcoming, overdue, totalAmount };
   }, [transactions]);
 
   // Calculate report data
@@ -1187,6 +1213,119 @@ export default function ExternalAccounting() {
               </CardContent>
             </Card>
           </div>
+
+          {/* TODAY Section */}
+          <Card className="border-2 border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Calendar className="h-6 w-6 text-primary" />
+                {t.today}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">{t.todayTransactions}</p>
+            </CardHeader>
+            <CardContent>
+              {receivablesData.today.length > 0 ? (
+                <div className="space-y-3">
+                  {receivablesData.today.map((transaction) => {
+                    const isInflow = transaction.direction === 'inflow';
+                    return (
+                      <Card 
+                        key={transaction.id} 
+                        className={`hover-elevate ${isInflow ? 'border-green-200 dark:border-green-900' : 'border-orange-200 dark:border-orange-900'}`}
+                        data-testid={`card-today-${transaction.id}`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                {getCategoryIcon(transaction.category)}
+                                <span className="font-semibold">{getCategoryLabel(transaction.category)}</span>
+                                <Badge className={isInflow 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                                  : 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+                                }>
+                                  {isInflow ? t.toCollect : t.toPay}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{transaction.description}</p>
+                              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  {transaction.payerRole && <span>{getRoleLabel(transaction.payerRole)} → {getRoleLabel(transaction.payeeRole)}</span>}
+                                </span>
+                                {transaction.unitId && units && (
+                                  <span className="flex items-center gap-1">
+                                    <Home className="h-3 w-3" />
+                                    {units.find(u => u.id === transaction.unitId)?.unitNumber}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`text-2xl font-bold ${isInflow ? 'text-green-600 dark:text-green-500' : 'text-orange-600 dark:text-orange-500'}`}>
+                                {formatCurrency(transaction.netAmount)}
+                              </div>
+                              <div className="flex gap-1 mt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleViewDetails(transaction)}
+                                  data-testid={`button-view-today-${transaction.id}`}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  {t.viewDetails}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(transaction)}
+                                  data-testid={`button-edit-today-${transaction.id}`}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  
+                  {/* Summary totals for today */}
+                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-md">
+                      <div className="text-sm text-muted-foreground mb-1">{t.toCollect}</div>
+                      <div className="text-xl font-bold text-green-600 dark:text-green-500">
+                        {formatCurrency(receivablesData.today
+                          .filter(t => t.direction === 'inflow')
+                          .reduce((sum, t) => sum + parseFloat(t.netAmount || '0'), 0)
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {receivablesData.today.filter(t => t.direction === 'inflow').length} {language === 'es' ? 'transacciones' : 'transactions'}
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-md">
+                      <div className="text-sm text-muted-foreground mb-1">{t.toPay}</div>
+                      <div className="text-xl font-bold text-orange-600 dark:text-orange-500">
+                        {formatCurrency(receivablesData.today
+                          .filter(t => t.direction === 'outflow')
+                          .reduce((sum, t) => sum + parseFloat(t.netAmount || '0'), 0)
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {receivablesData.today.filter(t => t.direction === 'outflow').length} {language === 'es' ? 'transacciones' : 'transactions'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">{t.noTodayTransactions}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {receivablesData.overdue.length > 0 && (
             <Card>
