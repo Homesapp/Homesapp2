@@ -1348,7 +1348,7 @@ export default function ExternalCondominiums() {
                 );
               })()
             ) : viewMode === "cards" ? (
-              <div>
+              <div className="space-y-4">
                 {/* Pagination Controls */}
                 {sortedCondominiums.length > 0 && (
                   <ExternalPaginationControls
@@ -1364,9 +1364,6 @@ export default function ExternalCondominiums() {
                     testIdPrefix="cards"
                   />
                 )}
-
-                {/* Space between pagination and content */}
-                <div className="h-4" />
 
                 {/* Grid view of all condominiums */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1648,7 +1645,7 @@ export default function ExternalCondominiums() {
                 </div>
               </div>
             ) : (
-              <>
+              <div className="space-y-4">
                 {/* Pagination Controls */}
                 {sortedCondominiums.length > 0 && (
                   <ExternalPaginationControls
@@ -1664,9 +1661,6 @@ export default function ExternalCondominiums() {
                     testIdPrefix="table"
                   />
                 )}
-
-                {/* Space between pagination and table */}
-                <div className="h-4" />
 
                 {/* Table view of condominiums */}
                 <Card className="border">
@@ -1810,7 +1804,7 @@ export default function ExternalCondominiums() {
                 </Table>
                   </CardContent>
                 </Card>
-              </>
+              </div>
             )}
           </>
         )}
@@ -1855,7 +1849,7 @@ export default function ExternalCondominiums() {
             </Card>
           ) : filteredUnits.length > 0 ? (
             viewMode === "cards" ? (
-              <div>
+              <div className="space-y-4">
                 {/* Units Pagination Controls */}
                 {sortedUnits.length > 0 && (
                   <ExternalPaginationControls
@@ -1871,9 +1865,6 @@ export default function ExternalCondominiums() {
                     testIdPrefix="units-cards"
                   />
                 )}
-
-                {/* Space between pagination and content */}
-                <div className="h-4" />
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedUnits.map((unit) => {
@@ -1966,7 +1957,7 @@ export default function ExternalCondominiums() {
                 </div>
               </div>
             ) : (
-              <>
+              <div className="space-y-4">
                 {/* Units Pagination Controls */}
                 {sortedUnits.length > 0 && (
                   <ExternalPaginationControls
@@ -1982,9 +1973,6 @@ export default function ExternalCondominiums() {
                     testIdPrefix="units"
                   />
                 )}
-
-                {/* Space between pagination and table */}
-                <div className="h-4" />
 
                 {/* Table view of units */}
                 <Card className="border">
@@ -2153,7 +2141,7 @@ export default function ExternalCondominiums() {
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </div>
             )
           ) : units && units.length > 0 ? (
             <Card data-testid="card-no-results-state">
