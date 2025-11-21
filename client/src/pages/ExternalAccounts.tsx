@@ -13,8 +13,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useLayoutEffect, useEffect, useMemo } from "react";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 import {
@@ -100,6 +100,12 @@ export default function ExternalAccounts() {
   const [tempEmail, setTempEmail] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  
+  // Pagination and sorting states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [sortColumn, setSortColumn] = useState<string>("name");
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ['/api/external-agency-users'],
@@ -275,6 +281,83 @@ export default function ExternalAccounts() {
     if (role === "external_agency_accounting") return "secondary";
     if (role === "external_agency_maintenance") return "outline";
     return "outline";
+  };
+
+  // Sorting logic - memoized to compute before pagination clamping
+  const sortedUsers = useMemo(() => {
+    if (!users) return [];
+    return [...users].sort((a, b) => {
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortColumn) {
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case 'email':
+          aValue = a.email?.toLowerCase() || '';
+          bValue = b.email?.toLowerCase() || '';
+          break;
+        case 'role':
+          aValue = a.role || '';
+          bValue = b.role || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [users, sortColumn, sortDirection]);
+
+  // Dual-layer pagination clamping - based on sorted data
+  useLayoutEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(sortedUsers.length / itemsPerPage));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, sortedUsers.length, itemsPerPage]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(sortedUsers.length / itemsPerPage));
+    if (sortedUsers.length > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [sortedUsers.length, itemsPerPage, currentPage]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedUsers.length / itemsPerPage));
+  const paginatedUsers = sortedUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1); // Reset to page 1 on sort change
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />;
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="h-4 w-4" />
+      : <ChevronDown className="h-4 w-4" />;
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(Math.max(1, Math.min(newPage, totalPages)));
   };
 
   const editingUser = users?.find(u => u.id === editUserId);
@@ -570,19 +653,51 @@ export default function ExternalAccounts() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[200px]">
-                      {language === "es" ? "Nombre" : "Name"}
+                    <TableHead 
+                      className="min-w-[200px] cursor-pointer hover-elevate"
+                      onClick={() => handleSort('name')}
+                      data-testid="header-name"
+                    >
+                      <div className="flex items-center gap-2">
+                        {language === "es" ? "Nombre" : "Name"}
+                        {getSortIcon('name')}
+                      </div>
                     </TableHead>
-                    <TableHead className="min-w-[200px]">Email</TableHead>
+                    <TableHead 
+                      className="min-w-[200px] cursor-pointer hover-elevate"
+                      onClick={() => handleSort('email')}
+                      data-testid="header-email"
+                    >
+                      <div className="flex items-center gap-2">
+                        Email
+                        {getSortIcon('email')}
+                      </div>
+                    </TableHead>
                     <TableHead className="min-w-[150px]">
                       {language === "es" ? "Teléfono" : "Phone"}
                     </TableHead>
-                    <TableHead className="min-w-[150px]">Rol</TableHead>
+                    <TableHead 
+                      className="min-w-[150px] cursor-pointer hover-elevate"
+                      onClick={() => handleSort('role')}
+                      data-testid="header-role"
+                    >
+                      <div className="flex items-center gap-2">
+                        {language === "es" ? "Rol" : "Role"}
+                        {getSortIcon('role')}
+                      </div>
+                    </TableHead>
                     <TableHead className="min-w-[150px]">
                       {language === "es" ? "Especialidad" : "Specialty"}
                     </TableHead>
-                    <TableHead className="min-w-[100px]">
-                      {language === "es" ? "Estado" : "Status"}
+                    <TableHead 
+                      className="min-w-[100px] cursor-pointer hover-elevate"
+                      onClick={() => handleSort('status')}
+                      data-testid="header-status"
+                    >
+                      <div className="flex items-center gap-2">
+                        {language === "es" ? "Estado" : "Status"}
+                        {getSortIcon('status')}
+                      </div>
                     </TableHead>
                     <TableHead className="text-right min-w-[200px]">
                       {language === "es" ? "Acciones" : "Actions"}
@@ -590,7 +705,7 @@ export default function ExternalAccounts() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
                       <TableCell className="font-medium">
                         {user.firstName} {user.lastName}
@@ -648,11 +763,95 @@ export default function ExternalAccounts() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === 'es' ? 'Mostrar' : 'Show'}
+                </span>
+                <Select 
+                  value={itemsPerPage.toString()} 
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px]" data-testid="select-items-per-page">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="30">30</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === 'es' ? 'por página' : 'per page'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1}
+                  data-testid="button-first-page"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">
+                    {language === 'es' ? 'Primera' : 'First'}
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">
+                    {language === 'es' ? 'Anterior' : 'Previous'}
+                  </span>
+                </Button>
+                <span className="text-sm text-muted-foreground whitespace-nowrap px-2">
+                  {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  <span className="hidden sm:inline mr-1">
+                    {language === 'es' ? 'Siguiente' : 'Next'}
+                  </span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-last-page"
+                >
+                  <span className="hidden sm:inline mr-1">
+                    {language === 'es' ? 'Última' : 'Last'}
+                  </span>
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {users.map((user) => (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedUsers.map((user) => (
             <Card key={user.id} data-testid={`card-user-${user.id}`} className="overflow-hidden">
               <CardHeader className="bg-muted/50 pb-3">
                 <div className="flex items-start justify-between">
@@ -722,7 +921,95 @@ export default function ExternalAccounts() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+
+          {/* Pagination Controls for Cards */}
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {language === 'es' ? 'Mostrar' : 'Show'}
+                  </span>
+                  <Select 
+                    value={itemsPerPage.toString()} 
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[70px]" data-testid="select-items-per-page-cards">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="30">30</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {language === 'es' ? 'por página' : 'per page'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1}
+                    data-testid="button-first-page-cards"
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">
+                      {language === 'es' ? 'Primera' : 'First'}
+                    </span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    data-testid="button-prev-page-cards"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">
+                      {language === 'es' ? 'Anterior' : 'Previous'}
+                    </span>
+                  </Button>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap px-2">
+                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    data-testid="button-next-page-cards"
+                  >
+                    <span className="hidden sm:inline mr-1">
+                      {language === 'es' ? 'Siguiente' : 'Next'}
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages}
+                    data-testid="button-last-page-cards"
+                  >
+                    <span className="hidden sm:inline mr-1">
+                      {language === 'es' ? 'Última' : 'Last'}
+                    </span>
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <Dialog open={!!editUserId} onOpenChange={(open) => !open && setEditUserId(null)}>
