@@ -66,6 +66,10 @@ export default function ExternalOwnerPortfolio() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
   
+  // Pagination for main owners table
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  
   // Pagination and sorting for units detail table
   const [unitsPage, setUnitsPage] = useState(1);
   const [unitsPerPage, setUnitsPerPage] = useState(5);
@@ -218,6 +222,19 @@ export default function ExternalOwnerPortfolio() {
   useEffect(() => {
     setUnitsPage(1);
   }, [selectedOwnerId]);
+
+  // Reset main table page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  // Clamp main table page when items per page changes or filtered results change
+  useEffect(() => {
+    const totalPages = Math.ceil(filteredPortfolios.length / itemsPerPage);
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
+    }
+  }, [filteredPortfolios.length, itemsPerPage, page]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat(language === 'es' ? 'es-MX' : 'en-US', {
@@ -491,23 +508,105 @@ export default function ExternalOwnerPortfolio() {
               <h3 className="text-lg font-medium mb-1">{t.noOwners}</h3>
               <p className="text-sm text-muted-foreground">{t.noOwnersDesc}</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t.owner}</TableHead>
-                    <TableHead>{t.contact}</TableHead>
-                    <TableHead className="text-right">{t.units}</TableHead>
-                    <TableHead className="text-right">{t.income}</TableHead>
-                    <TableHead className="text-right">{t.expenses}</TableHead>
-                    <TableHead className="text-right">{t.balance}</TableHead>
-                    <TableHead className="text-right">{t.occupancy}</TableHead>
-                    <TableHead className="text-right">{t.actions}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPortfolios.map(portfolio => (
+          ) : (() => {
+            // Pagination logic
+            const totalItems = filteredPortfolios.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+            const paginatedPortfolios = filteredPortfolios.slice(startIndex, endIndex);
+
+            const handleSort = (column: 'name' | 'units' | 'income' | 'balance') => {
+              if (sortBy === column) {
+                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+              } else {
+                setSortBy(column);
+                setSortOrder('asc');
+              }
+            };
+
+            return (
+              <>
+                <div className="flex items-center justify-between p-4 border-b">
+                  <div className="text-sm text-muted-foreground">
+                    {language === 'es' 
+                      ? `Mostrando ${startIndex + 1}-${endIndex} de ${totalItems} propietarios`
+                      : `Showing ${startIndex + 1}-${endIndex} of ${totalItems} owners`
+                    }
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{t.itemsPerPage}:</span>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={(value) => {
+                        setItemsPerPage(parseInt(value));
+                        setPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-20" data-testid="select-items-per-page">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="30">30</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead 
+                          className="cursor-pointer hover-elevate"
+                          onClick={() => handleSort('name')}
+                          data-testid="header-sort-owner"
+                        >
+                          <div className="flex items-center gap-2">
+                            {t.owner}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead>{t.contact}</TableHead>
+                        <TableHead 
+                          className="text-right cursor-pointer hover-elevate"
+                          onClick={() => handleSort('units')}
+                          data-testid="header-sort-units"
+                        >
+                          <div className="flex items-center justify-end gap-2">
+                            {t.units}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-right cursor-pointer hover-elevate"
+                          onClick={() => handleSort('income')}
+                          data-testid="header-sort-income"
+                        >
+                          <div className="flex items-center justify-end gap-2">
+                            {t.income}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-right">{t.expenses}</TableHead>
+                        <TableHead 
+                          className="text-right cursor-pointer hover-elevate"
+                          onClick={() => handleSort('balance')}
+                          data-testid="header-sort-balance"
+                        >
+                          <div className="flex items-center justify-end gap-2">
+                            {t.balance}
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-right">{t.occupancy}</TableHead>
+                        <TableHead className="text-right">{t.actions}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedPortfolios.map(portfolio => (
                     <TableRow 
                       key={portfolio.owner.id} 
                       data-testid={`row-owner-${portfolio.owner.id}`}
@@ -571,7 +670,59 @@ export default function ExternalOwnerPortfolio() {
                 </TableBody>
               </Table>
             </div>
-          )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  {language === 'es' 
+                    ? `Página ${page} de ${totalPages}`
+                    : `Page ${page} of ${totalPages}`
+                  }
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                    data-testid="button-first-page"
+                  >
+                    {t.first}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    disabled={page === 1}
+                    data-testid="button-prev-page"
+                  >
+                    {t.previous}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={page === totalPages}
+                    data-testid="button-next-page"
+                  >
+                    {t.next}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages}
+                    data-testid="button-last-page"
+                  >
+                    {t.last}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
         </CardContent>
       </Card>
 
