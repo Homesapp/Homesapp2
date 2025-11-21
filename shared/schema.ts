@@ -4988,6 +4988,7 @@ export type CreateRentalContractWithServices = z.infer<typeof createRentalContra
 export const externalRentalTenants = pgTable("external_rental_tenants", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   contractId: varchar("contract_id").notNull().references(() => externalRentalContracts.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").references(() => externalClients.id, { onDelete: "set null" }), // Referencia opcional a cliente existente
   fullName: varchar("full_name", { length: 255 }).notNull(), // Nombre completo del inquilino
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
@@ -4998,6 +4999,7 @@ export const externalRentalTenants = pgTable("external_rental_tenants", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_external_tenants_contract").on(table.contractId),
+  index("idx_external_tenants_client").on(table.clientId),
 ]);
 
 export const insertExternalRentalTenantSchema = createInsertSchema(externalRentalTenants).omit({
