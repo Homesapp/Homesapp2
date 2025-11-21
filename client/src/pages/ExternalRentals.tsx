@@ -32,6 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { 
   Home, 
   User, 
@@ -55,7 +61,9 @@ import {
   Droplet,
   Wifi,
   Flame,
-  Wrench
+  Wrench,
+  Search,
+  Filter
 } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -91,6 +99,8 @@ export default function ExternalRentals() {
   const [selectUnitDialogOpen, setSelectUnitDialogOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [serviceIndices, setServiceIndices] = useState<Record<string, number>>({});
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   
   // Pagination state (max 3 rows x 3 cols = 9 cards per page)
   const [currentPage, setCurrentPage] = useState(1);
@@ -99,30 +109,6 @@ export default function ExternalRentals() {
   // Filter navigation indices
   const [condominiumFilterIndex, setCondominiumFilterIndex] = useState(0);
   const [unitFilterIndex, setUnitFilterIndex] = useState(0);
-  
-  // Clamp condominium filter index when condominiums change
-  useEffect(() => {
-    if (condominiums) {
-      const totalCondos = condominiums.length + 1; // +1 for "All" button
-      const buttonsPerView = 3;
-      const maxIndex = Math.max(0, totalCondos - buttonsPerView);
-      if (condominiumFilterIndex > maxIndex) {
-        setCondominiumFilterIndex(maxIndex);
-      }
-    }
-  }, [condominiums, condominiumFilterIndex]);
-  
-  // Clamp unit filter index when units change
-  useEffect(() => {
-    if (units) {
-      const totalUnits = units.length + 1; // +1 for "All" button
-      const buttonsPerView = 3;
-      const maxIndex = Math.max(0, totalUnits - buttonsPerView);
-      if (unitFilterIndex > maxIndex) {
-        setUnitFilterIndex(maxIndex);
-      }
-    }
-  }, [units, unitFilterIndex]);
 
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
@@ -171,6 +157,30 @@ export default function ExternalRentals() {
     queryKey: ["/api/external-payments"],
   });
 
+  // Clamp condominium filter index when condominiums change
+  useEffect(() => {
+    if (condominiums) {
+      const totalCondos = condominiums.length + 1; // +1 for "All" button
+      const buttonsPerView = 3;
+      const maxIndex = Math.max(0, totalCondos - buttonsPerView);
+      if (condominiumFilterIndex > maxIndex) {
+        setCondominiumFilterIndex(maxIndex);
+      }
+    }
+  }, [condominiums, condominiumFilterIndex]);
+  
+  // Clamp unit filter index when units change
+  useEffect(() => {
+    if (units) {
+      const totalUnits = units.length + 1; // +1 for "All" button
+      const buttonsPerView = 3;
+      const maxIndex = Math.max(0, totalUnits - buttonsPerView);
+      if (unitFilterIndex > maxIndex) {
+        setUnitFilterIndex(maxIndex);
+      }
+    }
+  }, [units, unitFilterIndex]);
+
   // Reset unit filter when units change and selected unit is no longer available
   useEffect(() => {
     if (unitFilter && units) {
@@ -185,6 +195,21 @@ export default function ExternalRentals() {
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage]);
+
+  // Adjust items per page when view mode changes
+  useEffect(() => {
+    if (viewMode === "cards") {
+      // If current itemsPerPage is not valid for cards view, reset to default
+      if (![3, 6, 9].includes(itemsPerPage)) {
+        setItemsPerPage(9);
+      }
+    } else {
+      // If current itemsPerPage is not valid for table view, reset to default
+      if (![5, 10, 20, 30].includes(itemsPerPage)) {
+        setItemsPerPage(5);
+      }
+    }
+  }, [viewMode]);
 
   // Cancel rental contract mutation
   const cancelMutation = useMutation({
@@ -213,6 +238,20 @@ export default function ExternalRentals() {
 
   // Filter rentals
   const filteredRentals = rentals?.filter((rental) => {
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const condoName = rental.condominium?.name?.toLowerCase() || "";
+      const unitNumber = rental.unit?.unitNumber?.toLowerCase() || "";
+      const tenantName = rental.contract.tenantName?.toLowerCase() || "";
+      
+      if (!condoName.includes(searchLower) && 
+          !unitNumber.includes(searchLower) && 
+          !tenantName.includes(searchLower)) {
+        return false;
+      }
+    }
+    
     // Filter by condominium ID
     if (condominiumFilter && rental.condominium?.id !== condominiumFilter) {
       return false;
@@ -253,10 +292,21 @@ export default function ExternalRentals() {
     }
   }, [filteredRentals.length, itemsPerPage]);
 
-  // Reset page when filters change
+  // Reset page when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, condominiumFilter, unitFilter]);
+  }, [statusFilter, condominiumFilter, unitFilter, searchTerm]);
+  
+  // Clear all filters function
+  const clearFilters = () => {
+    setStatusFilter(null);
+    setCondominiumFilter("");
+    setUnitFilter("");
+    setCondominiumFilterIndex(0);
+    setUnitFilterIndex(0);
+    setSearchTerm("");
+    setIsFiltersOpen(false);
+  };
 
   // Helper to get the most recent payment status for a service
   const getNextPaymentStatus = (contractId: string, serviceType: string, dayOfMonth: number): 'paid' | 'pending' | 'overdue' | null => {
@@ -427,188 +477,224 @@ export default function ExternalRentals() {
         </Card>
       </div>
 
-      {/* View Toggle and Filters */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          {/* View Toggle */}
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === "cards" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("cards")}
-              data-testid="button-view-cards"
-            >
-              <LayoutGrid className="h-4 w-4 mr-2" />
-              {language === "es" ? "Cards" : "Cards"}
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-              data-testid="button-view-table"
-            >
-              <TableIcon className="h-4 w-4 mr-2" />
-              {language === "es" ? "Tabla" : "Table"}
-            </Button>
-          </div>
-
-          {/* Status Filters */}
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={statusFilter === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter(null)}
-              data-testid="button-filter-all"
-            >
-              {language === "es" ? "Todos" : "All"}
-            </Button>
-            <Button
-              variant={statusFilter === "active" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter("active")}
-              data-testid="button-filter-active"
-            >
-              {language === "es" ? "Activos" : "Active"}
-            </Button>
-            <Button
-              variant={statusFilter === "completed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter("completed")}
-              data-testid="button-filter-completed"
-            >
-              {language === "es" ? "Completados" : "Completed"}
-            </Button>
-          </div>
+      {/* Search and Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* View Toggle */}
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === "cards" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("cards")}
+            data-testid="button-view-cards"
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            {language === "es" ? "Cards" : "Cards"}
+          </Button>
+          <Button
+            variant={viewMode === "table" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            data-testid="button-view-table"
+          >
+            <TableIcon className="h-4 w-4 mr-2" />
+            {language === "es" ? "Tabla" : "Table"}
+          </Button>
         </div>
 
-        {/* Additional Filters */}
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {language === "es" ? "Condominio" : "Condominium"}
-            </label>
-            {(() => {
-              // Always include "All" button as first item
-              const allCondos = [
-                { id: "", name: language === "es" ? "Todos" : "All" },
-                ...(condominiums || [])
-              ];
-              const buttonsPerView = 3;
-              const totalButtons = allCondos.length;
-              const currentIndex = condominiumFilterIndex;
-              const visibleCondos = allCondos.slice(currentIndex, currentIndex + buttonsPerView);
-              const canGoLeft = currentIndex > 0;
-              const canGoRight = currentIndex + buttonsPerView < totalButtons;
-              
-              return (
-                <div className="flex items-center gap-2">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input
+            placeholder={language === "es" ? "Buscar..." : "Search..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+            data-testid="input-search"
+          />
+        </div>
+
+        {/* Filters Popover */}
+        <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="icon"
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+            <div className="space-y-4">
+              <Button variant="outline" className="w-full" onClick={clearFilters}>
+                <XCircle className="mr-2 h-4 w-4" />
+                {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+              </Button>
+
+              {/* Status Filters */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {language === "es" ? "Estado" : "Status"}
+                </label>
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    onClick={() => setCondominiumFilterIndex(Math.max(0, currentIndex - 1))}
-                    disabled={!canGoLeft}
-                    data-testid="button-condo-prev"
+                    variant={statusFilter === null ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(null)}
+                    data-testid="button-filter-all"
+                    className="flex-shrink-0"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    {language === "es" ? "Todos" : "All"}
                   </Button>
-                  <div className="flex-1 overflow-hidden">
-                    <div className="flex gap-2">
-                      {visibleCondos.map((condo) => (
-                        <Button
-                          key={condo.id}
-                          variant={condominiumFilter === condo.id ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setCondominiumFilter(condo.id);
-                            setUnitFilter("");
-                            setUnitFilterIndex(0);
-                          }}
-                          data-testid={condo.id === "" ? "button-filter-condo-all" : `button-filter-condo-${condo.id}`}
-                          className="whitespace-nowrap"
-                        >
-                          {condo.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    onClick={() => setCondominiumFilterIndex(Math.min(totalButtons - buttonsPerView, currentIndex + 1))}
-                    disabled={!canGoRight}
-                    data-testid="button-condo-next"
+                    variant={statusFilter === "active" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("active")}
+                    data-testid="button-filter-active"
+                    className="flex-shrink-0"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    {language === "es" ? "Activos" : "Active"}
+                  </Button>
+                  <Button
+                    variant={statusFilter === "completed" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("completed")}
+                    data-testid="button-filter-completed"
+                    className="flex-shrink-0"
+                  >
+                    {language === "es" ? "Completados" : "Completed"}
                   </Button>
                 </div>
-              );
-            })()}
-          </div>
-          
-          {condominiumFilter && units && units.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {language === "es" ? "Unidad" : "Unit"}
-              </label>
-              {(() => {
-                // Always include "All" button as first item
-                const allUnits = [
-                  { id: "", unitNumber: language === "es" ? "Todas" : "All", condominiumId: "" },
-                  ...(units || [])
-                ];
-                const buttonsPerView = 3;
-                const totalButtons = allUnits.length;
-                const currentIndex = unitFilterIndex;
-                const visibleUnits = allUnits.slice(currentIndex, currentIndex + buttonsPerView);
-                const canGoLeft = currentIndex > 0;
-                const canGoRight = currentIndex + buttonsPerView < totalButtons;
-                
-                return (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={() => setUnitFilterIndex(Math.max(0, currentIndex - 1))}
-                      disabled={!canGoLeft}
-                      data-testid="button-unit-prev"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex gap-2">
-                        {visibleUnits.map((unit) => (
-                          <Button
-                            key={unit.id}
-                            variant={unitFilter === unit.id ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setUnitFilter(unit.id)}
-                            data-testid={unit.id === "" ? "button-filter-unit-all" : `button-filter-unit-${unit.id}`}
-                            className="whitespace-nowrap"
-                          >
-                            {unit.unitNumber}
-                          </Button>
-                        ))}
+              </div>
+
+              {/* Condominium Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {language === "es" ? "Condominio" : "Condominium"}
+                </label>
+                {(() => {
+                  const allCondos = [
+                    { id: "", name: language === "es" ? "Todos" : "All" },
+                    ...(condominiums || [])
+                  ];
+                  const buttonsPerView = 3;
+                  const totalButtons = allCondos.length;
+                  const currentIndex = condominiumFilterIndex;
+                  const visibleCondos = allCondos.slice(currentIndex, currentIndex + buttonsPerView);
+                  const canGoLeft = currentIndex > 0;
+                  const canGoRight = currentIndex + buttonsPerView < totalButtons;
+                  
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={() => setCondominiumFilterIndex(Math.max(0, currentIndex - 1))}
+                        disabled={!canGoLeft}
+                        data-testid="button-condo-prev"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex gap-2 flex-wrap">
+                          {visibleCondos.map((condo) => (
+                            <Button
+                              key={condo.id}
+                              variant={condominiumFilter === condo.id ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setCondominiumFilter(condo.id);
+                                setUnitFilter("");
+                                setUnitFilterIndex(0);
+                              }}
+                              data-testid={condo.id === "" ? "button-filter-condo-all" : `button-filter-condo-${condo.id}`}
+                              className="flex-shrink-0"
+                            >
+                              {condo.name}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={() => setCondominiumFilterIndex(Math.min(totalButtons - buttonsPerView, currentIndex + 1))}
+                        disabled={!canGoRight}
+                        data-testid="button-condo-next"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={() => setUnitFilterIndex(Math.min(totalButtons - buttonsPerView, currentIndex + 1))}
-                      disabled={!canGoRight}
-                      data-testid="button-unit-next"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </div>
+              
+              {/* Unit Filter */}
+              {condominiumFilter && units && units.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Unidad" : "Unit"}
+                  </label>
+                  {(() => {
+                    const allUnits = [
+                      { id: "", unitNumber: language === "es" ? "Todas" : "All", condominiumId: "" },
+                      ...(units || [])
+                    ];
+                    const buttonsPerView = 3;
+                    const totalButtons = allUnits.length;
+                    const currentIndex = unitFilterIndex;
+                    const visibleUnits = allUnits.slice(currentIndex, currentIndex + buttonsPerView);
+                    const canGoLeft = currentIndex > 0;
+                    const canGoRight = currentIndex + buttonsPerView < totalButtons;
+                    
+                    return (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => setUnitFilterIndex(Math.max(0, currentIndex - 1))}
+                          disabled={!canGoLeft}
+                          data-testid="button-unit-prev"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex-1 overflow-hidden">
+                          <div className="flex gap-2 flex-wrap">
+                            {visibleUnits.map((unit) => (
+                              <Button
+                                key={unit.id}
+                                variant={unitFilter === unit.id ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setUnitFilter(unit.id)}
+                                data-testid={unit.id === "" ? "button-filter-unit-all" : `button-filter-unit-${unit.id}`}
+                                className="flex-shrink-0"
+                              >
+                                {unit.unitNumber}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => setUnitFilterIndex(Math.min(totalButtons - buttonsPerView, currentIndex + 1))}
+                          disabled={!canGoRight}
+                          data-testid="button-unit-next"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Rentals List */}
@@ -922,70 +1008,6 @@ export default function ExternalRentals() {
               );
               })}
             </div>
-
-            {/* Pagination Controls for Cards View */}
-            {filteredRentals.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {language === 'es' ? 'Mostrar' : 'Show'}
-                  </span>
-                  <Select 
-                    value={itemsPerPage.toString()} 
-                    onValueChange={(value) => setItemsPerPage(Number(value))}
-                  >
-                    <SelectTrigger className="w-[70px]" data-testid="select-cards-per-page">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3</SelectItem>
-                      <SelectItem value="6">6</SelectItem>
-                      <SelectItem value="9">9</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {language === 'es' ? 'por página' : 'per page'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {language === 'es' 
-                      ? `Mostrando ${filteredRentals.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredRentals.length)} de ${filteredRentals.length}`
-                      : `Showing ${filteredRentals.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredRentals.length)} of ${filteredRentals.length}`
-                    }
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    data-testid="button-cards-prev-page"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    {language === 'es' ? 'Anterior' : 'Previous'}
-                  </Button>
-                  
-                  <span className="text-sm text-muted-foreground px-2">
-                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
-                  </span>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    data-testid="button-cards-next-page"
-                  >
-                    {language === 'es' ? 'Siguiente' : 'Next'}
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            )}
             </>
           ) : (
             <Card>
@@ -1070,22 +1092,47 @@ export default function ExternalRentals() {
             </Card>
           )}
 
-          {/* Pagination Controls */}
-          {filteredRentals.length > itemsPerPage && (
+          {/* Pagination Controls - Always show when there are rentals */}
+          {filteredRentals.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border rounded-lg bg-card">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {language === 'es' 
-                    ? `Mostrando ${startIndex + 1}-${Math.min(endIndex, filteredRentals.length)} de ${filteredRentals.length}`
-                    : `Showing ${startIndex + 1}-${Math.min(endIndex, filteredRentals.length)} of ${filteredRentals.length}`}
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === 'es' ? 'Mostrar' : 'Show'}
+                </span>
+                <Select 
+                  value={itemsPerPage.toString()} 
+                  onValueChange={(value) => setItemsPerPage(Number(value))}
+                >
+                  <SelectTrigger className="w-[70px]" data-testid="select-items-per-page">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {viewMode === "cards" ? (
+                      <>
+                        <SelectItem value="3">3</SelectItem>
+                        <SelectItem value="6">6</SelectItem>
+                        <SelectItem value="9">9</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="30">30</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === 'es' ? 'por página' : 'per page'}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   {language === 'es' 
-                    ? `Página ${currentPage} de ${totalPages}`
-                    : `Page ${currentPage} of ${totalPages}`}
+                    ? `Mostrando ${filteredRentals.length === 0 ? 0 : startIndex + 1}-${Math.min(endIndex, filteredRentals.length)} de ${filteredRentals.length}`
+                    : `Showing ${filteredRentals.length === 0 ? 0 : startIndex + 1}-${Math.min(endIndex, filteredRentals.length)} of ${filteredRentals.length}`}
                 </span>
               </div>
 
