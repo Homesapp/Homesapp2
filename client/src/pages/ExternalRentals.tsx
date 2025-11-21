@@ -93,6 +93,7 @@ export default function ExternalRentals() {
   const [, setLocation] = useLocation();
   const isMobile = useMobile();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [todayFilter, setTodayFilter] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
   const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
@@ -109,6 +110,10 @@ export default function ExternalRentals() {
   // Pagination state (max 3 rows x 3 cols = 9 cards per page)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); // Default for table
+  
+  // Pagination options
+  const cardsPerPageOptions = [3, 6, 9, 12];
+  const tablePerPageOptions = [5, 10, 20, 30];
 
   // Fetch rentals - uses default 5 min cache (reasonable for contracts)
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
@@ -169,10 +174,16 @@ export default function ExternalRentals() {
       if (!manualViewModeOverride) {
         const preferredMode = isMobile ? "cards" : "table";
         setViewMode(preferredMode);
-        setItemsPerPage(preferredMode === "cards" ? 9 : 10);
       }
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
+  
+  // Auto-adjust itemsPerPage when switching view modes
+  useEffect(() => {
+    const defaultForMode = viewMode === "cards" ? cardsPerPageOptions[1] : tablePerPageOptions[1];
+    setItemsPerPage(defaultForMode);
+    setCurrentPage(1);
+  }, [viewMode]);
 
 
   // Reset unit filter when units change and selected unit is no longer available
@@ -246,6 +257,14 @@ export default function ExternalRentals() {
       }
     }
     
+    // Filter by today's payments
+    if (todayFilter && rental.nextPaymentDue) {
+      const today = format(new Date(), "yyyy-MM-dd");
+      if (rental.nextPaymentDue !== today) {
+        return false;
+      }
+    }
+    
     // Filter by condominium ID
     if (condominiumFilter && rental.condominium?.id !== condominiumFilter) {
       return false;
@@ -289,11 +308,12 @@ export default function ExternalRentals() {
   // Reset page when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, condominiumFilter, unitFilter, searchTerm]);
+  }, [statusFilter, condominiumFilter, unitFilter, searchTerm, todayFilter]);
   
   // Clear all filters function
   const clearFilters = () => {
     setStatusFilter(null);
+    setTodayFilter(false);
     setCondominiumFilter("");
     setUnitFilter("");
     setSearchTerm("");
@@ -474,59 +494,39 @@ export default function ExternalRentals() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        {/* View Toggle - Desktop only */}
-        {!isMobile && (
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === "cards" ? "default" : "outline"}
-              size="icon"
-              onClick={() => {
-                setViewMode("cards");
-                setManualViewModeOverride(false);
-              }}
-              data-testid="button-rentals-view-cards"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="icon"
-              onClick={() => {
-                setViewMode("table");
-                setManualViewModeOverride(true);
-              }}
-              data-testid="button-rentals-view-table"
-            >
-              <TableIcon className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={language === "es" ? "Buscar rentas..." : "Search rentals..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                data-testid="input-search"
+              />
+            </div>
 
-        {/* Search */}
-        <div className="relative flex-1 sm:max-w-md">
-          <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            placeholder={language === "es" ? "Buscar..." : "Search..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-            data-testid="input-search"
-          />
-        </div>
-
-        {/* Filters Popover */}
-        <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="icon"
-              data-testid="button-toggle-filters"
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+            {/* Filter Button with Popover */}
+            <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="relative flex-shrink-0"
+                  data-testid="button-toggle-filters"
+                >
+                  <Filter className="h-4 w-4" />
+                  {(statusFilter !== null || todayFilter || condominiumFilter || unitFilter) && (
+                    <Badge variant="default" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                      {[statusFilter !== null, todayFilter, condominiumFilter, unitFilter].filter(Boolean).length}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
             <div className="space-y-4">
               <Button variant="outline" className="w-full" onClick={clearFilters}>
                 <XCircle className="mr-2 h-4 w-4" />
@@ -639,7 +639,49 @@ export default function ExternalRentals() {
             </div>
           </PopoverContent>
         </Popover>
-      </div>
+
+            {/* HOY Button */}
+            <Button
+              variant={todayFilter ? "default" : "outline"}
+              onClick={() => setTodayFilter(!todayFilter)}
+              className="flex-shrink-0"
+              data-testid="button-filter-today"
+            >
+              {language === "es" ? "HOY" : "TODAY"}
+            </Button>
+
+            {/* View Toggle Buttons - Desktop Only */}
+            {!isMobile && (
+              <>
+                <Button
+                  variant={viewMode === "cards" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    setViewMode("cards");
+                    setManualViewModeOverride(false);
+                  }}
+                  className="flex-shrink-0"
+                  data-testid="button-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    setViewMode("table");
+                    setManualViewModeOverride(true);
+                  }}
+                  className="flex-shrink-0"
+                  data-testid="button-view-table"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Rentals List */}
       {isLoading ? (
