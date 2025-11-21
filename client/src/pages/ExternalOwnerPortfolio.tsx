@@ -911,21 +911,21 @@ export default function ExternalOwnerPortfolio() {
       </Card>
 
       {/* Owners Table */}
-      <Card>
-        <CardContent className="p-0">
-          {ownersLoading ? (
-            <div className="p-8 space-y-4">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : filteredPortfolios.length === 0 ? (
-            <div className="py-12 text-center">
-              <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-1">{t.noOwners}</h3>
-              <p className="text-sm text-muted-foreground">{t.noOwnersDesc}</p>
-            </div>
-          ) : (() => {
+      {ownersLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      ) : filteredPortfolios.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-1">{t.noOwners}</h3>
+            <p className="text-sm text-muted-foreground">{t.noOwnersDesc}</p>
+          </CardContent>
+        </Card>
+      ) : (() => {
             // Pagination logic
             const totalItems = filteredPortfolios.length;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -1086,18 +1086,19 @@ export default function ExternalOwnerPortfolio() {
                       language={language}
                       testIdPrefix="owners"
                     />
-                    <div className="overflow-x-auto">
-                      <Table>
+                    <Card>
+                      <div className="overflow-x-auto">
+                        <Table className="text-sm">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{t.owner}</TableHead>
-                        <TableHead>{t.contact}</TableHead>
-                        <TableHead>{language === 'es' ? 'Tipología' : 'Typology'}</TableHead>
-                        <TableHead>{language === 'es' ? 'Condominio' : 'Condominium'}</TableHead>
-                        <TableHead>{language === 'es' ? 'Unidad' : 'Unit'}</TableHead>
-                        <TableHead className="text-right">{t.units}</TableHead>
-                        <TableHead className="text-right">{t.occupancy}</TableHead>
-                        <TableHead className="text-right">{t.actions}</TableHead>
+                        <TableHead className="h-10 px-3">{t.owner}</TableHead>
+                        <TableHead className="h-10 px-3">{t.contact}</TableHead>
+                        <TableHead className="h-10 px-3">{language === 'es' ? 'Tipología' : 'Typology'}</TableHead>
+                        <TableHead className="h-10 px-3">{language === 'es' ? 'Condominio' : 'Condominium'}</TableHead>
+                        <TableHead className="h-10 px-3">{language === 'es' ? 'Unidad' : 'Unit'}</TableHead>
+                        <TableHead className="h-10 px-3 text-right">{t.units}</TableHead>
+                        <TableHead className="h-10 px-3 text-right">{t.occupancy}</TableHead>
+                        <TableHead className="h-10 px-3 text-right">{t.actions}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1107,14 +1108,14 @@ export default function ExternalOwnerPortfolio() {
                       data-testid={`row-owner-${portfolio.owner.id}`}
                       className="hover-elevate"
                     >
-                      <TableCell className="font-medium">
+                      <TableCell className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span>{portfolio.owner.ownerName}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
+                      <TableCell className="px-3 py-3">
+                        <div className="flex flex-col gap-1">
                           {portfolio.owner.ownerEmail && (
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Mail className="h-3 w-3" />
@@ -1129,42 +1130,42 @@ export default function ExternalOwnerPortfolio() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-3 py-3">
                         <div className="flex flex-wrap gap-1">
                           {portfolio.typologies.map((typ, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
+                            <Badge key={idx} variant="outline" className="text-sm">
                               {formatTypology(typ, language)}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-3 py-3">
                         <div className="flex flex-wrap gap-1">
                           {portfolio.condominiums.map((condo, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
+                            <Badge key={idx} variant="secondary" className="text-sm">
                               {condo}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-3 py-3">
                         <div className="flex flex-wrap gap-1">
                           {portfolio.unitNumbers.map((unit, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
+                            <Badge key={idx} variant="outline" className="text-sm">
                               {unit}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant="outline">{portfolio.units.length}</Badge>
+                      <TableCell className="px-3 py-3 text-right">
+                        <Badge variant="outline" className="text-sm">{portfolio.units.length}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant={portfolio.occupancyRate >= 70 ? "default" : "secondary"}>
+                      <TableCell className="px-3 py-3 text-right">
+                        <Badge variant={portfolio.occupancyRate >= 70 ? "default" : "secondary"} className="text-sm">
                           {portfolio.occupancyRate.toFixed(0)}%
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-3 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             size="sm"
@@ -1188,14 +1189,13 @@ export default function ExternalOwnerPortfolio() {
                   ))}
                       </TableBody>
                     </Table>
-                  </div>
+                      </div>
+                    </Card>
                   </>
                 )}
               </>
             );
       })()}
-        </CardContent>
-      </Card>
 
       {/* Owner Detail Dialog */}
       {selectedPortfolio && (
