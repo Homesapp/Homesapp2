@@ -15,11 +15,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight, X, ChevronDown, LayoutGrid, Table as TableIcon, User, Mail, Phone } from "lucide-react";
+import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight, X, ChevronDown, LayoutGrid, Table as TableIcon, User, Mail, Phone, Search, Filter } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import React from "react";
 import { z } from "zod";
@@ -82,6 +84,11 @@ export default function ExternalMaintenanceWorkers() {
   const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
   const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   
+  // Workers search and filter
+  const [workersSearchTerm, setWorkersSearchTerm] = useState("");
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
+  const [showWorkersFilters, setShowWorkersFilters] = useState(false);
+  
   // Assignments table pagination & sorting
   const [assignmentsPage, setAssignmentsPage] = useState(1);
   const [assignmentsPerPage, setAssignmentsPerPage] = useState(10);
@@ -129,6 +136,11 @@ export default function ExternalMaintenanceWorkers() {
   useEffect(() => {
     setWorkersPage(1);
   }, [workersPerPage]);
+  
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setWorkersPage(1);
+  }, [workersSearchTerm, selectedSpecialty]);
 
   // Static/semi-static data: agency users for worker selection
   const { data: allUsers, isLoading: loadingWorkers } = useQuery<any[]>({
@@ -405,9 +417,32 @@ export default function ExternalMaintenanceWorkers() {
   
   const assignmentsTotalPages = Math.ceil(sortedGroupedAssignments.length / assignmentsPerPage);
 
-  // Sort workers
+  // Filter and sort workers
   const sortedWorkers = useMemo(() => {
-    return [...workers].sort((a, b) => {
+    // First filter
+    let filtered = workers.filter(worker => {
+      // Search filter
+      if (workersSearchTerm) {
+        const searchLower = workersSearchTerm.toLowerCase();
+        const fullName = `${worker.firstName} ${worker.lastName}`.toLowerCase();
+        const email = worker.email?.toLowerCase() || '';
+        const phone = worker.phone?.toLowerCase() || '';
+        
+        if (!fullName.includes(searchLower) && !email.includes(searchLower) && !phone.includes(searchLower)) {
+          return false;
+        }
+      }
+      
+      // Specialty filter
+      if (selectedSpecialty && worker.maintenanceSpecialty !== selectedSpecialty) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Then sort
+    return [...filtered].sort((a, b) => {
       if (!workersSortColumn) return 0;
       
       let aVal: any = (a as any)[workersSortColumn];
@@ -430,7 +465,7 @@ export default function ExternalMaintenanceWorkers() {
       if (aVal > bVal) return workersSortDirection === "asc" ? 1 : -1;
       return 0;
     });
-  }, [workers, workersSortColumn, workersSortDirection, language]);
+  }, [workers, workersSortColumn, workersSortDirection, language, workersSearchTerm, selectedSpecialty]);
 
   // Clamp workers page
   useEffect(() => {
@@ -1103,50 +1138,127 @@ export default function ExternalMaintenanceWorkers() {
         </TabsContent>
 
         <TabsContent value="workers">
+          {/* Search and Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={language === "es" ? "Buscar trabajadores..." : "Search workers..."}
+                    value={workersSearchTerm}
+                    onChange={(e) => setWorkersSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-workers-search"
+                  />
+                </div>
+
+                {/* Filter Button with Popover */}
+                <Popover open={showWorkersFilters} onOpenChange={setShowWorkersFilters}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="flex-shrink-0 relative"
+                      data-testid="button-workers-filters"
+                    >
+                      <Filter className="h-4 w-4" />
+                      {selectedSpecialty && (
+                        <Badge variant="default" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                          1
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="end">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm">
+                          {language === 'es' ? 'Filtrar por especialidad' : 'Filter by specialty'}
+                        </h4>
+                        
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            variant={selectedSpecialty === null ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedSpecialty(null)}
+                            data-testid="button-filter-specialty-all"
+                          >
+                            {language === 'es' ? 'Todas' : 'All'}
+                          </Button>
+                          {Object.keys(SPECIALTY_LABELS.es).map((specialty) => (
+                            <Button
+                              key={specialty}
+                              variant={selectedSpecialty === specialty ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setSelectedSpecialty(specialty)}
+                              data-testid={`button-filter-specialty-${specialty}`}
+                            >
+                              {SPECIALTY_LABELS[language][specialty as keyof typeof SPECIALTY_LABELS['es']]}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Clear Filters Button */}
+                      {selectedSpecialty && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedSpecialty(null)}
+                          className="w-full"
+                          data-testid="button-clear-workers-filters"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          {language === 'es' ? 'Limpiar filtros' : 'Clear filters'}
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* View Mode Toggle - Desktop only */}
+                {!isMobile && (
+                  <>
+                    <Button
+                      variant={workersViewMode === "cards" ? "default" : "outline"}
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => {
+                        setWorkersViewMode("cards");
+                        setManualViewModeOverride(false);
+                      }}
+                      data-testid="button-workers-view-cards"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={workersViewMode === "table" ? "default" : "outline"}
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => {
+                        setWorkersViewMode("table");
+                        setManualViewModeOverride(true);
+                      }}
+                      data-testid="button-workers-view-table"
+                    >
+                      <TableIcon className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <CardTitle>{language === "es" ? "Trabajadores Disponibles" : "Available Workers"}</CardTitle>
-                  <CardDescription>
-                    {language === "es" 
-                      ? "Lista de trabajadores de mantenimiento de tu agencia"
-                      : "List of your agency's maintenance workers"}
-                  </CardDescription>
-                </div>
-                
-                {/* View Toggle */}
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <Button
-                    variant={workersViewMode === "cards" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setWorkersViewMode("cards");
-                      // Clear override if selecting default mode for current viewport
-                      setManualViewModeOverride(isMobile ? false : true);
-                    }}
-                    data-testid="button-workers-view-cards"
-                    className="flex-1 sm:flex-initial"
-                  >
-                    <LayoutGrid className="h-4 w-4 mr-2" />
-                    {language === "es" ? "Tarjetas" : "Cards"}
-                  </Button>
-                  <Button
-                    variant={workersViewMode === "table" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setWorkersViewMode("table");
-                      // Clear override if selecting default mode for current viewport
-                      setManualViewModeOverride(isMobile ? true : false);
-                    }}
-                    data-testid="button-workers-view-table"
-                    className="flex-1 sm:flex-initial"
-                  >
-                    <TableIcon className="h-4 w-4 mr-2" />
-                    {language === "es" ? "Tabla" : "Table"}
-                  </Button>
-                </div>
-              </div>
+              <CardTitle>{language === "es" ? "Trabajadores Disponibles" : "Available Workers"}</CardTitle>
+              <CardDescription>
+                {language === "es" 
+                  ? "Lista de trabajadores de mantenimiento de tu agencia"
+                  : "List of your agency's maintenance workers"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingWorkers ? (
