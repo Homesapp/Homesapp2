@@ -63,6 +63,10 @@ export default function ExternalCondominiums() {
   const [condoSearchText, setCondoSearchText] = useState("");
   const [condoFiltersExpanded, setCondoFiltersExpanded] = useState(false);
   
+  // Condominium pagination state (3 rows x 3 cols = 9 cards per page in lg)
+  const [condoCurrentPage, setCondoCurrentPage] = useState(1);
+  const condoItemsPerPage = 9;
+  
   // Units table pagination & sorting
   const [unitsPage, setUnitsPage] = useState(1);
   const [unitsPerPage, setUnitsPerPage] = useState(10);
@@ -710,6 +714,24 @@ export default function ExternalCondominiums() {
     return matchesSearch;
   }) || [];
 
+  // Paginate condominiums (3 rows x 3 cols = 9 cards per page)
+  const condoTotalPages = Math.max(1, Math.ceil(filteredCondominiums.length / condoItemsPerPage));
+  const condoStartIndex = (condoCurrentPage - 1) * condoItemsPerPage;
+  const condoEndIndex = condoStartIndex + condoItemsPerPage;
+  const paginatedCondominiums = filteredCondominiums.slice(condoStartIndex, condoEndIndex);
+
+  // Clamp page when data changes
+  useEffect(() => {
+    if (condoCurrentPage > condoTotalPages && condoTotalPages > 0) {
+      setCondoCurrentPage(condoTotalPages);
+    }
+  }, [filteredCondominiums.length]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCondoCurrentPage(1);
+  }, [condoSearchText]);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-start">
@@ -1118,9 +1140,10 @@ export default function ExternalCondominiums() {
                 );
               })()
             ) : (
-              // Grid view of all condominiums
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredCondominiums.map((condo) => {
+              <div>
+                {/* Grid view of all condominiums */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {paginatedCondominiums.map((condo) => {
                   const condoUnits = getUnitsForCondo(condo.id);
                   const activeUnits = condoUnits.filter(u => u.isActive);
                   const suspendedUnits = condoUnits.filter(u => !u.isActive);
@@ -1322,7 +1345,68 @@ export default function ExternalCondominiums() {
                       </CardContent>
                     </Card>
                   );
-                })}
+                  })}
+                </div>
+
+                {/* Condominium Pagination Controls */}
+                {filteredCondominiums.length > condoItemsPerPage && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 p-4 border rounded-lg bg-card">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {language === 'es' 
+                          ? `Mostrando ${condoStartIndex + 1}-${Math.min(condoEndIndex, filteredCondominiums.length)} de ${filteredCondominiums.length}`
+                          : `Showing ${condoStartIndex + 1}-${Math.min(condoEndIndex, filteredCondominiums.length)} of ${filteredCondominiums.length}`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {language === 'es' 
+                          ? `Página ${condoCurrentPage} de ${condoTotalPages}`
+                          : `Page ${condoCurrentPage} of ${condoTotalPages}`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(1)}
+                        disabled={condoCurrentPage === 1}
+                        data-testid="button-condo-first-page"
+                      >
+                        {language === 'es' ? 'Primera' : 'First'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={condoCurrentPage === 1}
+                        data-testid="button-condo-prev-page"
+                      >
+                        {language === 'es' ? 'Anterior' : 'Previous'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(prev => Math.min(condoTotalPages, prev + 1))}
+                        disabled={condoCurrentPage === condoTotalPages}
+                        data-testid="button-condo-next-page"
+                      >
+                        {language === 'es' ? 'Siguiente' : 'Next'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(condoTotalPages)}
+                        disabled={condoCurrentPage === condoTotalPages}
+                        data-testid="button-condo-last-page"
+                      >
+                        {language === 'es' ? 'Última' : 'Last'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           ) : (
