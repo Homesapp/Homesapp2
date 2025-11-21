@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,9 @@ import {
   DollarSign,
   CheckCircle2,
   XCircle,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -153,6 +156,12 @@ export default function ExternalMaintenance() {
   const [formCondominiumId, setFormCondominiumId] = useState<string>("");
   // Schedule state that guarantees calendar visibility
   const [schedule, setSchedule] = useState<ScheduleState>(getDefaultSchedule());
+  
+  // Pagination and sorting states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortColumn, setSortColumn] = useState<string>('created');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const { data: tickets, isLoading: ticketsLoading } = useQuery<ExternalMaintenanceTicket[]>({
     queryKey: ['/api/external-tickets'],
@@ -322,6 +331,92 @@ export default function ExternalMaintenance() {
     resolved: filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed').length,
     totalCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.actualCost || '0'), 0),
     estimatedCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.estimatedCost || '0'), 0),
+  };
+
+  // Sorting logic with type normalization
+  const sortedTickets = [...filteredTickets].sort((a, b) => {
+    let aValue: any;
+    let bValue: any;
+
+    switch (sortColumn) {
+      case 'title':
+        aValue = a.title.toLowerCase();
+        bValue = b.title.toLowerCase();
+        break;
+      case 'unit':
+        const aUnitInfo = getUnitInfo(a.unitId);
+        const bUnitInfo = getUnitInfo(b.unitId);
+        aValue = (aUnitInfo?.unit?.unitNumber || '').toLowerCase();
+        bValue = (bUnitInfo?.unit?.unitNumber || '').toLowerCase();
+        break;
+      case 'category':
+        aValue = a.category.toLowerCase();
+        bValue = b.category.toLowerCase();
+        break;
+      case 'priority':
+        const priorityOrder = { low: 1, medium: 2, high: 3 };
+        aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+        bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+        break;
+      case 'status':
+        aValue = a.status.toLowerCase();
+        bValue = b.status.toLowerCase();
+        break;
+      case 'assigned':
+        aValue = (getAssignedUserName(a.assignedTo) || '').toLowerCase();
+        bValue = (getAssignedUserName(b.assignedTo) || '').toLowerCase();
+        break;
+      case 'created':
+        aValue = new Date(a.createdAt);
+        bValue = new Date(b.createdAt);
+        break;
+      default:
+        return 0;
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedTickets.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTickets = sortedTickets.slice(startIndex, endIndex);
+
+  // Pre-render page clamping using useLayoutEffect
+  useLayoutEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // Clamp page when data changes
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [sortedTickets.length, itemsPerPage]);
+
+  // Handle sort column click
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Render sort icon
+  const renderSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ChevronsUpDown className="ml-1 h-4 w-4 text-muted-foreground" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="ml-1 h-4 w-4" />
+      : <ChevronDown className="ml-1 h-4 w-4" />;
   };
 
   const formatCurrency = (amount: number) => {
