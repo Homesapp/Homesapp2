@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Eye, EyeOff, Search, Copy, Check, Mail, Filter, Plus, LayoutGrid, LayoutList, ChevronDown, ChevronUp } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { Eye, EyeOff, Search, Copy, Check, Mail, Filter, Plus, LayoutGrid, LayoutList, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useMemo, useEffect, useLayoutEffect } from "react";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, ExternalCondominium, InsertExternalUnitAccessControl } from "@shared/schema";
@@ -60,7 +60,7 @@ export default function ExternalAccesses() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendEmailAccessId, setSendEmailAccessId] = useState<string | null>(null);
   const [selectedMaintenanceUser, setSelectedMaintenanceUser] = useState<string>("");
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   
@@ -70,6 +70,16 @@ export default function ExternalAccesses() {
   const [selectedAccessType, setSelectedAccessType] = useState<string>("all");
   const [selectedAccesses, setSelectedAccesses] = useState<Set<string>>(new Set());
   const [copiedMultiple, setCopiedMultiple] = useState(false);
+
+  // Table pagination and sorting states
+  const [tablePage, setTablePage] = useState(1);
+  const [tableItemsPerPage, setTableItemsPerPage] = useState(10);
+  const [sortColumn, setSortColumn] = useState<string>("condominium");
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Card pagination state (rows per page: 1, 2, or 3)
+  const [cardsRowsPerPage, setCardsRowsPerPage] = useState(3);
+  const [cardsPage, setCardsPage] = useState(1);
 
   const { data: accesses, isLoading } = useQuery<AccessControl[]>({
     queryKey: ['/api/external-all-access-controls'],
@@ -219,7 +229,27 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
   const handleCondominiumChange = (value: string) => {
     setSelectedCondominium(value);
     setSelectedUnit("all");
+    setTablePage(1);
+    setCardsPage(1);
     form.setValue("unitId", "");
+  };
+
+  const handleUnitChange = (value: string) => {
+    setSelectedUnit(value);
+    setTablePage(1);
+    setCardsPage(1);
+  };
+
+  const handleAccessTypeChange = (value: string) => {
+    setSelectedAccessType(value);
+    setTablePage(1);
+    setCardsPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setTablePage(1);
+    setCardsPage(1);
   };
 
   // Clear selection when filters change
@@ -243,7 +273,73 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
     return matchesSearch && matchesCondominium && matchesUnit && matchesType;
   }) || [];
 
-  // Group accesses by unit
+  // Sorting logic for table view
+  const sortedAccesses = useMemo(() => {
+    if (!sortColumn) return filteredAccesses;
+
+    const sorted = [...filteredAccesses].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case 'condominium':
+          aValue = a.condominiumName.toLowerCase();
+          bValue = b.condominiumName.toLowerCase();
+          break;
+        case 'unit':
+          aValue = a.unitNumber.toLowerCase();
+          bValue = b.unitNumber.toLowerCase();
+          break;
+        case 'type':
+          aValue = getAccessTypeLabel(a.accessType).toLowerCase();
+          bValue = getAccessTypeLabel(b.accessType).toLowerCase();
+          break;
+        case 'code':
+          aValue = a.accessCode?.toLowerCase() || '';
+          bValue = b.accessCode?.toLowerCase() || '';
+          break;
+        case 'description':
+          aValue = a.description?.toLowerCase() || '';
+          bValue = b.description?.toLowerCase() || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [filteredAccesses, sortColumn, sortDirection, language]);
+
+  // Table pagination
+  const tableTotalPages = Math.max(1, Math.ceil(sortedAccesses.length / tableItemsPerPage));
+  const tableStartIndex = (tablePage - 1) * tableItemsPerPage;
+  const tableEndIndex = tableStartIndex + tableItemsPerPage;
+  const paginatedTableAccesses = sortedAccesses.slice(tableStartIndex, tableEndIndex);
+
+  // Pre-render page clamping for table using useLayoutEffect
+  useLayoutEffect(() => {
+    if (tablePage > tableTotalPages) {
+      setTablePage(tableTotalPages);
+    }
+  }, [tablePage, tableTotalPages]);
+
+  // Clamp table page when data changes
+  useEffect(() => {
+    if (tablePage > tableTotalPages && tableTotalPages > 0) {
+      setTablePage(tableTotalPages);
+    }
+  }, [sortedAccesses.length, tableItemsPerPage]);
+
+  // Reset table page when filters change
+  useEffect(() => {
+    setTablePage(1);
+  }, [selectedCondominium, selectedUnit, selectedAccessType, searchTerm]);
+
+  // Group accesses by unit for cards view
   const groupedAccesses = useMemo(() => {
     const groups = new Map<string, GroupedAccess>();
     
@@ -267,6 +363,42 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
       return a.unitNumber.localeCompare(b.unitNumber);
     });
   }, [filteredAccesses]);
+
+  // Cards pagination (3 cards per row)
+  const cardsPerPage = cardsRowsPerPage * 3;
+  const cardsTotalPages = Math.max(1, Math.ceil(groupedAccesses.length / cardsPerPage));
+  const cardsStartIndex = (cardsPage - 1) * cardsPerPage;
+  const cardsEndIndex = cardsStartIndex + cardsPerPage;
+  const paginatedGroupedAccesses = groupedAccesses.slice(cardsStartIndex, cardsEndIndex);
+
+  // Pre-render page clamping for cards using useLayoutEffect
+  useLayoutEffect(() => {
+    if (cardsPage > cardsTotalPages) {
+      setCardsPage(cardsTotalPages);
+    }
+  }, [cardsPage, cardsTotalPages]);
+
+  // Clamp cards page when data changes
+  useEffect(() => {
+    if (cardsPage > cardsTotalPages && cardsTotalPages > 0) {
+      setCardsPage(cardsTotalPages);
+    }
+  }, [groupedAccesses.length, cardsPerPage]);
+
+  // Reset cards page when filters change
+  useEffect(() => {
+    setCardsPage(1);
+  }, [selectedCondominium, selectedUnit, selectedAccessType, searchTerm]);
+
+  // Handle sort column click
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const toggleAccessSelection = (accessId: string) => {
     setSelectedAccesses(prev => {
@@ -644,7 +776,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                   </label>
                   <Select 
                     value={selectedUnit} 
-                    onValueChange={setSelectedUnit}
+                    onValueChange={handleUnitChange}
                     disabled={selectedCondominium === "all"}
                   >
                     <SelectTrigger data-testid="select-unit">
@@ -667,7 +799,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                   <label className="text-sm font-medium">
                     {language === "es" ? "Tipo de Acceso" : "Access Type"}
                   </label>
-                  <Select value={selectedAccessType} onValueChange={setSelectedAccessType}>
+                  <Select value={selectedAccessType} onValueChange={handleAccessTypeChange}>
                     <SelectTrigger data-testid="select-access-type">
                       <SelectValue placeholder={language === "es" ? "Todos los tipos" : "All types"} />
                     </SelectTrigger>
@@ -696,7 +828,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                     <Input
                       placeholder={language === "es" ? "Buscar..." : "Search..."}
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => handleSearchChange(e.target.value)}
                       className="pl-9"
                       data-testid="input-search"
                     />
@@ -787,19 +919,79 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       />
                     </TableHead>
                     <TableHead className="min-w-[150px]">
-                      {language === "es" ? "Condominio" : "Condominium"}
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('condominium')}
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        data-testid="button-sort-condominium"
+                      >
+                        {language === "es" ? "Condominio" : "Condominium"}
+                        {sortColumn === 'condominium' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )}
+                      </Button>
                     </TableHead>
                     <TableHead className="min-w-[100px]">
-                      {language === "es" ? "Unidad" : "Unit"}
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('unit')}
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        data-testid="button-sort-unit"
+                      >
+                        {language === "es" ? "Unidad" : "Unit"}
+                        {sortColumn === 'unit' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )}
+                      </Button>
                     </TableHead>
                     <TableHead className="min-w-[150px]">
-                      {language === "es" ? "Tipo" : "Type"}
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('type')}
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        data-testid="button-sort-type"
+                      >
+                        {language === "es" ? "Tipo" : "Type"}
+                        {sortColumn === 'type' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )}
+                      </Button>
                     </TableHead>
                     <TableHead className="min-w-[200px]">
-                      {language === "es" ? "Código/Contraseña" : "Code/Password"}
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('code')}
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        data-testid="button-sort-code"
+                      >
+                        {language === "es" ? "Código/Contraseña" : "Code/Password"}
+                        {sortColumn === 'code' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )}
+                      </Button>
                     </TableHead>
                     <TableHead className="min-w-[200px]">
-                      {language === "es" ? "Descripción" : "Description"}
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('description')}
+                        className="hover-elevate active-elevate-2 p-0 h-auto font-medium"
+                        data-testid="button-sort-description"
+                      >
+                        {language === "es" ? "Descripción" : "Description"}
+                        {sortColumn === 'description' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )}
+                      </Button>
                     </TableHead>
                     <TableHead className="min-w-[150px]">
                       {language === "es" ? "Compartir" : "Share"}
@@ -810,7 +1002,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAccesses.map((access) => {
+                  {paginatedTableAccesses.map((access) => {
                     const isVisible = visiblePasswords.has(access.id);
                     const isSelected = selectedAccesses.has(access.id);
                     return (
@@ -900,20 +1092,111 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                 </TableBody>
               </Table>
             </div>
+
+            {/* Table Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === "es" ? "Mostrar" : "Show"}
+                </span>
+                <Select
+                  value={tableItemsPerPage.toString()}
+                  onValueChange={(value) => setTableItemsPerPage(Number(value))}
+                >
+                  <SelectTrigger className="w-[70px]" data-testid="select-table-items-per-page">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="30">30</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === "es" ? "por página" : "per page"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {language === "es" ? "Página" : "Page"} {tablePage} {language === "es" ? "de" : "of"} {tableTotalPages}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTablePage(1)}
+                  disabled={tablePage === 1}
+                  data-testid="button-table-first-page"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTablePage(Math.max(1, tablePage - 1))}
+                  disabled={tablePage === 1}
+                  data-testid="button-table-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTablePage(Math.min(tableTotalPages, tablePage + 1))}
+                  disabled={tablePage === tableTotalPages}
+                  data-testid="button-table-next-page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTablePage(tableTotalPages)}
+                  disabled={tablePage === tableTotalPages}
+                  data-testid="button-table-last-page"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
               {language === "es" 
                 ? `${groupedAccesses.length} unidades con ${filteredAccesses.length} accesos`
                 : `${groupedAccesses.length} units with ${filteredAccesses.length} accesses`}
             </p>
+
+            {/* Cards Rows Per Page Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {language === "es" ? "Filas por página:" : "Rows per page:"}
+              </span>
+              <Select
+                value={cardsRowsPerPage.toString()}
+                onValueChange={(value) => setCardsRowsPerPage(Number(value))}
+              >
+                <SelectTrigger className="w-[70px]" data-testid="select-cards-rows-per-page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {groupedAccesses.map((group) => (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {paginatedGroupedAccesses.map((group) => (
               <Card key={group.unitId} className="overflow-hidden" data-testid={`card-unit-${group.unitId}`}>
                 <CardHeader className="bg-muted/50">
                   <div className="flex items-start justify-between">
@@ -1026,6 +1309,58 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
               </Card>
             ))}
           </div>
+
+          {/* Cards Pagination Controls */}
+          {cardsTotalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+              <div className="text-sm text-muted-foreground">
+                {language === "es" ? "Página" : "Page"} {cardsPage} {language === "es" ? "de" : "of"} {cardsTotalPages}
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCardsPage(1)}
+                  disabled={cardsPage === 1}
+                  data-testid="button-cards-first-page"
+                >
+                  <ChevronsLeft className="mr-2 h-4 w-4" />
+                  {language === "es" ? "Primera" : "First"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCardsPage(Math.max(1, cardsPage - 1))}
+                  disabled={cardsPage === 1}
+                  data-testid="button-cards-prev-page"
+                >
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  {language === "es" ? "Anterior" : "Previous"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCardsPage(Math.min(cardsTotalPages, cardsPage + 1))}
+                  disabled={cardsPage === cardsTotalPages}
+                  data-testid="button-cards-next-page"
+                >
+                  {language === "es" ? "Siguiente" : "Next"}
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCardsPage(cardsTotalPages)}
+                  disabled={cardsPage === cardsTotalPages}
+                  data-testid="button-cards-last-page"
+                >
+                  {language === "es" ? "Última" : "Last"}
+                  <ChevronsRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
