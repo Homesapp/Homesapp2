@@ -85,7 +85,11 @@ const serviceTypeLabels: Record<string, string> = {
   other: "Otro",
 };
 
-export default function ExternalPayments() {
+interface ExternalPaymentsProps {
+  showHeader?: boolean;
+}
+
+export default function ExternalPayments({ showHeader = true }: ExternalPaymentsProps) {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -306,12 +310,14 @@ export default function ExternalPayments() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Cobros y Pagos</h1>
-        <p className="text-muted-foreground">
-          Gestión de cobros automatizados y recordatorios
-        </p>
-      </div>
+      {showHeader && (
+        <div>
+          <h1 className="text-3xl font-bold">Cobros y Pagos</h1>
+          <p className="text-muted-foreground">
+            Gestión de cobros automatizados y recordatorios
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

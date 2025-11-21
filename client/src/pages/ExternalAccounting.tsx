@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import ExternalPayments from "./ExternalPayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -418,6 +419,7 @@ export default function ExternalAccounting() {
     subtitle: 'Gestión financiera y reportes',
     transactionsTab: 'Transacciones',
     receivablesTab: 'Cuentas por Cobrar',
+    paymentsTab: 'Cobros',
     reportsTab: 'Reportes',
     netBalance: 'Balance Neto',
     totalIncome: 'Ingresos Totales',
@@ -529,6 +531,7 @@ export default function ExternalAccounting() {
     subtitle: 'Financial management and reports',
     transactionsTab: 'Transactions',
     receivablesTab: 'Receivables',
+    paymentsTab: 'Payments',
     reportsTab: 'Reports',
     netBalance: 'Net Balance',
     totalIncome: 'Total Income',
@@ -908,6 +911,7 @@ export default function ExternalAccounting() {
           <TabsList>
             <TabsTrigger value="transactions" data-testid="tab-transactions">{t.transactionsTab}</TabsTrigger>
             <TabsTrigger value="receivables" data-testid="tab-receivables">{t.receivablesTab}</TabsTrigger>
+            <TabsTrigger value="payments" data-testid="tab-payments">{t.paymentsTab}</TabsTrigger>
             <TabsTrigger value="reports" data-testid="tab-reports">{t.reportsTab}</TabsTrigger>
           </TabsList>
         </div>
@@ -1937,6 +1941,11 @@ export default function ExternalAccounting() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Payments Tab */}
+        <TabsContent value="payments" className="space-y-6">
+          <ExternalPayments showHeader={false} />
         </TabsContent>
       </Tabs>
 
