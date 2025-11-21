@@ -4,11 +4,12 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp } from "lucide-react";
+import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, LayoutGrid, Table as TableIcon, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export default function ExternalCondominiums() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const isMobile = useMobile();
   const [showUnifiedDialog, setShowUnifiedDialog] = useState(false);
   const [creationType, setCreationType] = useState<'condominium' | 'unit' | null>(null);
   const [showDeleteCondoDialog, setShowDeleteCondoDialog] = useState(false);
@@ -44,6 +46,9 @@ export default function ExternalCondominiums() {
   const [deletingCondo, setDeletingCondo] = useState<ExternalCondominium | null>(null);
   const [selectedCondoId, setSelectedCondoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"condominiums" | "units">("condominiums");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
+  const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   
   // For creating condominium with multiple units
   const [tempUnits, setTempUnits] = useState<Array<{ unitNumber: string; typology?: string; floor?: string; bedrooms?: number; bathrooms?: number; squareMeters?: number }>>([]);
@@ -68,9 +73,13 @@ export default function ExternalCondominiums() {
   const [condoSearchText, setCondoSearchText] = useState("");
   const [condoFiltersExpanded, setCondoFiltersExpanded] = useState(false);
   
-  // Condominium pagination state (max 3 rows x 3 cols = 9 cards per page in lg)
+  // Condominium pagination state (default to 10 for table view)
   const [condoCurrentPage, setCondoCurrentPage] = useState(1);
-  const [condoItemsPerPage, setCondoItemsPerPage] = useState(9); // Default: 3 rows
+  const [condoItemsPerPage, setCondoItemsPerPage] = useState(10); // Default: table mode
+  
+  // Condominiums table sorting
+  const [condosSortColumn, setCondosSortColumn] = useState<string>("");
+  const [condosSortDirection, setCondosSortDirection] = useState<"asc" | "desc">("asc");
   
   // Unit carousel indices (for showing 2 units at a time per condo)
   const [unitCarouselIndices, setUnitCarouselIndices] = useState<Record<string, number>>({});
@@ -80,6 +89,37 @@ export default function ExternalCondominiums() {
   const [unitsPerPage, setUnitsPerPage] = useState(10);
   const [unitsSortColumn, setUnitsSortColumn] = useState<string>("");
   const [unitsSortDirection, setUnitsSortDirection] = useState<"asc" | "desc">("asc");
+
+  // Auto-switch view mode on genuine breakpoint transitions (only if no manual override)
+  useEffect(() => {
+    // Only act on actual breakpoint transitions (not every isMobile change)
+    if (isMobile !== prevIsMobile) {
+      setPrevIsMobile(isMobile);
+      
+      if (!manualViewModeOverride) {
+        const preferredMode = isMobile ? "cards" : "table";
+        setViewMode(preferredMode);
+        setCondoItemsPerPage(preferredMode === "cards" ? 9 : 10);
+      }
+    }
+  }, [isMobile, prevIsMobile, manualViewModeOverride]);
+
+  // Reset page to 1 when view mode changes
+  useEffect(() => {
+    const defaultPerPage = viewMode === "cards" ? 9 : 10;
+    const validOptions = viewMode === "cards" ? [3, 6, 9, 12] : [5, 10, 20, 30];
+    
+    // Only auto-adjust if current value is not valid for the new mode
+    if (!validOptions.includes(condoItemsPerPage)) {
+      setCondoItemsPerPage(defaultPerPage);
+    }
+    setCondoCurrentPage(1);
+  }, [viewMode]);
+  
+  // Reset page when items per page changes
+  useEffect(() => {
+    setCondoCurrentPage(1);
+  }, [condoItemsPerPage]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -729,6 +769,20 @@ export default function ExternalCondominiums() {
     return unitsSortDirection === "asc" ? "↑" : "↓";
   };
 
+  const handleCondosSort = (column: string) => {
+    if (condosSortColumn === column) {
+      setCondosSortDirection(condosSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setCondosSortColumn(column);
+      setCondosSortDirection("asc");
+    }
+  };
+
+  const getCondosSortIcon = (column: string) => {
+    if (condosSortColumn !== column) return null;
+    return condosSortDirection === "asc" ? "↑" : "↓";
+  };
+
   const filteredCondominiums = condominiums?.filter(condo => {
     // Filter by search text (name or address)
     const searchLower = condoSearchText.toLowerCase();
@@ -740,11 +794,47 @@ export default function ExternalCondominiums() {
     return matchesSearch;
   }) || [];
 
-  // Paginate condominiums (3 rows x 3 cols = 9 cards per page)
-  const condoTotalPages = Math.max(1, Math.ceil(filteredCondominiums.length / condoItemsPerPage));
+  // Sort condominiums
+  const sortedCondominiums = useMemo(() => {
+    return [...filteredCondominiums].sort((a, b) => {
+      if (!condosSortColumn) return 0;
+      
+      let aVal: any;
+      let bVal: any;
+      
+      if (condosSortColumn === 'name') {
+        aVal = a.name.toLowerCase();
+        bVal = b.name.toLowerCase();
+      } else if (condosSortColumn === 'address') {
+        aVal = (a.address || '').toLowerCase();
+        bVal = (b.address || '').toLowerCase();
+      } else if (condosSortColumn === 'totalUnits') {
+        aVal = getUnitsForCondo(a.id).length;
+        bVal = getUnitsForCondo(b.id).length;
+      } else if (condosSortColumn === 'activeUnits') {
+        aVal = getUnitsForCondo(a.id).filter(u => u.isActive).length;
+        bVal = getUnitsForCondo(b.id).filter(u => u.isActive).length;
+      } else if (condosSortColumn === 'rentedUnits') {
+        aVal = getUnitsForCondo(a.id).filter(u => hasActiveRental(u.id)).length;
+        bVal = getUnitsForCondo(b.id).filter(u => hasActiveRental(u.id)).length;
+      }
+      
+      if (typeof aVal === "string" || typeof bVal === "string") {
+        aVal = (aVal || '').toString().toLowerCase();
+        bVal = (bVal || '').toString().toLowerCase();
+      }
+      
+      if (aVal < bVal) return condosSortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return condosSortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredCondominiums, condosSortColumn, condosSortDirection]);
+
+  // Paginate condominiums
+  const condoTotalPages = Math.max(1, Math.ceil(sortedCondominiums.length / condoItemsPerPage));
   const condoStartIndex = (condoCurrentPage - 1) * condoItemsPerPage;
   const condoEndIndex = condoStartIndex + condoItemsPerPage;
-  const paginatedCondominiums = filteredCondominiums.slice(condoStartIndex, condoEndIndex);
+  const paginatedCondominiums = sortedCondominiums.slice(condoStartIndex, condoEndIndex);
 
   // Pre-render page clamping using useLayoutEffect
   useLayoutEffect(() => {
@@ -956,42 +1046,84 @@ export default function ExternalCondominiums() {
         </div>
         
         <TabsContent value="condominiums" className="space-y-4">
-
-          {condosError ? (
-            <Card data-testid="card-error-state">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                <p className="text-lg font-medium" data-testid="text-error-title">
-                  {language === "es" ? "Error al cargar condominios" : "Error loading condominiums"}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2" data-testid="text-error-message">
-                  {condosErrorMsg instanceof Error ? condosErrorMsg.message : language === "es" ? "Ocurrió un error inesperado" : "An unexpected error occurred"}
-                </p>
-              </CardContent>
-            </Card>
-          ) : condosLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="h-4 w-full mt-2" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-20 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredCondominiums && filteredCondominiums.length > 0 ? (
-            selectedCondoId ? (
-              // Detail view for selected condominium
-              (() => {
-                const selectedCondo = filteredCondominiums.find(c => c.id === selectedCondoId);
-                if (!selectedCondo) return null;
-                const condoUnits = getUnitsForCondo(selectedCondoId);
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>{language === "es" ? "Condominios" : "Condominiums"}</CardTitle>
+                  <CardDescription>
+                    {language === "es" 
+                      ? "Gestiona los condominios de tu agencia"
+                      : "Manage your agency's condominiums"}
+                  </CardDescription>
+                </div>
                 
-                return (
+                {/* View Toggle */}
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
+                    variant={viewMode === "cards" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode("cards");
+                      setManualViewModeOverride(isMobile ? false : true);
+                    }}
+                    data-testid="button-condos-view-cards"
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Tarjetas" : "Cards"}
+                  </Button>
+                  <Button
+                    variant={viewMode === "table" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode("table");
+                      setManualViewModeOverride(isMobile ? true : false);
+                    }}
+                    data-testid="button-condos-view-table"
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <TableIcon className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Tabla" : "Table"}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {condosError ? (
+                <div className="flex flex-col items-center justify-center py-12" data-testid="div-error-state">
+                  <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+                  <p className="text-lg font-medium" data-testid="text-error-title">
+                    {language === "es" ? "Error al cargar condominios" : "Error loading condominiums"}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2" data-testid="text-error-message">
+                    {condosErrorMsg instanceof Error ? condosErrorMsg.message : language === "es" ? "Ocurrió un error inesperado" : "An unexpected error occurred"}
+                  </p>
+                </div>
+              ) : condosLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !sortedCondominiums || sortedCondominiums.length === 0 ? (
+                <div className="text-center py-8" data-testid="div-empty-state">
+                  <p className="text-muted-foreground">
+                    {language === "es" 
+                      ? "No hay condominios que coincidan con los filtros"
+                      : "No condominiums match the filters"}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {selectedCondoId ? (
+                    // Detail view for selected condominium
+                    (() => {
+                      const selectedCondo = sortedCondominiums.find(c => c.id === selectedCondoId);
+                      if (!selectedCondo) return null;
+                      const condoUnits = getUnitsForCondo(selectedCondoId);
+                      
+                      return (
                   <div className="space-y-4">
                     <Button 
                       variant="ghost" 
@@ -1178,7 +1310,7 @@ export default function ExternalCondominiums() {
                   </div>
                 );
               })()
-            ) : (
+            ) : viewMode === "cards" ? (
               <div>
                 {/* Grid view of all condominiums */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1460,7 +1592,7 @@ export default function ExternalCondominiums() {
                 </div>
 
                 {/* Condominium Pagination Controls */}
-                {filteredCondominiums.length > 0 && (
+                {sortedCondominiums.length > 0 && (
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -1477,6 +1609,7 @@ export default function ExternalCondominiums() {
                           <SelectItem value="3">3</SelectItem>
                           <SelectItem value="6">6</SelectItem>
                           <SelectItem value="9">9</SelectItem>
+                          <SelectItem value="12">12</SelectItem>
                         </SelectContent>
                       </Select>
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -1487,8 +1620,8 @@ export default function ExternalCondominiums() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
                         {language === 'es' 
-                          ? `Mostrando ${filteredCondominiums.length === 0 ? 0 : condoStartIndex + 1}-${Math.min(condoEndIndex, filteredCondominiums.length)} de ${filteredCondominiums.length}`
-                          : `Showing ${filteredCondominiums.length === 0 ? 0 : condoStartIndex + 1}-${Math.min(condoEndIndex, filteredCondominiums.length)} of ${filteredCondominiums.length}`}
+                          ? `Mostrando ${sortedCondominiums.length === 0 ? 0 : condoStartIndex + 1}-${Math.min(condoEndIndex, sortedCondominiums.length)} de ${sortedCondominiums.length}`
+                          : `Showing ${sortedCondominiums.length === 0 ? 0 : condoStartIndex + 1}-${Math.min(condoEndIndex, sortedCondominiums.length)} of ${sortedCondominiums.length}`}
                       </span>
                     </div>
 
@@ -1533,7 +1666,227 @@ export default function ExternalCondominiums() {
                   </div>
                 )}
               </div>
-            )
+            ) : (
+              <div>
+                {/* Table view of condominiums */}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleCondosSort('name')}
+                        data-testid="th-condo-name"
+                      >
+                        <div className="flex items-center gap-1">
+                          {language === "es" ? "Nombre" : "Name"}
+                          <ArrowUpDown className="h-3 w-3" />
+                          {getCondosSortIcon('name') && <span className="text-xs">{getCondosSortIcon('name')}</span>}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleCondosSort('address')}
+                        data-testid="th-condo-address"
+                      >
+                        <div className="flex items-center gap-1">
+                          {language === "es" ? "Dirección" : "Address"}
+                          <ArrowUpDown className="h-3 w-3" />
+                          {getCondosSortIcon('address') && <span className="text-xs">{getCondosSortIcon('address')}</span>}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleCondosSort('totalUnits')}
+                        data-testid="th-condo-total-units"
+                      >
+                        <div className="flex items-center gap-1">
+                          {language === "es" ? "Total Unidades" : "Total Units"}
+                          <ArrowUpDown className="h-3 w-3" />
+                          {getCondosSortIcon('totalUnits') && <span className="text-xs">{getCondosSortIcon('totalUnits')}</span>}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleCondosSort('activeUnits')}
+                        data-testid="th-condo-active-units"
+                      >
+                        <div className="flex items-center gap-1">
+                          {language === "es" ? "Unidades Activas" : "Active Units"}
+                          <ArrowUpDown className="h-3 w-3" />
+                          {getCondosSortIcon('activeUnits') && <span className="text-xs">{getCondosSortIcon('activeUnits')}</span>}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleCondosSort('rentedUnits')}
+                        data-testid="th-condo-rented-units"
+                      >
+                        <div className="flex items-center gap-1">
+                          {language === "es" ? "Unidades Rentadas" : "Rented Units"}
+                          <ArrowUpDown className="h-3 w-3" />
+                          {getCondosSortIcon('rentedUnits') && <span className="text-xs">{getCondosSortIcon('rentedUnits')}</span>}
+                        </div>
+                      </TableHead>
+                      <TableHead data-testid="th-condo-actions">
+                        {language === "es" ? "Acciones" : "Actions"}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedCondominiums.map((condo) => {
+                      const condoUnits = getUnitsForCondo(condo.id);
+                      const activeUnits = condoUnits.filter(u => u.isActive);
+                      const rentedUnits = condoUnits.filter(u => hasActiveRental(u.id));
+                      
+                      return (
+                        <TableRow 
+                          key={condo.id}
+                          className="cursor-pointer hover-elevate"
+                          onClick={() => setSelectedCondoId(condo.id)}
+                          data-testid={`row-condo-${condo.id}`}
+                        >
+                          <TableCell className="font-medium" data-testid={`cell-name-${condo.id}`}>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              {condo.name}
+                            </div>
+                          </TableCell>
+                          <TableCell data-testid={`cell-address-${condo.id}`}>
+                            {condo.address || '-'}
+                          </TableCell>
+                          <TableCell data-testid={`cell-total-${condo.id}`}>
+                            {condoUnits.length}
+                          </TableCell>
+                          <TableCell data-testid={`cell-active-${condo.id}`}>
+                            {activeUnits.length}
+                          </TableCell>
+                          <TableCell data-testid={`cell-rented-${condo.id}`}>
+                            {rentedUnits.length}
+                          </TableCell>
+                          <TableCell data-testid={`cell-actions-${condo.id}`}>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddUnitsToCondominium(condo);
+                                }}
+                                data-testid={`button-add-units-table-${condo.id}`}
+                                title={language === "es" ? "Agregar múltiples unidades" : "Add multiple units"}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCondo(condo);
+                                }}
+                                data-testid={`button-edit-table-${condo.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCondo(condo);
+                                }}
+                                data-testid={`button-delete-table-${condo.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {/* Table Pagination */}
+                {sortedCondominiums.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        {language === 'es' ? 'Mostrar' : 'Show'}
+                      </span>
+                      <Select 
+                        value={condoItemsPerPage.toString()} 
+                        onValueChange={(value) => setCondoItemsPerPage(Number(value))}
+                      >
+                        <SelectTrigger className="w-[70px]" data-testid="select-condo-table-per-page">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="30">30</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        {language === 'es' ? 'por página' : 'per page'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        {language === 'es' 
+                          ? `Mostrando ${sortedCondominiums.length === 0 ? 0 : condoStartIndex + 1}-${Math.min(condoEndIndex, sortedCondominiums.length)} de ${sortedCondominiums.length}`
+                          : `Showing ${sortedCondominiums.length === 0 ? 0 : condoStartIndex + 1}-${Math.min(condoEndIndex, sortedCondominiums.length)} of ${sortedCondominiums.length}`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(1)}
+                        disabled={condoCurrentPage === 1}
+                        data-testid="button-condo-table-first-page"
+                      >
+                        {language === 'es' ? 'Primera' : 'First'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={condoCurrentPage === 1}
+                        data-testid="button-condo-table-prev-page"
+                      >
+                        {language === 'es' ? 'Anterior' : 'Previous'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(prev => Math.min(condoTotalPages, prev + 1))}
+                        disabled={condoCurrentPage === condoTotalPages}
+                        data-testid="button-condo-table-next-page"
+                      >
+                        {language === 'es' ? 'Siguiente' : 'Next'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCondoCurrentPage(condoTotalPages)}
+                        disabled={condoCurrentPage === condoTotalPages}
+                        data-testid="button-condo-table-last-page"
+                      >
+                        {language === 'es' ? 'Última' : 'Last'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+                </>
+              )}
+            </CardContent>
+          </Card>
           ) : (
             <Card data-testid="card-empty-state">
               <CardContent className="flex flex-col items-center justify-center py-12">

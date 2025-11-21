@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Eye, EyeOff, Search, Copy, Check, Mail, Filter, Plus, LayoutGrid, LayoutList, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, XCircle } from "lucide-react";
 import { useState, useMemo, useEffect, useLayoutEffect, lazy, Suspense } from "react";
@@ -59,12 +60,15 @@ const accessFormSchema = insertExternalUnitAccessControlSchema.extend({
 export default function ExternalAccesses() {
   const { language } = useLanguage();
   const { toast } = useToast();
+  const isMobile = useMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendEmailAccessId, setSendEmailAccessId] = useState<string | null>(null);
   const [selectedMaintenanceUser, setSelectedMaintenanceUser] = useState<string>("");
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
+  const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   
@@ -84,6 +88,24 @@ export default function ExternalAccesses() {
   // Card pagination state (rows per page: 1, 2, or 3)
   const [cardsRowsPerPage, setCardsRowsPerPage] = useState(3);
   const [cardsPage, setCardsPage] = useState(1);
+
+  // Auto-switch view mode on genuine breakpoint transitions (only if no manual override)
+  useEffect(() => {
+    // Only act on actual breakpoint transitions (not every isMobile change)
+    if (isMobile !== prevIsMobile) {
+      setPrevIsMobile(isMobile);
+      
+      if (!manualViewModeOverride) {
+        const preferredMode = isMobile ? "cards" : "table";
+        setViewMode(preferredMode);
+        if (preferredMode === "cards") {
+          setCardsRowsPerPage(1);
+        } else {
+          setTableItemsPerPage(5);
+        }
+      }
+    }
+  }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
   // Real-time data: access control codes (frequently updated)
   const { data: accesses, isLoading } = useQuery<AccessControl[]>({
@@ -716,24 +738,34 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
             </PopoverContent>
           </Popover>
 
-          <div className="flex items-center gap-1 border rounded-md p-1">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button
-              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              variant={viewMode === 'table' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setViewMode('table')}
-              data-testid="button-view-table"
+              onClick={() => {
+                setViewMode('table');
+                // Clear override if selecting default mode for current viewport
+                setManualViewModeOverride(isMobile ? true : false);
+              }}
+              data-testid="button-accesses-view-table"
               className="flex-1 sm:flex-initial"
             >
-              <LayoutList className="h-4 w-4" />
+              <LayoutList className="h-4 w-4 mr-2" />
+              {language === 'es' ? 'Tabla' : 'Table'}
             </Button>
             <Button
-              variant={viewMode === 'cards' ? 'default' : 'ghost'}
+              variant={viewMode === 'cards' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setViewMode('cards')}
-              data-testid="button-view-cards"
+              onClick={() => {
+                setViewMode('cards');
+                // Clear override if selecting default mode for current viewport
+                setManualViewModeOverride(isMobile ? false : true);
+              }}
+              data-testid="button-accesses-view-cards"
               className="flex-1 sm:flex-initial"
             >
-              <LayoutGrid className="h-4 w-4" />
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              {language === 'es' ? 'Tarjetas' : 'Cards'}
             </Button>
           </div>
 

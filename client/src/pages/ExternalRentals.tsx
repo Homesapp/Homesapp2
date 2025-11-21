@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -92,8 +93,11 @@ export default function ExternalRentals() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const isMobile = useMobile();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
+  const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   const [condominiumFilter, setCondominiumFilter] = useState<string>("");
   const [unitFilter, setUnitFilter] = useState<string>("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -106,7 +110,7 @@ export default function ExternalRentals() {
   
   // Pagination state (max 3 rows x 3 cols = 9 cards per page)
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(9); // Default: 3 rows
+  const [itemsPerPage, setItemsPerPage] = useState(10); // Default for table
   
   // Filter navigation indices
   const [condominiumFilterIndex, setCondominiumFilterIndex] = useState(0);
@@ -161,6 +165,20 @@ export default function ExternalRentals() {
   }>>({
     queryKey: ["/api/external-payments"],
   });
+
+  // Auto-switch view mode on genuine breakpoint transitions (only if no manual override)
+  useEffect(() => {
+    // Only act on actual breakpoint transitions (not every isMobile change)
+    if (isMobile !== prevIsMobile) {
+      setPrevIsMobile(isMobile);
+      
+      if (!manualViewModeOverride) {
+        const preferredMode = isMobile ? "cards" : "table";
+        setViewMode(preferredMode);
+        setItemsPerPage(preferredMode === "cards" ? 9 : 10);
+      }
+    }
+  }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
   // Clamp condominium filter index when condominiums change
   useEffect(() => {
@@ -489,22 +507,30 @@ export default function ExternalRentals() {
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* View Toggle */}
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant={viewMode === "cards" ? "default" : "outline"}
             size="sm"
-            onClick={() => setViewMode("cards")}
-            data-testid="button-view-cards"
+            onClick={() => {
+              setViewMode("cards");
+              // Clear override if selecting default mode for current viewport
+              setManualViewModeOverride(isMobile ? false : true);
+            }}
+            data-testid="button-rentals-view-cards"
             className="flex-1 sm:flex-initial"
           >
             <LayoutGrid className="h-4 w-4 mr-2" />
-            {language === "es" ? "Cards" : "Cards"}
+            {language === "es" ? "Tarjetas" : "Cards"}
           </Button>
           <Button
             variant={viewMode === "table" ? "default" : "outline"}
             size="sm"
-            onClick={() => setViewMode("table")}
-            data-testid="button-view-table"
+            onClick={() => {
+              setViewMode("table");
+              // Clear override if selecting default mode for current viewport
+              setManualViewModeOverride(isMobile ? true : false);
+            }}
+            data-testid="button-rentals-view-table"
             className="flex-1 sm:flex-initial"
           >
             <TableIcon className="h-4 w-4 mr-2" />

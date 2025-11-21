@@ -35,8 +35,11 @@ import {
   Phone,
   Calendar,
   ArrowUpDown,
+  LayoutGrid,
+  Table as TableIcon,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useMobile } from "@/hooks/use-mobile";
 import type { 
   ExternalUnitOwner, 
   ExternalUnit, 
@@ -61,20 +64,51 @@ interface OwnerPortfolio {
 
 export default function ExternalOwnerPortfolio() {
   const { language } = useLanguage();
+  const isMobile = useMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<'name' | 'units' | 'income' | 'balance'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
+  const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   
   // Pagination for main owners table
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Pagination and sorting for units detail table
   const [unitsPage, setUnitsPage] = useState(1);
   const [unitsPerPage, setUnitsPerPage] = useState(5);
   const [unitsSortBy, setUnitsSortBy] = useState<'condominium' | 'unitNumber'>('condominium');
   const [unitsSortOrder, setUnitsSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Auto-switch view mode on genuine breakpoint transitions (only if no manual override)
+  useEffect(() => {
+    // Only act on actual breakpoint transitions (not every isMobile change)
+    if (isMobile !== prevIsMobile) {
+      setPrevIsMobile(isMobile);
+      
+      if (!manualViewModeOverride) {
+        const preferredMode = isMobile ? "cards" : "table";
+        setViewMode(preferredMode);
+        setItemsPerPage(preferredMode === "cards" ? 9 : 10);
+      }
+    }
+  }, [isMobile, prevIsMobile, manualViewModeOverride]);
+
+  // Reset itemsPerPage when view mode changes
+  useEffect(() => {
+    if (viewMode === "cards") {
+      if (![3, 6, 9].includes(itemsPerPage)) {
+        setItemsPerPage(9);
+      }
+    } else {
+      if (![5, 10, 20, 30].includes(itemsPerPage)) {
+        setItemsPerPage(10);
+      }
+    }
+  }, [viewMode, itemsPerPage]);
 
   // Static/semi-static data: owners list
   const { data: owners, isLoading: ownersLoading } = useQuery<ExternalUnitOwner[]>({
@@ -502,6 +536,36 @@ export default function ExternalOwnerPortfolio() {
         </CardContent>
       </Card>
 
+      {/* View Mode Toggle */}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant={viewMode === "cards" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setViewMode("cards");
+            setManualViewModeOverride(isMobile ? false : true);
+          }}
+          data-testid="button-owners-view-cards"
+          className="flex-1 sm:flex-initial"
+        >
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          {language === "es" ? "Tarjetas" : "Cards"}
+        </Button>
+        <Button
+          variant={viewMode === "table" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setViewMode("table");
+            setManualViewModeOverride(isMobile ? true : false);
+          }}
+          data-testid="button-owners-view-table"
+          className="flex-1 sm:flex-initial"
+        >
+          <TableIcon className="h-4 w-4 mr-2" />
+          {language === "es" ? "Tabla" : "Table"}
+        </Button>
+      </div>
+
       {/* Owners Table */}
       <Card>
         <CardContent className="p-0">
@@ -536,36 +600,158 @@ export default function ExternalOwnerPortfolio() {
 
             return (
               <>
-                <div className="flex items-center justify-between p-4 border-b">
-                  <div className="text-sm text-muted-foreground">
-                    {language === 'es' 
-                      ? `Mostrando ${startIndex + 1}-${endIndex} de ${totalItems} propietarios`
-                      : `Showing ${startIndex + 1}-${endIndex} of ${totalItems} owners`
-                    }
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t.itemsPerPage}:</span>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => {
-                        setItemsPerPage(parseInt(value));
-                        setPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="w-20" data-testid="select-items-per-page">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="30">30</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <Table>
+                {viewMode === "cards" ? (
+                  <>
+                    {/* Cards View */}
+                    <div className="p-6">
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                        {paginatedPortfolios.map(portfolio => (
+                          <Card 
+                            key={portfolio.owner.id} 
+                            className="hover-elevate cursor-pointer"
+                            onClick={() => setSelectedOwnerId(portfolio.owner.id)}
+                            data-testid={`card-owner-${portfolio.owner.id}`}
+                          >
+                            <CardHeader className="space-y-2">
+                              <CardTitle className="text-lg flex items-start gap-2">
+                                <User className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                <span className="flex-1 min-w-0 break-words">
+                                  {portfolio.owner.ownerName}
+                                </span>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {/* Contact Info */}
+                              {portfolio.owner.ownerEmail && (
+                                <div className="flex items-start gap-2 text-sm">
+                                  <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                  <span className="flex-1 min-w-0 break-words text-muted-foreground">
+                                    {portfolio.owner.ownerEmail}
+                                  </span>
+                                </div>
+                              )}
+                              {portfolio.owner.ownerPhone && (
+                                <div className="flex items-start gap-2 text-sm">
+                                  <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                  <span className="flex-1 min-w-0 break-words text-muted-foreground">
+                                    {portfolio.owner.ownerPhone}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Metrics */}
+                              <div className="space-y-2 pt-3 border-t">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    {t.units}
+                                  </span>
+                                  <Badge variant="outline">{portfolio.units.length}</Badge>
+                                </div>
+                                
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <TrendingUp className="h-3 w-3" />
+                                    {t.income}
+                                  </span>
+                                  <span className="font-medium text-green-600">
+                                    {formatCurrency(portfolio.totalIncome)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <TrendingDown className="h-3 w-3" />
+                                    {t.expenses}
+                                  </span>
+                                  <span className="font-medium text-red-600">
+                                    {formatCurrency(portfolio.totalExpenses)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <DollarSign className="h-3 w-3" />
+                                    {t.balance}
+                                  </span>
+                                  <span className={cn(
+                                    "font-bold",
+                                    portfolio.balance >= 0 ? "text-green-600" : "text-red-600"
+                                  )}>
+                                    {formatCurrency(portfolio.balance)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <Home className="h-3 w-3" />
+                                    {t.occupancy}
+                                  </span>
+                                  <Badge variant={portfolio.occupancyRate >= 70 ? "default" : "secondary"}>
+                                    {portfolio.occupancyRate.toFixed(0)}%
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              {/* View Details Button */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full"
+                                data-testid={`button-view-${portfolio.owner.id}`}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                {t.viewDetails}
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Table View */}
+                    <div className="flex items-center justify-between p-4 border-b">
+                      <div className="text-sm text-muted-foreground">
+                        {language === 'es' 
+                          ? `Mostrando ${startIndex + 1}-${endIndex} de ${totalItems} propietarios`
+                          : `Showing ${startIndex + 1}-${endIndex} of ${totalItems} owners`
+                        }
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{t.itemsPerPage}:</span>
+                        <Select
+                          value={itemsPerPage.toString()}
+                          onValueChange={(value) => {
+                            setItemsPerPage(parseInt(value));
+                            setPage(1);
+                          }}
+                        >
+                          <SelectTrigger className="w-20" data-testid="select-items-per-page">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {viewMode === "cards" ? (
+                              <>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="6">6</SelectItem>
+                                <SelectItem value="9">9</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="5">5</SelectItem>
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="20">20</SelectItem>
+                                <SelectItem value="30">30</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead 
@@ -676,61 +862,63 @@ export default function ExternalOwnerPortfolio() {
                       </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  </>
+                )}
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-muted-foreground">
-                  {language === 'es' 
-                    ? `Página ${page} de ${totalPages}`
-                    : `Page ${page} of ${totalPages}`
-                  }
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(1)}
-                    disabled={page === 1}
-                    data-testid="button-first-page"
-                  >
-                    {t.first}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                    disabled={page === 1}
-                    data-testid="button-prev-page"
-                  >
-                    {t.previous}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={page === totalPages}
-                    data-testid="button-next-page"
-                  >
-                    {t.next}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(totalPages)}
-                    disabled={page === totalPages}
-                    data-testid="button-last-page"
-                  >
-                    {t.last}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        );
+                {/* Pagination Controls - Shared for both views */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between p-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      {language === 'es' 
+                        ? `Página ${page} de ${totalPages}`
+                        : `Page ${page} of ${totalPages}`
+                      }
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(1)}
+                        disabled={page === 1}
+                        data-testid="button-first-page"
+                      >
+                        {t.first}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                        disabled={page === 1}
+                        data-testid="button-prev-page"
+                      >
+                        {t.previous}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={page === totalPages}
+                        data-testid="button-next-page"
+                      >
+                        {t.next}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(totalPages)}
+                        disabled={page === totalPages}
+                        data-testid="button-last-page"
+                      >
+                        {t.last}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
       })()}
         </CardContent>
       </Card>

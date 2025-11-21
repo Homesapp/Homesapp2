@@ -49,6 +49,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
+import { useMobile } from "@/hooks/use-mobile";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalFinancialTransaction, ExternalCondominium, ExternalUnit } from "@shared/schema";
 import { insertExternalFinancialTransactionSchema } from "@shared/schema";
@@ -80,6 +81,9 @@ export default function ExternalAccounting() {
   
   // View Mode & Date Filters
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const isMobile = useMobile();
+  const [manualViewModeOverride, setManualViewModeOverride] = useState(false);
+  const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -217,6 +221,20 @@ export default function ExternalAccounting() {
   }, [sortedAndFilteredTransactions, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(sortedAndFilteredTransactions.length / itemsPerPage);
+
+  // Auto-switch view mode on genuine breakpoint transitions (only if no manual override)
+  useEffect(() => {
+    // Only act on actual breakpoint transitions (not every isMobile change)
+    if (isMobile !== prevIsMobile) {
+      setPrevIsMobile(isMobile);
+      
+      if (!manualViewModeOverride) {
+        const preferredMode = isMobile ? "cards" : "table";
+        setViewMode(preferredMode);
+        setItemsPerPage(preferredMode === "cards" ? 9 : 5);
+      }
+    }
+  }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
   // Reset to page 1 when filters or data changes
   useEffect(() => {
@@ -1211,24 +1229,34 @@ export default function ExternalAccounting() {
               <Calendar className="h-4 w-4 mr-1" />
               {t.today}
             </Button>
-            <div className="flex gap-1 border rounded-md p-1">
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
-                variant={viewMode === "cards" ? "default" : "ghost"}
+                variant={viewMode === "cards" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setViewMode("cards")}
-                data-testid="button-view-cards"
+                onClick={() => {
+                  setViewMode("cards");
+                  // Clear override if selecting default mode for current viewport
+                  setManualViewModeOverride(isMobile ? false : true);
+                }}
+                data-testid="button-accounting-view-cards"
                 className="flex-1 sm:flex-initial"
               >
-                <LayoutGrid className="h-4 w-4" />
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                {language === "es" ? "Tarjetas" : "Cards"}
               </Button>
               <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
+                variant={viewMode === "table" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setViewMode("table")}
-                data-testid="button-view-table"
+                onClick={() => {
+                  setViewMode("table");
+                  // Clear override if selecting default mode for current viewport
+                  setManualViewModeOverride(isMobile ? true : false);
+                }}
+                data-testid="button-accounting-view-table"
                 className="flex-1 sm:flex-initial"
               >
-                <TableIcon className="h-4 w-4" />
+                <TableIcon className="h-4 w-4 mr-2" />
+                {language === "es" ? "Tabla" : "Table"}
               </Button>
             </div>
           </div>
