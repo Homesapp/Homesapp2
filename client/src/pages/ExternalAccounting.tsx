@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +102,7 @@ export default function ExternalAccounting() {
     return queryString ? `/api/external/accounting/transactions?${queryString}` : '/api/external/accounting/transactions';
   };
 
+  // Frequently changing data: financial transactions
   const { data: transactions, isLoading: transactionsLoading } = useQuery<ExternalFinancialTransaction[]>({
     queryKey: ['/api/external/accounting/transactions', directionFilter, categoryFilter, statusFilter, condominiumFilter, unitFilter],
     queryFn: async () => {
@@ -112,12 +113,16 @@ export default function ExternalAccounting() {
     },
   });
 
+  // Static/semi-static data: condominiums for dropdowns
   const { data: condominiums } = useQuery<ExternalCondominium[]>({
     queryKey: ['/api/external-condominiums'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: units for dropdowns
   const { data: units } = useQuery<ExternalUnit[]>({
     queryKey: ['/api/external-units'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
   // Filter transactions by date range

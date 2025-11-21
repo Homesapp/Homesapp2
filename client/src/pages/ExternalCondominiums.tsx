@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,14 +86,19 @@ export default function ExternalCondominiums() {
     setUnitsPage(1);
   }, [unitSearchText, selectedCondoFilter, rentalStatusFilter, unitStatusFilter, unitsPerPage]);
 
+  // Static/semi-static data: condominiums list
   const { data: condominiums, isLoading: condosLoading, isError: condosError, error: condosErrorMsg } = useQuery<ExternalCondominium[]>({
     queryKey: ['/api/external-condominiums'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: units list for dropdowns
   const { data: units, isLoading: unitsLoading } = useQuery<ExternalUnit[]>({
     queryKey: ['/api/external-units'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Frequently changing data: rental contracts
   const contractsQuery = useQuery<ExternalRentalContract[]>({
     queryKey: ['/api/external-rental-contracts'],
   });
@@ -109,7 +114,7 @@ export default function ExternalCondominiums() {
     return c;
   });
 
-  // Get services for all units - we'll create a map of unitId -> services[]
+  // Frequently changing data: unit services and payment schedules
   const { data: allUnitServices } = useQuery<Record<string, ExternalPaymentSchedule[]>>({
     queryKey: ['/api/external-units/all-services'],
     queryFn: async () => {

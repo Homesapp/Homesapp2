@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -76,22 +76,30 @@ export default function ExternalOwnerPortfolio() {
   const [unitsSortBy, setUnitsSortBy] = useState<'condominium' | 'unitNumber'>('condominium');
   const [unitsSortOrder, setUnitsSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  // Static/semi-static data: owners list
   const { data: owners, isLoading: ownersLoading } = useQuery<ExternalUnitOwner[]>({
     queryKey: ['/api/external-owners'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: units for dropdowns
   const { data: units } = useQuery<ExternalUnit[]>({
     queryKey: ['/api/external-units'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: condominiums for dropdowns
   const { data: condominiums } = useQuery<ExternalCondominium[]>({
     queryKey: ['/api/external-condominiums'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Frequently changing data: rental contracts
   const { data: contracts } = useQuery<ExternalRentalContract[]>({
     queryKey: ['/api/external-rental-contracts'],
   });
 
+  // Frequently changing data: financial transactions
   const { data: transactions } = useQuery<ExternalFinancialTransaction[]>({
     queryKey: ['/api/external-financial-transactions'],
   });

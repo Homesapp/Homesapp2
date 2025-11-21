@@ -19,7 +19,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import React from "react";
 import { z } from "zod";
 import {
@@ -99,23 +99,30 @@ export default function ExternalMaintenanceWorkers() {
     setWorkersPage(1);
   }, [workersPerPage]);
 
+  // Static/semi-static data: agency users for worker selection
   const { data: allUsers, isLoading: loadingWorkers } = useQuery<any[]>({
     queryKey: ['/api/external-agency-users'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
   // Filter only maintenance workers (external_agency_maintenance role)
   const workers = allUsers?.filter(user => user.role === 'external_agency_maintenance') || [];
 
+  // Real-time data: worker assignments (frequently updated)
   const { data: assignments, isLoading: loadingAssignments } = useQuery<any[]>({
     queryKey: ['/api/external-worker-assignments'],
   });
 
+  // Static/semi-static data: condominiums for dropdowns
   const { data: condominiums } = useQuery<any[]>({
     queryKey: ['/api/external-condominiums'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: units for dropdowns
   const { data: units } = useQuery<any[]>({
     queryKey: ['/api/external-units'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
   const form = useForm<CreateAssignmentForm>({

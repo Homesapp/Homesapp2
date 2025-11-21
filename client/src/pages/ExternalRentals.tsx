@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import RentalWizard from "@/components/RentalWizard";
+
+// Lazy load heavy components
+const RentalWizard = lazy(() => import("@/components/RentalWizard"));
 import {
   Table,
   TableBody,
@@ -110,18 +112,20 @@ export default function ExternalRentals() {
   const [condominiumFilterIndex, setCondominiumFilterIndex] = useState(0);
   const [unitFilterIndex, setUnitFilterIndex] = useState(0);
 
+  // Fetch rentals - uses default 5 min cache (reasonable for contracts)
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
     queryKey: statusFilter 
       ? [`/api/external-rental-contracts?status=${statusFilter}`]
       : ["/api/external-rental-contracts"],
   });
 
-  // Get condominiums for filter dropdown
+  // Get condominiums for filter dropdown - static data, longer cache
   const { data: condominiums } = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ["/api/external-condominiums-for-filters"],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
-  // Get units for filter dropdown (optionally filtered by condominium)
+  // Get units for filter dropdown - uses default 5 min cache
   const { data: units } = useQuery<Array<{ id: string; unitNumber: string; condominiumId: string }>>({
     queryKey: ["/api/external-units-for-filters", condominiumFilter],
     queryFn: async () => {
@@ -134,7 +138,7 @@ export default function ExternalRentals() {
     },
   });
 
-  // Get available units (without active contracts) for rental creation
+  // Get available units - fresh data for selection, only when dialog open
   const { data: availableUnits } = useQuery<ExternalUnit[]>({
     queryKey: ["/api/external-units", "available"],
     queryFn: async () => {
@@ -142,10 +146,11 @@ export default function ExternalRentals() {
       if (!response.ok) throw new Error("Failed to fetch available units");
       return response.json();
     },
-    enabled: selectUnitDialogOpen, // Only fetch when dialog is open
+    enabled: selectUnitDialogOpen,
+    staleTime: 0, // Always fetch fresh when dialog opens
   });
 
-  // Fetch all payments to show status indicators
+  // Fetch all payments - uses default 5 min cache
   const { data: payments = [] } = useQuery<Array<{
     id: string;
     contractId: string;
@@ -404,13 +409,17 @@ export default function ExternalRentals() {
     return labels[status]?.[language] || status;
   };
 
-  // Calculate statistics
-  const stats = rentals ? {
-    total: rentals.length,
-    active: rentals.filter(r => r.contract.status === "active").length,
-    completed: rentals.filter(r => r.contract.status === "completed").length,
-    suspended: rentals.filter(r => r.contract.status === "suspended").length,
-  } : { total: 0, active: 0, completed: 0, suspended: 0 };
+  // Calculate statistics - memoized to avoid recalculation on every render
+  const stats = useMemo(() => {
+    if (!rentals) return { total: 0, active: 0, completed: 0, suspended: 0 };
+    
+    return {
+      total: rentals.length,
+      active: rentals.filter(r => r.contract.status === "active").length,
+      completed: rentals.filter(r => r.contract.status === "completed").length,
+      suspended: rentals.filter(r => r.contract.status === "suspended").length,
+    };
+  }, [rentals]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -1312,8 +1321,12 @@ export default function ExternalRentals() {
         </DialogContent>
       </Dialog>
 
-      {/* Rental Wizard */}
-      <RentalWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      {/* Rental Wizard - Lazy loaded */}
+      {wizardOpen && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>}>
+          <RentalWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+        </Suspense>
+      )}
     </div>
   );
 }

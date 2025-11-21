@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Eye, EyeOff, Search, Copy, Check, Mail, Filter, Plus, LayoutGrid, LayoutList, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, XCircle } from "lucide-react";
-import { useState, useMemo, useEffect, useLayoutEffect } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, ExternalCondominium, InsertExternalUnitAccessControl } from "@shared/schema";
@@ -85,21 +85,28 @@ export default function ExternalAccesses() {
   const [cardsRowsPerPage, setCardsRowsPerPage] = useState(3);
   const [cardsPage, setCardsPage] = useState(1);
 
+  // Real-time data: access control codes (frequently updated)
   const { data: accesses, isLoading } = useQuery<AccessControl[]>({
     queryKey: ['/api/external-all-access-controls'],
   });
 
+  // Static/semi-static data: condominiums for dropdowns
   const { data: condominiums } = useQuery<ExternalCondominium[]>({
     queryKey: ['/api/external-condominiums'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: units for dropdowns
   const { data: units } = useQuery<{ id: string; unitNumber: string; condominiumId: string }[]>({
     queryKey: ['/api/external-units'],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Static/semi-static data: maintenance users for sharing
   const { data: maintenanceUsers } = useQuery<User[]>({
     queryKey: ['/api/external-agency-users'],
     select: (users) => users?.filter(u => u.role === 'external_agency_maintenance') || [],
+    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
   const form = useForm<z.infer<typeof accessFormSchema>>({
