@@ -856,7 +856,7 @@ export default function ExternalCondominiums() {
   }, [condoItemsPerPage]);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">
@@ -1348,10 +1348,8 @@ export default function ExternalCondominiums() {
                 );
               })()
             ) : viewMode === "cards" ? (
-              <div className="space-y-4">
-                {/* Pagination Controls */}
-                {sortedCondominiums.length > 0 && (
-                  <ExternalPaginationControls
+              <div className="p-6">
+                <ExternalPaginationControls
                     currentPage={condoCurrentPage}
                     totalPages={condoTotalPages}
                     itemsPerPage={condoItemsPerPage}
@@ -1363,9 +1361,7 @@ export default function ExternalCondominiums() {
                     language={language}
                     testIdPrefix="cards"
                   />
-                )}
 
-                {/* Grid view of all condominiums */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {paginatedCondominiums.map((condo) => {
                   const condoUnits = getUnitsForCondo(condo.id);
@@ -1850,9 +1846,7 @@ export default function ExternalCondominiums() {
           ) : filteredUnits.length > 0 ? (
             <div className="space-y-6">
               {viewMode === "cards" ? (
-                <>
-                  {/* Units Pagination Controls */}
-                  {sortedUnits.length > 0 && (
+                <div className="p-6">
                   <ExternalPaginationControls
                     currentPage={unitsPage}
                     totalPages={Math.ceil(sortedUnits.length / unitsPerPage)}
@@ -1865,9 +1859,8 @@ export default function ExternalCondominiums() {
                     language={language}
                     testIdPrefix="units-cards"
                   />
-                )}
 
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedUnits.map((unit) => {
                   const condo = condominiums?.find(c => c.id === unit.condominiumId);
                   const hasRental = hasActiveRental(unit.id);
@@ -1955,10 +1948,10 @@ export default function ExternalCondominiums() {
                     </Card>
                   );
                 })}
+                  </div>
                 </div>
-              </>
-            ) : (
-              <>
+              ) : (
+                <>
                 {/* Units Pagination Controls */}
                 {sortedUnits.length > 0 && (
                   <ExternalPaginationControls
