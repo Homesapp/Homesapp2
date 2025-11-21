@@ -995,6 +995,58 @@ export default function ExternalMaintenance() {
           ) : viewMode === "cards" ? (
             // Cards View
             <div className="p-6">
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
+                  <Select 
+                    value={itemsPerPage.toString()} 
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-20" data-testid="select-items-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cardsPerPageOptions.map(option => (
+                        <SelectItem key={option} value={option.toString()}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      data-testid="button-prev-page"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages}
+                      data-testid="button-next-page"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedTickets.map(ticket => {
                   const unitInfo = getUnitInfo(ticket.unitId);
@@ -1063,13 +1115,14 @@ export default function ExternalMaintenance() {
                   );
                 })}
               </div>
-              
-              {/* Pagination Controls for Cards */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+            </div>
+          ) : (
+            // Table View
+            <div>
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 pt-4 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {language === 'es' ? 'Elementos por página:' : 'Items per page:'}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
                   <Select 
                     value={itemsPerPage.toString()} 
                     onValueChange={(value) => {
@@ -1077,30 +1130,28 @@ export default function ExternalMaintenance() {
                       setCurrentPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-20">
+                    <SelectTrigger className="w-20" data-testid="select-items-per-page">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {cardsPerPageOptions.map(option => (
+                      {tablePerPageOptions.map(option => (
                         <SelectItem key={option} value={option.toString()}>
                           {option}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
                 </div>
                 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
-                    {language === 'es' 
-                      ? `${startIndex + 1}-${Math.min(endIndex, sortedTickets.length)} de ${sortedTickets.length}`
-                      : `${startIndex + 1}-${Math.min(endIndex, sortedTickets.length)} of ${sortedTickets.length}`
-                    }
+                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
                   </span>
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                       data-testid="button-prev-page"
@@ -1109,7 +1160,7 @@ export default function ExternalMaintenance() {
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage >= totalPages}
                       data-testid="button-next-page"
@@ -1119,10 +1170,7 @@ export default function ExternalMaintenance() {
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            // Table View
-            <div>
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -1272,80 +1320,6 @@ export default function ExternalMaintenance() {
                   })}
                 </TableBody>
               </Table>
-            </div>
-
-            {/* Pagination Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {language === 'es' ? 'Filas por página:' : 'Rows per page:'}
-                </span>
-                <Select 
-                  value={itemsPerPage.toString()} 
-                  onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-20" data-testid="select-items-per-page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tablePerPageOptions.map(option => (
-                      <SelectItem key={option} value={option.toString()}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {language === 'es' 
-                    ? `Página ${currentPage} de ${totalPages} (${sortedTickets.length} tickets)`
-                    : `Page ${currentPage} of ${totalPages} (${sortedTickets.length} tickets)`}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  data-testid="button-first-page"
-                >
-                  {language === 'es' ? 'Primera' : 'First'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  data-testid="button-prev-page"
-                >
-                  {language === 'es' ? 'Anterior' : 'Previous'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  data-testid="button-next-page"
-                >
-                  {language === 'es' ? 'Siguiente' : 'Next'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  data-testid="button-last-page"
-                >
-                  {language === 'es' ? 'Última' : 'Last'}
-                </Button>
-              </div>
             </div>
             </div>
           )}
