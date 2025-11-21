@@ -459,7 +459,7 @@ export default function ExternalRentals() {
             <label className="text-sm font-medium">
               {language === "es" ? "Condominio" : "Condominium"}
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
               <Button
                 variant={condominiumFilter === "" ? "default" : "outline"}
                 size="sm"
@@ -468,6 +468,7 @@ export default function ExternalRentals() {
                   setUnitFilter("");
                 }}
                 data-testid="button-filter-condo-all"
+                className="flex-shrink-0"
               >
                 {language === "es" ? "Todos" : "All"}
               </Button>
@@ -481,6 +482,7 @@ export default function ExternalRentals() {
                     setUnitFilter("");
                   }}
                   data-testid={`button-filter-condo-${condo.id}`}
+                  className="flex-shrink-0"
                 >
                   {condo.name}
                 </Button>
@@ -493,12 +495,13 @@ export default function ExternalRentals() {
               <label className="text-sm font-medium">
                 {language === "es" ? "Unidad" : "Unit"}
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
                 <Button
                   variant={unitFilter === "" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setUnitFilter("")}
                   data-testid="button-filter-unit-all"
+                  className="flex-shrink-0"
                 >
                   {language === "es" ? "Todas" : "All"}
                 </Button>
@@ -509,6 +512,7 @@ export default function ExternalRentals() {
                     size="sm"
                     onClick={() => setUnitFilter(unit.id)}
                     data-testid={`button-filter-unit-${unit.id}`}
+                    className="flex-shrink-0"
                   >
                     {unit.unitNumber}
                   </Button>

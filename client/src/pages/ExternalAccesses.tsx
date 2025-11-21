@@ -555,12 +555,13 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                   <label className="text-sm font-medium">
                     {language === "es" ? "Condominio" : "Condominium"}
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
                     <Button
                       variant={selectedCondominium === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => handleCondominiumChange("all")}
                       data-testid="button-filter-condo-all"
+                      className="flex-shrink-0"
                     >
                       {language === "es" ? "Todos" : "All"}
                     </Button>
@@ -571,6 +572,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                         size="sm"
                         onClick={() => handleCondominiumChange(condo.id)}
                         data-testid={`button-filter-condo-${condo.id}`}
+                        className="flex-shrink-0"
                       >
                         {condo.name}
                       </Button>
@@ -583,12 +585,13 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                     <label className="text-sm font-medium">
                       {language === "es" ? "Unidad" : "Unit"}
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
                       <Button
                         variant={selectedUnit === "all" ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleUnitChange("all")}
                         data-testid="button-filter-unit-all"
+                        className="flex-shrink-0"
                       >
                         {language === "es" ? "Todas" : "All"}
                       </Button>
@@ -599,6 +602,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                           size="sm"
                           onClick={() => handleUnitChange(unit.id)}
                           data-testid={`button-filter-unit-${unit.id}`}
+                          className="flex-shrink-0"
                         >
                           {unit.unitNumber}
                         </Button>
@@ -611,12 +615,13 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                   <label className="text-sm font-medium">
                     {language === "es" ? "Tipo de Acceso" : "Access Type"}
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
                     <Button
                       variant={selectedAccessType === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => handleAccessTypeChange("all")}
                       data-testid="button-filter-type-all"
+                      className="flex-shrink-0"
                     >
                       {language === "es" ? "Todos" : "All"}
                     </Button>
@@ -625,6 +630,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("door_code")}
                       data-testid="button-filter-type-door"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("door_code")}
                     </Button>
@@ -633,6 +639,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("wifi")}
                       data-testid="button-filter-type-wifi"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("wifi")}
                     </Button>
@@ -641,6 +648,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("gate")}
                       data-testid="button-filter-type-gate"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("gate")}
                     </Button>
@@ -649,6 +657,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("parking")}
                       data-testid="button-filter-type-parking"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("parking")}
                     </Button>
@@ -657,6 +666,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("elevator")}
                       data-testid="button-filter-type-elevator"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("elevator")}
                     </Button>
@@ -665,6 +675,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("pool")}
                       data-testid="button-filter-type-pool"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("pool")}
                     </Button>
@@ -673,6 +684,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("gym")}
                       data-testid="button-filter-type-gym"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("gym")}
                     </Button>
@@ -681,6 +693,7 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
                       size="sm"
                       onClick={() => handleAccessTypeChange("other")}
                       data-testid="button-filter-type-other"
+                      className="flex-shrink-0"
                     >
                       {getAccessTypeLabel("other")}
                     </Button>
