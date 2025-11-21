@@ -14,7 +14,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight, X, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight, X, ChevronDown, LayoutGrid, Table as TableIcon, User, Mail, Phone } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -76,6 +76,7 @@ export default function ExternalMaintenanceWorkers() {
   const [deleteAssignmentId, setDeleteAssignmentId] = useState<string | null>(null);
   const [assignmentType, setAssignmentType] = useState<"condominium" | "unit">("condominium");
   const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
+  const [workersViewMode, setWorkersViewMode] = useState<"cards" | "table">("table");
   
   // Assignments table pagination & sorting
   const [assignmentsPage, setAssignmentsPage] = useState(1);
@@ -83,9 +84,9 @@ export default function ExternalMaintenanceWorkers() {
   const [assignmentsSortColumn, setAssignmentsSortColumn] = useState<string>("");
   const [assignmentsSortDirection, setAssignmentsSortDirection] = useState<"asc" | "desc">("asc");
   
-  // Workers table pagination & sorting
+  // Workers pagination & sorting (shared between table and cards)
   const [workersPage, setWorkersPage] = useState(1);
-  const [workersPerPage, setWorkersPerPage] = useState(10);
+  const [workersPerPage, setWorkersPerPage] = useState(9); // Default for cards: 3x3 grid
   const [workersSortColumn, setWorkersSortColumn] = useState<string>("");
   const [workersSortDirection, setWorkersSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -94,7 +95,19 @@ export default function ExternalMaintenanceWorkers() {
     setAssignmentsPage(1);
   }, [assignmentsPerPage]);
 
-  // Reset workers page when items per page changes
+  // Reset page to 1 when view mode changes
+  useEffect(() => {
+    const defaultPerPage = workersViewMode === "cards" ? 9 : 10;
+    const validOptions = workersViewMode === "cards" ? [3, 6, 9, 12] : [5, 10, 20, 30];
+    
+    // Only auto-adjust if current value is not valid for the new mode
+    if (!validOptions.includes(workersPerPage)) {
+      setWorkersPerPage(defaultPerPage);
+    }
+    setWorkersPage(1);
+  }, [workersViewMode]);
+  
+  // Reset page when items per page changes (from user selecting different value)
   useEffect(() => {
     setWorkersPage(1);
   }, [workersPerPage]);
@@ -1074,12 +1087,40 @@ export default function ExternalMaintenanceWorkers() {
         <TabsContent value="workers">
           <Card>
             <CardHeader>
-              <CardTitle>{language === "es" ? "Trabajadores Disponibles" : "Available Workers"}</CardTitle>
-              <CardDescription>
-                {language === "es" 
-                  ? "Lista de trabajadores de mantenimiento de tu agencia"
-                  : "List of your agency's maintenance workers"}
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>{language === "es" ? "Trabajadores Disponibles" : "Available Workers"}</CardTitle>
+                  <CardDescription>
+                    {language === "es" 
+                      ? "Lista de trabajadores de mantenimiento de tu agencia"
+                      : "List of your agency's maintenance workers"}
+                  </CardDescription>
+                </div>
+                
+                {/* View Toggle */}
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button
+                    variant={workersViewMode === "cards" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setWorkersViewMode("cards")}
+                    data-testid="button-workers-view-cards"
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Tarjetas" : "Cards"}
+                  </Button>
+                  <Button
+                    variant={workersViewMode === "table" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setWorkersViewMode("table")}
+                    data-testid="button-workers-view-table"
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <TableIcon className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Tabla" : "Table"}
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingWorkers ? (
@@ -1098,8 +1139,76 @@ export default function ExternalMaintenanceWorkers() {
                 </div>
               ) : (
                 <>
-                  <div className="w-full overflow-x-auto">
-                    <Table>
+                  {workersViewMode === "cards" ? (
+                    <>
+                      {/* Cards View */}
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                        {paginatedWorkers.map((worker) => (
+                          <Card key={worker.id} className="hover-elevate" data-testid={`card-worker-${worker.id}`}>
+                            <CardHeader>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <CardTitle className="text-lg flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="truncate" data-testid={`text-worker-name-${worker.id}`}>
+                                      {worker.firstName} {worker.lastName}
+                                    </span>
+                                  </CardTitle>
+                                  {worker.maintenanceSpecialty && (
+                                    <div className="mt-2">
+                                      <Badge variant="secondary" data-testid={`badge-specialty-${worker.id}`}>
+                                        <Wrench className="h-3 w-3 mr-1" />
+                                        {SPECIALTY_LABELS[language][worker.maintenanceSpecialty as keyof typeof SPECIALTY_LABELS['es']]}
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {/* Email */}
+                              <div className="flex items-center gap-2 text-sm">
+                                <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="truncate" data-testid={`text-worker-email-${worker.id}`}>
+                                  {worker.email}
+                                </span>
+                              </div>
+                              
+                              {/* Phone */}
+                              {worker.phone && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span data-testid={`text-worker-phone-${worker.id}`}>
+                                    {worker.phone}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {/* Assignment Stats */}
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2 border-t">
+                                <div className="flex items-center gap-1">
+                                  <Building2 className="h-3 w-3" />
+                                  <span>
+                                    {assignments?.filter(a => a.userId === worker.id && a.condominiumId).length || 0}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Home className="h-3 w-3" />
+                                  <span>
+                                    {assignments?.filter(a => a.userId === worker.id && a.unitId).length || 0}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Table View */}
+                      <div className="w-full overflow-x-auto">
+                        <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="min-w-[200px]">
@@ -1169,63 +1278,76 @@ export default function ExternalMaintenanceWorkers() {
                             </TableCell>
                           </TableRow>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  
-                  {/* Workers Pagination Controls */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {language === "es" ? "Mostrar" : "Show"}
-                      </span>
-                      <Select
-                        value={workersPerPage.toString()}
-                        onValueChange={(value) => setWorkersPerPage(Number(value))}
-                      >
-                        <SelectTrigger className="w-20" data-testid="select-workers-per-page">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5</SelectItem>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="20">20</SelectItem>
-                          <SelectItem value="30">30</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">
-                        {language === "es" ? "por página" : "per page"}
-                      </span>
+                        </TableBody>
+                      </Table>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {language === "es" ? "Página" : "Page"} {workersPage} {language === "es" ? "de" : "of"} {workersTotalPages}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setWorkersPage(Math.max(1, workersPage - 1))}
-                          disabled={workersPage === 1}
-                          data-testid="button-workers-prev-page"
+                    {/* Workers Pagination Controls */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {language === "es" ? "Mostrar" : "Show"}
+                        </span>
+                        <Select
+                          value={workersPerPage.toString()}
+                          onValueChange={(value) => setWorkersPerPage(Number(value))}
                         >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setWorkersPage(Math.min(workersTotalPages, workersPage + 1))}
-                          disabled={workersPage === workersTotalPages}
-                          data-testid="button-workers-next-page"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
+                          <SelectTrigger className="w-20" data-testid="select-workers-per-page">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {workersViewMode === "cards" ? (
+                              <>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="6">6</SelectItem>
+                                <SelectItem value="9">9</SelectItem>
+                                <SelectItem value="12">12</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="5">5</SelectItem>
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="20">20</SelectItem>
+                                <SelectItem value="30">30</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-muted-foreground">
+                          {language === "es" ? "por página" : "per page"}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {language === "es" ? "Página" : "Page"} {workersPage} {language === "es" ? "de" : "of"} {workersTotalPages}
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setWorkersPage(Math.max(1, workersPage - 1))}
+                            disabled={workersPage === 1}
+                            data-testid="button-workers-prev-page"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setWorkersPage(Math.min(workersTotalPages, workersPage + 1))}
+                            disabled={workersPage === workersTotalPages}
+                            data-testid="button-workers-next-page"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </>
+            )}
             </CardContent>
           </Card>
         </TabsContent>
