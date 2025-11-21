@@ -48,7 +48,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalFinancialTransaction, ExternalCondominium, ExternalUnit } from "@shared/schema";
 import { insertExternalFinancialTransactionSchema } from "@shared/schema";
 import { z } from "zod";
-import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, differenceInDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, startOfDay, endOfDay, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import * as XLSX from 'xlsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -126,6 +126,10 @@ export default function ExternalAccounting() {
     let end: Date | null = null;
 
     switch (dateFilter) {
+      case "today":
+        start = startOfDay(now);
+        end = endOfDay(now);
+        break;
       case "this_month":
         start = startOfMonth(now);
         end = endOfMonth(now);
@@ -428,6 +432,7 @@ export default function ExternalAccounting() {
     viewCards: 'Vista de Tarjetas',
     viewTable: 'Vista de Tabla',
     dateRange: 'Rango de Fechas',
+    today: 'Hoy',
     thisMonth: 'Este Mes',
     last3Months: 'Últimos 3 Meses',
     last6Months: 'Últimos 6 Meses',
@@ -538,6 +543,7 @@ export default function ExternalAccounting() {
     viewCards: 'Card View',
     viewTable: 'Table View',
     dateRange: 'Date Range',
+    today: 'Today',
     thisMonth: 'This Month',
     last3Months: 'Last 3 Months',
     last6Months: 'Last 6 Months',
@@ -857,6 +863,18 @@ export default function ExternalAccounting() {
             >
               <Filter className="h-4 w-4" />
             </Button>
+            <Button
+              variant={dateFilter === "today" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setDateFilter("today");
+                setCurrentPage(1);
+              }}
+              data-testid="button-filter-today"
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              {t.today}
+            </Button>
             {activeFilters > 0 && (
               <Button
                 variant="ghost"
@@ -1124,6 +1142,14 @@ export default function ExternalAccounting() {
                     data-testid="button-filter-date-all"
                   >
                     {t.all}
+                  </Button>
+                  <Button
+                    variant={dateFilter === "today" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("today")}
+                    data-testid="button-filter-date-today"
+                  >
+                    {t.today}
                   </Button>
                   <Button
                     variant={dateFilter === "this_month" ? "default" : "outline"}
