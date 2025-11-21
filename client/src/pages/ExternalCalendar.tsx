@@ -252,6 +252,40 @@ export default function ExternalCalendar() {
     return status;
   };
 
+  // Translate priority helper
+  const translatePriority = (priority: string): string => {
+    if (language === "es") {
+      switch(priority) {
+        case 'low': return 'Baja';
+        case 'medium': return 'Media';
+        case 'high': return 'Alta';
+        default: return priority;
+      }
+    }
+    return priority;
+  };
+
+  // Translate category helper
+  const translateCategory = (category: string): string => {
+    if (language === "es") {
+      switch(category) {
+        case 'plumbing': return 'Plomería';
+        case 'electrical': return 'Eléctrico';
+        case 'hvac': return 'Climatización';
+        case 'appliance': return 'Electrodomésticos';
+        case 'structural': return 'Estructural';
+        case 'cleaning': return 'Limpieza';
+        case 'painting': return 'Pintura';
+        case 'landscaping': return 'Jardinería';
+        case 'pest_control': return 'Control de Plagas';
+        case 'security': return 'Seguridad';
+        case 'other': return 'Otro';
+        default: return category;
+      }
+    }
+    return category;
+  };
+
   // Get events for selected date
   const eventsForDate = useMemo((): EventData[] => {
     if (!selectedDate) return [];
@@ -1124,9 +1158,9 @@ export default function ExternalCalendar() {
                                     <div className="space-y-2 text-sm">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <Badge variant={ticket.priority === 'high' ? 'destructive' : ticket.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
-                                          {ticket.priority}
+                                          {translatePriority(ticket.priority)}
                                         </Badge>
-                                        <Badge variant="outline" className="text-xs">{ticket.category}</Badge>
+                                        <Badge variant="outline" className="text-xs">{translateCategory(ticket.category)}</Badge>
                                         <Badge variant={ticket.status === 'in_progress' ? 'default' : 'secondary'} className="text-xs">
                                           {translateStatus(ticket.status)}
                                         </Badge>

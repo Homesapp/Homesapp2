@@ -285,7 +285,7 @@ export default function ExternalDashboard() {
         
         todayEvents.push({
           type: 'ticket',
-          title: t.title,
+          title: `${condo?.name || ''} - ${unit?.unitNumber || ''} - ${t.title}`,
           condominium: condo?.name || (language === "es" ? "Sin condominio" : "No condominium"),
           unitNumber: unit?.unitNumber || '',
           date: new Date(t.scheduledDate!),
