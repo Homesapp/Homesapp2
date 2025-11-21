@@ -105,6 +105,33 @@ const ownerFormSchema = z.object({
 
 type OwnerFormValues = z.infer<typeof ownerFormSchema>;
 
+// Helper function to format and translate typology names
+function formatTypology(typology: string, lang: 'es' | 'en'): string {
+  if (!typology || typology === '-') return '-';
+  
+  // Format: replace underscores with spaces and capitalize first letter of each word
+  const formatted = typology
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  
+  // Translate to English if needed
+  if (lang === 'en') {
+    const translations: Record<string, string> = {
+      'Estudio': 'Studio',
+      '1 Recamara': '1 Bedroom',
+      '2 Recamaras': '2 Bedrooms',
+      '3 Recamaras': '3 Bedrooms',
+      '4 Recamaras': '4 Bedrooms',
+      'Penthouse': 'Penthouse',
+      'Loft': 'Loft',
+    };
+    return translations[formatted] || formatted;
+  }
+  
+  return formatted;
+}
+
 export default function ExternalOwnerPortfolio() {
   const { language } = useLanguage();
   const isMobile = useMobile();
@@ -1214,7 +1241,7 @@ export default function ExternalOwnerPortfolio() {
                         <div className="flex flex-wrap gap-1">
                           {portfolio.typologies.map((typ, idx) => (
                             <Badge key={idx} variant="outline" className="text-xs">
-                              {typ}
+                              {formatTypology(typ, language)}
                             </Badge>
                           ))}
                         </div>
