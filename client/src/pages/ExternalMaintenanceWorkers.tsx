@@ -14,7 +14,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight, X, ChevronDown } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useState, useEffect, useMemo } from "react";
 import React from "react";
 import { z } from "zod";
@@ -128,6 +132,7 @@ export default function ExternalMaintenanceWorkers() {
     mutationFn: async (data: CreateAssignmentForm) => {
       // Build assignments array
       const assignments: any[] = [];
+      const assignedUnitIds = new Set<string>();
       
       // Add condominium assignments
       if (data.condominiumIds && data.condominiumIds.length > 0) {
@@ -137,10 +142,13 @@ export default function ExternalMaintenanceWorkers() {
             // Get all units for this condo and create individual assignments
             const condoUnits = units?.filter(u => u.condominiumId === condoId) || [];
             for (const unit of condoUnits) {
-              assignments.push({
-                userId: data.userId,
-                unitId: unit.id,
-              });
+              if (!assignedUnitIds.has(unit.id)) {
+                assignments.push({
+                  userId: data.userId,
+                  unitId: unit.id,
+                });
+                assignedUnitIds.add(unit.id);
+              }
             }
           } else {
             // Just assign to the condominium
@@ -152,13 +160,16 @@ export default function ExternalMaintenanceWorkers() {
         }
       }
       
-      // Add specific unit assignments
+      // Add specific unit assignments (with deduplication)
       if (data.unitIds && data.unitIds.length > 0) {
         for (const unitId of data.unitIds) {
-          assignments.push({
-            userId: data.userId,
-            unitId: unitId,
-          });
+          if (!assignedUnitIds.has(unitId)) {
+            assignments.push({
+              userId: data.userId,
+              unitId: unitId,
+            });
+            assignedUnitIds.add(unitId);
+          }
         }
       }
       
@@ -186,6 +197,8 @@ export default function ExternalMaintenanceWorkers() {
     },
     onError: () => {
       const isEditing = editingWorkerId !== null;
+      // Invalidate queries to ensure UI matches backend state
+      queryClient.invalidateQueries({ queryKey: ['/api/external-worker-assignments'] });
       toast({
         title: language === "es" ? "Error" : "Error",
         description: isEditing
@@ -429,9 +442,29 @@ export default function ExternalMaintenanceWorkers() {
         .filter(a => a.unitId)
         .map(a => a.unitId as string);
       
+      // Calculate allUnitsPerCondo based on coverage
+      const allUnitsPerCondo: Record<string, boolean> = {};
+      condominiums?.forEach(condo => {
+        const condoUnits = units?.filter(u => u.condominiumId === condo.id) || [];
+        if (condoUnits.length > 0) {
+          const assignedUnitsForCondo = unitIds.filter(unitId => 
+            condoUnits.some(u => u.id === unitId)
+          );
+          // If all units of this condo are assigned, mark "all units" as true
+          if (assignedUnitsForCondo.length === condoUnits.length) {
+            allUnitsPerCondo[condo.id] = true;
+            // Add condo to condoIds if not already there
+            if (!condoIds.includes(condo.id)) {
+              condoIds.push(condo.id);
+            }
+          }
+        }
+      });
+      
       form.setValue("userId", workerId);
       form.setValue("condominiumIds", condoIds);
       form.setValue("unitIds", unitIds);
+      form.setValue("allUnitsPerCondo", allUnitsPerCondo);
       setIsCreateDialogOpen(true);
     }
   };
@@ -462,9 +495,10 @@ export default function ExternalMaintenanceWorkers() {
               {language === "es" ? "Nueva Asignación" : "New Assignment"}
             </Button>
           </DialogTrigger>
-          <DialogContent data-testid="dialog-create-assignment">
+          <DialogContent className="max-w-3xl max-h-[90vh]" data-testid="dialog-create-assignment">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Wrench className="h-5 w-5" />
                 {editingWorkerId 
                   ? (language === "es" ? "Editar Asignaciones" : "Edit Assignments")
                   : (language === "es" ? "Asignar Trabajador" : "Assign Worker")}
@@ -480,13 +514,13 @@ export default function ExternalMaintenanceWorkers() {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
                   name="userId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Trabajador" : "Worker"}</FormLabel>
+                      <FormLabel className="text-base font-semibold">{language === "es" ? "Trabajador" : "Worker"}</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         defaultValue={field.value}
@@ -511,126 +545,315 @@ export default function ExternalMaintenanceWorkers() {
                   )}
                 />
 
-                {/* Condominiums Section */}
-                <FormField
-                  control={form.control}
-                  name="condominiumIds"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel className="text-base">
-                          {language === "es" ? "Condominios" : "Condominiums"}
-                        </FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          {language === "es" ? "Selecciona uno o más condominios" : "Select one or more condominiums"}
-                        </p>
-                      </div>
-                      <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                        {condominiums?.map((condo) => (
-                          <div key={condo.id} className="space-y-1">
-                            <FormField
-                              control={form.control}
-                              name="condominiumIds"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(condo.id)}
-                                        onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([...(field.value || []), condo.id])
-                                            : field.onChange(field.value?.filter((value) => value !== condo.id))
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal cursor-pointer">
-                                      {condo.name}
-                                    </FormLabel>
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                            {/* "All units" checkbox for this condo */}
-                            {form.watch("condominiumIds")?.includes(condo.id) && (
-                              <FormField
-                                control={form.control}
-                                name="allUnitsPerCondo"
-                                render={({ field }) => (
-                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 ml-6">
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.[condo.id] || false}
-                                        onCheckedChange={(checked) => {
-                                          field.onChange({
-                                            ...(field.value || {}),
-                                            [condo.id]: checked,
-                                          });
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
-                                      {language === "es" ? "Todas las unidades" : "All units"}
-                                    </FormLabel>
-                                  </FormItem>
-                                )}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <Separator />
 
-                {/* Units Section */}
-                <FormField
-                  control={form.control}
-                  name="unitIds"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel className="text-base">
-                          {language === "es" ? "Unidades Específicas" : "Specific Units"}
-                        </FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          {language === "es" ? "Selecciona unidades específicas adicionales" : "Select additional specific units"}
-                        </p>
-                      </div>
-                      <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                        {units?.map((unit) => (
-                          <FormField
-                            key={unit.id}
-                            control={form.control}
-                            name="unitIds"
-                            render={({ field }) => {
-                              const condo = condominiums?.find(c => c.id === unit.condominiumId);
-                              return (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(unit.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...(field.value || []), unit.id])
-                                          : field.onChange(field.value?.filter((value) => value !== unit.id))
-                                      }}
+                <div className="grid md:grid-cols-[2fr,1fr] gap-6">
+                  {/* Left Panel: Selection */}
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-semibold flex items-center gap-2 mb-2">
+                        <Building2 className="h-4 w-4" />
+                        {language === "es" ? "Condominios y Unidades" : "Condominiums and Units"}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {language === "es" 
+                          ? "Selecciona los condominios o unidades específicas para asignar"
+                          : "Select condominiums or specific units to assign"}
+                      </p>
+                    </div>
+
+                    <ScrollArea className="h-[400px] border rounded-md">
+                      <Accordion type="multiple" className="w-full px-4">
+                        {condominiums?.map((condo) => {
+                          const condoUnits = units?.filter(u => u.condominiumId === condo.id) || [];
+                          const isCondoSelected = form.watch("condominiumIds")?.includes(condo.id);
+                          const allUnitsSelected = form.watch("allUnitsPerCondo")?.[condo.id] || false;
+                          const selectedUnitIds = form.watch("unitIds") || [];
+                          const condoSelectedUnitsCount = condoUnits.filter(u => selectedUnitIds.includes(u.id)).length;
+                          
+                          return (
+                            <AccordionItem key={condo.id} value={condo.id} data-testid={`accordion-condo-${condo.id}`}>
+                              <AccordionTrigger className="hover:no-underline py-3">
+                                <div className="flex items-center justify-between flex-1 pr-4">
+                                  <div className="flex items-center gap-3">
+                                    <FormField
+                                      control={form.control}
+                                      name="condominiumIds"
+                                      render={({ field }) => (
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={isCondoSelected}
+                                            onCheckedChange={(checked) => {
+                                              if (checked) {
+                                                field.onChange([...(field.value || []), condo.id]);
+                                              } else {
+                                                field.onChange(field.value?.filter((value) => value !== condo.id));
+                                                // Also clear the allUnitsPerCondo flag for this condo
+                                                const currentAllUnits = form.getValues("allUnitsPerCondo") || {};
+                                                form.setValue("allUnitsPerCondo", {
+                                                  ...currentAllUnits,
+                                                  [condo.id]: false,
+                                                });
+                                              }
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            data-testid={`checkbox-condo-${condo.id}`}
+                                          />
+                                        </FormControl>
+                                      )}
                                     />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal cursor-pointer">
-                                    {unit.unitNumber} {condo && `(${condo.name})`}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                                    <div className="flex flex-col items-start">
+                                      <span className="font-medium text-sm">{condo.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {condoUnits.length} {language === "es" ? "unidades" : "units"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {(isCondoSelected || condoSelectedUnitsCount > 0) && (
+                                    <Badge variant="secondary" className="ml-2">
+                                      {allUnitsSelected 
+                                        ? `${condoUnits.length} ${language === "es" ? "unidades" : "units"}`
+                                        : condoSelectedUnitsCount > 0
+                                          ? `${condoSelectedUnitsCount} ${language === "es" ? "unidades" : "units"}`
+                                          : language === "es" ? "Condominio" : "Condominium"}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pb-4">
+                                <div className="space-y-3 pl-8">
+                                  {/* All Units Toggle */}
+                                  {isCondoSelected && (
+                                    <FormField
+                                      control={form.control}
+                                      name="allUnitsPerCondo"
+                                      render={({ field }) => (
+                                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
+                                          <div className="flex items-center gap-2">
+                                            <Home className="h-4 w-4 text-muted-foreground" />
+                                            <FormLabel className="text-sm font-medium cursor-pointer">
+                                              {language === "es" ? "Todas las unidades" : "All units"}
+                                            </FormLabel>
+                                          </div>
+                                          <FormControl>
+                                            <Switch
+                                              checked={field.value?.[condo.id] || false}
+                                              onCheckedChange={(checked) => {
+                                                field.onChange({
+                                                  ...(field.value || {}),
+                                                  [condo.id]: checked,
+                                                });
+                                                // Clear individual unit selections for this condo when "all units" is enabled
+                                                if (checked) {
+                                                  const currentUnitIds = form.getValues("unitIds") || [];
+                                                  const condoUnitIds = condoUnits.map(u => u.id);
+                                                  const filteredUnits = currentUnitIds.filter(id => !condoUnitIds.includes(id));
+                                                  form.setValue("unitIds", filteredUnits);
+                                                }
+                                              }}
+                                              data-testid={`switch-all-units-${condo.id}`}
+                                            />
+                                          </FormControl>
+                                        </div>
+                                      )}
+                                    />
+                                  )}
+
+                                  {/* Individual Units */}
+                                  <div className="space-y-2">
+                                    <p className="text-xs text-muted-foreground font-medium">
+                                      {language === "es" ? "O selecciona unidades específicas:" : "Or select specific units:"}
+                                    </p>
+                                    <ScrollArea className="max-h-[200px]">
+                                      <div className="space-y-2 pr-4">
+                                        {condoUnits.map((unit) => (
+                                          <FormField
+                                            key={unit.id}
+                                            control={form.control}
+                                            name="unitIds"
+                                            render={({ field }) => (
+                                              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                <FormControl>
+                                                  <Checkbox
+                                                    checked={field.value?.includes(unit.id)}
+                                                    disabled={allUnitsSelected}
+                                                    onCheckedChange={(checked) => {
+                                                      if (checked) {
+                                                        field.onChange([...(field.value || []), unit.id]);
+                                                        // Turn off "all units" switch when selecting individual units
+                                                        const currentAllUnits = form.getValues("allUnitsPerCondo") || {};
+                                                        if (currentAllUnits[condo.id]) {
+                                                          form.setValue("allUnitsPerCondo", {
+                                                            ...currentAllUnits,
+                                                            [condo.id]: false,
+                                                          });
+                                                        }
+                                                      } else {
+                                                        field.onChange(field.value?.filter((value) => value !== unit.id));
+                                                      }
+                                                    }}
+                                                    data-testid={`checkbox-unit-${unit.id}`}
+                                                  />
+                                                </FormControl>
+                                                <FormLabel className={`text-sm font-normal cursor-pointer ${allUnitsSelected ? 'text-muted-foreground' : ''}`}>
+                                                  {language === "es" ? "Unidad" : "Unit"} {unit.unitNumber}
+                                                </FormLabel>
+                                              </FormItem>
+                                            )}
+                                          />
+                                        ))}
+                                      </div>
+                                    </ScrollArea>
+                                  </div>
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
+                    </ScrollArea>
+                  </div>
+
+                  {/* Right Panel: Summary */}
+                  <div className="space-y-4">
+                    <Card className="sticky top-0">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {language === "es" ? "Resumen de Asignación" : "Assignment Summary"}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Selected Condominiums */}
+                        {form.watch("condominiumIds")?.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase">
+                              {language === "es" ? "Condominios" : "Condominiums"}
+                            </p>
+                            <div className="space-y-2">
+                              {form.watch("condominiumIds")?.map((condoId: string) => {
+                                const condo = condominiums?.find(c => c.id === condoId);
+                                const allUnitsForCondo = form.watch("allUnitsPerCondo")?.[condoId];
+                                const condoUnits = units?.filter(u => u.condominiumId === condoId) || [];
+                                
+                                return (
+                                  <div key={condoId} className="flex items-start justify-between gap-2 p-2 bg-muted/50 rounded-md">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <Building2 className="h-3 w-3 flex-shrink-0" />
+                                        <p className="text-sm font-medium truncate">{condo?.name}</p>
+                                      </div>
+                                      {allUnitsForCondo && (
+                                        <p className="text-xs text-muted-foreground ml-5">
+                                          {condoUnits.length} {language === "es" ? "unidades" : "units"}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 flex-shrink-0"
+                                      onClick={() => {
+                                        const currentCondos = form.getValues("condominiumIds") || [];
+                                        form.setValue("condominiumIds", currentCondos.filter(id => id !== condoId));
+                                        const currentAllUnits = form.getValues("allUnitsPerCondo") || {};
+                                        form.setValue("allUnitsPerCondo", {
+                                          ...currentAllUnits,
+                                          [condoId]: false,
+                                        });
+                                        // Also remove any specific unit selections for this condo
+                                        const currentUnitIds = form.getValues("unitIds") || [];
+                                        const condoUnitIds = condoUnits.map(u => u.id);
+                                        const filteredUnits = currentUnitIds.filter(id => !condoUnitIds.includes(id));
+                                        form.setValue("unitIds", filteredUnits);
+                                      }}
+                                      data-testid={`button-remove-condo-${condoId}`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Selected Units */}
+                        {form.watch("unitIds")?.length > 0 && (
+                          <div className="space-y-2">
+                            <Separator />
+                            <p className="text-xs font-semibold text-muted-foreground uppercase">
+                              {language === "es" ? "Unidades Específicas" : "Specific Units"}
+                            </p>
+                            <ScrollArea className="max-h-[200px]">
+                              <div className="space-y-2 pr-2">
+                                {form.watch("unitIds")?.map((unitId: string) => {
+                                  const unit = units?.find(u => u.id === unitId);
+                                  const condo = condominiums?.find(c => c.id === unit?.condominiumId);
+                                  
+                                  return (
+                                    <div key={unitId} className="flex items-start justify-between gap-2 p-2 bg-muted/50 rounded-md">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <Home className="h-3 w-3 flex-shrink-0" />
+                                          <p className="text-sm font-medium">
+                                            {language === "es" ? "Unidad" : "Unit"} {unit?.unitNumber}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground ml-5 truncate">{condo?.name}</p>
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 flex-shrink-0"
+                                        onClick={() => {
+                                          const currentUnits = form.getValues("unitIds") || [];
+                                          form.setValue("unitIds", currentUnits.filter(id => id !== unitId));
+                                        }}
+                                        data-testid={`button-remove-unit-${unitId}`}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        )}
+
+                        {/* Empty State */}
+                        {(!form.watch("condominiumIds") || form.watch("condominiumIds")?.length === 0) &&
+                         (!form.watch("unitIds") || form.watch("unitIds")?.length === 0) && (
+                          <div className="text-center py-8">
+                            <Building2 className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              {language === "es" 
+                                ? "No hay selecciones aún"
+                                : "No selections yet"}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Total Count */}
+                        {((form.watch("condominiumIds")?.length || 0) > 0 || (form.watch("unitIds")?.length || 0) > 0) && (
+                          <>
+                            <Separator />
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">{language === "es" ? "Total:" : "Total:"}</span>
+                              <span className="font-bold">
+                                {(form.watch("condominiumIds")?.length || 0) + (form.watch("unitIds")?.length || 0)}{" "}
+                                {language === "es" ? "asignaciones" : "assignments"}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
 
                 <DialogFooter>
                   <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-assignment">
