@@ -31,6 +31,28 @@ The maintenance system includes an enhanced tracking architecture with update ti
 
 Security features include enterprise-grade measures compliant with 2025 standards for multi-tenant SaaS platforms: Data Encryption at Rest using AES-256-GCM with per-record random IVs, an encryption module for secure key derivation and constant-time comparison, enhanced audit logging for all sensitive operations, comprehensive rate limiting on critical endpoints, and strict multi-tenant isolation with agency ownership verification. The platform also supports GDPR/PCI-DSS compliance.
 
+## Performance Optimization
+
+All External sections implement performance optimizations to minimize load times and reduce unnecessary network requests:
+
+**TanStack Query Cache Strategy:**
+- Global defaults: `staleTime: 5 minutes`, `gcTime: 10 minutes` (balanced for most data)
+- Static/rarely-changing data (condominiums, units, owners): `staleTime: 15 minutes` (extended cache)
+- Frequently changing data (contracts, transactions, assignments): Default 5-minute cache
+- Real-time selections (available units): `staleTime: 0` (always fresh)
+- Background refetch disabled (`refetchOnWindowFocus: false`) to prevent unnecessary requests
+
+**React Optimization:**
+- Expensive calculations memoized using `useMemo` (stats, filtering, sorting, pagination)
+- Lazy loading for heavy components (RentalWizard) with proper Suspense fallbacks
+- Conditional query enabling (`enabled` flag) to prevent unnecessary data fetching
+
+**Benefits:**
+- Reduced server load through intelligent caching
+- Faster page loads by avoiding redundant API calls
+- Maintained data freshness based on actual change frequency
+- Better user experience with instant cached responses for static data
+
 ## UI Design Standards
 
 ### Icon Sizing Guidelines
