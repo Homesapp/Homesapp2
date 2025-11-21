@@ -22145,7 +22145,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const units = await storage.getExternalUnitsByAgency(agencyId, filters);
       
-      res.json(units);
+      // Get all active contracts for this agency to determine which units are rented
+      const activeContracts = await storage.getExternalRentalContractsByAgency(agencyId);
+      const activeContractsByUnit = new Map(
+        activeContracts
+          .filter(c => c.status === 'active')
+          .map(c => [c.unitId, c.id])
+      );
+      
+      // Add currentContractId and status field to each unit
+      const unitsWithContractInfo = units.map(unit => ({
+        ...unit,
+        status: unit.isActive ? 'active' : 'inactive',
+        currentContractId: activeContractsByUnit.get(unit.id) || null,
+      }));
+      
+      res.json(unitsWithContractInfo);
     } catch (error: any) {
       console.error("Error fetching external units:", error);
       handleGenericError(res, error);
