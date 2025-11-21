@@ -15,7 +15,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, ChevronLeft, ChevronRight, X, ChevronDown, LayoutGrid, Table as TableIcon, User, Mail, Phone, Search, Filter } from "lucide-react";
+import { Plus, Trash2, Building2, Home, Wrench, Pencil, ArrowUpDown, X, ChevronDown, LayoutGrid, Table as TableIcon, User, Mail, Phone, Search, Filter } from "lucide-react";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -91,15 +92,11 @@ export default function ExternalMaintenanceWorkers() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [showWorkersFilters, setShowWorkersFilters] = useState(false);
   
-  // Assignments table pagination & sorting
+  // Assignments pagination & sorting (shared between table and cards)
   const [assignmentsPage, setAssignmentsPage] = useState(1);
   const [assignmentsPerPage, setAssignmentsPerPage] = useState(10);
   const [assignmentsSortColumn, setAssignmentsSortColumn] = useState<string>("");
   const [assignmentsSortDirection, setAssignmentsSortDirection] = useState<"asc" | "desc">("asc");
-  
-  // Assignments cards pagination
-  const [assignmentsCardsPage, setAssignmentsCardsPage] = useState(1);
-  const [assignmentsCardsItemsPerPage, setAssignmentsCardsItemsPerPage] = useState(9);
   
   // Workers pagination & sorting (shared between table and cards)
   const [workersPage, setWorkersPage] = useState(1);
@@ -117,49 +114,40 @@ export default function ExternalMaintenanceWorkers() {
         const preferredMode = isMobile ? "cards" : "table";
         setWorkersViewMode(preferredMode);
         setAssignmentsViewMode(preferredMode);
-        setWorkersPerPage(preferredMode === "cards" ? 9 : 10);
-        setAssignmentsPerPage(preferredMode === "cards" ? 9 : 10);
-        setAssignmentsCardsItemsPerPage(preferredMode === "cards" ? 9 : 10);
+        setWorkersPerPage(10);
+        setAssignmentsPerPage(10);
       }
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
-  // Reset assignments table page when items per page changes
+  // Reset assignments page when items per page changes
   useEffect(() => {
     setAssignmentsPage(1);
   }, [assignmentsPerPage]);
 
-  // Reset assignments cards page when items per page changes
-  useEffect(() => {
-    setAssignmentsCardsPage(1);
-  }, [assignmentsCardsItemsPerPage]);
-
   // Reset page to 1 when assignments view mode changes
   useEffect(() => {
-    const defaultPerPage = assignmentsViewMode === "cards" ? 9 : 10;
-    const validOptions = assignmentsViewMode === "cards" ? [3, 6, 9, 12] : [5, 10, 20, 30];
+    const defaultPerPage = 10;
+    const validOptions = [10, 20, 30, 40];
     
     // Only auto-adjust if current value is not valid for the new mode
-    if (assignmentsViewMode === "cards" && !validOptions.includes(assignmentsCardsItemsPerPage)) {
-      setAssignmentsCardsItemsPerPage(defaultPerPage);
-    } else if (assignmentsViewMode === "table" && !validOptions.includes(assignmentsPerPage)) {
+    if (!validOptions.includes(assignmentsPerPage)) {
       setAssignmentsPerPage(defaultPerPage);
     }
     setAssignmentsPage(1);
-    setAssignmentsCardsPage(1);
-  }, [assignmentsViewMode]);
+  }, [assignmentsViewMode, assignmentsPerPage]);
 
   // Reset page to 1 when workers view mode changes
   useEffect(() => {
-    const defaultPerPage = workersViewMode === "cards" ? 9 : 10;
-    const validOptions = workersViewMode === "cards" ? [3, 6, 9, 12] : [5, 10, 20, 30];
+    const defaultPerPage = 10;
+    const validOptions = [10, 20, 30, 40];
     
     // Only auto-adjust if current value is not valid for the new mode
     if (!validOptions.includes(workersPerPage)) {
       setWorkersPerPage(defaultPerPage);
     }
     setWorkersPage(1);
-  }, [workersViewMode]);
+  }, [workersViewMode, workersPerPage]);
   
   // Reset page when items per page changes (from user selecting different value)
   useEffect(() => {
@@ -427,36 +415,24 @@ export default function ExternalMaintenanceWorkers() {
     });
   }, [groupedAssignments, assignmentsSortColumn, assignmentsSortDirection, language]);
 
-  // Clamp assignments page (context-aware)
+  // Clamp assignments page
   useEffect(() => {
     if (sortedGroupedAssignments.length === 0) {
-      if (assignmentsViewMode === "cards") {
-        setAssignmentsCardsPage(1);
-      } else {
-        setAssignmentsPage(1);
-      }
+      setAssignmentsPage(1);
       return;
     }
-    const currentItemsPerPage = assignmentsViewMode === "cards" ? assignmentsCardsItemsPerPage : assignmentsPerPage;
-    const currentPage = assignmentsViewMode === "cards" ? assignmentsCardsPage : assignmentsPage;
-    const maxPage = Math.ceil(sortedGroupedAssignments.length / currentItemsPerPage) || 1;
-    if (currentPage > maxPage) {
-      if (assignmentsViewMode === "cards") {
-        setAssignmentsCardsPage(maxPage);
-      } else {
-        setAssignmentsPage(maxPage);
-      }
+    const maxPage = Math.ceil(sortedGroupedAssignments.length / assignmentsPerPage) || 1;
+    if (assignmentsPage > maxPage) {
+      setAssignmentsPage(maxPage);
     }
-  }, [sortedGroupedAssignments.length, assignmentsPerPage, assignmentsCardsItemsPerPage, assignmentsViewMode, assignmentsPage, assignmentsCardsPage]);
+  }, [sortedGroupedAssignments.length, assignmentsPerPage, assignmentsPage]);
 
-  // Paginate grouped assignments (context-aware)
+  // Paginate grouped assignments
   const paginatedGroupedAssignments = useMemo(() => {
-    const currentItemsPerPage = assignmentsViewMode === "cards" ? assignmentsCardsItemsPerPage : assignmentsPerPage;
-    const currentPage = assignmentsViewMode === "cards" ? assignmentsCardsPage : assignmentsPage;
-    return sortedGroupedAssignments.slice((currentPage - 1) * currentItemsPerPage, currentPage * currentItemsPerPage);
-  }, [sortedGroupedAssignments, assignmentsPage, assignmentsPerPage, assignmentsCardsPage, assignmentsCardsItemsPerPage, assignmentsViewMode]);
+    return sortedGroupedAssignments.slice((assignmentsPage - 1) * assignmentsPerPage, assignmentsPage * assignmentsPerPage);
+  }, [sortedGroupedAssignments, assignmentsPage, assignmentsPerPage]);
   
-  const assignmentsTotalPages = Math.ceil(sortedGroupedAssignments.length / (assignmentsViewMode === "cards" ? assignmentsCardsItemsPerPage : assignmentsPerPage));
+  const assignmentsTotalPages = Math.ceil(sortedGroupedAssignments.length / assignmentsPerPage);
 
   // Filter and sort workers
   const sortedWorkers = useMemo(() => {
@@ -1142,65 +1118,22 @@ export default function ExternalMaintenanceWorkers() {
                   {assignmentsViewMode === "cards" ? (
                     <>
                       {/* Assignments Cards Pagination Controls */}
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "Mostrar" : "Show"}
-                          </span>
-                          <Select
-                            value={assignmentsCardsItemsPerPage.toString()}
-                            onValueChange={(value) => setAssignmentsCardsItemsPerPage(Number(value))}
-                          >
-                            <SelectTrigger className="w-20" data-testid="select-assignments-cards-per-page">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="3">3</SelectItem>
-                              <SelectItem value="6">6</SelectItem>
-                              <SelectItem value="9">9</SelectItem>
-                              <SelectItem value="12">12</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "por página" : "per page"}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? `Página ${assignmentsCardsPage} de ${Math.ceil(sortedGroupedAssignments.length / assignmentsCardsItemsPerPage) || 1}` : `Page ${assignmentsCardsPage} of ${Math.ceil(sortedGroupedAssignments.length / assignmentsCardsItemsPerPage) || 1}`}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setAssignmentsCardsPage(Math.max(1, assignmentsCardsPage - 1))}
-                              disabled={assignmentsCardsPage === 1}
-                              data-testid="button-assignments-cards-prev-page"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setAssignmentsCardsPage(Math.min(Math.ceil(sortedGroupedAssignments.length / assignmentsCardsItemsPerPage), assignmentsCardsPage + 1))}
-                              disabled={assignmentsCardsPage === Math.ceil(sortedGroupedAssignments.length / assignmentsCardsItemsPerPage)}
-                              data-testid="button-assignments-cards-next-page"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                      <ExternalPaginationControls
+                        currentPage={assignmentsPage}
+                        totalPages={assignmentsTotalPages}
+                        itemsPerPage={assignmentsPerPage}
+                        onPageChange={setAssignmentsPage}
+                        onItemsPerPageChange={(value) => {
+                          setAssignmentsPerPage(value);
+                          setAssignmentsPage(1);
+                        }}
+                        language={language}
+                        testIdPrefix="assignments-cards"
+                      />
 
                       {/* Cards View */}
                       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                        {(() => {
-                          const start = (assignmentsCardsPage - 1) * assignmentsCardsItemsPerPage;
-                          const end = start + assignmentsCardsItemsPerPage;
-                          const paginatedCards = sortedGroupedAssignments.slice(start, end);
-                          
-                          return paginatedCards.map(({ worker, assignments: workerAssignments }) => (
+                        {paginatedGroupedAssignments.map(({ worker, assignments: workerAssignments }) => (
                             <Card key={worker.id} className="hover-elevate flex flex-col" data-testid={`card-assignment-${worker.id}`}>
                               <CardHeader className="space-y-2">
                                 <CardTitle className="text-lg flex items-start gap-2">
@@ -1280,63 +1213,24 @@ export default function ExternalMaintenanceWorkers() {
                                 </div>
                               </CardContent>
                             </Card>
-                          ));
-                        })()}
+                        ))}
                       </div>
                     </>
                   ) : (
                     <>
                       {/* Assignments Table Pagination Controls */}
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "Mostrar" : "Show"}
-                          </span>
-                          <Select
-                            value={assignmentsPerPage.toString()}
-                            onValueChange={(value) => setAssignmentsPerPage(Number(value))}
-                          >
-                            <SelectTrigger className="w-20" data-testid="select-assignments-per-page">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="5">5</SelectItem>
-                              <SelectItem value="10">10</SelectItem>
-                              <SelectItem value="20">20</SelectItem>
-                              <SelectItem value="30">30</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "por página" : "per page"}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? `Página ${assignmentsPage} de ${assignmentsTotalPages}` : `Page ${assignmentsPage} of ${assignmentsTotalPages}`}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setAssignmentsPage(Math.max(1, assignmentsPage - 1))}
-                              disabled={assignmentsPage === 1}
-                              data-testid="button-assignments-prev-page"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setAssignmentsPage(Math.min(assignmentsTotalPages, assignmentsPage + 1))}
-                              disabled={assignmentsPage === assignmentsTotalPages}
-                              data-testid="button-assignments-next-page"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                      <ExternalPaginationControls
+                        currentPage={assignmentsPage}
+                        totalPages={assignmentsTotalPages}
+                        itemsPerPage={assignmentsPerPage}
+                        onPageChange={setAssignmentsPage}
+                        onItemsPerPageChange={(value) => {
+                          setAssignmentsPerPage(value);
+                          setAssignmentsPage(1);
+                        }}
+                        language={language}
+                        testIdPrefix="assignments-table"
+                      />
 
                       {/* Table View */}
                       <div className="w-full overflow-x-auto">
@@ -1479,56 +1373,18 @@ export default function ExternalMaintenanceWorkers() {
                   {workersViewMode === "cards" ? (
                     <>
                       {/* Workers Cards Pagination Controls */}
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "Mostrar" : "Show"}
-                          </span>
-                          <Select
-                            value={workersPerPage.toString()}
-                            onValueChange={(value) => setWorkersPerPage(Number(value))}
-                          >
-                            <SelectTrigger className="w-20" data-testid="select-workers-per-page">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="3">3</SelectItem>
-                              <SelectItem value="6">6</SelectItem>
-                              <SelectItem value="9">9</SelectItem>
-                              <SelectItem value="12">12</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "por página" : "per page"}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? `Página ${workersPage} de ${workersTotalPages}` : `Page ${workersPage} of ${workersTotalPages}`}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setWorkersPage(Math.max(1, workersPage - 1))}
-                              disabled={workersPage === 1}
-                              data-testid="button-workers-prev-page"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setWorkersPage(Math.min(workersTotalPages, workersPage + 1))}
-                              disabled={workersPage === workersTotalPages}
-                              data-testid="button-workers-next-page"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                      <ExternalPaginationControls
+                        currentPage={workersPage}
+                        totalPages={workersTotalPages}
+                        itemsPerPage={workersPerPage}
+                        onPageChange={setWorkersPage}
+                        onItemsPerPageChange={(value) => {
+                          setWorkersPerPage(value);
+                          setWorkersPage(1);
+                        }}
+                        language={language}
+                        testIdPrefix="workers-cards"
+                      />
 
                       {/* Cards View */}
                       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -1590,56 +1446,18 @@ export default function ExternalMaintenanceWorkers() {
                   ) : (
                     <>
                       {/* Workers Table Pagination Controls */}
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "Mostrar" : "Show"}
-                          </span>
-                          <Select
-                            value={workersPerPage.toString()}
-                            onValueChange={(value) => setWorkersPerPage(Number(value))}
-                          >
-                            <SelectTrigger className="w-20" data-testid="select-workers-per-page">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="5">5</SelectItem>
-                              <SelectItem value="10">10</SelectItem>
-                              <SelectItem value="20">20</SelectItem>
-                              <SelectItem value="30">30</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? "por página" : "per page"}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {language === "es" ? `Página ${workersPage} de ${workersTotalPages}` : `Page ${workersPage} of ${workersTotalPages}`}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setWorkersPage(Math.max(1, workersPage - 1))}
-                              disabled={workersPage === 1}
-                              data-testid="button-workers-prev-page"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setWorkersPage(Math.min(workersTotalPages, workersPage + 1))}
-                              disabled={workersPage === workersTotalPages}
-                              data-testid="button-workers-next-page"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                      <ExternalPaginationControls
+                        currentPage={workersPage}
+                        totalPages={workersTotalPages}
+                        itemsPerPage={workersPerPage}
+                        onPageChange={setWorkersPage}
+                        onItemsPerPageChange={(value) => {
+                          setWorkersPerPage(value);
+                          setWorkersPage(1);
+                        }}
+                        language={language}
+                        testIdPrefix="workers-table"
+                      />
 
                       {/* Table View */}
                       <div className="w-full overflow-x-auto">

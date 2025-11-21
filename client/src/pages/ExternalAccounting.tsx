@@ -45,9 +45,8 @@ import {
   Flame,
   Wrench,
   Building2,
-  ChevronLeft,
-  ChevronRight
 } from "lucide-react";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -97,11 +96,7 @@ export default function ExternalAccounting() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  
-  // Pagination options
-  const cardsPerPageOptions = [3, 6, 9, 12];
-  const tablePerPageOptions = [5, 10, 20, 30];
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Tab control
   const [activeTab, setActiveTab] = useState("transactions");
@@ -259,12 +254,15 @@ export default function ExternalAccounting() {
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
   
-  // Auto-adjust itemsPerPage when switching view modes
+  // Reset to page 1 when switching view modes (preserve itemsPerPage selection)
   useEffect(() => {
-    const defaultForMode = viewMode === "cards" ? cardsPerPageOptions[1] : tablePerPageOptions[0];
-    setItemsPerPage(defaultForMode);
     setCurrentPage(1);
   }, [viewMode]);
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
 
   // Reset to page 1 when filters or data changes
   useEffect(() => {
@@ -1404,52 +1402,16 @@ export default function ExternalAccounting() {
           ) : (
             <Card>
               <CardContent className="p-0">
-                {/* Pagination Controls */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4 p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                    <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                      setItemsPerPage(Number(value));
-                      setCurrentPage(1);
-                    }}>
-                      <SelectTrigger className="w-[70px]" data-testid="select-items-per-page">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="30">30</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-muted-foreground">{language === 'es' ? 'registros' : 'records'}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                        disabled={currentPage === 1}
-                        data-testid="button-prev-page"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                        disabled={currentPage === totalPages || totalPages === 0}
-                        data-testid="button-next-page"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                <div className="p-4">
+                  <ExternalPaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    language={language}
+                    testIdPrefix="accounting-table"
+                  />
                 </div>
 
                 <div className="rounded-md border">

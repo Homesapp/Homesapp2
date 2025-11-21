@@ -54,8 +54,6 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
   LayoutGrid,
   Table as TableIcon,
   X,
@@ -77,6 +75,7 @@ import { z } from "zod";
 import { format, toZonedTime, fromZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 
 type MaintenanceFormData = z.infer<typeof insertExternalMaintenanceTicketSchema>;
 
@@ -181,13 +180,9 @@ export default function ExternalMaintenance() {
   
   // Pagination and sorting states
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>('created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
-  // Pagination options
-  const cardsPerPageOptions = [3, 6, 9, 12];
-  const tablePerPageOptions = [5, 10, 20, 30];
   
   // Auto-switch view mode on genuine breakpoint transitions
   useEffect(() => {
@@ -200,13 +195,6 @@ export default function ExternalMaintenance() {
       }
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
-  
-  // Auto-adjust itemsPerPage when switching view modes
-  useEffect(() => {
-    const defaultForMode = viewMode === "cards" ? cardsPerPageOptions[0] : tablePerPageOptions[0];
-    setItemsPerPage(defaultForMode);
-    setCurrentPage(1);
-  }, [viewMode]);
 
   const { data: tickets, isLoading: ticketsLoading } = useQuery<ExternalMaintenanceTicket[]>({
     queryKey: ['/api/external-tickets'],
@@ -995,57 +983,18 @@ export default function ExternalMaintenance() {
           ) : viewMode === "cards" ? (
             // Cards View
             <div className="p-6">
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                  <Select 
-                    value={itemsPerPage.toString()} 
-                    onValueChange={(value) => {
-                      setItemsPerPage(Number(value));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-20" data-testid="select-items-per-page">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cardsPerPageOptions.map(option => (
-                        <SelectItem key={option} value={option.toString()}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      data-testid="button-prev-page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      data-testid="button-next-page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <ExternalPaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(items) => {
+                  setItemsPerPage(items);
+                  setCurrentPage(1);
+                }}
+                language={language}
+                testIdPrefix="cards"
+              />
 
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedTickets.map(ticket => {
@@ -1119,56 +1068,19 @@ export default function ExternalMaintenance() {
           ) : (
             // Table View
             <div>
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 pt-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                  <Select 
-                    value={itemsPerPage.toString()} 
-                    onValueChange={(value) => {
-                      setItemsPerPage(Number(value));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-20" data-testid="select-items-per-page">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tablePerPageOptions.map(option => (
-                        <SelectItem key={option} value={option.toString()}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      data-testid="button-prev-page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      data-testid="button-next-page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+              <div className="px-4 pt-4">
+                <ExternalPaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={(items) => {
+                    setItemsPerPage(items);
+                    setCurrentPage(1);
+                  }}
+                  language={language}
+                  testIdPrefix="table"
+                />
               </div>
 
               <div className="overflow-x-auto">

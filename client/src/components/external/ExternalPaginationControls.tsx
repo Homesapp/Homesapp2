@@ -20,7 +20,7 @@ export function ExternalPaginationControls({
   onPageChange,
   onItemsPerPageChange,
   language,
-  itemsPerPageOptions = [5, 10, 20, 30],
+  itemsPerPageOptions = [10, 20, 30, 40],
   testIdPrefix = '',
 }: ExternalPaginationControlsProps) {
   const handlePrevPage = () => {

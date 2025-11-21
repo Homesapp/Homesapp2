@@ -13,7 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Filter } from "lucide-react";
+import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter } from "lucide-react";
 import { useState, useLayoutEffect, useEffect, useMemo } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { z } from "zod";
@@ -28,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 
 const createUserSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -115,9 +116,7 @@ export default function ExternalAccounts() {
   const [tablePage, setTablePage] = useState(1);
   const [cardsPage, setCardsPage] = useState(1);
   const [tableItemsPerPage, setTableItemsPerPage] = useState(10);
-  const [cardsItemsPerPage, setCardsItemsPerPage] = useState(9);
-  const tablePerPageOptions = [5, 10, 20, 30];
-  const cardsPerPageOptions = [3, 6, 9, 12];
+  const [cardsItemsPerPage, setCardsItemsPerPage] = useState(10);
   
   // Sorting states
   const [sortColumn, setSortColumn] = useState<string>("name");
@@ -823,54 +822,18 @@ export default function ExternalAccounts() {
           </CardHeader>
           <CardContent>
             {/* Pagination Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                <Select 
-                  value={tableItemsPerPage.toString()} 
-                  onValueChange={(value) => {
-                    setTableItemsPerPage(Number(value));
-                    setTablePage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[70px]" data-testid="select-items-per-page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tablePerPageOptions.map(option => (
-                      <SelectItem key={option} value={option.toString()}>{option}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {language === 'es' ? 'Página' : 'Page'} {tablePage} {language === 'es' ? 'de' : 'of'} {tableTotalPages}
-                </span>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => handleTablePageChange(tablePage - 1)} 
-                    disabled={tablePage === 1}
-                    data-testid="button-prev-page"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => handleTablePageChange(tablePage + 1)} 
-                    disabled={tablePage === tableTotalPages}
-                    data-testid="button-next-page"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <ExternalPaginationControls
+              currentPage={tablePage}
+              totalPages={tableTotalPages}
+              itemsPerPage={tableItemsPerPage}
+              onPageChange={setTablePage}
+              onItemsPerPageChange={(items) => {
+                setTableItemsPerPage(items);
+                setTablePage(1);
+              }}
+              language={language}
+              testIdPrefix="table"
+            />
 
             <div className="w-full overflow-x-auto">
               <Table>
@@ -991,54 +954,18 @@ export default function ExternalAccounts() {
       ) : (
         <>
           {/* Pagination Controls for Cards */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-              <Select 
-                value={cardsItemsPerPage.toString()} 
-                onValueChange={(value) => {
-                  setCardsItemsPerPage(Number(value));
-                  setCardsPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[70px]" data-testid="select-items-per-page-cards">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {cardsPerPageOptions.map(option => (
-                    <SelectItem key={option} value={option.toString()}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {language === 'es' ? 'Página' : 'Page'} {cardsPage} {language === 'es' ? 'de' : 'of'} {cardsTotalPages}
-              </span>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => handleCardsPageChange(cardsPage - 1)} 
-                  disabled={cardsPage === 1}
-                  data-testid="button-prev-page-cards"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => handleCardsPageChange(cardsPage + 1)} 
-                  disabled={cardsPage === cardsTotalPages}
-                  data-testid="button-next-page-cards"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <ExternalPaginationControls
+            currentPage={cardsPage}
+            totalPages={cardsTotalPages}
+            itemsPerPage={cardsItemsPerPage}
+            onPageChange={setCardsPage}
+            onItemsPerPageChange={(items) => {
+              setCardsItemsPerPage(items);
+              setCardsPage(1);
+            }}
+            language={language}
+            testIdPrefix="cards"
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedCardsUsers.map((user) => (

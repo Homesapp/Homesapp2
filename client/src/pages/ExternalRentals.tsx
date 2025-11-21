@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 
 // Lazy load heavy components
 const RentalWizard = lazy(() => import("@/components/RentalWizard"));
@@ -57,8 +58,6 @@ import {
   XCircle,
   ChevronUp,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   PawPrint,
   Zap,
   Droplet,
@@ -111,10 +110,6 @@ export default function ExternalRentals() {
   // Pagination state (max 3 rows x 3 cols = 9 cards per page)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); // Default for table
-  
-  // Pagination options
-  const cardsPerPageOptions = [3, 6, 9, 12];
-  const tablePerPageOptions = [5, 10, 20, 30];
 
   // Fetch rentals - uses default 5 min cache (reasonable for contracts)
   const { data: rentals, isLoading, isError, error, refetch } = useQuery<RentalWithDetails[]>({
@@ -179,10 +174,8 @@ export default function ExternalRentals() {
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
   
-  // Auto-adjust itemsPerPage when switching view modes
+  // Reset to first page when switching view modes
   useEffect(() => {
-    const defaultForMode = viewMode === "cards" ? cardsPerPageOptions[1] : tablePerPageOptions[1];
-    setItemsPerPage(defaultForMode);
     setCurrentPage(1);
   }, [viewMode]);
 
@@ -201,21 +194,6 @@ export default function ExternalRentals() {
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage]);
-
-  // Adjust items per page when view mode changes
-  useEffect(() => {
-    if (viewMode === "cards") {
-      // If current itemsPerPage is not valid for cards view, reset to default
-      if (![3, 6, 9].includes(itemsPerPage)) {
-        setItemsPerPage(9);
-      }
-    } else {
-      // If current itemsPerPage is not valid for table view, reset to default
-      if (![5, 10, 20, 30].includes(itemsPerPage)) {
-        setItemsPerPage(5);
-      }
-    }
-  }, [viewMode]);
 
   // Cancel rental contract mutation
   const cancelMutation = useMutation({
@@ -979,54 +957,19 @@ export default function ExternalRentals() {
             </>
           ) : (
             <>
-            {/* Pagination Controls - Above Table */}
             {filteredRentals.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                  <Select 
-                    value={itemsPerPage.toString()} 
-                    onValueChange={(value) => setItemsPerPage(Number(value))}
-                  >
-                    <SelectTrigger className="w-[70px]" data-testid="select-items-per-page">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="30">30</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {language === 'es' ? 'Página' : 'Page'} {currentPage} {language === 'es' ? 'de' : 'of'} {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} 
-                      disabled={currentPage === 1}
-                      data-testid="button-prev-page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} 
-                      disabled={currentPage === totalPages}
-                      data-testid="button-next-page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <ExternalPaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(value) => {
+                  setItemsPerPage(value);
+                  setCurrentPage(1);
+                }}
+                language={language}
+                testIdPrefix=""
+              />
             )}
 
             <Card>

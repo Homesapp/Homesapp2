@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, DollarSign, Bell, Search, Plus, Calendar, Mail, Phone, ChevronLeft, ChevronRight } from "lucide-react";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Users, DollarSign, Bell, Search, Plus, Calendar, Mail, Phone } from "lucide-react";
 import { format } from "date-fns";
 import type { ExternalUnitOwner, ExternalOwnerCharge, ExternalOwnerNotification } from "@shared/schema";
 
@@ -28,15 +30,16 @@ interface OwnerWithUnit extends ExternalUnitOwner {
 
 export default function ExternalOwners() {
   const { toast } = useToast();
+  const { language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOwner, setSelectedOwner] = useState<OwnerWithUnit | null>(null);
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
   const [bulkNotificationDialogOpen, setBulkNotificationDialogOpen] = useState(false);
   
-  // Pagination state (3 rows x 3 cols = 9 cards per page)
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(9);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Fetch owners
   const { data: owners = [], isLoading } = useQuery<OwnerWithUnit[]>({
@@ -196,55 +199,20 @@ export default function ExternalOwners() {
           ) : (
             <div className="space-y-4">
               {/* Pagination Controls - Above Grid */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Mostrar</span>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => {
-                      setItemsPerPage(Number(value));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[70px]" data-testid="select-items-per-page">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="9">9</SelectItem>
-                      <SelectItem value="18">18</SelectItem>
-                      <SelectItem value="27">27</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground">por página</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      data-testid="button-prev-page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      data-testid="button-next-page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              {filteredOwners.length > 0 && (
+                <ExternalPaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={(value) => {
+                    setItemsPerPage(value);
+                    setCurrentPage(1);
+                  }}
+                  language={language}
+                  testIdPrefix=""
+                />
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {paginatedOwners.map((owner) => (

@@ -70,6 +70,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMobile } from "@/hooks/use-mobile";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import type { 
   ExternalUnitOwner, 
   ExternalUnit, 
@@ -156,7 +157,7 @@ export default function ExternalOwnerPortfolio() {
   
   // Pagination and sorting for units detail table
   const [unitsPage, setUnitsPage] = useState(1);
-  const [unitsPerPage, setUnitsPerPage] = useState(5);
+  const [unitsPerPage, setUnitsPerPage] = useState(10);
   const [unitsSortBy, setUnitsSortBy] = useState<'condominium' | 'unitNumber'>('condominium');
   const [unitsSortOrder, setUnitsSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -169,23 +170,16 @@ export default function ExternalOwnerPortfolio() {
       if (!manualViewModeOverride) {
         const preferredMode = isMobile ? "cards" : "table";
         setViewMode(preferredMode);
-        setItemsPerPage(preferredMode === "cards" ? 9 : 10);
+        setItemsPerPage(10);
       }
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
   // Reset itemsPerPage when view mode changes
   useEffect(() => {
-    if (viewMode === "cards") {
-      if (![3, 6, 9].includes(itemsPerPage)) {
-        setItemsPerPage(9);
-      }
-    } else {
-      if (![5, 10, 20, 30].includes(itemsPerPage)) {
-        setItemsPerPage(10);
-      }
-    }
-  }, [viewMode, itemsPerPage]);
+    setItemsPerPage(10);
+    setPage(1);
+  }, [viewMode]);
 
   // Static/semi-static data: owners list
   const { data: owners, isLoading: ownersLoading } = useQuery<ExternalUnitOwner[]>({
@@ -1080,44 +1074,18 @@ export default function ExternalOwnerPortfolio() {
                 ) : (
                   <>
                     {/* Table View */}
-                    <div className="flex items-center justify-between p-4 border-b">
-                      <div className="text-sm text-muted-foreground">
-                        {language === 'es' 
-                          ? `Mostrando ${startIndex + 1}-${endIndex} de ${totalItems} propietarios`
-                          : `Showing ${startIndex + 1}-${endIndex} of ${totalItems} owners`
-                        }
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">{t.itemsPerPage}:</span>
-                        <Select
-                          value={itemsPerPage.toString()}
-                          onValueChange={(value) => {
-                            setItemsPerPage(parseInt(value));
-                            setPage(1);
-                          }}
-                        >
-                          <SelectTrigger className="w-20" data-testid="select-items-per-page">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {viewMode === "cards" ? (
-                              <>
-                                <SelectItem value="3">3</SelectItem>
-                                <SelectItem value="6">6</SelectItem>
-                                <SelectItem value="9">9</SelectItem>
-                              </>
-                            ) : (
-                              <>
-                                <SelectItem value="5">5</SelectItem>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="20">20</SelectItem>
-                                <SelectItem value="30">30</SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                    <ExternalPaginationControls
+                      currentPage={page}
+                      totalPages={totalPages}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setPage}
+                      onItemsPerPageChange={(value) => {
+                        setItemsPerPage(value);
+                        setPage(1);
+                      }}
+                      language={language}
+                      testIdPrefix="owners"
+                    />
                     <div className="overflow-x-auto">
                       <Table>
                     <TableHeader>
@@ -1223,56 +1191,6 @@ export default function ExternalOwnerPortfolio() {
                   </div>
                   </>
                 )}
-
-                {/* Pagination Controls - Shared for both views */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between p-4 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      {language === 'es' 
-                        ? `Página ${page} de ${totalPages}`
-                        : `Page ${page} of ${totalPages}`
-                      }
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(1)}
-                        disabled={page === 1}
-                        data-testid="button-first-page"
-                      >
-                        {t.first}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                        disabled={page === 1}
-                        data-testid="button-prev-page"
-                      >
-                        {t.previous}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={page === totalPages}
-                        data-testid="button-next-page"
-                      >
-                        {t.next}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(totalPages)}
-                        disabled={page === totalPages}
-                        data-testid="button-last-page"
-                      >
-                        {t.last}
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </>
             );
       })()}
@@ -1331,29 +1249,7 @@ export default function ExternalOwnerPortfolio() {
 
               {/* Units Table with Pagination */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">{t.unitDetails}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t.itemsPerPage}:</span>
-                    <Select
-                      value={unitsPerPage.toString()}
-                      onValueChange={(value) => {
-                        setUnitsPerPage(parseInt(value));
-                        setUnitsPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="w-20" data-testid="select-units-per-page">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="30">30</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <h3 className="text-lg font-semibold mb-4">{t.unitDetails}</h3>
 
                 {(() => {
                   // Sort units
@@ -1387,6 +1283,18 @@ export default function ExternalOwnerPortfolio() {
 
                   return (
                     <>
+                      <ExternalPaginationControls
+                        currentPage={unitsPage}
+                        totalPages={totalPages}
+                        itemsPerPage={unitsPerPage}
+                        onPageChange={setUnitsPage}
+                        onItemsPerPageChange={(value) => {
+                          setUnitsPerPage(value);
+                          setUnitsPage(1);
+                        }}
+                        language={language}
+                        testIdPrefix="units"
+                      />
                       <div className="border rounded-lg overflow-hidden">
                         <Table>
                           <TableHeader>
@@ -1442,62 +1350,6 @@ export default function ExternalOwnerPortfolio() {
                           </TableBody>
                         </Table>
                       </div>
-
-                      {/* Pagination Controls */}
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between mt-4">
-                          <div className="text-sm text-muted-foreground">
-                            {language === 'es' 
-                              ? `Mostrando ${startIndex + 1}-${endIndex} de ${totalUnits} unidades`
-                              : `Showing ${startIndex + 1}-${endIndex} of ${totalUnits} units`
-                            }
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setUnitsPage(1)}
-                              disabled={unitsPage === 1}
-                              data-testid="button-units-first-page"
-                            >
-                              {t.first}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setUnitsPage(prev => Math.max(1, prev - 1))}
-                              disabled={unitsPage === 1}
-                              data-testid="button-units-prev-page"
-                            >
-                              {t.previous}
-                            </Button>
-                            <span className="text-sm text-muted-foreground px-2">
-                              {language === 'es' 
-                                ? `Página ${unitsPage} de ${totalPages}`
-                                : `Page ${unitsPage} of ${totalPages}`
-                              }
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setUnitsPage(prev => Math.min(totalPages, prev + 1))}
-                              disabled={unitsPage === totalPages}
-                              data-testid="button-units-next-page"
-                            >
-                              {t.next}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setUnitsPage(totalPages)}
-                              disabled={unitsPage === totalPages}
-                              data-testid="button-units-last-page"
-                            >
-                              {t.last}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
                     </>
                   );
                 })()}

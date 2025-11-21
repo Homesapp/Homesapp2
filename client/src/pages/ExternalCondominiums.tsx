@@ -4,7 +4,8 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, LayoutGrid, Table as TableIcon, ArrowUpDown } from "lucide-react";
+import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, LayoutGrid, Table as TableIcon, ArrowUpDown } from "lucide-react";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -77,10 +78,6 @@ export default function ExternalCondominiums() {
   const [condoCurrentPage, setCondoCurrentPage] = useState(1);
   const [condoItemsPerPage, setCondoItemsPerPage] = useState(10); // Default: table mode
   
-  // Pagination options
-  const cardsPerPageOptions = [3, 6, 9, 12];
-  const tablePerPageOptions = [5, 10, 20, 30];
-  
   // Condominiums table sorting
   const [condosSortColumn, setCondosSortColumn] = useState<string>("");
   const [condosSortDirection, setCondosSortDirection] = useState<"asc" | "desc">("asc");
@@ -110,8 +107,7 @@ export default function ExternalCondominiums() {
 
   // Auto-adjust itemsPerPage when switching view modes
   useEffect(() => {
-    const defaultForMode = viewMode === "cards" ? cardsPerPageOptions[1] : tablePerPageOptions[1];
-    setCondoItemsPerPage(defaultForMode);
+    setCondoItemsPerPage(10);
     setCondoCurrentPage(1);
   }, [viewMode]);
   
@@ -1343,52 +1339,18 @@ export default function ExternalCondominiums() {
               <div>
                 {/* Pagination Controls */}
                 {sortedCondominiums.length > 0 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                      <Select 
-                        value={condoItemsPerPage.toString()} 
-                        onValueChange={(value) => setCondoItemsPerPage(Number(value))}
-                      >
-                        <SelectTrigger className="w-[70px]" data-testid="select-condo-cards-per-page">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="3">3</SelectItem>
-                          <SelectItem value="6">6</SelectItem>
-                          <SelectItem value="9">9</SelectItem>
-                          <SelectItem value="12">12</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {language === 'es' ? 'Página' : 'Page'} {condoCurrentPage} {language === 'es' ? 'de' : 'of'} {condoTotalPages}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => setCondoCurrentPage(prev => Math.max(1, prev - 1))} 
-                          disabled={condoCurrentPage === 1}
-                          data-testid="button-condo-prev-page"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => setCondoCurrentPage(prev => Math.min(condoTotalPages, prev + 1))} 
-                          disabled={condoCurrentPage === condoTotalPages}
-                          data-testid="button-condo-next-page"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <ExternalPaginationControls
+                    currentPage={condoCurrentPage}
+                    totalPages={condoTotalPages}
+                    itemsPerPage={condoItemsPerPage}
+                    onPageChange={setCondoCurrentPage}
+                    onItemsPerPageChange={(items) => {
+                      setCondoItemsPerPage(items);
+                      setCondoCurrentPage(1);
+                    }}
+                    language={language}
+                    testIdPrefix="cards"
+                  />
                 )}
 
                 {/* Grid view of all condominiums */}
@@ -1674,52 +1636,18 @@ export default function ExternalCondominiums() {
               <div>
                 {/* Pagination Controls */}
                 {sortedCondominiums.length > 0 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{language === 'es' ? 'Mostrar' : 'Show'}</span>
-                      <Select 
-                        value={condoItemsPerPage.toString()} 
-                        onValueChange={(value) => setCondoItemsPerPage(Number(value))}
-                      >
-                        <SelectTrigger className="w-[70px]" data-testid="select-condo-table-per-page">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5</SelectItem>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="20">20</SelectItem>
-                          <SelectItem value="30">30</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">{language === 'es' ? 'por página' : 'per page'}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {language === 'es' ? 'Página' : 'Page'} {condoCurrentPage} {language === 'es' ? 'de' : 'of'} {condoTotalPages}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => setCondoCurrentPage(prev => Math.max(1, prev - 1))} 
-                          disabled={condoCurrentPage === 1}
-                          data-testid="button-condo-table-prev-page"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => setCondoCurrentPage(prev => Math.min(condoTotalPages, prev + 1))} 
-                          disabled={condoCurrentPage === condoTotalPages}
-                          data-testid="button-condo-table-next-page"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <ExternalPaginationControls
+                    currentPage={condoCurrentPage}
+                    totalPages={condoTotalPages}
+                    itemsPerPage={condoItemsPerPage}
+                    onPageChange={setCondoCurrentPage}
+                    onItemsPerPageChange={(items) => {
+                      setCondoItemsPerPage(items);
+                      setCondoCurrentPage(1);
+                    }}
+                    language={language}
+                    testIdPrefix="table"
+                  />
                 )}
 
                 {/* Table view of condominiums */}
