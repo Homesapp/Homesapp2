@@ -5343,6 +5343,7 @@ export const externalClients = pgTable("external_clients", {
   middleName: varchar("middle_name", { length: 100 }),
   lastName: varchar("last_name", { length: 100 }).notNull(),
   email: varchar("email", { length: 255 }),
+  phoneCountryCode: varchar("phone_country_code", { length: 10 }).default("+52"),
   phone: varchar("phone", { length: 50 }),
   alternatePhone: varchar("alternate_phone", { length: 50 }),
   dateOfBirth: date("date_of_birth"),

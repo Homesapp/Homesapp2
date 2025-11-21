@@ -174,6 +174,7 @@ export default function ExternalClients() {
       middleName: "",
       lastName: "",
       email: "",
+      phoneCountryCode: "+52",
       phone: "",
       alternatePhone: "",
       dateOfBirth: undefined,
@@ -823,16 +824,70 @@ export default function ExternalClients() {
                 <h3 className="text-sm font-semibold text-foreground">
                   {language === "es" ? "Información de Contacto" : "Contact Information"}
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} data-testid="input-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="phoneCountryCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} data-testid="input-email" />
-                        </FormControl>
+                        <FormLabel>{language === "es" ? "Código" : "Code"}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || "+52"}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-phone-country-code">
+                              <SelectValue placeholder="+52" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-[300px]">
+                            <SelectItem value="+1">🇺🇸 +1 (USA/CAN)</SelectItem>
+                            <SelectItem value="+52">🇲🇽 +52 (MX)</SelectItem>
+                            <SelectItem value="+44">🇬🇧 +44 (UK)</SelectItem>
+                            <SelectItem value="+33">🇫🇷 +33 (FR)</SelectItem>
+                            <SelectItem value="+49">🇩🇪 +49 (DE)</SelectItem>
+                            <SelectItem value="+34">🇪🇸 +34 (ES)</SelectItem>
+                            <SelectItem value="+39">🇮🇹 +39 (IT)</SelectItem>
+                            <SelectItem value="+351">🇵🇹 +351 (PT)</SelectItem>
+                            <SelectItem value="+55">🇧🇷 +55 (BR)</SelectItem>
+                            <SelectItem value="+54">🇦🇷 +54 (AR)</SelectItem>
+                            <SelectItem value="+56">🇨🇱 +56 (CL)</SelectItem>
+                            <SelectItem value="+57">🇨🇴 +57 (CO)</SelectItem>
+                            <SelectItem value="+51">🇵🇪 +51 (PE)</SelectItem>
+                            <SelectItem value="+593">🇪🇨 +593 (EC)</SelectItem>
+                            <SelectItem value="+598">🇺🇾 +598 (UY)</SelectItem>
+                            <SelectItem value="+506">🇨🇷 +506 (CR)</SelectItem>
+                            <SelectItem value="+507">🇵🇦 +507 (PA)</SelectItem>
+                            <SelectItem value="+504">🇭🇳 +504 (HN)</SelectItem>
+                            <SelectItem value="+503">🇸🇻 +503 (SV)</SelectItem>
+                            <SelectItem value="+502">🇬🇹 +502 (GT)</SelectItem>
+                            <SelectItem value="+505">🇳🇮 +505 (NI)</SelectItem>
+                            <SelectItem value="+81">🇯🇵 +81 (JP)</SelectItem>
+                            <SelectItem value="+86">🇨🇳 +86 (CN)</SelectItem>
+                            <SelectItem value="+82">🇰🇷 +82 (KR)</SelectItem>
+                            <SelectItem value="+91">🇮🇳 +91 (IN)</SelectItem>
+                            <SelectItem value="+61">🇦🇺 +61 (AU)</SelectItem>
+                            <SelectItem value="+64">🇳🇿 +64 (NZ)</SelectItem>
+                            <SelectItem value="+27">🇿🇦 +27 (ZA)</SelectItem>
+                            <SelectItem value="+971">🇦🇪 +971 (AE)</SelectItem>
+                            <SelectItem value="+966">🇸🇦 +966 (SA)</SelectItem>
+                            <SelectItem value="+7">🇷🇺 +7 (RU)</SelectItem>
+                            <SelectItem value="+380">🇺🇦 +380 (UA)</SelectItem>
+                            <SelectItem value="+48">🇵🇱 +48 (PL)</SelectItem>
+                            <SelectItem value="+90">🇹🇷 +90 (TR)</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -841,10 +896,10 @@ export default function ExternalClients() {
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="col-span-2">
                         <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="+52 998..." data-testid="input-phone" />
+                          <Input {...field} placeholder="998 123 4567" data-testid="input-phone" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

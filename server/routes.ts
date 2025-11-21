@@ -142,6 +142,8 @@ import {
   condominiumUnits,
   colonies,
   insertExternalAgencySchema,
+  insertExternalClientSchema,
+  updateExternalClientSchema,
   insertExternalPropertySchema,
   insertExternalRentalContractSchema,
   insertExternalRentalTenantSchema,
