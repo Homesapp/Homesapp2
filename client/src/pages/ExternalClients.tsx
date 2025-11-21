@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
   Plus,
@@ -96,6 +97,7 @@ export default function ExternalClients() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [verifiedFilter, setVerifiedFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
@@ -103,8 +105,6 @@ export default function ExternalClients() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExternalClient | null>(null);
-
-  const itemsPerPage = 12;
 
   useLayoutEffect(() => {
     setViewMode(isMobile ? "cards" : "table");
@@ -380,172 +380,171 @@ export default function ExternalClients() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
-      <div className="flex-none px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            <h1 className="text-2xl">
-              {language === "es" ? "Clientes" : "Clients"}
-            </h1>
-          </div>
-          <Button 
-            onClick={() => setIsCreateDialogOpen(true)}
-            data-testid="button-create-client"
-          >
-            <Plus className="h-4 w-4" />
-            {language === "es" ? "Nuevo Cliente" : "New Client"}
-          </Button>
+    <div className="flex flex-col gap-6 p-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">
+            {language === "es" ? "Clientes" : "Clients"}
+          </h1>
+          <p className="text-muted-foreground">
+            {language === "es" 
+              ? "Gestiona el registro de clientes e inquilinos"
+              : "Manage client and tenant registration"}
+          </p>
         </div>
+        <Button 
+          onClick={() => setIsCreateDialogOpen(true)}
+          data-testid="button-create-client"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          {language === "es" ? "Nuevo Cliente" : "New Client"}
+        </Button>
       </div>
 
-      <div className="flex-none px-6">
-        <Card className="mb-[2px]">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={language === "es" ? "Buscar clientes..." : "Search clients..."}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-search"
-                />
-              </div>
+      <Tabs defaultValue="clients" className="w-full">
+        <TabsList>
+          <TabsTrigger value="clients" data-testid="tab-clients">
+            <Users className="mr-2 h-4 w-4" />
+            {language === "es" ? "Clientes" : "Clients"}
+          </TabsTrigger>
+        </TabsList>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1" data-testid="button-filters">
-                      <Filter className="h-3 w-3" />
-                      {language === "es" ? "Filtros" : "Filters"}
-                      {(statusFilter !== "all" || verifiedFilter !== "all") && (
-                        <Badge variant="secondary" className="ml-1 rounded-full px-1 text-[10px] h-4 min-w-4">
-                          {(statusFilter !== "all" ? 1 : 0) + (verifiedFilter !== "all" ? 1 : 0)}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-4" align="start">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          {language === "es" ? "Estado" : "Status"}
-                        </label>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                          <SelectTrigger data-testid="select-status-filter">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
-                            <SelectItem value="active">{language === "es" ? "Activos" : "Active"}</SelectItem>
-                            <SelectItem value="inactive">{language === "es" ? "Inactivos" : "Inactive"}</SelectItem>
-                            <SelectItem value="archived">{language === "es" ? "Archivados" : "Archived"}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+        <TabsContent value="clients" className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={language === "es" ? "Buscar por nombre, email o teléfono..." : "Search by name, email or phone..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+            data-testid="input-search"
+          />
+        </div>
 
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          {language === "es" ? "Verificación" : "Verification"}
-                        </label>
-                        <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
-                          <SelectTrigger data-testid="select-verified-filter">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
-                            <SelectItem value="verified">{language === "es" ? "Verificados" : "Verified"}</SelectItem>
-                            <SelectItem value="unverified">{language === "es" ? "No Verificados" : "Unverified"}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1" data-testid="button-filters">
+                <Filter className="h-3 w-3" />
+                {language === "es" ? "Filtros" : "Filters"}
+                {(statusFilter !== "all" || verifiedFilter !== "all") && (
+                  <Badge variant="secondary" className="ml-1 rounded-full px-1 text-[10px] h-4 min-w-4">
+                    {(statusFilter !== "all" ? 1 : 0) + (verifiedFilter !== "all" ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="start">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {language === "es" ? "Estado" : "Status"}
+                  </label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger data-testid="select-status-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
+                      <SelectItem value="active">{language === "es" ? "Activos" : "Active"}</SelectItem>
+                      <SelectItem value="inactive">{language === "es" ? "Inactivos" : "Inactive"}</SelectItem>
+                      <SelectItem value="archived">{language === "es" ? "Archivados" : "Archived"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                      {(statusFilter !== "all" || verifiedFilter !== "all") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setStatusFilter("all");
-                            setVerifiedFilter("all");
-                          }}
-                          className="w-full"
-                          data-testid="button-clear-filters"
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
-                        </Button>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {language === "es" ? "Verificación" : "Verification"}
+                  </label>
+                  <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
+                    <SelectTrigger data-testid="select-verified-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
+                      <SelectItem value="verified">{language === "es" ? "Verificados" : "Verified"}</SelectItem>
+                      <SelectItem value="unverified">{language === "es" ? "No Verificados" : "Unverified"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                {!isMobile && (
-                  <div className="flex items-center gap-1 ml-auto">
-                    <Button
-                      variant={viewMode === "cards" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setViewMode("cards")}
-                      data-testid="button-view-cards"
-                    >
-                      <LayoutGrid className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant={viewMode === "table" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setViewMode("table")}
-                      data-testid="button-view-table"
-                    >
-                      <TableIcon className="h-3 w-3" />
-                    </Button>
-                  </div>
+                {(statusFilter !== "all" || verifiedFilter !== "all") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setVerifiedFilter("all");
+                    }}
+                    className="w-full"
+                    data-testid="button-clear-filters"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+                  </Button>
                 )}
               </div>
+            </PopoverContent>
+          </Popover>
+
+          {!isMobile && (
+            <div className="flex items-center gap-1 ml-auto">
+              <Button
+                variant={viewMode === "cards" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                data-testid="button-view-cards"
+              >
+                <LayoutGrid className="h-3 w-3" />
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                data-testid="button-view-table"
+              >
+                <TableIcon className="h-3 w-3" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </div>
 
-      <div className="flex-none px-6">
-        <ExternalPaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          totalItems={filteredAndSortedClients.length}
-          itemsPerPage={itemsPerPage}
-          language={language}
-        />
-      </div>
-
-      <div className="flex-1 overflow-auto px-6 mt-[2px]">
+        {/* Results */}
         {isLoading ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="text-center py-8 text-muted-foreground">
+            {language === "es" ? "Cargando clientes..." : "Loading clients..."}
+          </div>
         ) : filteredAndSortedClients.length === 0 ? (
           <Card>
-            <CardContent className="p-12 text-center">
-              <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">
-                {language === "es" ? "No se encontraron clientes" : "No clients found"}
-              </p>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              {language === "es" ? "No se encontraron clientes" : "No clients found"}
             </CardContent>
           </Card>
-        ) : viewMode === "cards" ? (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedClients.map((client) => (
-              <Card key={client.id} className="hover-elevate" data-testid={`card-client-${client.id}`}>
-                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm">
-                    {client.firstName} {client.lastName}
-                  </CardTitle>
+        ) : (
+          <div className="space-y-4">
+            {/* Pagination Controls - Above Content */}
+            <ExternalPaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1);
+              }}
+              language={language}
+            />
+
+            {viewMode === "cards" ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {paginatedClients.map((client) => (
+                  <Card key={client.id} className="hover-elevate" data-testid={`card-client-${client.id}`}>
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle className="text-sm">
+                      {client.firstName} {client.lastName}
+                    </CardTitle>
                   <div className="flex items-center gap-1">
                     {client.isVerified && (
                       <CheckCircle2 className="h-4 w-4 text-green-600" data-testid={`icon-verified-${client.id}`} />
@@ -694,7 +693,10 @@ export default function ExternalClients() {
             </CardContent>
           </Card>
         )}
-      </div>
+        </div>
+      )}
+        </TabsContent>
+      </Tabs>
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
