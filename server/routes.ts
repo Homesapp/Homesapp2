@@ -210,15 +210,20 @@ async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: strin
       return false;
     }
 
-    // Get the user's assigned agency
-    const userAgency = await storage.getExternalAgencyByUser(userId);
-    if (!userAgency) {
+    // Get the user's external agency ID directly from user record
+    const user = await storage.getUser(userId);
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized: User not found" });
+      return false;
+    }
+
+    if (!user.externalAgencyId) {
       res.status(403).json({ message: "Forbidden: User is not assigned to any agency" });
       return false;
     }
 
     // Verify the agency matches
-    if (userAgency.id !== agencyId) {
+    if (user.externalAgencyId !== agencyId) {
       res.status(403).json({ message: "Forbidden: Cannot access resources from another agency" });
       return false;
     }
@@ -246,9 +251,9 @@ async function getUserAgencyId(req: any): Promise<string | null> {
       return null;
     }
 
-    // Get the user's assigned agency
-    const userAgency = await storage.getExternalAgencyByUser(userId);
-    return userAgency?.id || null;
+    // Get the user's external agency ID directly from user record
+    const user = await storage.getUser(userId);
+    return user?.externalAgencyId || null;
   } catch (error) {
     console.error("Error getting user agency ID:", error);
     return null;
@@ -20183,8 +20188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
-        // Update assigned user's role to external_agency_admin
+        // Update assigned user's role to external_agency_admin and set their agency ID
         await storage.updateUserRole(assignedUserId, "external_agency_admin");
+        await storage.updateUser(assignedUserId, { externalAgencyId: agency.id });
       } catch (roleError) {
         // Rollback: Delete the agency if role update fails
         console.error("Role update failed, attempting rollback:", roleError);
@@ -20224,8 +20230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user.id,
       });
       
-      // Update user role to external_agency_admin
+      // Update user role to external_agency_admin and set their agency ID
       await storage.updateUserRole(req.user.id, "external_agency_admin");
+      await storage.updateUser(req.user.id, { externalAgencyId: agency.id });
       
       await createAuditLog(req, "create", "external_agency", agency.id, "Self-registered external agency");
       res.status(201).json(agency);
@@ -20312,6 +20319,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external agency:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // ==============================
+  // External Agency User Management Routes
+  // ==============================
+
+  // GET /api/external/users - Get all users for the authenticated user's agency
+  app.get("/api/external/users", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const users = await storage.getUsersByAgency(agencyId);
+      res.json(users);
+    } catch (error: any) {
+      console.error("Error fetching agency users:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external/users - Create a new user for the agency
+  app.post("/api/external/users", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const bcrypt = await import("bcryptjs");
+      const crypto = await import("crypto");
+      
+      // Generate random password
+      const generatedPassword = crypto.randomBytes(8).toString('base64').slice(0, 12);
+      const passwordHash = await bcrypt.hash(generatedPassword, 10);
+
+      const userData = {
+        ...req.body,
+        externalAgencyId: agencyId,
+        passwordHash,
+        requirePasswordChange: true,
+        status: "approved" as const,
+        emailVerified: true,
+      };
+
+      const user = await storage.createUserWithPassword(userData);
+      
+      // Remove sensitive fields and return user with generated password (only this once)
+      const { passwordHash: _, ...safeUser } = user;
+      await createAuditLog(req, "create", "user", user.id, `Created agency user: ${user.email}`);
+      res.status(201).json({ ...safeUser, generatedPassword });
+    } catch (error: any) {
+      console.error("Error creating agency user:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/users/:id - Update a user in the agency
+  app.patch("/api/external/users/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      // Verify the user belongs to the same agency
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (existingUser.externalAgencyId !== agencyId) {
+        return res.status(403).json({ message: "Cannot modify users from another agency" });
+      }
+
+      // Prevent changing externalAgencyId
+      const { externalAgencyId: _, ...updates } = req.body;
+      
+      const user = await storage.updateUser(id, updates);
+      
+      // Remove sensitive fields from response
+      const { passwordHash, ...safeUser } = user;
+      await createAuditLog(req, "update", "user", id, `Updated agency user: ${user.email}`);
+      res.json(safeUser);
+    } catch (error: any) {
+      console.error("Error updating agency user:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external/users/:id - Delete a user from the agency
+  app.delete("/api/external/users/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      // Verify the user belongs to the same agency
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (existingUser.externalAgencyId !== agencyId) {
+        return res.status(403).json({ message: "Cannot delete users from another agency" });
+      }
+
+      // Prevent deleting yourself
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (id === userId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      await storage.deleteUser(id);
+      await createAuditLog(req, "delete", "user", id, `Deleted agency user: ${existingUser.email}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting agency user:", error);
       handleGenericError(res, error);
     }
   });

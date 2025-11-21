@@ -754,6 +754,7 @@ export const users = pgTable("users", {
   assignedToUser: varchar("assigned_to_user"),
   maintenanceSpecialty: maintenanceSpecialtyEnum("maintenance_specialty"), // Specialty for external_agency_maintenance role
   googleCalendarEmail: varchar("google_calendar_email"), // Google Calendar email for automatic sync of assigned tasks
+  externalAgencyId: varchar("external_agency_id"), // External agency this user belongs to (for multi-tenancy)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

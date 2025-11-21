@@ -380,6 +380,7 @@ export interface IStorage {
   createUserWithPassword(userData: InsertUser & { passwordHash: string }): Promise<User>;
   getUsersByStatus(status: string): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
+  getUsersByAgency(agencyId: string): Promise<User[]>;
   updateUserStatus(id: string, status: string): Promise<User>;
   updateUserRole(id: string, role: string): Promise<User>;
   updateUserAdditionalRole(id: string, additionalRole: string | null): Promise<User>;
@@ -388,6 +389,7 @@ export interface IStorage {
   updateUserProfile(id: string, updates: { firstName?: string; lastName?: string; bio?: string; profileImageUrl?: string; phone?: string; preferredLanguage?: string }): Promise<User>;
   deleteUser(id: string): Promise<void>;
   updateUserPassword(id: string, passwordHash: string): Promise<User>;
+  updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
   
   // Password reset token operations
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -1383,6 +1385,19 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).where(eq(users.role, role as any));
   }
 
+  async getUsersByAgency(agencyId: string): Promise<User[]> {
+    const result = await db.select()
+      .from(users)
+      .where(eq(users.externalAgencyId, agencyId))
+      .orderBy(desc(users.createdAt));
+    
+    // Remove sensitive fields from response
+    return result.map(user => {
+      const { passwordHash, ...safeUser } = user;
+      return safeUser as User;
+    });
+  }
+
   async updateUserStatus(id: string, status: string): Promise<User> {
     const [user] = await db
       .update(users)
@@ -1473,6 +1488,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return user;
