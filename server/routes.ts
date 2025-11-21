@@ -688,6 +688,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configure multer for maintenance photo uploads
+  const maintenancePhotoStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'attached_assets/maintenance_photos/');
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = crypto.randomBytes(4).toString('hex');
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext).toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20);
+      cb(null, `maint_${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const uploadMaintenancePhoto = multer({
+    storage: maintenancePhotoStorage,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit for maintenance photos
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Tipo de archivo no permitido. Solo JPG, PNG y WEBP.'));
+      }
+    }
+  });
+
   // Upload property photo endpoint
   app.post("/api/upload/property-photo", isAuthenticated, requireRole(["owner", "admin", "master"]), upload.single('photo'), async (req: any, res) => {
     try {
@@ -700,6 +728,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error uploading photo:", error);
       res.status(500).json({ message: error.message || "Error al subir la foto" });
+    }
+  });
+
+  // Upload maintenance photo endpoint
+  app.post("/api/upload/maintenance-photo", isAuthenticated, requireRole(["master", "admin", "external_agency_admin", "external_agency_maintenance"]), uploadMaintenancePhoto.single('photo'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No se proporcionó ninguna foto" });
+      }
+
+      const photoUrl = `/attached_assets/maintenance_photos/${req.file.filename}`;
+      res.json({ url: photoUrl });
+    } catch (error: any) {
+      console.error("Error uploading maintenance photo:", error);
+      res.status(500).json({ message: error.message || "Error al subir la foto de mantenimiento" });
     }
   });
 
