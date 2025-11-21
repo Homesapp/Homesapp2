@@ -241,10 +241,13 @@ export default function ExternalDashboard() {
         return dueDate >= todayStart && dueDate < todayEnd;
       })
       .forEach(p => {
-        const unit = units?.find(u => u.id === p.unitId);
+        // Find contract first, then unit from contract
+        const contract = normalizedContracts.find(c => 
+          c.contract.id === p.contractId || c.id === p.contractId
+        );
+        const unit = units?.find(u => u.id === contract?.contract?.unitId || u.id === contract?.unitId);
         const condo = condominiums?.find(c => c.id === unit?.condominiumId);
-        const contract = normalizedContracts.find(c => c.contract.unitId === p.unitId && c.contract.status === 'active');
-        const tenantName = contract?.contract.tenantName || '';
+        const tenantName = contract?.contract?.tenantName || contract?.tenantName || '';
         
         // Separate rent payments from service payments
         const isRentPayment = p.serviceType === 'rent';
