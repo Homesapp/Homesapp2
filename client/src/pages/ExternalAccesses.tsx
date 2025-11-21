@@ -152,6 +152,35 @@ export default function ExternalAccesses() {
     });
   };
 
+  const getAccessTypeLabel = (type: string) => {
+    const labels: Record<string, { es: string; en: string }> = {
+      door_code: { es: "Código Puerta", en: "Door Code" },
+      wifi: { es: "WiFi", en: "WiFi" },
+      gate: { es: "Portón", en: "Gate" },
+      parking: { es: "Estacionamiento", en: "Parking" },
+      elevator: { es: "Elevador", en: "Elevator" },
+      pool: { es: "Alberca", en: "Pool" },
+      gym: { es: "Gimnasio", en: "Gym" },
+      other: { es: "Otro", en: "Other" },
+    };
+
+    return labels[type]?.[language] || type;
+  };
+
+  const getAccessTypeColor = (type: string): "default" | "secondary" | "destructive" | "outline" => {
+    const colorMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      door_code: "default",
+      wifi: "secondary",
+      gate: "outline",
+      parking: "outline",
+      elevator: "outline",
+      pool: "outline",
+      gym: "outline",
+      other: "secondary",
+    };
+    return colorMap[type] || "outline";
+  };
+
   const copyToClipboard = async (access: AccessControl) => {
     const text = `${language === "es" ? "Acceso" : "Access"}: ${getAccessTypeLabel(access.accessType)}
 ${language === "es" ? "Condominio" : "Condominium"}: ${access.condominiumName}
@@ -469,35 +498,6 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
         variant: "destructive",
       });
     }
-  };
-
-  const getAccessTypeLabel = (type: string) => {
-    const labels: Record<string, { es: string; en: string }> = {
-      door_code: { es: "Código Puerta", en: "Door Code" },
-      wifi: { es: "WiFi", en: "WiFi" },
-      gate: { es: "Portón", en: "Gate" },
-      parking: { es: "Estacionamiento", en: "Parking" },
-      elevator: { es: "Elevador", en: "Elevator" },
-      pool: { es: "Alberca", en: "Pool" },
-      gym: { es: "Gimnasio", en: "Gym" },
-      other: { es: "Otro", en: "Other" },
-    };
-
-    return labels[type]?.[language] || type;
-  };
-
-  const getAccessTypeColor = (type: string): "default" | "secondary" | "destructive" | "outline" => {
-    const colorMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      door_code: "default",
-      wifi: "secondary",
-      gate: "outline",
-      parking: "outline",
-      elevator: "outline",
-      pool: "outline",
-      gym: "outline",
-      other: "secondary",
-    };
-    return colorMap[type] || "outline";
   };
 
   return (
