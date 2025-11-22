@@ -5590,6 +5590,15 @@ export type InsertExternalUnit = z.infer<typeof insertExternalUnitSchema>;
 export type UpdateExternalUnit = z.infer<typeof updateExternalUnitSchema>;
 export type ExternalUnit = typeof externalUnits.$inferSelect;
 
+// Extended type for units with condominium data (used when joining with condominium table)
+export type ExternalUnitWithCondominium = ExternalUnit & {
+  condominium: {
+    id: string;
+    name: string;
+    address: string;
+  } | null;
+};
+
 // Helper to convert strings to numbers, handling empty strings as undefined
 const optionalNumber = z.preprocess(
   (val) => {

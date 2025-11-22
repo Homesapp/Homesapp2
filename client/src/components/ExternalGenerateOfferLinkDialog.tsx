@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import type { ExternalUnitWithCondominium } from "@shared/schema";
 
 const emailFormSchema = z.object({
   clientEmail: z.string().email("Email inválido"),
@@ -60,8 +61,9 @@ export default function ExternalGenerateOfferLinkDialog({
   const [generatedToken, setGeneratedToken] = useState<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+  const [unitSearchTerm, setUnitSearchTerm] = useState<string>("");
 
-  const { data: units, isLoading: isLoadingUnits } = useQuery({
+  const { data: units, isLoading: isLoadingUnits } = useQuery<ExternalUnitWithCondominium[]>({
     queryKey: ["/api/external-units"],
     enabled: open,
   });
@@ -188,7 +190,7 @@ export default function ExternalGenerateOfferLinkDialog({
 
   const getWhatsAppMessage = () => {
     if (!generatedToken) return "";
-    const selectedUnit = units?.find((u: any) => u.id === parseInt(selectedUnitId));
+    const selectedUnit = units?.find((u) => u.id === selectedUnitId);
     const unitTitle = selectedUnit 
       ? `${selectedUnit.condominium?.name} - ${selectedUnit.unitNumber}`
       : "unidad";
@@ -235,8 +237,8 @@ Any questions? I'm here to help! 😊`;
     sendEmailMutation.mutate(data);
   };
 
-  const selectedUnit = units?.find((u: any) => u.id === parseInt(selectedUnitId));
-  const selectedClient = clients?.find((c: any) => c.id === parseInt(selectedClientId)) || 
+  const selectedUnit = units?.find((u) => u.id === selectedUnitId);
+  const selectedClient = clients?.find((c) => c.id === parseInt(selectedClientId)) || 
     (clientInfo && { firstName: clientInfo.name.split(" ")[0], lastName: clientInfo.name.split(" ").slice(1).join(" ") || "" });
 
   return (
@@ -273,7 +275,7 @@ Any questions? I'm here to help! 😊`;
                         <Loader2 className="h-4 w-4 animate-spin" />
                       </div>
                     ) : (
-                      clients?.map((client: any) => (
+                      clients?.map((client) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.firstName} {client.lastName}
                         </SelectItem>
@@ -284,10 +286,17 @@ Any questions? I'm here to help! 😊`;
               </div>
             )}
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="unit">
                 {language === "es" ? "Selecciona la Unidad" : "Select Unit"}
               </Label>
+              <Input
+                placeholder={language === "es" ? "Buscar por condominio o número de unidad..." : "Search by condominium or unit number..."}
+                value={unitSearchTerm}
+                onChange={(e) => setUnitSearchTerm(e.target.value)}
+                data-testid="input-search-unit"
+                className="mb-2"
+              />
               <Select
                 value={selectedUnitId}
                 onValueChange={setSelectedUnitId}
@@ -301,11 +310,19 @@ Any questions? I'm here to help! 😊`;
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
                   ) : (
-                    units?.map((unit: any) => (
-                      <SelectItem key={unit.id} value={unit.id.toString()}>
-                        {unit.condominium?.name} - {unit.unitNumber}
-                      </SelectItem>
-                    ))
+                    units
+                      ?.filter((unit) => {
+                        if (!unitSearchTerm) return true;
+                        const searchLower = unitSearchTerm.toLowerCase();
+                        const condominiumName = unit.condominium?.name?.toLowerCase() || "";
+                        const unitNumber = unit.unitNumber?.toLowerCase() || "";
+                        return condominiumName.includes(searchLower) || unitNumber.includes(searchLower);
+                      })
+                      ?.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.condominium?.name} - {unit.unitNumber}
+                        </SelectItem>
+                      ))
                   )}
                 </SelectContent>
               </Select>

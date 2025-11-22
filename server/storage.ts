@@ -344,6 +344,7 @@ import {
   type InsertExternalCondominium,
   externalUnits,
   type ExternalUnit,
+  type ExternalUnitWithCondominium,
   type InsertExternalUnit,
   externalUnitOwners,
   type ExternalUnitOwner,
@@ -1230,7 +1231,7 @@ export interface IStorage {
 
   // External Management System - Unit operations
   getExternalUnit(id: string): Promise<ExternalUnit | undefined>;
-  getExternalUnitsByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string }): Promise<ExternalUnit[]>;
+  getExternalUnitsByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string }): Promise<ExternalUnitWithCondominium[]>;
   getExternalUnitsByCondominium(condominiumId: string): Promise<ExternalUnit[]>;
   createExternalUnit(unit: InsertExternalUnit): Promise<ExternalUnit>;
   updateExternalUnit(id: string, updates: Partial<InsertExternalUnit>): Promise<ExternalUnit>;
@@ -8394,7 +8395,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getExternalUnitsByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string }): Promise<ExternalUnit[]> {
+  async getExternalUnitsByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string }): Promise<ExternalUnitWithCondominium[]> {
     const conditions: any[] = [eq(externalUnits.agencyId, agencyId)];
     
     if (filters?.isActive !== undefined) {
@@ -8404,10 +8405,35 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalUnits.condominiumId, filters.condominiumId));
     }
 
-    return await db.select()
+    const results = await db.select({
+      id: externalUnits.id,
+      agencyId: externalUnits.agencyId,
+      condominiumId: externalUnits.condominiumId,
+      unitNumber: externalUnits.unitNumber,
+      propertyType: externalUnits.propertyType,
+      typology: externalUnits.typology,
+      bedrooms: externalUnits.bedrooms,
+      bathrooms: externalUnits.bathrooms,
+      area: externalUnits.area,
+      floor: externalUnits.floor,
+      airbnbPhotosLink: externalUnits.airbnbPhotosLink,
+      isActive: externalUnits.isActive,
+      notes: externalUnits.notes,
+      createdBy: externalUnits.createdBy,
+      createdAt: externalUnits.createdAt,
+      updatedAt: externalUnits.updatedAt,
+      condominium: {
+        id: externalCondominiums.id,
+        name: externalCondominiums.name,
+        address: externalCondominiums.address,
+      }
+    })
       .from(externalUnits)
+      .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
       .where(and(...conditions))
       .orderBy(externalUnits.unitNumber);
+    
+    return results as ExternalUnitWithCondominium[];
   }
 
   async getExternalUnitsByCondominium(condominiumId: string): Promise<ExternalUnit[]> {
