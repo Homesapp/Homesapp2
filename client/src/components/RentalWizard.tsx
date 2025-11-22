@@ -272,8 +272,19 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       }
     }
 
+    // Get agencyId from selected unit
+    if (!selectedUnit?.agencyId) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es" ? "Error al obtener información de la agencia" : "Failed to get agency information",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Build contract data
     const contract = {
+      agencyId: selectedUnit.agencyId,
       unitId: selectedUnitId,
       tenantName: tenantInfo.tenantName,
       tenantEmail: tenantInfo.tenantEmail,
@@ -285,7 +296,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       securityDeposit: data.securityDeposit || "0",
       leaseDurationMonths: data.leaseDurationMonths,
       currency: "MXN",
-      rentalPurpose: "living",
+      rentalPurpose: "living" as const,
       // Pet fields
       hasPet: data.hasPet,
       petName: data.hasPet ? data.petName : undefined,
@@ -1300,22 +1311,43 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{language === "es" ? "Unidad" : "Unit"}</CardTitle>
+                    <CardTitle className="text-base">{language === "es" ? "Propiedad" : "Property"}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
-                    <p><strong>{selectedUnit?.unitNumber}</strong></p>
-                    <p className="text-muted-foreground">{selectedUnit?.condominium?.name}</p>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{language === "es" ? "Condominio:" : "Condominium:"}</span>
+                      <strong>{selectedUnit?.condominium?.name}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{language === "es" ? "Unidad:" : "Unit:"}</span>
+                      <strong>{selectedUnit?.unitNumber}</strong>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{language === "es" ? "Inquilino" : "Tenant"}</CardTitle>
+                    <CardTitle className="text-base">{language === "es" ? "Inquilino Principal" : "Primary Tenant"}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
-                    <p><strong>{form.watch("tenantName")}</strong></p>
-                    <p className="text-muted-foreground">{form.watch("tenantEmail")}</p>
-                    <p className="text-muted-foreground">{form.watch("tenantPhone")}</p>
+                    {useExistingClient && selectedClientId && clients ? (
+                      (() => {
+                        const selectedClient = clients.find((c: any) => c.id === selectedClientId);
+                        return selectedClient ? (
+                          <>
+                            <p><strong>{selectedClient.firstName} {selectedClient.lastName}</strong></p>
+                            <p className="text-muted-foreground">{selectedClient.email || "-"}</p>
+                            <p className="text-muted-foreground">{selectedClient.phone || "-"}</p>
+                          </>
+                        ) : null;
+                      })()
+                    ) : (
+                      <>
+                        <p><strong>{form.watch("tenantName") || "-"}</strong></p>
+                        <p className="text-muted-foreground">{form.watch("tenantEmail") || "-"}</p>
+                        <p className="text-muted-foreground">{form.watch("tenantPhone") || "-"}</p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
