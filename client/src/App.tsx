@@ -229,7 +229,7 @@ function AuthenticatedApp() {
         <Route path="/terminos" component={Terms} />
         <Route path="/privacidad" component={Privacy} />
         <Route path="/offer/:token" component={PublicOfferForm} />
-        <Route path="/rental-form/:token" component={PublicRentalForm} />
+        <Route path="/public-rental-form/:token" component={PublicRentalForm} />
         <Route path="/submit-property/:token" component={PublicPropertySubmission} />
         <Route path="/property-submission-success" component={PropertySubmissionSuccess} />
         <Route path="/" component={PublicDashboard} />
@@ -325,7 +325,7 @@ function AuthenticatedApp() {
             <Switch>
               {/* Public form routes - available even when authenticated */}
               <Route path="/offer/:token" component={PublicOfferForm} />
-              <Route path="/rental-form/:token" component={PublicRentalForm} />
+              <Route path="/public-rental-form/:token" component={PublicRentalForm} />
               <Route path="/submit-property/:token" component={PublicPropertySubmission} />
               <Route path="/property-submission-success" component={PropertySubmissionSuccess} />
               
