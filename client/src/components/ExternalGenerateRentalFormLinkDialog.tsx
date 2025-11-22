@@ -62,13 +62,13 @@ export default function ExternalGenerateRentalFormLinkDialog({
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
 
   const { data: units, isLoading: isLoadingUnits } = useQuery({
-    queryKey: [`/api/external/units/${agencyId}`],
-    enabled: open && !!agencyId,
+    queryKey: ["/api/external-units"],
+    enabled: open,
   });
 
   const { data: clients, isLoading: isLoadingClients } = useQuery({
-    queryKey: [`/api/external/clients/${agencyId}`],
-    enabled: open && !!agencyId && !clientId,
+    queryKey: ["/api/external-clients"],
+    enabled: open && !clientId,
   });
 
   const form = useForm<EmailFormValues>({
