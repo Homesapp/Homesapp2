@@ -56,8 +56,8 @@ const rentalFormSchema = z.object({
   tenantEmail: z.string().optional(),
   tenantPhone: z.string().optional(),
   tenantIdPhotoUrl: z.string().optional(),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
+  startDate: z.string().min(1, "Fecha de inicio requerida"),
+  endDate: z.string().min(1, "Fecha de fin requerida"),
   monthlyRent: z.string().min(1, "Renta mensual requerida"),
   rentDayOfMonth: z.number().min(1).max(31),
   securityDeposit: z.string().optional(),
@@ -261,8 +261,8 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       tenantEmail: tenantInfo.tenantEmail,
       tenantPhone: tenantInfo.tenantPhone,
       clientId: tenantInfo.clientId,
-      startDate: data.startDate,
-      endDate: data.endDate,
+      startDate: new Date(data.startDate),
+      endDate: new Date(data.endDate),
       monthlyRent: data.monthlyRent,
       securityDeposit: data.securityDeposit || "0",
       leaseDurationMonths: data.leaseDurationMonths,
@@ -968,15 +968,9 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                         <FormLabel>{language === "es" ? "Fecha de inicio" : "Start date"}</FormLabel>
                         <FormControl>
                           <Input 
-                            {...field} 
                             type="date" 
-                            value={safeFormatDate(field.value, 'yyyy-MM-dd')}
-                            onChange={(e) => {
-                              const date = new Date(e.target.value);
-                              if (isValid(date)) {
-                                field.onChange(date);
-                              }
-                            }}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
                             data-testid="input-start-date" 
                           />
                         </FormControl>
@@ -993,15 +987,9 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                         <FormLabel>{language === "es" ? "Fecha de fin" : "End date"}</FormLabel>
                         <FormControl>
                           <Input 
-                            {...field} 
                             type="date"
-                            value={safeFormatDate(field.value, 'yyyy-MM-dd')}
-                            onChange={(e) => {
-                              const date = new Date(e.target.value);
-                              if (isValid(date)) {
-                                field.onChange(date);
-                              }
-                            }}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
                             data-testid="input-end-date" 
                           />
                         </FormControl>
@@ -1187,9 +1175,9 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{language === "es" ? "Período" : "Period"}:</span>
                       <strong>
-                        {safeFormatDate(form.watch("startDate"), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
+                        {form.watch("startDate") && safeFormatDate(new Date(form.watch("startDate")), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
                         {form.watch("startDate") && form.watch("endDate") && " - "}
-                        {safeFormatDate(form.watch("endDate"), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
+                        {form.watch("endDate") && safeFormatDate(new Date(form.watch("endDate")), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
                       </strong>
                     </div>
                     {additionalServices.length > 0 && (
