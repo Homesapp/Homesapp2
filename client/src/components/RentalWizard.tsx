@@ -92,6 +92,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     serviceType: string;
     amount: string;
     dayOfMonth: number;
+    paymentFrequency: "monthly" | "bimonthly";
   }>>([]);
   const [additionalTenants, setAdditionalTenants] = useState<Array<{
     fullName: string;
@@ -282,12 +283,14 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
         amount: parseFloat(data.monthlyRent), // Convert to number
         dayOfMonth: data.rentDayOfMonth,
         currency: "MXN",
+        paymentFrequency: "monthly" as const,
       },
       ...additionalServices.map(s => ({
         serviceType: s.serviceType,
         amount: parseFloat(s.amount), // Convert to number
         dayOfMonth: s.dayOfMonth,
         currency: "MXN",
+        paymentFrequency: s.paymentFrequency,
       })),
     ];
 
@@ -324,7 +327,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
   const addService = () => {
     setAdditionalServices([
       ...additionalServices,
-      { serviceType: "water", amount: "", dayOfMonth: 1 },
+      { serviceType: "water", amount: "", dayOfMonth: 1, paymentFrequency: "monthly" },
     ]);
   };
 
@@ -1068,8 +1071,8 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                   </div>
 
                   {additionalServices.map((service, idx) => (
-                    <div key={idx} className="flex items-end gap-2 mb-2">
-                      <div className="flex-1">
+                    <div key={idx} className="grid grid-cols-12 items-end gap-2 mb-2">
+                      <div className="col-span-3">
                         <Label className="text-xs">{language === "es" ? "Servicio" : "Service"}</Label>
                         <Select 
                           value={service.serviceType} 
@@ -1088,7 +1091,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex-1">
+                      <div className="col-span-2">
                         <Label className="text-xs">{language === "es" ? "Monto" : "Amount"}</Label>
                         <Input 
                           type="number"
@@ -1098,7 +1101,22 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                           className="h-9"
                         />
                       </div>
-                      <div className="w-20">
+                      <div className="col-span-3">
+                        <Label className="text-xs">{language === "es" ? "Frecuencia" : "Frequency"}</Label>
+                        <Select 
+                          value={service.paymentFrequency} 
+                          onValueChange={(val: "monthly" | "bimonthly") => updateService(idx, "paymentFrequency", val)}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">{language === "es" ? "Mensual" : "Monthly"}</SelectItem>
+                            <SelectItem value="bimonthly">{language === "es" ? "Bimestral" : "Bimonthly"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
                         <Label className="text-xs">{language === "es" ? "Día" : "Day"}</Label>
                         <Input 
                           type="number"
@@ -1109,15 +1127,17 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                           className="h-9"
                         />
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeService(idx)}
-                        className="flex-shrink-0 h-9"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="col-span-2 flex justify-end">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeService(idx)}
+                          className="h-9"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1188,7 +1208,14 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                         </p>
                         {additionalServices.map((service, idx) => (
                           <div key={idx} className="flex justify-between text-xs">
-                            <span className="text-muted-foreground capitalize">{service.serviceType}:</span>
+                            <span className="text-muted-foreground capitalize">
+                              {service.serviceType} 
+                              <span className="text-muted-foreground/60 ml-1">
+                                ({service.paymentFrequency === "monthly" 
+                                  ? (language === "es" ? "mensual" : "monthly") 
+                                  : (language === "es" ? "bimestral" : "bimonthly")})
+                              </span>
+                            </span>
                             <span>${service.amount}</span>
                           </div>
                         ))}
