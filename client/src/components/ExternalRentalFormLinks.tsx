@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, RefreshCw } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import ExternalGenerateRentalFormLinkDialog from "./ExternalGenerateRentalFormLinkDialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface ExternalRentalFormLinksProps {
   searchTerm: string;
@@ -18,10 +20,32 @@ interface ExternalRentalFormLinksProps {
 
 export default function ExternalRentalFormLinks({ searchTerm, statusFilter, viewMode }: ExternalRentalFormLinksProps) {
   const { language } = useLanguage();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: formTokens, isLoading } = useQuery({
     queryKey: ["/api/external/rental-form-tokens"],
+  });
+
+  const regenerateTokenMutation = useMutation({
+    mutationFn: async (tokenId: string) => {
+      const response = await apiRequest("POST", `/api/rental-form-tokens/${tokenId}/regenerate`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external/rental-form-tokens"] });
+      toast({
+        title: language === "es" ? "Link regenerado" : "Link regenerated",
+        description: language === "es" ? "Se ha generado un nuevo link" : "A new link has been generated",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "No se pudo regenerar el link" : "Could not regenerate link"),
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredTokens = formTokens?.filter((token: any) => {
@@ -72,62 +96,82 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
         </div>
       ) : viewMode === "cards" ? (
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredTokens?.map((token: any) => (
-            <Card key={token.id} className="hover-elevate" data-testid={`card-form-${token.id}`}>
-              <CardHeader>
-                <CardTitle className="text-base">{token.clientName || "-"}</CardTitle>
-                <CardDescription>{token.propertyTitle || "-"}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {language === "es" ? "Enviado" : "Sent"}
-                  </span>
-                  <span>
-                    {token.createdAt
-                      ? format(new Date(token.createdAt), "dd/MM/yyyy", {
-                          locale: language === "es" ? es : enUS,
-                        })
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {language === "es" ? "Expira" : "Expires"}
-                  </span>
-                  <span>
-                    {token.expiresAt
-                      ? format(new Date(token.expiresAt), "dd/MM/yyyy", {
-                          locale: language === "es" ? es : enUS,
-                        })
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {language === "es" ? "Estado" : "Status"}
-                  </span>
-                  {token.status === "completed" ? (
-                    <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
-                  ) : new Date(token.expiresAt) < new Date() ? (
-                    <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
-                  ) : (
-                    <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`/public-rental-form/${token.token}`, "_blank")}
-                  className="w-full"
-                  data-testid="button-open-form-link"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  {language === "es" ? "Abrir Link" : "Open Link"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {filteredTokens?.map((token: any) => {
+            const isExpired = new Date(token.expiresAt) < new Date();
+            const canRegenerate = !token.isUsed;
+            
+            return (
+              <Card key={token.id} className="hover-elevate" data-testid={`card-form-${token.id}`}>
+                <CardHeader>
+                  <CardTitle className="text-base">{token.clientName || "-"}</CardTitle>
+                  <CardDescription>{token.propertyTitle || "-"}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {language === "es" ? "Enviado" : "Sent"}
+                    </span>
+                    <span>
+                      {token.createdAt
+                        ? format(new Date(token.createdAt), "dd/MM/yyyy", {
+                            locale: language === "es" ? es : enUS,
+                          })
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {language === "es" ? "Expira" : "Expires"}
+                    </span>
+                    <span>
+                      {token.expiresAt
+                        ? format(new Date(token.expiresAt), "dd/MM/yyyy", {
+                            locale: language === "es" ? es : enUS,
+                          })
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {language === "es" ? "Estado" : "Status"}
+                    </span>
+                    {token.status === "completed" ? (
+                      <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
+                    ) : isExpired ? (
+                      <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
+                    ) : (
+                      <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    {canRegenerate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => regenerateTokenMutation.mutate(token.id)}
+                        disabled={regenerateTokenMutation.isPending}
+                        className="flex-1"
+                        data-testid="button-regenerate-form"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {language === "es" ? "Regenerar" : "Regenerate"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/public-rental-form/${token.token}`, "_blank")}
+                      className="flex-1"
+                      data-testid="button-open-form-link"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {language === "es" ? "Abrir Link" : "Open Link"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-md border">
@@ -143,46 +187,65 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTokens?.map((token: any) => (
-                <TableRow key={token.id}>
-                  <TableCell className="font-medium">{token.clientName || "-"}</TableCell>
-                  <TableCell>{token.propertyTitle || "-"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {token.createdAt
-                      ? format(new Date(token.createdAt), "dd/MM/yyyy", {
-                          locale: language === "es" ? es : enUS,
-                        })
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {token.expiresAt
-                      ? format(new Date(token.expiresAt), "dd/MM/yyyy", {
-                          locale: language === "es" ? es : enUS,
-                        })
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {token.status === "completed" ? (
-                      <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
-                    ) : new Date(token.expiresAt) < new Date() ? (
-                      <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
-                    ) : (
-                      <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(`/public-rental-form/${token.token}`, "_blank")}
-                      title={language === "es" ? "Abrir link" : "Open link"}
-                      data-testid="button-open-form-link"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredTokens?.map((token: any) => {
+                const isExpired = new Date(token.expiresAt) < new Date();
+                const canRegenerate = !token.isUsed;
+                
+                return (
+                  <TableRow key={token.id}>
+                    <TableCell className="font-medium">{token.clientName || "-"}</TableCell>
+                    <TableCell>{token.propertyTitle || "-"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {token.createdAt
+                        ? format(new Date(token.createdAt), "dd/MM/yyyy", {
+                            locale: language === "es" ? es : enUS,
+                          })
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {token.expiresAt
+                        ? format(new Date(token.expiresAt), "dd/MM/yyyy", {
+                            locale: language === "es" ? es : enUS,
+                          })
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {token.status === "completed" ? (
+                        <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
+                      ) : isExpired ? (
+                        <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
+                      ) : (
+                        <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {canRegenerate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => regenerateTokenMutation.mutate(token.id)}
+                            disabled={regenerateTokenMutation.isPending}
+                            title={language === "es" ? "Regenerar link" : "Regenerate link"}
+                            data-testid="button-regenerate-form"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`/public-rental-form/${token.token}`, "_blank")}
+                          title={language === "es" ? "Abrir link" : "Open link"}
+                          data-testid="button-open-form-link"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

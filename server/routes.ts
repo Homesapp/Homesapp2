@@ -14086,6 +14086,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .returning();
 
+      // Business rule: Only one active rental form link per client
+      // Delete all OTHER active (non-completed) tokens for this client
+      // This preserves completed tokens (isUsed = true) and the new token we just created
+      if (externalClientId) {
+        await db.delete(tenantRentalFormTokens)
+          .where(
+            and(
+              eq(tenantRentalFormTokens.externalClientId, externalClientId),
+              eq(tenantRentalFormTokens.isUsed, false),
+              ne(tenantRentalFormTokens.id, rentalFormToken.id)
+            )
+          );
+      }
+
       await createAuditLog(
         req,
         "create",
@@ -23983,6 +23997,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(enrichedTokens);
     } catch (error: any) {
       console.error("Error fetching external rental form tokens:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/rental-form-tokens/:tokenId/regenerate - Regenerate rental form token (delete old active ones, preserve completed)
+  app.post("/api/rental-form-tokens/:tokenId/regenerate", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      const { tokenId } = req.params;
+      
+      // Get the current token
+      const [currentToken] = await db.select()
+        .from(tenantRentalFormTokens)
+        .where(eq(tenantRentalFormTokens.id, tokenId))
+        .limit(1);
+      
+      if (!currentToken) {
+        return res.status(404).json({ message: "Token not found" });
+      }
+
+      // Validate it belongs to the agency
+      if (currentToken.externalUnitId) {
+        const unit = await storage.getExternalUnit(currentToken.externalUnitId);
+        if (!unit || unit.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      }
+
+      // Cannot regenerate completed tokens
+      if (currentToken.isUsed) {
+        return res.status(400).json({ message: "Cannot regenerate completed token" });
+      }
+
+      const clientId = currentToken.externalClientId;
+      if (!clientId) {
+        return res.status(400).json({ message: "Invalid token: missing client" });
+      }
+
+      // Create new token with same details but new expiration
+      const newTokenValue = crypto.randomBytes(8).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
+
+      const [newToken] = await db.insert(tenantRentalFormTokens).values({
+        token: newTokenValue,
+        propertyId: currentToken.propertyId,
+        externalUnitId: currentToken.externalUnitId,
+        externalClientId: currentToken.externalClientId,
+        leadId: currentToken.leadId,
+        createdBy: req.user.id,
+        expiresAt,
+        isUsed: false,
+      }).returning();
+
+      // Now delete all OTHER active (non-completed) tokens for this client
+      // This preserves completed tokens (isUsed = true) and the new token we just created
+      await db.delete(tenantRentalFormTokens)
+        .where(
+          and(
+            eq(tenantRentalFormTokens.externalClientId, clientId),
+            eq(tenantRentalFormTokens.isUsed, false),
+            ne(tenantRentalFormTokens.id, newToken.id)
+          )
+        );
+
+      res.json(newToken);
+    } catch (error: any) {
+      console.error("Error regenerating rental form token:", error);
       handleGenericError(res, error);
     }
   });
