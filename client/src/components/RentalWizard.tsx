@@ -79,7 +79,6 @@ const rentalFormSchema = z.object({
   startDate: z.string().min(1, "Fecha de inicio requerida"),
   endDate: z.string().min(1, "Fecha de fin requerida"),
   monthlyRent: z.string().min(1, "Renta mensual requerida"),
-  rentDayOfMonth: z.number().min(1).max(31),
   securityDeposit: z.string().optional(),
   leaseDurationMonths: z.number().min(1),
   // Pet fields
@@ -156,7 +155,6 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       tenantEmail: "",
       tenantPhone: "",
       monthlyRent: "",
-      rentDayOfMonth: 1,
       securityDeposit: "",
       leaseDurationMonths: 12,
       hasPet: false,
@@ -300,11 +298,14 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     };
 
     // Build services array with rent + additional services
+    // Calculate rent day of month from start date
+    const rentDayOfMonth = new Date(data.startDate).getDate();
+    
     const services = [
       {
         serviceType: "rent",
         amount: parseFloat(data.monthlyRent), // Convert to number
-        dayOfMonth: data.rentDayOfMonth,
+        dayOfMonth: rentDayOfMonth,
         currency: "MXN",
         paymentFrequency: "monthly" as const,
       },
@@ -1126,26 +1127,26 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="rentDayOfMonth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{language === "es" ? "Día de pago" : "Payment day"}</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            min="1" 
-                            max="31" 
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            data-testid="input-rent-day" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div>
+                    <Label className="text-sm font-medium">
+                      {language === "es" ? "Día de pago" : "Payment day"}
+                    </Label>
+                    <div className="mt-2 p-3 bg-muted/50 rounded-md border">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {form.watch("startDate") 
+                            ? `${language === "es" ? "Día" : "Day"} ${new Date(form.watch("startDate")).getDate()}`
+                            : language === "es" ? "Según fecha de inicio" : "Based on start date"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {language === "es" 
+                          ? "El día de pago será el mismo que la fecha de inicio" 
+                          : "Payment day will match the start date"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <FormField
