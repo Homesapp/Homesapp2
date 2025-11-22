@@ -325,16 +325,12 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
       for (const tenant of additionalTenants) {
         if (tenant.fullName.trim()) { // Only create if name is provided
           try {
-            await apiRequest("/api/external-rental-tenants", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contractId,
-                fullName: tenant.fullName,
-                email: tenant.email || undefined,
-                phone: tenant.phone || undefined,
-                idPhotoUrl: tenant.idPhotoUrl || undefined,
-              }),
+            await apiRequest("POST", "/api/external-rental-tenants", {
+              contractId,
+              fullName: tenant.fullName,
+              email: tenant.email || undefined,
+              phone: tenant.phone || undefined,
+              idPhotoUrl: tenant.idPhotoUrl || undefined,
             });
           } catch (error) {
             console.error("Error creating additional tenant:", error);
@@ -1333,8 +1329,22 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                       <strong>${form.watch("monthlyRent")}</strong>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-muted-foreground">{language === "es" ? "Día de pago" : "Payment day"}:</span>
+                      <strong>
+                        {form.watch("startDate") 
+                          ? `${language === "es" ? "Día" : "Day"} ${parseInt(form.watch("startDate").split('-')[2])}`
+                          : "-"}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">{language === "es" ? "Depósito" : "Deposit"}:</span>
                       <strong>${form.watch("securityDeposit") || "0"}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{language === "es" ? "Duración" : "Duration"}:</span>
+                      <strong>
+                        {form.watch("leaseDurationMonths")} {language === "es" ? "meses" : "months"}
+                      </strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{language === "es" ? "Período" : "Period"}:</span>
@@ -1344,6 +1354,39 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                         {form.watch("endDate") && safeFormatDate(new Date(form.watch("endDate")), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
                       </strong>
                     </div>
+                    
+                    {form.watch("hasPet") && (
+                      <>
+                        <Separator className="my-2" />
+                        <div className="flex items-center gap-2 text-xs">
+                          <PawPrint className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            {language === "es" ? "Mascota:" : "Pet:"}{" "}
+                            <strong className="text-foreground">{form.watch("petName") || (language === "es" ? "Sí" : "Yes")}</strong>
+                          </span>
+                        </div>
+                        {form.watch("petDescription") && (
+                          <p className="text-xs text-muted-foreground pl-6">{form.watch("petDescription")}</p>
+                        )}
+                      </>
+                    )}
+
+                    {additionalTenants.length > 0 && (
+                      <>
+                        <Separator className="my-2" />
+                        <p className="text-muted-foreground text-xs font-medium">
+                          {language === "es" ? "Inquilinos adicionales:" : "Additional tenants:"}
+                        </p>
+                        {additionalTenants.map((tenant, idx) => (
+                          tenant.fullName && (
+                            <div key={idx} className="text-xs text-muted-foreground pl-2">
+                              • {tenant.fullName}
+                            </div>
+                          )
+                        ))}
+                      </>
+                    )}
+                    
                     {additionalServices.length > 0 && (
                       <>
                         <Separator className="my-2" />
@@ -1400,7 +1443,8 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                 </Button>
               ) : (
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={() => form.handleSubmit(handleSubmit)()}
                   disabled={createMutation.isPending}
                   data-testid="button-wizard-submit"
                 >
