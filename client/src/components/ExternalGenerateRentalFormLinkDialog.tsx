@@ -190,7 +190,7 @@ export default function ExternalGenerateRentalFormLinkDialog({
 
   const getWhatsAppMessage = () => {
     if (!generatedToken) return "";
-    const selectedUnit = units?.find((u) => u.id === selectedUnitId);
+    const selectedUnit = units?.find((u) => String(u.id) === selectedUnitId);
     const unitTitle = selectedUnit 
       ? `${selectedUnit.condominium?.name} - ${selectedUnit.unitNumber}`
       : "unidad";
@@ -237,8 +237,8 @@ Need help? I'm available for any questions! 😊`;
     sendEmailMutation.mutate(data);
   };
 
-  const selectedUnit = units?.find((u) => u.id === selectedUnitId);
-  const selectedClient = clients?.find((c) => c.id === parseInt(selectedClientId)) || 
+  const selectedUnit = units?.find((u) => String(u.id) === selectedUnitId);
+  const selectedClient = clients?.find((c) => String(c.id) === selectedClientId) || 
     (clientInfo && { firstName: clientInfo.name.split(" ")[0], lastName: clientInfo.name.split(" ").slice(1).join(" ") || "" });
 
   return (
@@ -276,7 +276,7 @@ Need help? I'm available for any questions! 😊`;
                       </div>
                     ) : (
                       clients?.map((client) => (
-                        <SelectItem key={client.id} value={client.id.toString()}>
+                        <SelectItem key={client.id} value={client.id}>
                           {client.firstName} {client.lastName}
                         </SelectItem>
                       ))
@@ -319,7 +319,7 @@ Need help? I'm available for any questions! 😊`;
                         return condominiumName.includes(searchLower) || unitNumber.includes(searchLower);
                       })
                       ?.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                        <SelectItem key={unit.id} value={unit.id}>
                           {unit.condominium?.name} - {unit.unitNumber}
                         </SelectItem>
                       ))
