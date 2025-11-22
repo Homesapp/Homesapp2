@@ -4554,11 +4554,13 @@ export const hoaAnnouncementReadsRelations = relations(hoaAnnouncementReads, ({ 
   }),
 }));
 
-// Offer Tokens - Enlaces privados para ofertas de renta sin login
+// Offer Tokens - Enlaces privados para ofertas de renta sin login (soporta sistema interno y externo)
 export const offerTokens = pgTable("offer_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   token: varchar("token").notNull().unique(), // Token único para la URL
-  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Para sistema interno
+  externalUnitId: varchar("external_unit_id").references(() => externalUnits.id, { onDelete: "cascade" }), // Para sistema externo
+  externalClientId: varchar("external_client_id").references(() => externalClients.id, { onDelete: "cascade" }), // Cliente externo (opcional)
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "set null" }), // Lead asociado al token (opcional)
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // Vendedor o admin que creó el link
   expiresAt: timestamp("expires_at").notNull(), // 24 horas después de creación
@@ -4614,6 +4616,14 @@ export const offerTokensRelations = relations(offerTokens, ({ one }) => ({
     fields: [offerTokens.propertyId],
     references: [properties.id],
   }),
+  externalUnit: one(externalUnits, {
+    fields: [offerTokens.externalUnitId],
+    references: [externalUnits.id],
+  }),
+  externalClient: one(externalClients, {
+    fields: [offerTokens.externalClientId],
+    references: [externalClients.id],
+  }),
   lead: one(leads, {
     fields: [offerTokens.leadId],
     references: [leads.id],
@@ -4624,11 +4634,13 @@ export const offerTokensRelations = relations(offerTokens, ({ one }) => ({
   }),
 }));
 
-// Tenant Rental Form Tokens table - Links temporales para completar formato de renta de inquilino
+// Tenant Rental Form Tokens table - Links temporales para completar formato de renta de inquilino (soporta sistema interno y externo)
 export const tenantRentalFormTokens = pgTable("tenant_rental_form_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   token: varchar("token").notNull().unique(),
-  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Para sistema interno
+  externalUnitId: varchar("external_unit_id").references(() => externalUnits.id, { onDelete: "cascade" }), // Para sistema externo
+  externalClientId: varchar("external_client_id").references(() => externalClients.id, { onDelete: "cascade" }), // Cliente externo (opcional)
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "set null" }),
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at").notNull(),
