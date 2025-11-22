@@ -318,6 +318,7 @@ export default function ExternalAccounting() {
       fees: "0",
       netAmount: "0",
       description: "",
+      dueDate: new Date(),
     },
   });
 
