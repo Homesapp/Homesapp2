@@ -57,11 +57,11 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
     // Apply status filter
     let matchesStatus = true;
     if (statusFilter === "active") {
-      matchesStatus = token.status !== "completed" && new Date(token.expiresAt) >= new Date();
+      matchesStatus = !token.isUsed && new Date(token.expiresAt) >= new Date();
     } else if (statusFilter === "completed") {
-      matchesStatus = token.status === "completed";
+      matchesStatus = token.isUsed;
     } else if (statusFilter === "expired") {
-      matchesStatus = token.status !== "completed" && new Date(token.expiresAt) < new Date();
+      matchesStatus = !token.isUsed && new Date(token.expiresAt) < new Date();
     }
     
     return matchesSearch && matchesStatus;
@@ -135,7 +135,7 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                     <span className="text-sm text-muted-foreground">
                       {language === "es" ? "Estado" : "Status"}
                     </span>
-                    {token.status === "completed" ? (
+                    {token.isUsed ? (
                       <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
                     ) : isExpired ? (
                       <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
@@ -210,7 +210,7 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {token.status === "completed" ? (
+                      {token.isUsed ? (
                         <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
                       ) : isExpired ? (
                         <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
