@@ -13538,7 +13538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Offer Token routes - Enlaces privados para ofertas sin login
-  app.post("/api/offer-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller"]), async (req: any, res) => {
+  app.post("/api/offer-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
     try {
       const { propertyId, leadId } = req.body;
       const userId = req.user.claims.sub;
@@ -13918,7 +13918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rental Form Token routes - Enlaces privados para formato de renta de inquilino
-  app.post("/api/rental-form-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller"]), async (req: any, res) => {
+  app.post("/api/rental-form-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
     try {
       const { propertyId, leadId } = req.body;
       const userId = req.user.claims.sub;
@@ -14115,7 +14115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send rental form link via email
-  app.post("/api/rental-form-tokens/:id/send-email", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller"]), async (req: any, res) => {
+  app.post("/api/rental-form-tokens/:id/send-email", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { clientEmail, clientName } = req.body;
