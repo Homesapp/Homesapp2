@@ -4980,6 +4980,8 @@ export const createRentalContractWithServicesSchema = z.object({
     amount: z.number().positive(),
     currency: z.string().default("MXN"),
     dayOfMonth: z.number().int().min(1).max(31),
+    paymentFrequency: z.enum(["monthly", "bimonthly"]).default("monthly"),
+    chargeType: z.enum(["fixed", "variable"]).default("fixed"),
     sendReminderDaysBefore: z.number().int().min(0).max(30).optional(),
     notes: z.string().optional(),
   })).optional().default([]),
@@ -5109,6 +5111,12 @@ export type InsertExternalCheckoutReport = z.infer<typeof insertExternalCheckout
 export type UpdateExternalCheckoutReport = z.infer<typeof updateExternalCheckoutReportSchema>;
 export type ExternalCheckoutReport = typeof externalCheckoutReports.$inferSelect;
 
+// Payment frequency enum
+export const paymentFrequencyEnum = pgEnum("payment_frequency", ["monthly", "bimonthly"]);
+
+// Charge type enum
+export const chargeTypeEnum = pgEnum("charge_type", ["fixed", "variable"]);
+
 // External Payment Schedules - Pagos programados/recurrentes
 export const externalPaymentSchedules = pgTable("external_payment_schedules", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -5118,6 +5126,8 @@ export const externalPaymentSchedules = pgTable("external_payment_schedules", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Monto a pagar
   currency: varchar("currency", { length: 10 }).notNull().default("MXN"),
   dayOfMonth: integer("day_of_month").notNull(), // Día del mes para pagar (1-31)
+  paymentFrequency: paymentFrequencyEnum("payment_frequency").notNull().default("monthly"), // Frecuencia de pago
+  chargeType: chargeTypeEnum("charge_type").notNull().default("fixed"), // Tipo de cargo (fijo o variable)
   isActive: boolean("is_active").notNull().default(true), // Si está activo
   sendReminderDaysBefore: integer("send_reminder_days_before").default(3), // Días antes para enviar recordatorio
   notes: text("notes"),

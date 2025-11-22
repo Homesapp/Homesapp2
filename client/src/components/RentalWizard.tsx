@@ -115,6 +115,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     amount: string;
     dayOfMonth: number;
     paymentFrequency: "monthly" | "bimonthly";
+    chargeType: "fixed" | "variable";
   }>>([]);
   const [additionalTenants, setAdditionalTenants] = useState<Array<{
     fullName: string;
@@ -349,7 +350,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
   const addService = () => {
     setAdditionalServices([
       ...additionalServices,
-      { serviceType: "water", amount: "", dayOfMonth: 1, paymentFrequency: "monthly" },
+      { serviceType: "water", amount: "", dayOfMonth: 1, paymentFrequency: "monthly", chargeType: "fixed" },
     ]);
   };
 
@@ -1197,74 +1198,112 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                   </div>
 
                   {additionalServices.map((service, idx) => (
-                    <div key={idx} className="grid grid-cols-12 items-end gap-2 mb-2">
-                      <div className="col-span-3">
-                        <Label className="text-xs">{language === "es" ? "Servicio" : "Service"}</Label>
-                        <Select 
-                          value={service.serviceType} 
-                          onValueChange={(val) => updateService(idx, "serviceType", val)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="water">{language === "es" ? "Agua" : "Water"}</SelectItem>
-                            <SelectItem value="electricity">{language === "es" ? "Electricidad" : "Electricity"}</SelectItem>
-                            <SelectItem value="internet">{language === "es" ? "Internet" : "Internet"}</SelectItem>
-                            <SelectItem value="gas">{language === "es" ? "Gas" : "Gas"}</SelectItem>
-                            <SelectItem value="maintenance">{language === "es" ? "Mantenimiento" : "Maintenance"}</SelectItem>
-                            <SelectItem value="other">{language === "es" ? "Otro" : "Other"}</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <Card key={idx} className="p-3 mb-2">
+                      <div className="grid grid-cols-12 items-end gap-2 mb-2">
+                        <div className="col-span-3">
+                          <Label className="text-xs">{language === "es" ? "Servicio" : "Service"}</Label>
+                          <Select 
+                            value={service.serviceType} 
+                            onValueChange={(val) => updateService(idx, "serviceType", val)}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="water">{language === "es" ? "Agua" : "Water"}</SelectItem>
+                              <SelectItem value="electricity">{language === "es" ? "Electricidad" : "Electricity"}</SelectItem>
+                              <SelectItem value="internet">{language === "es" ? "Internet" : "Internet"}</SelectItem>
+                              <SelectItem value="gas">{language === "es" ? "Gas" : "Gas"}</SelectItem>
+                              <SelectItem value="maintenance">{language === "es" ? "Mantenimiento" : "Maintenance"}</SelectItem>
+                              <SelectItem value="other">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-xs">{language === "es" ? "Tipo" : "Type"}</Label>
+                          <Select 
+                            value={service.chargeType} 
+                            onValueChange={(val: "fixed" | "variable") => {
+                              updateService(idx, "chargeType", val);
+                              // Clear amount if switching to variable
+                              if (val === "variable") {
+                                updateService(idx, "amount", "0");
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="fixed">{language === "es" ? "Fijo" : "Fixed"}</SelectItem>
+                              <SelectItem value="variable">{language === "es" ? "Variable" : "Variable"}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-xs">{language === "es" ? "Monto" : "Amount"}</Label>
+                          {service.chargeType === "fixed" ? (
+                            <Input 
+                              type="number"
+                              value={service.amount}
+                              onChange={(e) => updateService(idx, "amount", e.target.value)}
+                              placeholder="0"
+                              className="h-9"
+                            />
+                          ) : (
+                            <div className="h-9 flex items-center px-3 bg-muted/50 rounded-md border">
+                              <span className="text-xs text-muted-foreground">
+                                {language === "es" ? "Variable" : "Variable"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-xs">{language === "es" ? "Frecuencia" : "Frequency"}</Label>
+                          <Select 
+                            value={service.paymentFrequency} 
+                            onValueChange={(val: "monthly" | "bimonthly") => updateService(idx, "paymentFrequency", val)}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monthly">{language === "es" ? "Mensual" : "Monthly"}</SelectItem>
+                              <SelectItem value="bimonthly">{language === "es" ? "Bimestral" : "Bimonthly"}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-xs">{language === "es" ? "Día" : "Day"}</Label>
+                          <Input 
+                            type="number"
+                            value={service.dayOfMonth}
+                            onChange={(e) => updateService(idx, "dayOfMonth", parseInt(e.target.value))}
+                            min="1"
+                            max="31"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="col-span-1 flex justify-end">
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => removeService(idx)}
+                            className="h-9"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="col-span-2">
-                        <Label className="text-xs">{language === "es" ? "Monto" : "Amount"}</Label>
-                        <Input 
-                          type="number"
-                          value={service.amount}
-                          onChange={(e) => updateService(idx, "amount", e.target.value)}
-                          placeholder="0"
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="col-span-3">
-                        <Label className="text-xs">{language === "es" ? "Frecuencia" : "Frequency"}</Label>
-                        <Select 
-                          value={service.paymentFrequency} 
-                          onValueChange={(val: "monthly" | "bimonthly") => updateService(idx, "paymentFrequency", val)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="monthly">{language === "es" ? "Mensual" : "Monthly"}</SelectItem>
-                            <SelectItem value="bimonthly">{language === "es" ? "Bimestral" : "Bimonthly"}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2">
-                        <Label className="text-xs">{language === "es" ? "Día" : "Day"}</Label>
-                        <Input 
-                          type="number"
-                          value={service.dayOfMonth}
-                          onChange={(e) => updateService(idx, "dayOfMonth", parseInt(e.target.value))}
-                          min="1"
-                          max="31"
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="col-span-2 flex justify-end">
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeService(idx)}
-                          className="h-9"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                      {service.chargeType === "variable" && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {language === "es" 
+                            ? "El monto se registrará en la fecha de corte" 
+                            : "Amount will be recorded on the cut-off date"}
+                        </p>
+                      )}
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -1333,8 +1372,8 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                           {language === "es" ? "Servicios adicionales:" : "Additional services:"}
                         </p>
                         {additionalServices.map((service, idx) => (
-                          <div key={idx} className="flex justify-between text-xs">
-                            <span className="text-muted-foreground capitalize">
+                          <div key={idx} className="flex justify-between items-center text-xs gap-2">
+                            <span className="text-muted-foreground capitalize flex-1">
                               {service.serviceType} 
                               <span className="text-muted-foreground/60 ml-1">
                                 ({service.paymentFrequency === "monthly" 
@@ -1342,7 +1381,13 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                                   : (language === "es" ? "bimestral" : "bimonthly")})
                               </span>
                             </span>
-                            <span>${service.amount}</span>
+                            {service.chargeType === "fixed" ? (
+                              <span className="font-medium">${service.amount}</span>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">
+                                {language === "es" ? "Variable" : "Variable"}
+                              </Badge>
+                            )}
                           </div>
                         ))}
                       </>
