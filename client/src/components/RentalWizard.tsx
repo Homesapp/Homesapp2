@@ -33,11 +33,23 @@ import {
   Mail,
   Phone
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import type { ExternalUnit, ExternalCondominium } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Helper function to safely format dates
+const safeFormatDate = (date: any, formatStr: string, options?: any): string => {
+  if (!date) return '';
+  const dateObj = date instanceof Date ? date : new Date(date);
+  if (!isValid(dateObj)) return '';
+  try {
+    return format(dateObj, formatStr, options);
+  } catch {
+    return '';
+  }
+};
 
 const rentalFormSchema = z.object({
   tenantName: z.string().optional(),
@@ -958,8 +970,13 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                           <Input 
                             {...field} 
                             type="date" 
-                            value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            value={safeFormatDate(field.value, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                              const date = new Date(e.target.value);
+                              if (isValid(date)) {
+                                field.onChange(date);
+                              }
+                            }}
                             data-testid="input-start-date" 
                           />
                         </FormControl>
@@ -978,8 +995,13 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                           <Input 
                             {...field} 
                             type="date"
-                            value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            value={safeFormatDate(field.value, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                              const date = new Date(e.target.value);
+                              if (isValid(date)) {
+                                field.onChange(date);
+                              }
+                            }}
                             data-testid="input-end-date" 
                           />
                         </FormControl>
@@ -1165,9 +1187,9 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{language === "es" ? "Período" : "Period"}:</span>
                       <strong>
-                        {form.watch("startDate") && format(form.watch("startDate"), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
-                        {" - "}
-                        {form.watch("endDate") && format(form.watch("endDate"), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
+                        {safeFormatDate(form.watch("startDate"), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
+                        {form.watch("startDate") && form.watch("endDate") && " - "}
+                        {safeFormatDate(form.watch("endDate"), 'dd/MM/yyyy', { locale: language === "es" ? es : enUS })}
                       </strong>
                     </div>
                     {additionalServices.length > 0 && (
