@@ -26,7 +26,7 @@ import { Loader2, Copy, Check, MessageCircle, Mail, Link as LinkIcon, ExternalLi
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useParams } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 const emailFormSchema = z.object({
   clientEmail: z.string().email("Email inválido"),
@@ -53,7 +53,8 @@ export default function ExternalGenerateOfferLinkDialog({
 }: ExternalGenerateOfferLinkDialogProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
-  const { agencyId } = useParams();
+  const { user } = useAuth();
+  const agencyId = user?.externalAgencyId;
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
   const [selectedClientId, setSelectedClientId] = useState<string>(clientId?.toString() || "");
   const [generatedToken, setGeneratedToken] = useState<any>(null);
@@ -62,12 +63,12 @@ export default function ExternalGenerateOfferLinkDialog({
 
   const { data: units, isLoading: isLoadingUnits } = useQuery({
     queryKey: ["/api/external/units", agencyId],
-    enabled: open && !!agencyId,
+    enabled: open,
   });
 
   const { data: clients, isLoading: isLoadingClients } = useQuery({
     queryKey: ["/api/external/clients", agencyId],
-    enabled: open && !!agencyId && !clientId,
+    enabled: open && !clientId,
   });
 
   const form = useForm<EmailFormValues>({
