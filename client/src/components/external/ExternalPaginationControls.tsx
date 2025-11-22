@@ -34,7 +34,7 @@ export function ExternalPaginationControls({
   const testId = (suffix: string) => testIdPrefix ? `${testIdPrefix}-${suffix}` : suffix;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-[2px] pb-[2px]">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-3 mb-4">
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground whitespace-nowrap">
           {language === 'es' ? 'Mostrar' : 'Show'}

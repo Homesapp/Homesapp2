@@ -186,6 +186,14 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
         </div>
       ) : viewMode === "cards" ? (
         <>
+        <ExternalPaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          language={language}
+        />
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
           {paginatedTokens?.map((token: any) => {
             const isExpired = new Date(token.expiresAt) < new Date();
@@ -272,6 +280,9 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
             );
           })}
         </div>
+        </>
+      ) : (
+        <>
         <ExternalPaginationControls
           currentPage={currentPage}
           totalPages={totalPages}
@@ -280,9 +291,6 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
           onItemsPerPageChange={setItemsPerPage}
           language={language}
         />
-        </>
-      ) : (
-        <>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -397,14 +405,6 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
             </TableBody>
           </Table>
         </div>
-        <ExternalPaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={setItemsPerPage}
-          language={language}
-        />
         </>
       )}
 
