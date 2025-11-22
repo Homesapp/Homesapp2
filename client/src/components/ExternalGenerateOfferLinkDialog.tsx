@@ -158,7 +158,7 @@ export default function ExternalGenerateOfferLinkDialog({
   const getOfferLink = () => {
     if (!generatedToken) return "";
     const baseUrl = window.location.origin;
-    return `${baseUrl}/public-offer/${generatedToken.token}`;
+    return `${baseUrl}/offer/${generatedToken.token}`;
   };
 
   const copyToClipboard = async (text: string, type: "link" | "whatsapp") => {

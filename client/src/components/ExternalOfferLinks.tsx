@@ -113,7 +113,7 @@ export default function ExternalOfferLinks() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(`/public-offer/${token.token}`, "_blank")}
+                          onClick={() => window.open(`/offer/${token.token}`, "_blank")}
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>

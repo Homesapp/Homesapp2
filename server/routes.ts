@@ -13646,7 +13646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Validate offer token (public route)
+  // Validate offer token (public route - supports internal and external systems)
   app.get("/api/offer-tokens/:token/validate", async (req, res) => {
     try {
       const { token } = req.params;
@@ -13680,10 +13680,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get property info
-      const property = await storage.getProperty(offerToken.propertyId);
+      let property = null;
+      let externalUnit = null;
+      let externalClient = null;
+      
+      // Determine if this is for internal or external system
+      if (offerToken.externalUnitId) {
+        // External system flow
+        externalUnit = await storage.getExternalUnit(offerToken.externalUnitId);
+        if (offerToken.externalClientId) {
+          externalClient = await storage.getExternalClient(offerToken.externalClientId);
+        }
+        
+        // Map externalUnit to property format for frontend compatibility
+        if (externalUnit) {
+          const condo = externalUnit.condominiumId ? 
+            await storage.getExternalCondominium(externalUnit.condominiumId) : null;
+          
+          property = {
+            id: externalUnit.id,
+            title: `${condo?.name || ''} - Unidad ${externalUnit.unitNumber}`,
+            type: externalUnit.unitType,
+            bedrooms: externalUnit.bedrooms,
+            bathrooms: externalUnit.bathrooms,
+            size: externalUnit.size,
+            description: externalUnit.description,
+            includedServices: externalUnit.includedServices || [],
+            photos: externalUnit.photos || [],
+            isExternal: true,
+          };
+        }
+      } else if (offerToken.propertyId) {
+        // Internal system flow
+        property = await storage.getProperty(offerToken.propertyId);
+      }
 
-      // Get lead info if leadId exists
+      // Get lead info if leadId exists (internal system only)
       let lead = null;
       if (offerToken.leadId) {
         lead = await storage.getLead(offerToken.leadId);
@@ -13693,6 +13725,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         valid: true,
         property,
         lead,
+        externalUnit,
+        externalClient,
         expiresAt: offerToken.expiresAt,
       });
     } catch (error) {

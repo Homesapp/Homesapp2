@@ -8756,18 +8756,48 @@ export class DatabaseStorage implements IStorage {
 
   // External Offer Token operations
   async getExternalOfferTokensByAgency(agencyId: string): Promise<any[]> {
-    // Since offerTokens doesn't have externalUnitId/externalClientId,
-    // we return an empty array for now
-    // TODO: Create external_offer_tokens table with proper fields
-    return [];
+    // Get all offer tokens that have externalUnitId (external system tokens)
+    // and join with external units to filter by agency
+    const tokens = await db
+      .select({
+        token: offerTokens,
+        unit: externalUnits,
+      })
+      .from(offerTokens)
+      .innerJoin(
+        externalUnits,
+        eq(offerTokens.externalUnitId, externalUnits.id)
+      )
+      .where(eq(externalUnits.agencyId, agencyId))
+      .orderBy(desc(offerTokens.createdAt));
+
+    return tokens.map(t => ({
+      ...t.token,
+      externalUnit: t.unit,
+    }));
   }
 
   // External Rental Form Token operations
   async getExternalRentalFormTokensByAgency(agencyId: string): Promise<any[]> {
-    // Since tenantRentalFormTokens doesn't have externalUnitId/externalClientId,
-    // we return an empty array for now
-    // TODO: Create external_rental_form_tokens table with proper fields
-    return [];
+    // Get all rental form tokens that have externalUnitId (external system tokens)
+    // and join with external units to filter by agency
+    const tokens = await db
+      .select({
+        token: tenantRentalFormTokens,
+        unit: externalUnits,
+      })
+      .from(tenantRentalFormTokens)
+      .innerJoin(
+        externalUnits,
+        eq(tenantRentalFormTokens.externalUnitId, externalUnits.id)
+      )
+      .where(eq(externalUnits.agencyId, agencyId))
+      .orderBy(desc(tenantRentalFormTokens.createdAt));
+
+    return tokens.map(t => ({
+      ...t.token,
+      externalUnit: t.unit,
+    }));
   }
 
   // External Financial Transaction operations
