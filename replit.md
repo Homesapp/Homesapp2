@@ -21,6 +21,8 @@ The platform implements extensive pagination and sortable columns across all tab
 
 The External Management System includes a comprehensive payment collection system accessible as an integrated tab within the Financial Accounting section (/external/accounting), featuring automated rent collection, payment tracking with visual status indicators, and email reminder functionality for overdue payments.
 
+The Contratos section supports both internal and external systems through unified token tables (offer_tokens and tenant_rental_form_tokens). These tables use nullable propertyId for internal flows and nullable externalUnitId/externalClientId for external flows, enabling link generation for rental offers and tenant application forms with proper multi-tenant isolation and agency-level security validation.
+
 ## External Dependencies
 *   Google Calendar API
 *   Gmail API
