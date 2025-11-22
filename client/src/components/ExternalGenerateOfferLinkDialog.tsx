@@ -83,9 +83,14 @@ export default function ExternalGenerateOfferLinkDialog({
 
   const generateTokenMutation = useMutation({
     mutationFn: async ({ unitId, clientId }: { unitId: string; clientId: string }) => {
+      // Ensure IDs are strings and not undefined/null
+      if (!unitId || !clientId) {
+        throw new Error("Unit ID and Client ID are required");
+      }
+      
       const response = await apiRequest("POST", "/api/offer-tokens", {
-        externalUnitId: unitId,
-        externalClientId: clientId,
+        externalUnitId: String(unitId),
+        externalClientId: String(clientId),
       });
       return response.json();
     },

@@ -13542,25 +13542,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { propertyId, externalUnitId, externalClientId, leadId } = req.body;
       const userId = req.user.claims.sub;
+      
+      // Debug logging for troubleshooting agency-specific issues
+      console.log('[Offer Token Creation] Request body:', { 
+        propertyId, 
+        externalUnitId, 
+        externalClientId, 
+        leadId,
+        propertyIdType: typeof propertyId,
+        externalUnitIdType: typeof externalUnitId
+      });
+      
+      // Check if user is from external agency
+      const userAgencyId = await getUserAgencyId(req);
+      const isExternalAgencyUser = !!userAgencyId;
+      
+      console.log('[Offer Token Creation] User context:', {
+        userId: req.user.claims.sub,
+        userAgencyId,
+        isExternalAgencyUser
+      });
 
       let property = null;
       let externalUnit = null;
       let externalClient = null;
       let auditMessage = "";
 
-      // Determine if this is for internal or external system BEFORE any lookups
+      // Determine if this is for internal or external system
+      // For external agency users, ALWAYS require externalUnitId
       const isExternalFlow = !!externalUnitId;
       
+      if (isExternalAgencyUser && !externalUnitId) {
+        console.error('[Offer Token Creation] External agency user missing externalUnitId');
+        return res.status(400).json({ 
+          message: "Para agencias externas se requiere externalUnitId" 
+        });
+      }
+      
       if (isExternalFlow) {
-        // External system flow
+        // External system flow - validate externalUnitId is a valid string
+        if (typeof externalUnitId !== 'string' || !externalUnitId.trim()) {
+          console.error('[Offer Token Creation] Invalid externalUnitId:', externalUnitId);
+          return res.status(400).json({ message: "ID de unidad inválido" });
+        }
+        
         externalUnit = await storage.getExternalUnit(externalUnitId);
         if (!externalUnit) {
+          console.error('[Offer Token Creation] Unit not found:', externalUnitId);
           return res.status(404).json({ message: "Unidad no encontrada" });
         }
+        
+        console.log('[Offer Token Creation] Found external unit:', {
+          unitId: externalUnit.id,
+          agencyId: externalUnit.agencyId,
+          unitNumber: externalUnit.unitNumber
+        });
         
         // Verify user has access to this agency
         const agencyId = await getUserAgencyId(req);
         if (!agencyId || String(externalUnit.agencyId) !== String(agencyId)) {
+          console.error('[Offer Token Creation] Agency access denied:', {
+            userAgencyId: agencyId,
+            unitAgencyId: externalUnit.agencyId
+          });
           return res.status(403).json({ message: "No tienes acceso a esta unidad" });
         }
         
