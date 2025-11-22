@@ -166,12 +166,8 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
 
   const createMutation = useMutation({
     mutationFn: async (payload: { contract: any; additionalServices: any[] }) => {
-      const response = await apiRequest("/api/external-rental-contracts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      return response;
+      const response = await apiRequest("POST", "/api/external-rental-contracts", payload);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-rental-contracts"] });
