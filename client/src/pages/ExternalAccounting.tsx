@@ -101,6 +101,9 @@ export default function ExternalAccounting() {
   
   // Tab control
   const [activeTab, setActiveTab] = useState("transactions");
+  
+  // Form state for condominium selection
+  const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
 
   const buildTransactionsQueryKey = () => {
     const params = new URLSearchParams();
@@ -135,6 +138,12 @@ export default function ExternalAccounting() {
     queryKey: ['/api/external-units'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
+
+  // Filter units by selected condominium for the create form
+  const filteredUnitsForForm = useMemo(() => {
+    if (!units || !selectedCondominiumId) return [];
+    return units.filter(unit => unit.condominiumId === selectedCondominiumId);
+  }, [units, selectedCondominiumId]);
 
   // Filter transactions by date range and search term
   const filteredTransactions = useMemo(() => {
@@ -1959,118 +1968,122 @@ export default function ExternalAccounting() {
             </DialogDescription>
           </DialogHeader>
           <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={createForm.control}
-                  name="direction"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.direction}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="input-create-direction">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="inflow">{t.inflow}</SelectItem>
-                          <SelectItem value="outflow">{t.outflow}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+              {/* Información Básica */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {language === 'es' ? 'Información Básica' : 'Basic Information'}
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="direction"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.direction}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="input-create-direction">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="inflow">{t.inflow}</SelectItem>
+                            <SelectItem value="outflow">{t.outflow}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.category}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="input-create-category">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="rent_income">{t.rent_income}</SelectItem>
+                            <SelectItem value="rent_payout">{t.rent_payout}</SelectItem>
+                            <SelectItem value="hoa_fee">{t.hoa_fee}</SelectItem>
+                            <SelectItem value="maintenance_charge">{t.maintenance_charge}</SelectItem>
+                            <SelectItem value="service_electricity">{t.service_electricity}</SelectItem>
+                            <SelectItem value="service_water">{t.service_water}</SelectItem>
+                            <SelectItem value="service_internet">{t.service_internet}</SelectItem>
+                            <SelectItem value="service_gas">{t.service_gas}</SelectItem>
+                            <SelectItem value="service_other">{t.service_other}</SelectItem>
+                            <SelectItem value="adjustment">{t.adjustment}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="payerRole"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.payerRole}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="input-create-payer">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="tenant">{t.tenant}</SelectItem>
+                            <SelectItem value="owner">{t.owner}</SelectItem>
+                            <SelectItem value="agency">{t.agency}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="payeeRole"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.payeeRole}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="input-create-payee">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="tenant">{t.tenant}</SelectItem>
+                            <SelectItem value="owner">{t.owner}</SelectItem>
+                            <SelectItem value="agency">{t.agency}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={createForm.control}
-                  name="category"
+                  name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t.category}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="input-create-category">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="rent_income">{t.rent_income}</SelectItem>
-                          <SelectItem value="rent_payout">{t.rent_payout}</SelectItem>
-                          <SelectItem value="hoa_fee">{t.hoa_fee}</SelectItem>
-                          <SelectItem value="maintenance_charge">{t.maintenance_charge}</SelectItem>
-                          <SelectItem value="service_electricity">{t.service_electricity}</SelectItem>
-                          <SelectItem value="service_water">{t.service_water}</SelectItem>
-                          <SelectItem value="service_internet">{t.service_internet}</SelectItem>
-                          <SelectItem value="service_gas">{t.service_gas}</SelectItem>
-                          <SelectItem value="service_other">{t.service_other}</SelectItem>
-                          <SelectItem value="adjustment">{t.adjustment}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={createForm.control}
-                  name="payerRole"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.payerRole}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="input-create-payer">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="tenant">{t.tenant}</SelectItem>
-                          <SelectItem value="owner">{t.owner}</SelectItem>
-                          <SelectItem value="agency">{t.agency}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="payeeRole"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.payeeRole}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="input-create-payee">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="tenant">{t.tenant}</SelectItem>
-                          <SelectItem value="owner">{t.owner}</SelectItem>
-                          <SelectItem value="agency">{t.agency}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={createForm.control}
-                  name="grossAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.grossAmount}</FormLabel>
+                      <FormLabel>{t.dueDate}</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} data-testid="input-create-gross-amount" />
+                        <Input type="date" {...field} data-testid="input-create-due-date" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -2079,26 +2092,12 @@ export default function ExternalAccounting() {
 
                 <FormField
                   control={createForm.control}
-                  name="fees"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t.fees}</FormLabel>
+                      <FormLabel>{t.description}</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} data-testid="input-create-fees" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="netAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.netAmount}</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} data-testid="input-create-net-amount" />
+                        <Textarea {...field} data-testid="input-create-description" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -2106,75 +2105,164 @@ export default function ExternalAccounting() {
                 />
               </div>
 
-              <FormField
-                control={createForm.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.dueDate}</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-create-due-date" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Separator />
 
-              <FormField
-                control={createForm.control}
-                name="unitId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.unit}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger data-testid="input-create-unit">
-                          <SelectValue placeholder={t.unit} />
-                        </SelectTrigger>
-                      </FormControl>
+              {/* Referencia de Propiedad */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {language === 'es' ? 'Referencia de Propiedad' : 'Property Reference'}
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      {language === 'es' ? 'Condominio' : 'Condominium'}
+                    </label>
+                    <Select 
+                      value={selectedCondominiumId} 
+                      onValueChange={(value) => {
+                        setSelectedCondominiumId(value);
+                        // Reset unit selection when condominium changes
+                        createForm.setValue('unitId', undefined);
+                      }}
+                    >
+                      <SelectTrigger data-testid="input-create-condominium">
+                        <SelectValue placeholder={language === 'es' ? 'Selecciona un condominio' : 'Select a condominium'} />
+                      </SelectTrigger>
                       <SelectContent>
-                        {units?.map(unit => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.unitNumber}
+                        {condominiums?.map(condo => (
+                          <SelectItem key={condo.id} value={condo.id}>
+                            {condo.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </div>
 
-              <FormField
-                control={createForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.description}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} data-testid="input-create-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={createForm.control}
+                    name="unitId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.unit}</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ""}
+                          disabled={!selectedCondominiumId}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="input-create-unit">
+                              <SelectValue 
+                                placeholder={
+                                  !selectedCondominiumId 
+                                    ? (language === 'es' ? 'Primero selecciona un condominio' : 'Select a condominium first')
+                                    : (language === 'es' ? 'Selecciona una unidad' : 'Select a unit')
+                                } 
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {filteredUnitsForForm.length === 0 && selectedCondominiumId && (
+                              <div className="p-2 text-sm text-muted-foreground text-center">
+                                {language === 'es' ? 'No hay unidades disponibles' : 'No units available'}
+                              </div>
+                            )}
+                            {filteredUnitsForForm.map(unit => (
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.unitNumber}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
-              <FormField
-                control={createForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.notes}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} value={field.value || ""} data-testid="input-create-notes" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Separator />
+
+              {/* Información Financiera */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {language === 'es' ? 'Información Financiera' : 'Financial Information'}
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="grossAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.grossAmount}</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" {...field} data-testid="input-create-gross-amount" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="fees"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.fees}</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" {...field} data-testid="input-create-fees" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="netAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.netAmount}</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" {...field} data-testid="input-create-net-amount" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Notas Adicionales */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {language === 'es' ? 'Notas Adicionales' : 'Additional Notes'}
+                </h3>
+                <FormField
+                  control={createForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t.notes}</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value || ""} data-testid="input-create-notes" rows={3} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowCreateDialog(false);
+                    setSelectedCondominiumId("");
+                  }}
+                >
                   {t.cancel}
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-transaction">
