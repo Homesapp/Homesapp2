@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink, RefreshCw } from "lucide-react";
+import { Plus, ExternalLink, RefreshCw, FileDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
@@ -154,6 +154,18 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                     )}
                   </div>
                   <div className="flex items-center gap-2 pt-2">
+                    {token.isUsed && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => window.open(`/api/external/offers/${token.offerId}/pdf`, "_blank")}
+                        className="flex-1"
+                        data-testid="button-download-offer-pdf"
+                      >
+                        <FileDown className="h-4 w-4 mr-2" />
+                        {language === "es" ? "PDF" : "PDF"}
+                      </Button>
+                    )}
                     {canRegenerate && (
                       <Button
                         variant="outline"
@@ -226,6 +238,17 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {token.isUsed && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(`/api/external/offers/${token.offerId}/pdf`, "_blank")}
+                            title={language === "es" ? "Descargar PDF" : "Download PDF"}
+                            data-testid="button-download-offer-pdf"
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canRegenerate && (
                           <Button
                             variant="ghost"
