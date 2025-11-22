@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, ExternalLink, RefreshCw } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,81 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
       ) : filteredTokens?.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {language === "es" ? "No hay ofertas enviadas" : "No offers sent"}
+        </div>
+      ) : viewMode === "cards" ? (
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+          {filteredTokens?.map((token: any) => {
+            const isExpired = new Date(token.expiresAt) < new Date();
+            const canRegenerate = !token.isUsed;
+            
+            return (
+              <Card key={token.id} className="hover-elevate" data-testid={`card-offer-${token.id}`}>
+                <CardHeader>
+                  <CardTitle className="text-base">{token.clientName || "-"}</CardTitle>
+                  <CardDescription>{token.propertyTitle || "-"}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {language === "es" ? "Enviado" : "Sent"}
+                    </span>
+                    <span>
+                      {token.createdAt
+                        ? format(new Date(token.createdAt), "dd/MM/yyyy", {
+                            locale: language === "es" ? es : enUS,
+                          })
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {language === "es" ? "Tiempo restante" : "Time remaining"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {token.expiresAt ? getTimeRemaining(token.expiresAt) : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {language === "es" ? "Estado" : "Status"}
+                    </span>
+                    {token.isUsed ? (
+                      <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
+                    ) : isExpired ? (
+                      <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
+                    ) : (
+                      <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    {canRegenerate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => regenerateTokenMutation.mutate(token.id)}
+                        disabled={regenerateTokenMutation.isPending}
+                        className="flex-1"
+                        data-testid="button-regenerate-offer"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {language === "es" ? "Regenerar" : "Regenerate"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/offer/${token.token}`, "_blank")}
+                      className="flex-1"
+                      data-testid="button-open-offer-link"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {language === "es" ? "Abrir" : "Open"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-md border">

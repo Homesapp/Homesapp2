@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,65 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
       ) : filteredTokens?.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {language === "es" ? "No hay formatos enviados" : "No forms sent"}
+        </div>
+      ) : viewMode === "cards" ? (
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+          {filteredTokens?.map((token: any) => (
+            <Card key={token.id} className="hover-elevate" data-testid={`card-form-${token.id}`}>
+              <CardHeader>
+                <CardTitle className="text-base">{token.clientName || "-"}</CardTitle>
+                <CardDescription>{token.propertyTitle || "-"}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {language === "es" ? "Enviado" : "Sent"}
+                  </span>
+                  <span>
+                    {token.createdAt
+                      ? format(new Date(token.createdAt), "dd/MM/yyyy", {
+                          locale: language === "es" ? es : enUS,
+                        })
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {language === "es" ? "Expira" : "Expires"}
+                  </span>
+                  <span>
+                    {token.expiresAt
+                      ? format(new Date(token.expiresAt), "dd/MM/yyyy", {
+                          locale: language === "es" ? es : enUS,
+                        })
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    {language === "es" ? "Estado" : "Status"}
+                  </span>
+                  {token.status === "completed" ? (
+                    <Badge variant="default">{language === "es" ? "Completado" : "Completed"}</Badge>
+                  ) : new Date(token.expiresAt) < new Date() ? (
+                    <Badge variant="destructive">{language === "es" ? "Expirado" : "Expired"}</Badge>
+                  ) : (
+                    <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/public-rental-form/${token.token}`, "_blank")}
+                  className="w-full"
+                  data-testid="button-open-form-link"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Abrir Link" : "Open Link"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : (
         <div className="rounded-md border">
