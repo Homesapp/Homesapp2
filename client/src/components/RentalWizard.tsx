@@ -692,7 +692,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                                 }
                               }}
                               data-testid="input-tenant-id-photo"
-                              className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium hover:file:bg-accent"
+                              className="h-10 flex items-center file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-accent/80 hover:file:bg-accent"
                             />
                           </FormControl>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -765,7 +765,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                                       if (file) field.onChange(file.name);
                                     }}
                                     data-testid="input-pet-photo-url"
-                                    className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium hover:file:bg-accent"
+                                    className="h-10 flex items-center file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-accent/80 hover:file:bg-accent"
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -916,7 +916,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                                   }
                                 }}
                                 data-testid={`input-additional-tenant-id-${index}`}
-                                className="mt-1.5 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium hover:file:bg-accent"
+                                className="mt-1.5 h-10 flex items-center file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-accent/80 hover:file:bg-accent"
                               />
                               <p className="text-xs text-muted-foreground mt-1">
                                 {language === "es" 
