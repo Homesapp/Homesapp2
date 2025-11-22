@@ -13545,10 +13545,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let property = null;
       let externalUnit = null;
+      let externalClient = null;
       let auditMessage = "";
 
-      // Determine if this is for internal or external system
-      if (externalUnitId) {
+      // Determine if this is for internal or external system BEFORE any lookups
+      const isExternalFlow = !!externalUnitId;
+      
+      if (isExternalFlow) {
         // External system flow
         externalUnit = await storage.getExternalUnit(externalUnitId);
         if (!externalUnit) {
@@ -13557,23 +13560,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Verify user has access to this agency
         const agencyId = await getUserAgencyId(req);
-        if (!agencyId || externalUnit.agencyId !== agencyId) {
+        if (!agencyId || String(externalUnit.agencyId) !== String(agencyId)) {
           return res.status(403).json({ message: "No tienes acceso a esta unidad" });
         }
         
-        auditMessage = `Token de oferta creado para unidad externa ${externalUnit.unitNumber}`;
+        // If externalClientId provided, validate it belongs to same agency
+        if (externalClientId) {
+          externalClient = await storage.getExternalClient(externalClientId);
+          if (!externalClient) {
+            return res.status(404).json({ message: "Cliente no encontrado" });
+          }
+          if (String(externalClient.agencyId) !== String(agencyId)) {
+            return res.status(403).json({ message: "No tienes acceso a este cliente" });
+          }
+        }
+        
+        // Get condominium name for audit
+        const condo = externalUnit.condominiumId ? await storage.getExternalCondominium(externalUnit.condominiumId) : null;
+        auditMessage = `Token de oferta creado para unidad externa ${condo?.name || ''} - ${externalUnit.unitNumber} (Agency ID: ${agencyId})`;
+        if (externalClient) {
+          auditMessage += ` - Cliente: ${externalClient.firstName} ${externalClient.lastName}`;
+        }
       } else if (propertyId) {
         // Internal system flow
         property = await storage.getProperty(propertyId);
         if (!property) {
           return res.status(404).json({ message: "Propiedad no encontrada" });
         }
-        auditMessage = `Token de oferta creado para propiedad ${property.title || propertyId}`;
+        auditMessage = `Token de oferta creado para propiedad interna ${property.title || propertyId}`;
       } else {
         return res.status(400).json({ message: "Se requiere propertyId o externalUnitId" });
       }
 
-      // If leadId provided, validate lead exists
+      // If leadId provided, validate lead exists (internal system only)
       if (leadId) {
         const lead = await storage.getLead(leadId);
         if (!lead) {
@@ -13600,7 +13619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isUsed: false,
       }).returning();
 
-      // Update lead status to "oferta_enviada" if leadId provided
+      // Update lead status to "oferta_enviada" if leadId provided (internal only)
       if (leadId) {
         await storage.updateLeadStatus(leadId, "oferta_enviada");
         auditMessage += ' y lead actualizado a oferta_enviada';
@@ -13619,6 +13638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...offerToken[0],
         property,
         externalUnit,
+        externalClient,
       });
     } catch (error: any) {
       console.error("Error creating offer token:", error);
@@ -13945,7 +13965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Rental Form Token routes - Enlaces privados para formato de renta de inquilino
+  // Rental Form Token routes - Enlaces privados para formato de renta de inquilino (soporta sistema interno y externo)
   app.post("/api/rental-form-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
     try {
       const { propertyId, externalUnitId, externalClientId, leadId } = req.body;
@@ -13953,10 +13973,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let property = null;
       let externalUnit = null;
+      let externalClient = null;
       let auditMessage = "";
 
-      // Determine if this is for internal or external system
-      if (externalUnitId) {
+      // Determine if this is for internal or external system BEFORE any lookups
+      const isExternalFlow = !!externalUnitId;
+      
+      if (isExternalFlow) {
         // External system flow
         externalUnit = await storage.getExternalUnit(externalUnitId);
         if (!externalUnit) {
@@ -13965,18 +13988,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Verify user has access to this agency
         const agencyId = await getUserAgencyId(req);
-        if (!agencyId || externalUnit.agencyId !== agencyId) {
+        if (!agencyId || String(externalUnit.agencyId) !== String(agencyId)) {
           return res.status(403).json({ message: "No tienes acceso a esta unidad" });
         }
         
-        auditMessage = `Token de formato de renta creado para unidad externa ${externalUnit.unitNumber}`;
+        // If externalClientId provided, validate it belongs to same agency
+        if (externalClientId) {
+          externalClient = await storage.getExternalClient(externalClientId);
+          if (!externalClient) {
+            return res.status(404).json({ message: "Cliente no encontrado" });
+          }
+          if (String(externalClient.agencyId) !== String(agencyId)) {
+            return res.status(403).json({ message: "No tienes acceso a este cliente" });
+          }
+        }
+        
+        // Get condominium name for audit
+        const condo = externalUnit.condominiumId ? await storage.getExternalCondominium(externalUnit.condominiumId) : null;
+        auditMessage = `Token de formato de renta creado para unidad externa ${condo?.name || ''} - ${externalUnit.unitNumber} (Agency ID: ${agencyId})`;
+        if (externalClient) {
+          auditMessage += ` - Cliente: ${externalClient.firstName} ${externalClient.lastName}`;
+        }
       } else if (propertyId) {
         // Internal system flow
         property = await storage.getProperty(propertyId);
         if (!property) {
           return res.status(404).json({ message: "Propiedad no encontrada" });
         }
-        auditMessage = `Token de formato de renta creado para propiedad ${property.title || property.id}`;
+        auditMessage = `Token de formato de renta creado para propiedad interna ${property.title || property.id}`;
       } else {
         return res.status(400).json({ message: "Se requiere propertyId o externalUnitId" });
       }
@@ -14012,6 +14051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...rentalFormToken,
         property,
         externalUnit,
+        externalClient,
       });
     } catch (error: any) {
       console.error("Error creating rental form token:", error);
