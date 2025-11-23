@@ -5009,6 +5009,7 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }), // Unidad/propiedad
   propertyId: varchar("property_id").references(() => externalProperties.id, { onDelete: "cascade" }), // Deprecated - usar unitId
   clientId: varchar("client_id").references(() => externalClients.id, { onDelete: "set null" }), // Referencia a cliente existente (opcional)
+  rentalFormGroupId: varchar("rental_form_group_id"), // Vincula con los tokens de formularios duales (tenant + owner)
   tenantName: varchar("tenant_name", { length: 255 }).notNull(), // Nombre del inquilino principal
   tenantEmail: varchar("tenant_email", { length: 255 }),
   tenantPhone: varchar("tenant_phone", { length: 50 }),
@@ -5037,8 +5038,10 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   index("idx_external_contracts_unit").on(table.unitId),
   index("idx_external_contracts_property").on(table.propertyId),
   index("idx_external_contracts_client").on(table.clientId),
+  index("idx_external_contracts_rental_form_group").on(table.rentalFormGroupId),
   index("idx_external_contracts_status").on(table.status),
   index("idx_external_contracts_dates").on(table.startDate, table.endDate),
+  unique("unique_rental_form_group_id").on(table.rentalFormGroupId),
 ]);
 
 export const insertExternalRentalContractSchema = createInsertSchema(externalRentalContracts).omit({

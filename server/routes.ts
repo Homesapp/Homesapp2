@@ -14299,6 +14299,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to create rental contract when both tenant and owner forms are complete
+  async function createDualFormContractIfReady(rentalFormGroupId: string, agencyId: string, createdBy: string) {
+    try {
+      // Get all tokens in this rental form group
+      const groupTokens = await db.query.tenantRentalFormTokens.findMany({
+        where: eq(tenantRentalFormTokens.rentalFormGroupId, rentalFormGroupId),
+      });
+
+      // Check if we have both tenant and owner forms
+      const tenantToken = groupTokens.find(t => t.recipientType === 'tenant');
+      const ownerToken = groupTokens.find(t => t.recipientType === 'owner');
+
+      if (!tenantToken || !ownerToken) {
+        console.log('Missing tenant or owner token in group:', rentalFormGroupId);
+        return null;
+      }
+
+      // Check if both are completed
+      if (!tenantToken.isUsed || !ownerToken.isUsed) {
+        console.log('Not all forms completed yet in group:', rentalFormGroupId);
+        return null;
+      }
+
+      // IDEMPOTENCY CHECK: Verify if contract already exists for this rental group
+      const existingContracts = await db
+        .select()
+        .from(externalRentalContracts)
+        .where(eq(externalRentalContracts.rentalFormGroupId, rentalFormGroupId))
+        .limit(1);
+
+      if (existingContracts.length > 0) {
+        console.log('Contract already exists for rental form group:', rentalFormGroupId, '- Contract ID:', existingContracts[0].id);
+        return { ...existingContracts[0], alreadyExisted: true };
+      }
+
+      // Get the completed form data
+      const [tenantFormData] = await db
+        .select()
+        .from(tenantRentalForms)
+        .where(eq(tenantRentalForms.tokenId, tenantToken.id))
+        .limit(1);
+
+      const [ownerFormData] = await db
+        .select()
+        .from(ownerRentalFormData)
+        .where(eq(ownerRentalFormData.tokenId, ownerToken.id))
+        .limit(1);
+
+      if (!tenantFormData || !ownerFormData) {
+        console.log('Missing form data in group:', rentalFormGroupId);
+        return null;
+      }
+
+      // Verify we have required data
+      if (!ownerToken.externalUnitId) {
+        console.log('Missing external unit ID in owner token');
+        return null;
+      }
+
+      // Validate required owner form fields
+      if (!ownerFormData.agreedRent || !ownerFormData.rentMonths || !ownerFormData.rentStartDate) {
+        console.log('Missing required owner form fields (agreedRent, rentMonths, or rentStartDate)');
+        return null;
+      }
+
+      // Validate numeric values
+      const agreedRent = Number(ownerFormData.agreedRent);
+      const rentMonths = Number(ownerFormData.rentMonths);
+      if (!Number.isFinite(agreedRent) || agreedRent <= 0) {
+        console.log('Invalid agreedRent value:', ownerFormData.agreedRent);
+        return null;
+      }
+      if (!Number.isInteger(rentMonths) || rentMonths <= 0) {
+        console.log('Invalid rentMonths value:', ownerFormData.rentMonths);
+        return null;
+      }
+
+      // Calculate end date
+      const startDate = new Date(ownerFormData.rentStartDate);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + rentMonths);
+
+      // Create rental contract combining data from both forms
+      // Wrapped in try-catch to handle concurrent insertions (UNIQUE constraint on rentalFormGroupId)
+      try {
+        const contract = await storage.createExternalRentalContract({
+          agencyId,
+          unitId: ownerToken.externalUnitId,
+          clientId: tenantToken.externalClientId || null,
+          rentalFormGroupId,
+          tenantName: tenantFormData.fullName,
+          tenantEmail: tenantFormData.email || null,
+          tenantPhone: tenantFormData.phoneNumber || null,
+          monthlyRent: agreedRent.toString(),
+          currency: 'MXN',
+          securityDeposit: ownerFormData.agreedDeposit ? Number(ownerFormData.agreedDeposit).toString() : null,
+          rentalPurpose: 'living',
+          leaseDurationMonths: rentMonths,
+          startDate,
+          endDate,
+          status: 'active',
+          hasPet: tenantFormData.hasPet || false,
+          petName: tenantFormData.petName || null,
+          petPhotoUrl: tenantFormData.petPhotoUrl || null,
+          createdBy,
+        });
+
+        console.log('Created rental contract from dual forms:', contract.id);
+        return contract;
+      } catch (insertError: any) {
+        // If insertion failed due to THIS SPECIFIC unique constraint violation, fetch existing contract
+        // Check for PostgreSQL unique violation error code AND verify it's our specific constraint
+        if (insertError.code === '23505' && 
+            (insertError.constraint === 'unique_rental_form_group_id' || 
+             insertError.detail?.includes('rental_form_group_id'))) {
+          console.log('Contract already created by concurrent submission, fetching existing contract for group:', rentalFormGroupId);
+          const [existingContract] = await db
+            .select()
+            .from(externalRentalContracts)
+            .where(eq(externalRentalContracts.rentalFormGroupId, rentalFormGroupId))
+            .limit(1);
+          
+          if (existingContract) {
+            return { ...existingContract, alreadyExisted: true };
+          }
+          // If we couldn't find the contract even after unique violation, something is wrong
+          console.error('Unique constraint violation but contract not found for group:', rentalFormGroupId);
+        }
+        // If it's a different error, re-throw it
+        throw insertError;
+      }
+    } catch (error) {
+      console.error('Error creating dual form contract:', error);
+      return null;
+    }
+  }
+
   // Submit rental form via token (public route)
   app.post("/api/rental-form-tokens/:token/submit", async (req, res) => {
     try {
@@ -14393,6 +14530,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(tenantRentalFormTokens.id, rentalFormToken.id));
 
+      // Check if this is part of a dual-form group and create contract if both are complete
+      let contractId = null;
+      if (rentalFormToken.rentalFormGroupId) {
+        // Get agency ID - for external system
+        if (rentalFormToken.externalUnitId) {
+          const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
+          if (unit) {
+            const contract = await createDualFormContractIfReady(
+              rentalFormToken.rentalFormGroupId,
+              unit.agencyId,
+              rentalFormToken.createdBy
+            );
+            if (contract) {
+              contractId = contract.id;
+              console.log('Rental contract created after tenant form submission:', contractId);
+            }
+          }
+        }
+      }
+
       // Note: Lead status remains "en_negociacion" after form submission
       // Admin will review the form and then proceed to contract elaboration
 
@@ -14400,6 +14557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         message: "Formato de renta enviado exitosamente",
         formId: rentalForm.id,
+        contractId, // Include contract ID if created
       });
     } catch (error) {
       console.error("Error submitting rental form:", error);
@@ -14566,10 +14724,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(tenantRentalFormTokens.id, rentalFormToken.id));
 
+      // Check if this is part of a dual-form group and create contract if both are complete
+      let contractId = null;
+      if (rentalFormToken.rentalFormGroupId && rentalFormToken.externalUnitId) {
+        const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
+        if (unit) {
+          const contract = await createDualFormContractIfReady(
+            rentalFormToken.rentalFormGroupId,
+            unit.agencyId,
+            rentalFormToken.createdBy
+          );
+          if (contract) {
+            contractId = contract.id;
+            console.log('Rental contract created after owner form submission:', contractId);
+          }
+        }
+      }
+
       res.json({
         success: true,
         message: "Formato de propietario enviado exitosamente",
         formId: ownerForm.id,
+        contractId, // Include contract ID if created
       });
     } catch (error) {
       console.error("Error submitting owner rental form:", error);
