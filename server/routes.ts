@@ -14189,17 +14189,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Este enlace ya ha sido utilizado" });
       }
 
-      // Get property info
-      const property = await storage.getProperty(rentalFormToken.propertyId);
-      if (!property) {
-        return res.status(404).json({ message: "Propiedad no encontrada" });
-      }
+      // Handle both internal and external flows
+      const isExternalFlow = !!rentalFormToken.externalUnitId;
+      
+      if (isExternalFlow) {
+        // External system flow - get unit and condominium info
+        const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
+        if (!unit) {
+          return res.status(404).json({ message: "Unidad no encontrada" });
+        }
+        
+        let condominium = null;
+        if (unit.condominiumId) {
+          condominium = await storage.getExternalCondominium(unit.condominiumId);
+        }
+        
+        let client = null;
+        if (rentalFormToken.externalClientId) {
+          client = await storage.getExternalClient(rentalFormToken.externalClientId);
+        }
+        
+        res.json({
+          valid: true,
+          isExternal: true,
+          unit,
+          condominium,
+          client,
+          expiresAt: rentalFormToken.expiresAt,
+        });
+      } else {
+        // Internal system flow - get property info
+        const property = await storage.getProperty(rentalFormToken.propertyId);
+        if (!property) {
+          return res.status(404).json({ message: "Propiedad no encontrada" });
+        }
 
-      res.json({
-        valid: true,
-        property,
-        expiresAt: rentalFormToken.expiresAt,
-      });
+        res.json({
+          valid: true,
+          isExternal: false,
+          property,
+          expiresAt: rentalFormToken.expiresAt,
+        });
+      }
     } catch (error) {
       console.error("Error validating rental form token:", error);
       res.status(500).json({ message: "Error al validar token" });
@@ -24177,7 +24208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         externalUnitId: currentToken.externalUnitId,
         externalClientId: currentToken.externalClientId,
         leadId: currentToken.leadId,
-        createdBy: req.user.id,
+        createdBy: req.user.claims.sub,
         expiresAt,
         isUsed: false,
       }).returning();
