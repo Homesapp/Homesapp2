@@ -113,52 +113,66 @@ export default function ExternalClients() {
     setViewMode(isMobile ? "cards" : "table");
   }, [isMobile]);
 
-  const { data: clients = [], isLoading } = useQuery<ExternalClient[]>({
-    queryKey: ["/api/external-clients"],
+  const { data: clientsResponse, isLoading } = useQuery<{ data: ExternalClient[]; total: number; limit: number; offset: number; hasMore: boolean }>({
+    queryKey: ["/api/external-clients", statusFilter, verifiedFilter, currentPage, itemsPerPage],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (verifiedFilter !== "all") params.append("isVerified", verifiedFilter === "verified" ? "true" : "false");
+      params.append("limit", itemsPerPage.toString());
+      params.append("offset", ((currentPage - 1) * itemsPerPage).toString());
+      
+      const response = await fetch(`/api/external-clients?${params.toString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - clients change occasionally
+    cacheTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    keepPreviousData: true, // Smooth pagination
   });
 
-  const filteredAndSortedClients = clients
-    .filter((client) => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = 
-        client.firstName.toLowerCase().includes(searchLower) ||
-        client.lastName.toLowerCase().includes(searchLower) ||
-        client.email?.toLowerCase().includes(searchLower) ||
-        client.phone?.toLowerCase().includes(searchLower);
-      
-      const matchesStatus = statusFilter === "all" || client.status === statusFilter;
-      const matchesVerified = 
-        verifiedFilter === "all" || 
-        (verifiedFilter === "verified" && client.isVerified) ||
-        (verifiedFilter === "unverified" && !client.isVerified);
-      
-      return matchesSearch && matchesStatus && matchesVerified;
-    })
-    .sort((a, b) => {
-      let compareValue = 0;
-      
-      switch (sortField) {
-        case "name":
-          compareValue = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
-          break;
-        case "email":
-          compareValue = (a.email || "").localeCompare(b.email || "");
-          break;
-        case "phone":
-          compareValue = (a.phone || "").localeCompare(b.phone || "");
-          break;
-        case "status":
-          compareValue = a.status.localeCompare(b.status);
-          break;
-        case "createdAt":
-          compareValue = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-      }
-      
-      return sortOrder === "asc" ? compareValue : -compareValue;
-    });
+  const clients = clientsResponse?.data || [];
+  const totalClients = clientsResponse?.total || 0;
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedClients.length / itemsPerPage));
+  // Client-side search filtering (backend handles status/verified filters + pagination)
+  const filteredClients = clients.filter((client) => {
+    if (!searchTerm.trim()) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      client.firstName.toLowerCase().includes(searchLower) ||
+      client.lastName.toLowerCase().includes(searchLower) ||
+      client.email?.toLowerCase().includes(searchLower) ||
+      client.phone?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Client-side sorting
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    let compareValue = 0;
+    
+    switch (sortField) {
+      case "name":
+        compareValue = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+        break;
+      case "email":
+        compareValue = (a.email || "").localeCompare(b.email || "");
+        break;
+      case "phone":
+        compareValue = (a.phone || "").localeCompare(b.phone || "");
+        break;
+      case "status":
+        compareValue = a.status.localeCompare(b.status);
+        break;
+      case "createdAt":
+        compareValue = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+    }
+    
+    return sortOrder === "asc" ? compareValue : -compareValue;
+  });
+
+  // Total pages based on server total (accounts for all filters)
+  const totalPages = Math.max(1, Math.ceil(totalClients / itemsPerPage));
 
   useEffect(() => {
     const clampedPage = Math.min(currentPage, totalPages);
@@ -167,10 +181,8 @@ export default function ExternalClients() {
     }
   }, [totalPages, currentPage]);
 
-  const paginatedClients = filteredAndSortedClients.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Use sorted clients directly (pagination is handled by backend)
+  const paginatedClients = sortedClients;
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(insertExternalClientSchema),

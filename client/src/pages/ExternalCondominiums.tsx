@@ -124,18 +124,22 @@ export default function ExternalCondominiums() {
   // Static/semi-static data: condominiums list
   const { data: condominiums, isLoading: condosLoading, isError: condosError, error: condosErrorMsg } = useQuery<ExternalCondominium[]>({
     queryKey: ['/api/external-condominiums'],
-    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
+    staleTime: 30 * 60 * 1000, // 30 minutes (rarely changes)
+    cacheTime: 60 * 60 * 1000, // Keep in cache for 1 hour
   });
 
   // Static/semi-static data: units list for dropdowns
   const { data: units, isLoading: unitsLoading } = useQuery<ExternalUnit[]>({
     queryKey: ['/api/external-units'],
-    staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
+    staleTime: 30 * 60 * 1000, // 30 minutes (rarely changes)
+    cacheTime: 60 * 60 * 1000, // Keep in cache for 1 hour
   });
 
   // Frequently changing data: rental contracts
   const contractsQuery = useQuery<ExternalRentalContract[]>({
     queryKey: ['/api/external-rental-contracts'],
+    staleTime: 2 * 60 * 1000, // 2 minutes - contracts change occasionally
+    cacheTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
   });
   const { data: rawContracts, isLoading: contractsLoading, isError: contractsError, refetch: refetchContracts } = contractsQuery;
 

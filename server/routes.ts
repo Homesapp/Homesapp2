@@ -24060,7 +24060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // External Clients Routes
   // ==============================
 
-  // GET /api/external-clients - Get all clients for agency
+  // GET /api/external-clients - Get all clients for agency (with pagination)
   app.get("/api/external-clients", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
@@ -24068,13 +24068,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No agency access" });
       }
       
-      const { status, isVerified } = req.query;
-      const clients = await storage.getExternalClientsByAgency(agencyId, {
+      const { status, isVerified, limit = '50', offset = '0' } = req.query;
+      const limitNum = parseInt(limit as string, 10);
+      const offsetNum = parseInt(offset as string, 10);
+      
+      const filters = {
         status: status as string | undefined,
         isVerified: isVerified === 'true' ? true : isVerified === 'false' ? false : undefined,
-      });
+        limit: limitNum,
+        offset: offsetNum,
+      };
       
-      res.json(clients);
+      const [clients, total] = await Promise.all([
+        storage.getExternalClientsByAgency(agencyId, filters),
+        storage.getExternalClientsCountByAgency(agencyId, {
+          status: filters.status,
+          isVerified: filters.isVerified,
+        }),
+      ]);
+      
+      res.json({
+        data: clients,
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore: offsetNum + clients.length < total,
+      });
     } catch (error: any) {
       console.error("Error fetching external clients:", error);
       handleGenericError(res, error);

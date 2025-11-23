@@ -94,3 +94,127 @@ WHERE cancelled_at IS NOT NULL;
 -- - Contract listings: 60-80% faster (especially with agency + status filters)
 -- - Form completion checks: 70-90% faster (bool_or subquery optimization)
 -- - Contract detail queries: 40-50% faster
+
+-- ============================================
+-- EXTERNAL CLIENTS INDEXES
+-- ============================================
+-- Added: 2025-11-23 (Phase 1 Optimization)
+-- Purpose: Optimize client listings and filtering
+
+-- Composite index for client listings (agency + status + sorting)
+CREATE INDEX IF NOT EXISTS idx_external_clients_agency_status_created 
+ON external_clients(agency_id, status, created_at DESC);
+
+-- Index for verification filtering
+CREATE INDEX IF NOT EXISTS idx_external_clients_agency_verified 
+ON external_clients(agency_id, is_verified, created_at DESC);
+
+-- Index on agency_id for basic filtering
+CREATE INDEX IF NOT EXISTS idx_external_clients_agency 
+ON external_clients(agency_id);
+
+-- Expected improvements:
+-- - Client listings: 60-80% faster
+-- - Filtered queries: 70-90% faster
+
+-- ============================================
+-- EXTERNAL UNITS INDEXES
+-- ============================================
+-- Added: 2025-11-23 (Phase 1 Optimization)
+-- Purpose: Optimize unit listings and property management
+
+-- Composite index for unit listings (agency + active + sorting)
+CREATE INDEX IF NOT EXISTS idx_external_units_agency_active 
+ON external_units(agency_id, is_active, created_at DESC);
+
+-- Foreign key index for condominium joins
+CREATE INDEX IF NOT EXISTS idx_external_units_condominium 
+ON external_units(condominium_id);
+
+-- Index on agency_id for basic filtering
+CREATE INDEX IF NOT EXISTS idx_external_units_agency 
+ON external_units(agency_id);
+
+-- Expected improvements:
+-- - Unit listings: 60-80% faster
+-- - Condominium joins: 50-70% faster
+-- - Active units queries: 70-90% faster
+
+-- ============================================
+-- EXTERNAL CONDOMINIUMS INDEXES
+-- ============================================
+-- Added: 2025-11-23 (Phase 1 Optimization)
+-- Purpose: Optimize condominium listings
+
+-- Index for agency filtering
+CREATE INDEX IF NOT EXISTS idx_external_condominiums_agency 
+ON external_condominiums(agency_id, created_at DESC);
+
+-- Index for active condominiums
+CREATE INDEX IF NOT EXISTS idx_external_condominiums_active 
+ON external_condominiums(agency_id, active);
+
+-- Expected improvements:
+-- - Condominium listings: 60-70% faster
+
+-- ============================================
+-- EXTERNAL FINANCIAL TRANSACTIONS INDEXES
+-- ============================================
+-- Added: 2025-11-23 (Phase 1 Optimization)
+-- Purpose: Optimize accounting and financial queries
+
+-- Composite index for transaction listings (agency + direction + status + sorting)
+CREATE INDEX IF NOT EXISTS idx_external_transactions_agency_direction 
+ON external_financial_transactions(agency_id, direction, status, created_at DESC);
+
+-- Index for status filtering
+CREATE INDEX IF NOT EXISTS idx_external_transactions_status 
+ON external_financial_transactions(agency_id, status, created_at DESC);
+
+-- Index for unit-specific transactions
+CREATE INDEX IF NOT EXISTS idx_external_transactions_unit 
+ON external_financial_transactions(unit_id, created_at DESC);
+
+-- Index for due date queries
+CREATE INDEX IF NOT EXISTS idx_external_transactions_due_date 
+ON external_financial_transactions(agency_id, due_date DESC);
+
+-- Expected improvements:
+-- - Transaction listings: 70-90% faster
+-- - Status queries: 60-80% faster
+-- - Unit financial reports: 50-70% faster
+
+-- ============================================
+-- EXTERNAL UNIT OWNERS INDEXES
+-- ============================================
+-- Note: external_unit_owners already has indexes defined in schema:
+-- - idx_external_unit_owners_unit on unit_id
+-- - idx_external_unit_owners_active on is_active
+-- No additional indexes needed for this table.
+
+-- ============================================
+-- OFFER TOKENS INDEXES
+-- ============================================
+-- Added: 2025-11-23 (Phase 1 Optimization)
+-- Purpose: Optimize offer link management
+
+-- Index for property-specific offers with creation date
+CREATE INDEX IF NOT EXISTS idx_offer_tokens_property 
+ON offer_tokens(property_id, created_at DESC) WHERE property_id IS NOT NULL;
+
+-- Index for external unit offers with creation date
+CREATE INDEX IF NOT EXISTS idx_offer_tokens_external_unit 
+ON offer_tokens(external_unit_id, created_at DESC) WHERE external_unit_id IS NOT NULL;
+
+-- Index for creator filtering
+CREATE INDEX IF NOT EXISTS idx_offer_tokens_created_by 
+ON offer_tokens(created_by, created_at DESC);
+
+-- Index for active/expired tokens (only non-used)
+CREATE INDEX IF NOT EXISTS idx_offer_tokens_expires 
+ON offer_tokens(expires_at DESC) WHERE is_used = false;
+
+-- Expected improvements:
+-- - Offer link listings: 60-80% faster
+-- - Expiration checks: 70-90% faster
+-- - Creator-specific queries: 50-70% faster

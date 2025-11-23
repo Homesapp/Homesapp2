@@ -125,6 +125,8 @@ export default function ExternalAccounting() {
       if (!response.ok) throw new Error('Failed to fetch transactions');
       return response.json();
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes - transactions change frequently
+    cacheTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
   });
 
   // Static/semi-static data: condominiums for dropdowns

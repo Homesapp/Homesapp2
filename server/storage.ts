@@ -1264,7 +1264,8 @@ export interface IStorage {
 
   // External Management System - Client operations
   getExternalClient(id: string): Promise<ExternalClient | undefined>;
-  getExternalClientsByAgency(agencyId: string, filters?: { status?: string; isVerified?: boolean }): Promise<ExternalClient[]>;
+  getExternalClientsByAgency(agencyId: string, filters?: { status?: string; isVerified?: boolean; limit?: number; offset?: number }): Promise<ExternalClient[]>;
+  getExternalClientsCountByAgency(agencyId: string, filters?: { status?: string; isVerified?: boolean }): Promise<number>;
   createExternalClient(client: InsertExternalClient): Promise<ExternalClient>;
   updateExternalClient(id: string, updates: Partial<InsertExternalClient>): Promise<ExternalClient>;
   deleteExternalClient(id: string): Promise<void>;
@@ -8640,7 +8641,10 @@ export class DatabaseStorage implements IStorage {
     return client;
   }
 
-  async getExternalClientsByAgency(agencyId: string, filters?: { status?: string; isVerified?: boolean }): Promise<ExternalClient[]> {
+  async getExternalClientsByAgency(
+    agencyId: string, 
+    filters?: { status?: string; isVerified?: boolean; limit?: number; offset?: number }
+  ): Promise<ExternalClient[]> {
     const conditions = [eq(externalClients.agencyId, agencyId)];
     
     if (filters?.status) {
@@ -8650,10 +8654,39 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalClients.isVerified, filters.isVerified));
     }
     
-    return await db.select()
+    let query = db.select()
       .from(externalClients)
       .where(and(...conditions))
       .orderBy(desc(externalClients.createdAt));
+    
+    if (filters?.limit !== undefined) {
+      query = query.limit(filters.limit);
+    }
+    if (filters?.offset !== undefined) {
+      query = query.offset(filters.offset);
+    }
+    
+    return await query;
+  }
+  
+  async getExternalClientsCountByAgency(
+    agencyId: string,
+    filters?: { status?: string; isVerified?: boolean }
+  ): Promise<number> {
+    const conditions = [eq(externalClients.agencyId, agencyId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(externalClients.status, filters.status));
+    }
+    if (filters?.isVerified !== undefined) {
+      conditions.push(eq(externalClients.isVerified, filters.isVerified));
+    }
+    
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(externalClients)
+      .where(and(...conditions));
+    
+    return result[0]?.count || 0;
   }
 
   async createExternalClient(client: InsertExternalClient): Promise<ExternalClient> {
