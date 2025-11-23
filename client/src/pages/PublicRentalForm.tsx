@@ -597,38 +597,51 @@ export default function PublicRentalForm() {
   const property = tokenData?.property;
   const progress = (currentStep / totalSteps) * 100;
   
-  // Get agency branding information
-  const agencyLogo = tokenData?.externalAgency?.agencyLogoUrl;
-  const agencyName = tokenData?.externalAgency?.name;
+  // Get agency branding from creator's profile picture
+  const agencyLogo = tokenData?.creatorUser?.profilePictureUrl;
+  const agencyName = tokenData?.creatorUser?.firstName && tokenData?.creatorUser?.lastName
+    ? `${tokenData.creatorUser.firstName} ${tokenData.creatorUser.lastName}`
+    : tokenData?.externalAgency?.name;
   const isExternalAgency = !!agencyLogo;
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header with Agency/HomesApp Logo */}
-        {isExternalAgency && (
-          <div className="text-center mb-4">
-            <img 
-              src={agencyLogo} 
-              alt={`${agencyName} Logo`} 
-              className="h-20 mx-auto mb-2"
-              data-testid="img-agency-logo"
-            />
-            <p className="text-sm text-muted-foreground">{agencyName}</p>
+        {/* Header with logos and language toggle */}
+        <div className="relative mb-4">
+          <div className="absolute top-0 right-0 z-10">
+            <LanguageToggle />
           </div>
-        )}
-        
-        {!isExternalAgency && (
-          <div className="text-center mb-4">
-            <img 
-              src={logoPath} 
-              alt="HomesApp Logo" 
-              className="h-20 mx-auto mb-2"
-              data-testid="img-homesapp-logo"
-            />
-            <p className="text-sm text-muted-foreground">Tulum Rental Homes ™</p>
+          
+          {/* Logo container - HomesApp left, Agency right */}
+          <div className="flex items-center justify-between gap-4 pt-2">
+            {/* HomesApp Logo - Left */}
+            <div className="flex-shrink-0">
+              <img 
+                src={logoPath} 
+                alt="HomesApp Logo"
+                className="h-16 md:h-20"
+                data-testid="img-homesapp-logo"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Tulum Rental Homes ™</p>
+            </div>
+            
+            {/* Agency Logo - Right */}
+            {agencyLogo && (
+              <div className="flex-shrink-0 text-right">
+                <img 
+                  src={agencyLogo} 
+                  alt={`${agencyName} Logo`}
+                  className="h-16 md:h-20 w-16 md:w-20 rounded-full object-cover border-2 border-primary/20 ml-auto"
+                  data-testid="img-agency-logo"
+                />
+                {agencyName && (
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">{agencyName}</p>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
         
         {/* Header with Property Info */}
         <Card>
@@ -643,7 +656,6 @@ export default function PublicRentalForm() {
                   {property && getPropertyTitle(property)}
                 </CardDescription>
               </div>
-              <LanguageToggle />
             </div>
           </CardHeader>
           {property && (

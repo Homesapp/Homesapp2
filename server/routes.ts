@@ -13755,6 +13755,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           externalAgency = await storage.getExternalAgency(externalUnit.agencyId);
         }
         
+        // Get creator user information (for profile picture)
+        let creatorUser = null;
+        if (offerToken.createdBy) {
+          const [user] = await db.select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profilePictureUrl: users.profilePictureUrl,
+          })
+          .from(users)
+          .where(eq(users.id, offerToken.createdBy))
+          .limit(1);
+          creatorUser = user || null;
+        }
+        
         // Map externalUnit to property format for frontend compatibility
         if (externalUnit) {
           const condo = externalUnit.condominiumId ? 
@@ -13794,6 +13809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         externalUnit,
         externalClient,
         externalAgency,
+        creatorUser,
         expiresAt: offerToken.expiresAt,
       });
     } catch (error) {
@@ -14225,6 +14241,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           externalAgency = await storage.getExternalAgency(unit.agencyId);
         }
         
+        // Get creator user information (for profile picture)
+        let creatorUser = null;
+        if (rentalFormToken.createdBy) {
+          const [user] = await db.select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profilePictureUrl: users.profilePictureUrl,
+          })
+          .from(users)
+          .where(eq(users.id, rentalFormToken.createdBy))
+          .limit(1);
+          creatorUser = user || null;
+        }
+        
         res.json({
           valid: true,
           isExternal: true,
@@ -14232,6 +14263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           condominium,
           client,
           externalAgency,
+          creatorUser,
           expiresAt: rentalFormToken.expiresAt,
         });
       } else {

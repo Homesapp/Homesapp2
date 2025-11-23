@@ -391,8 +391,11 @@ export default function PublicOfferForm() {
 
   const property = validationData?.property;
   const lead = validationData?.lead;
-  const agencyLogo = validationData?.externalAgency?.agencyLogoUrl;
-  const agencyName = validationData?.externalAgency?.name;
+  // Use creator's profile picture as agency logo
+  const agencyLogo = validationData?.creatorUser?.profilePictureUrl;
+  const agencyName = validationData?.creatorUser?.firstName && validationData?.creatorUser?.lastName
+    ? `${validationData.creatorUser.firstName} ${validationData.creatorUser.lastName}`
+    : validationData?.externalAgency?.name;
 
   const usageType = form.watch("usageType");
   const contractDuration = form.watch("contractDuration");
@@ -695,17 +698,40 @@ export default function PublicOfferForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="relative text-center mb-8">
-          <div className="absolute top-0 right-0">
+        {/* Header with logos and language toggle */}
+        <div className="relative mb-8">
+          <div className="absolute top-0 right-0 z-10">
             <LanguageToggle />
           </div>
-          <img 
-            src={agencyLogo || logoPath} 
-            alt={agencyName ? `${agencyName} Logo` : "HomesApp Logo"}
-            className="h-20 mx-auto mb-4"
-            data-testid="img-logo"
-          />
-          {!agencyLogo && <p className="text-sm text-slate-600 dark:text-slate-400">{text.tradeMark}</p>}
+          
+          {/* Logo container - HomesApp left, Agency right */}
+          <div className="flex items-center justify-between gap-4 pt-2">
+            {/* HomesApp Logo - Left */}
+            <div className="flex-shrink-0">
+              <img 
+                src={logoPath} 
+                alt="HomesApp Logo"
+                className="h-16 md:h-20"
+                data-testid="img-homesapp-logo"
+              />
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{text.tradeMark}</p>
+            </div>
+            
+            {/* Agency Logo - Right */}
+            {agencyLogo && (
+              <div className="flex-shrink-0 text-right">
+                <img 
+                  src={agencyLogo} 
+                  alt={`${agencyName} Logo`}
+                  className="h-16 md:h-20 w-16 md:w-20 rounded-full object-cover border-2 border-primary/20 ml-auto"
+                  data-testid="img-agency-logo"
+                />
+                {agencyName && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-medium">{agencyName}</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <Card className="mb-6">
