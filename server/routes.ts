@@ -24057,6 +24057,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newTokenValue = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+      
+      // Get user ID from authentication (handles both Replit Auth and local sessions)
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
 
       const [newToken] = await db.insert(offerTokens).values({
         token: newTokenValue,
@@ -24064,7 +24070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         externalUnitId: currentToken.externalUnitId,
         externalClientId: currentToken.externalClientId,
         leadId: null,
-        createdBy: req.user.id,
+        createdBy: userId,
         expiresAt,
         isUsed: false,
       }).returning();
@@ -24255,6 +24261,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newTokenValue = crypto.randomBytes(8).toString('hex');
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
+      
+      // Get user ID from authentication (handles both Replit Auth and local sessions)
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
 
       const [newToken] = await db.insert(tenantRentalFormTokens).values({
         token: newTokenValue,
@@ -24262,7 +24274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         externalUnitId: currentToken.externalUnitId,
         externalClientId: currentToken.externalClientId,
         leadId: currentToken.leadId,
-        createdBy: req.user.claims.sub,
+        createdBy: userId,
         expiresAt,
         isUsed: false,
       }).returning();
