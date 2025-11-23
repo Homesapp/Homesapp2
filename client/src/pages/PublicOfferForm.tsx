@@ -411,6 +411,9 @@ export default function PublicOfferForm() {
 
   const property = validationData?.property;
   const lead = validationData?.lead;
+  const isCompleted = validationData?.isCompleted;
+  const submittedOffer = validationData?.submittedOffer;
+  
   // Use creator's profile picture as agency logo
   const agencyLogo = validationData?.creatorUser?.profilePictureUrl;
   const agencyName = validationData?.creatorUser?.firstName && validationData?.creatorUser?.lastName
@@ -666,6 +669,142 @@ export default function PublicOfferForm() {
             </p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Show completed offer view if already submitted
+  if (isCompleted) {
+    // Edge case: token is used but has no data
+    if (!submittedOffer) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center space-y-4">
+                <AlertCircle className="h-12 w-12 text-destructive" />
+                <h2 className="text-xl font-semibold text-center">{text.invalidLinkTitle}</h2>
+                <p className="text-muted-foreground text-center">
+                  {language === "es"
+                    ? "Este enlace fue utilizado pero no contiene datos. Por favor contacta a tu agente."
+                    : "This link was used but contains no data. Please contact your agent."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
+    // Show read-only view of submitted offer
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header with logos */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-shrink-0">
+                <img 
+                  src={logoPath} 
+                  alt="HomesApp Logo"
+                  className="h-16 md:h-20"
+                  data-testid="img-homesapp-logo"
+                />
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{text.tradeMark}</p>
+              </div>
+              {agencyLogo && (
+                <div className="flex-shrink-0 text-right">
+                  <img 
+                    src={agencyLogo} 
+                    alt={`${agencyName} Logo`}
+                    className="h-16 md:h-20 w-16 md:w-20 rounded-full object-cover border-2 border-primary/20 ml-auto"
+                    data-testid="img-agency-logo"
+                  />
+                  {agencyName && (
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-medium">{agencyName}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-6 w-6 text-green-600" data-testid="icon-success" />
+                <div>
+                  <CardTitle className="text-2xl">{text.offerSubmittedTitle}</CardTitle>
+                  <CardDescription>{property?.title || text.propertyPhoto}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <p className="text-sm text-green-900 dark:text-green-100">
+                  {language === "es" 
+                    ? "Esta oferta ya fue enviada. A continuación puedes ver los detalles que enviaste."
+                    : "This offer has already been submitted. Below you can see the details you submitted."}
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">{text.personalInfoSection}</h3>
+                  <div><strong>{text.fullName}:</strong> {submittedOffer.nombreCompleto || "N/A"}</div>
+                  <div><strong>{text.email}:</strong> {submittedOffer.clientEmail || "N/A"}</div>
+                  <div><strong>{text.phone}:</strong> {submittedOffer.clientPhone || "N/A"}</div>
+                  <div><strong>{text.nationality}:</strong> {submittedOffer.nacionalidad || "N/A"}</div>
+                  <div><strong>{text.occupation}:</strong> {submittedOffer.trabajoPosicion || "N/A"}</div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">{text.offerDetailsSection}</h3>
+                  <div><strong>{text.monthlyRentOffered}:</strong> ${submittedOffer.rentaOfertada?.toLocaleString() || "N/A"}</div>
+                  <div><strong>{text.contractDuration}:</strong> {submittedOffer.duracionContrato || "N/A"}</div>
+                  <div><strong>{text.moveInDate}:</strong> {submittedOffer.fechaIngreso ? new Date(submittedOffer.fechaIngreso).toLocaleDateString() : "N/A"}</div>
+                  <div><strong>{text.numberOfOccupants}:</strong> {submittedOffer.numeroInquilinos || "N/A"}</div>
+                  <div><strong>{text.hasPets}:</strong> {submittedOffer.tieneMascotas === "si" ? text.petsYes : text.petsNo}</div>
+                  {submittedOffer.tieneMascotas === "si" && submittedOffer.petPhotos && submittedOffer.petPhotos.length > 0 && (
+                    <div>
+                      <strong>{text.petPhotos}:</strong>
+                      <div className="flex gap-2 mt-2">
+                        {submittedOffer.petPhotos.map((url: string, idx: number) => (
+                          <img key={idx} src={url} alt={`Pet ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border-2 border-slate-200 dark:border-slate-700" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {submittedOffer.pedidoEspecial && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg border-b pb-2">{text.additionalComments}</h3>
+                  <p className="text-muted-foreground">{submittedOffer.pedidoEspecial}</p>
+                </div>
+              )}
+
+              {submittedOffer.signature && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg border-b pb-2">{text.digitalSignatureSection}</h3>
+                  <img src={submittedOffer.signature} alt="Signature" className="border border-slate-300 dark:border-slate-700 rounded-lg max-w-xs" />
+                </div>
+              )}
+
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  <strong>{text.nextStepsTitle}</strong>
+                  <br />
+                  {text.nextStep1}
+                  <br />
+                  {text.nextStep2}
+                  <br />
+                  {text.nextStep3}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

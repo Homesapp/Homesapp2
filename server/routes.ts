@@ -13731,11 +13731,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if already used
-      if (offerToken.isUsed) {
-        return res.status(410).json({ 
-          valid: false, 
-          message: "Este enlace ya fue utilizado" 
+      // Check if already used - but allow viewing completed offers
+      const isCompleted = offerToken.isUsed;
+      
+      // If token is used but has no offer data, something went wrong
+      if (isCompleted && !offerToken.offerData) {
+        return res.status(409).json({
+          valid: false,
+          message: "Este enlace fue utilizado pero no contiene datos de la oferta"
         });
       }
 
@@ -13806,12 +13809,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         valid: true,
+        isCompleted,
         property,
         lead,
         externalUnit,
         externalClient,
         externalAgency,
         creatorUser,
+        submittedOffer: isCompleted ? offerToken.offerData : null,
         expiresAt: offerToken.expiresAt,
       });
     } catch (error) {
