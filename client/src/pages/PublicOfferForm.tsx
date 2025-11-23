@@ -718,14 +718,10 @@ export default function PublicOfferForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header with logos and language toggle */}
-        <div className="relative mb-8">
-          <div className="absolute top-0 right-0 z-10">
-            <LanguageToggle />
-          </div>
-          
+        {/* Header with logos */}
+        <div className="mb-8">
           {/* Logo container - HomesApp left, Agency right */}
-          <div className="flex items-center justify-between gap-4 pt-2">
+          <div className="flex items-center justify-between gap-4">
             {/* HomesApp Logo - Left */}
             <div className="flex-shrink-0">
               <img 
@@ -756,9 +752,12 @@ export default function PublicOfferForm() {
 
         <Card className="mb-6">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <Home className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">{text.rentalOfferTitle}</CardTitle>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Home className="h-6 w-6 text-primary" />
+                <CardTitle className="text-2xl">{text.rentalOfferTitle}</CardTitle>
+              </div>
+              <LanguageToggle />
             </div>
             <CardDescription className="text-lg">{property?.title || text.propertyPhoto}</CardDescription>
           </CardHeader>

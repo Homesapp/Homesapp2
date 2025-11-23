@@ -607,14 +607,10 @@ export default function PublicRentalForm() {
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header with logos and language toggle */}
-        <div className="relative mb-4">
-          <div className="absolute top-0 right-0 z-10">
-            <LanguageToggle />
-          </div>
-          
+        {/* Header with logos */}
+        <div className="mb-4">
           {/* Logo container - HomesApp left, Agency right */}
-          <div className="flex items-center justify-between gap-4 pt-2">
+          <div className="flex items-center justify-between gap-4">
             {/* HomesApp Logo - Left */}
             <div className="flex-shrink-0">
               <img 
@@ -646,16 +642,19 @@ export default function PublicRentalForm() {
         {/* Header with Property Info */}
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-primary" />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-2xl">{text.title}</CardTitle>
+                  <CardDescription>
+                    {property && getPropertyTitle(property)}
+                  </CardDescription>
+                </div>
               </div>
-              <div className="flex-1">
-                <CardTitle className="text-2xl">{text.title}</CardTitle>
-                <CardDescription>
-                  {property && getPropertyTitle(property)}
-                </CardDescription>
-              </div>
+              <LanguageToggle />
             </div>
           </CardHeader>
           {property && (
