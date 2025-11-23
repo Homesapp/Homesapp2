@@ -306,6 +306,17 @@ export default function PublicOwnerForm() {
     },
   });
 
+  // Update form values when prefillData is loaded
+  useEffect(() => {
+    if (tokenData?.prefillData) {
+      const prefill = tokenData.prefillData;
+      if (prefill.fullName) form.setValue('fullName', prefill.fullName);
+      if (prefill.email) form.setValue('email', prefill.email);
+      if (prefill.phoneNumber) form.setValue('phoneNumber', prefill.phoneNumber);
+      if (prefill.whatsappNumber) form.setValue('whatsappNumber', prefill.whatsappNumber);
+    }
+  }, [tokenData?.prefillData, form]);
+
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", `/api/owner-rental-form-tokens/${token}/submit`, data);
