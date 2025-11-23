@@ -14293,6 +14293,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
           creatorUser = user || null;
         }
         
+        // Pre-fill data for tenant forms: Get latest completed offer from this client
+        let prefillData = null;
+        if (recipientType === 'tenant' && rentalFormToken.externalClientId) {
+          const [latestOffer] = await db
+            .select()
+            .from(offerTokens)
+            .where(
+              and(
+                eq(offerTokens.externalClientId, rentalFormToken.externalClientId),
+                eq(offerTokens.isUsed, true)
+              )
+            )
+            .orderBy(desc(offerTokens.updatedAt))
+            .limit(1);
+          
+          if (latestOffer && latestOffer.offerData) {
+            const offerData = latestOffer.offerData;
+            prefillData = {
+              fullName: offerData.nombreCompleto || '',
+              nationality: offerData.nacionalidad || '',
+              age: offerData.edad || undefined,
+              jobPosition: offerData.trabajoPosicion || '',
+              companyName: offerData.companiaTrabaja || '',
+              monthlyIncome: offerData.ingresoMensualPromedio || '',
+              numberOfTenants: offerData.numeroInquilinos || undefined,
+              hasPets: offerData.tieneMascotas === 'Sí' ? 'yes' : offerData.tieneMascotas === 'No' ? 'no' : undefined,
+              email: offerData.clientEmail || client?.email || '',
+              whatsapp: offerData.clientPhone || client?.phone || '',
+              checkInDate: offerData.fechaIngreso || '',
+              timeInTulum: offerData.tiempoResidenciaTulum || '',
+            };
+          }
+        }
+        
+        // Pre-fill data for owner forms: Get owner info from external_unit_owners
+        if (recipientType === 'owner' && rentalFormToken.externalUnitOwnerId) {
+          const [owner] = await db
+            .select()
+            .from(externalUnitOwners)
+            .where(eq(externalUnitOwners.id, rentalFormToken.externalUnitOwnerId))
+            .limit(1);
+          
+          if (owner) {
+            prefillData = {
+              fullName: owner.ownerName || '',
+              email: owner.ownerEmail || '',
+              phoneNumber: owner.ownerPhone || '',
+              whatsappNumber: owner.ownerPhone || '',
+            };
+          }
+        }
+        
         res.json({
           valid: true,
           isExternal: true,
@@ -14302,6 +14354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           client,
           externalAgency,
           creatorUser,
+          prefillData,
           expiresAt: rentalFormToken.expiresAt,
         });
       } else {
