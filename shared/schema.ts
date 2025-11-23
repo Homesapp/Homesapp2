@@ -4649,6 +4649,8 @@ export const tenantRentalFormTokens = pgTable("tenant_rental_form_tokens", {
   expiresAt: timestamp("expires_at").notNull(),
   isUsed: boolean("is_used").notNull().default(false),
   usedAt: timestamp("used_at"),
+  tenantData: jsonb("tenant_data"), // Datos del formulario de tenant (cuando recipientType='tenant')
+  ownerData: jsonb("owner_data"), // Datos del formulario de owner (cuando recipientType='owner')
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

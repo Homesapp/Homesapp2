@@ -1,13 +1,11 @@
-import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import RentalWizard from "./RentalWizard";
 
 interface ExternalContractProcessesProps {
   searchTerm: string;
@@ -17,7 +15,6 @@ interface ExternalContractProcessesProps {
 
 export default function ExternalContractProcesses({ searchTerm, statusFilter, viewMode }: ExternalContractProcessesProps) {
   const { language } = useLanguage();
-  const [wizardOpen, setWizardOpen] = useState(false);
 
   // This would query contract processes in the future
   const contractProcesses: any[] = [];
@@ -43,21 +40,15 @@ export default function ExternalContractProcesses({ searchTerm, statusFilter, vi
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-bold">
-            {language === "es" ? "Procesos de Contrato" : "Contract Processes"}
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            {language === "es"
-              ? "Gestiona el proceso completo desde la oferta hasta la activación de la renta"
-              : "Manage the complete process from offer to rental activation"}
-          </p>
-        </div>
-        <Button onClick={() => setWizardOpen(true)} data-testid="button-create-contract-process">
-          <Plus className="h-4 w-4 mr-2" />
-          {language === "es" ? "Nuevo Contrato" : "New Contract"}
-        </Button>
+      <div className="mb-4">
+        <h2 className="text-2xl font-bold">
+          {language === "es" ? "Procesos de Contrato" : "Contract Processes"}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {language === "es"
+            ? "Gestiona el proceso completo desde la oferta hasta la activación de la renta"
+            : "Manage the complete process from offer to rental activation"}
+        </p>
       </div>
 
       {filteredProcesses.length === 0 ? (
@@ -68,13 +59,9 @@ export default function ExternalContractProcesses({ searchTerm, statusFilter, vi
           </h3>
           <p className="text-muted-foreground mb-4">
             {language === "es"
-              ? "Comienza un nuevo proceso para crear un contrato de renta"
-              : "Start a new process to create a rental contract"}
+              ? "Los procesos de contrato aparecerán aquí cuando se completen ofertas y formularios de renta"
+              : "Contract processes will appear here when offers and rental forms are completed"}
           </p>
-          <Button onClick={() => setWizardOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {language === "es" ? "Crear Primer Contrato" : "Create First Contract"}
-          </Button>
         </div>
       ) : viewMode === "cards" ? (
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
@@ -157,8 +144,6 @@ export default function ExternalContractProcesses({ searchTerm, statusFilter, vi
           </Table>
         </div>
       )}
-
-      <RentalWizard open={wizardOpen} onOpenChange={setWizardOpen} />
     </>
   );
 }
