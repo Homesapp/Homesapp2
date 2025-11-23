@@ -138,6 +138,8 @@ import {
   offerTokens,
   tenantRentalFormTokens,
   tenantRentalForms,
+  ownerRentalFormData,
+  insertOwnerRentalFormDataSchema,
   condominiums,
   condominiumUnits,
   colonies,
@@ -14085,7 +14087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rental Form Token routes - Enlaces privados para formato de renta de inquilino (soporta sistema interno y externo)
   app.post("/api/rental-form-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
     try {
-      const { propertyId, externalUnitId, externalClientId, leadId } = req.body;
+      const { propertyId, externalUnitId, externalClientId, leadId, recipientType = 'tenant' } = req.body;
       const userId = req.user.claims.sub;
 
       let property = null;
@@ -14146,6 +14148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .insert(tenantRentalFormTokens)
         .values({
           token,
+          recipientType,
           propertyId: propertyId || null,
           externalUnitId: externalUnitId || null,
           externalClientId: externalClientId || null,
@@ -14218,6 +14221,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle both internal and external flows
       const isExternalFlow = !!rentalFormToken.externalUnitId;
       
+      // Include recipient type in validation response
+      const recipientType = rentalFormToken.recipientType || 'tenant';
+      
       if (isExternalFlow) {
         // External system flow - get unit and condominium info
         const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
@@ -14259,6 +14265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           valid: true,
           isExternal: true,
+          recipientType,
           unit,
           condominium,
           client,
@@ -14276,6 +14283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           valid: true,
           isExternal: false,
+          recipientType,
           property,
           expiresAt: rentalFormToken.expiresAt,
         });
@@ -14391,6 +14399,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error submitting rental form:", error);
       res.status(500).json({ message: "Error al enviar formato de renta" });
+    }
+  });
+
+  // Submit owner rental form via token (public route)
+  app.post("/api/owner-rental-form-tokens/:token/submit", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const formData = req.body;
+
+      const [rentalFormToken] = await db
+        .select()
+        .from(tenantRentalFormTokens)
+        .where(eq(tenantRentalFormTokens.token, token))
+        .limit(1);
+
+      if (!rentalFormToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+
+      // Verify this is an owner token
+      if (rentalFormToken.recipientType !== 'owner') {
+        return res.status(400).json({ message: "Este token no es para formulario de propietario" });
+      }
+
+      if (new Date() > new Date(rentalFormToken.expiresAt)) {
+        return res.status(400).json({ message: "Este enlace ha expirado" });
+      }
+
+      if (rentalFormToken.isUsed) {
+        return res.status(400).json({ message: "Este enlace ya ha sido utilizado" });
+      }
+
+      // Validate with Zod schema
+      const validationResult = insertOwnerRentalFormDataSchema.safeParse({
+        tokenId: rentalFormToken.id,
+        externalUnitId: rentalFormToken.externalUnitId || undefined,
+        rentalFormGroupId: rentalFormToken.rentalFormGroupId || undefined,
+        ...formData,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Datos del formulario inválidos",
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const sanitizedData = validationResult.data;
+
+      // Create owner rental form
+      const [ownerForm] = await db
+        .insert(ownerRentalFormData)
+        .values({
+          ...sanitizedData,
+          status: 'submitted',
+        })
+        .returning();
+
+      // Mark token as used
+      await db
+        .update(tenantRentalFormTokens)
+        .set({ 
+          isUsed: true,
+          usedAt: new Date(),
+        })
+        .where(eq(tenantRentalFormTokens.id, rentalFormToken.id));
+
+      res.json({
+        success: true,
+        message: "Formato de propietario enviado exitosamente",
+        formId: ownerForm.id,
+      });
+    } catch (error) {
+      console.error("Error submitting owner rental form:", error);
+      res.status(500).json({ message: "Error al enviar formato de propietario" });
     }
   });
 
