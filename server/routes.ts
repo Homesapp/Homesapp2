@@ -14,7 +14,7 @@ import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendOfferLinkEmail } from "./gmail";
 import { getPropertyTitle } from "./propertyHelpers";
 import { setupGoogleAuth } from "./googleAuth";
-import { generateOfferPDF } from "./pdfGenerator";
+import { generateOfferPDF, generateRentalFormPDF, generateOwnerFormPDF } from "./pdfGenerator";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
 import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter, propertySubmissionLimiter } from "./rateLimiters";
 import { encrypt, decrypt } from "./encryption";
@@ -24612,6 +24612,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching external rental form tokens:", error);
       handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/rental-forms/:id/pdf - Generate PDF for rental form
+  app.get("/api/external/rental-forms/:id/pdf", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      const { id } = req.params;
+
+      // Get rental form token
+      const [rentalFormToken] = await db
+        .select()
+        .from(tenantRentalFormTokens)
+        .where(eq(tenantRentalFormTokens.id, id))
+        .limit(1);
+
+      if (!rentalFormToken) {
+        return res.status(404).json({ message: "Formulario de renta no encontrado" });
+      }
+
+      // Verify token belongs to user's agency
+      if (rentalFormToken.externalUnitId) {
+        const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
+        if (!unit || unit.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      } else {
+        return res.status(400).json({ message: "Este token no es del sistema externo" });
+      }
+
+      if (!rentalFormToken.isUsed || !rentalFormToken.tenantData) {
+        return res.status(400).json({ message: "El formulario aún no ha sido completado" });
+      }
+
+      // Get unit info
+      const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
+      const condo = unit?.condominiumId ? await storage.getExternalCondominium(unit.condominiumId) : null;
+      const propertyTitle = `${condo?.name || ''} - Unidad ${unit.unitNumber}`;
+
+      // Create a property-like object for PDF generation
+      const propertyForPDF = {
+        id: unit.id,
+        title: propertyTitle,
+        address: condo?.address || '',
+        city: condo?.city || 'Tulum',
+        state: condo?.state || 'Quintana Roo',
+        country: condo?.country || 'México',
+      };
+
+      // Generate appropriate PDF based on recipient type
+      let pdfBuffer;
+      if (rentalFormToken.recipientType === 'tenant') {
+        pdfBuffer = await generateRentalFormPDF(rentalFormToken.tenantData, propertyForPDF);
+      } else {
+        // For owner forms, use owner-specific PDF generator if available
+        pdfBuffer = await generateOwnerFormPDF(rentalFormToken.tenantData, propertyForPDF);
+      }
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="formulario-${rentalFormToken.recipientType}-${rentalFormToken.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating rental form PDF:", error);
+      res.status(500).json({ message: "Error al generar PDF" });
+    }
+  });
+
+  // PATCH /api/external/rental-forms/:id - Update completed rental form data
+  app.patch("/api/external/rental-forms/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      const { id } = req.params;
+
+      // Get rental form token
+      const [rentalFormToken] = await db
+        .select()
+        .from(tenantRentalFormTokens)
+        .where(eq(tenantRentalFormTokens.id, id))
+        .limit(1);
+
+      if (!rentalFormToken) {
+        return res.status(404).json({ message: "Formulario de renta no encontrado" });
+      }
+
+      // Verify token belongs to user's agency
+      if (rentalFormToken.externalUnitId) {
+        const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
+        if (!unit || unit.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      } else {
+        return res.status(400).json({ message: "Este token no es del sistema externo" });
+      }
+
+      // Must be a completed form to edit
+      if (!rentalFormToken.isUsed) {
+        return res.status(400).json({ message: "Solo se pueden editar formularios completados" });
+      }
+
+      // Update tenant data
+      const [updated] = await db
+        .update(tenantRentalFormTokens)
+        .set({ 
+          tenantData: req.body.tenantData,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenantRentalFormTokens.id, id))
+        .returning();
+
+      await createAuditLog(
+        req,
+        "update",
+        "tenant_rental_form_token",
+        id,
+        `Updated completed rental form data (${rentalFormToken.recipientType})`
+      );
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating rental form:", error);
+      res.status(500).json({ message: "Error al actualizar formulario" });
     }
   });
 
