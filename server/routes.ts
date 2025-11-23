@@ -13741,6 +13741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let externalUnit = null;
       let externalClient = null;
       let externalAgency = null;
+      let creatorUser = null;
       
       // Determine if this is for internal or external system
       if (offerToken.externalUnitId) {
@@ -13756,7 +13757,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Get creator user information (for profile picture)
-        let creatorUser = null;
         if (offerToken.createdBy) {
           const [user] = await db.select({
             id: users.id,
