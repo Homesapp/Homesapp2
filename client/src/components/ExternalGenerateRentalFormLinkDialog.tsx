@@ -30,7 +30,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { ExternalUnitWithCondominium, ExternalClient } from "@shared/schema";
+import type { ExternalUnitWithCondominium, ExternalClient, PaginatedResponse } from "@shared/schema";
 
 const emailFormSchema = z.object({
   clientEmail: z.string().email("Email inválido"),
@@ -76,11 +76,21 @@ export default function ExternalGenerateRentalFormLinkDialog({
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clients, isLoading: isLoadingClients } = useQuery<ExternalClient[]>({
-    queryKey: ["/api/external-clients"],
+  const { data: clientsResponse, isLoading: isLoadingClients } = useQuery<PaginatedResponse<ExternalClient>>({
+    queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append("limit", "10000"); // High limit to get all clients
+      params.append("offset", "0");
+      const response = await fetch(`/api/external-clients?${params.toString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      return response.json();
+    },
     enabled: open && !clientId && recipientType === "tenant",
     staleTime: 5 * 60 * 1000,
   });
+  
+  const clients = clientsResponse?.data || [];
 
   // Query para obtener owners de la unidad seleccionada
   const { data: unitOwners, isLoading: isLoadingOwners } = useQuery({

@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
-import type { ExternalUnitWithCondominium } from "@shared/schema";
+import type { ExternalUnitWithCondominium, ExternalClient, PaginatedResponse } from "@shared/schema";
 
 const emailFormSchema = z.object({
   clientEmail: z.string().email("Email inválido"),
@@ -68,11 +68,21 @@ export default function ExternalGenerateOfferLinkDialog({
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
 
-  const { data: clients, isLoading: isLoadingClients } = useQuery({
-    queryKey: ["/api/external-clients"],
+  const { data: clientsResponse, isLoading: isLoadingClients } = useQuery<PaginatedResponse<ExternalClient>>({
+    queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append("limit", "10000"); // High limit to get all clients
+      params.append("offset", "0");
+      const response = await fetch(`/api/external-clients?${params.toString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      return response.json();
+    },
     enabled: !clientId, // Only load if no client is pre-selected
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
+  
+  const clients = clientsResponse?.data || [];
 
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailFormSchema),

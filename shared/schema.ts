@@ -17,6 +17,15 @@ import {
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Generic paginated response type
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
   "sessions",

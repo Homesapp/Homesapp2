@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { format, isValid } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import type { ExternalUnit, ExternalCondominium } from "@shared/schema";
+import type { ExternalUnit, ExternalCondominium, ExternalClient, PaginatedResponse } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -143,11 +143,21 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
 
-  const { data: clients, isLoading: clientsLoading } = useQuery<any[]>({
-    queryKey: ["/api/external-clients"],
+  const { data: clientsResponse, isLoading: clientsLoading } = useQuery<PaginatedResponse<ExternalClient>>({
+    queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append("limit", "10000"); // High limit to get all clients
+      params.append("offset", "0");
+      const response = await fetch(`/api/external-clients?${params.toString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      return response.json();
+    },
     enabled: step === 3, // Only load when on step 3
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
+  
+  const clients = clientsResponse?.data || [];
 
   const form = useForm<RentalFormData>({
     resolver: zodResolver(rentalFormSchema),

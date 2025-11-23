@@ -24113,7 +24113,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status, isVerified, search, sortField, sortOrder, limit = '50', offset = '0' } = req.query;
       
       // Validate and parse limit/offset
-      const limitNum = Math.max(1, Math.min(parseInt(limit as string, 10) || 50, 100));
+      // Allow up to 10000 for dialog selection scenarios (most agencies have < 10k clients)
+      const limitNum = Math.max(1, Math.min(parseInt(limit as string, 10) || 50, 10000));
       const offsetNum = Math.max(0, parseInt(offset as string, 10) || 0);
       
       const filters = {
