@@ -24683,6 +24683,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH /api/external/offers/:id - Update completed offer data
+  app.patch("/api/external/offers/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      const { id } = req.params;
+
+      // Get offer token
+      const [offerToken] = await db
+        .select()
+        .from(offerTokens)
+        .where(eq(offerTokens.id, id))
+        .limit(1);
+
+      if (!offerToken) {
+        return res.status(404).json({ message: "Token de oferta no encontrado" });
+      }
+
+      // Verify token belongs to user's agency
+      if (offerToken.externalUnitId) {
+        const unit = await storage.getExternalUnit(offerToken.externalUnitId);
+        if (!unit || unit.agencyId !== agencyId) {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      } else {
+        return res.status(400).json({ message: "Este token no es del sistema externo" });
+      }
+
+      // Must be a completed offer to edit
+      if (!offerToken.isUsed) {
+        return res.status(400).json({ message: "Solo se pueden editar ofertas completadas" });
+      }
+
+      // Update offer data
+      const [updated] = await db
+        .update(offerTokens)
+        .set({ 
+          offerData: req.body.offerData,
+          updatedAt: new Date(),
+        })
+        .where(eq(offerTokens.id, id))
+        .returning();
+
+      await createAuditLog(
+        req,
+        "update",
+        "offer_token",
+        id,
+        "Updated completed offer data"
+      );
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating offer:", error);
+      res.status(500).json({ message: "Error al actualizar oferta" });
+    }
+  });
+
   // POST /api/rental-form-tokens/:tokenId/regenerate - Regenerate rental form token (delete old active ones, preserve completed)
   app.post("/api/rental-form-tokens/:tokenId/regenerate", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
