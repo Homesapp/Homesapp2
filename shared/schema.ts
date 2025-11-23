@@ -341,9 +341,12 @@ export const externalPropertyStatusEnum = pgEnum("external_property_status", [
 ]);
 
 export const externalContractStatusEnum = pgEnum("external_contract_status", [
-  "active",       // Activo
-  "completed",    // Completado
-  "cancelled",    // Cancelado
+  "pending_validation",   // Pendiente de validación de documentos
+  "documents_validated",  // Documentos validados, pendiente de contrato elaborado
+  "contract_uploaded",    // Contrato elaborado subido
+  "active",               // Activo
+  "completed",            // Completado
+  "cancelled",            // Cancelado
 ]);
 
 export const rentalPurposeEnum = pgEnum("rental_purpose", [
@@ -5022,7 +5025,7 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   leaseDurationMonths: integer("lease_duration_months").notNull(), // 6, 12, etc
   startDate: timestamp("start_date").notNull(), // Inicio del contrato
   endDate: timestamp("end_date").notNull(), // Fin del contrato
-  status: externalContractStatusEnum("status").notNull().default("active"),
+  status: externalContractStatusEnum("status").notNull().default("pending_validation"),
   // Mascotas
   hasPet: boolean("has_pet").notNull().default(false), // Si tiene mascota
   petName: varchar("pet_name", { length: 100 }), // Nombre de la mascota
@@ -5031,6 +5034,17 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   // Documentos
   leaseContractUrl: text("lease_contract_url"), // URL del contrato de arrendamiento (PDF, imagen, etc)
   inventoryUrl: text("inventory_url"), // URL del inventario (PDF, imagen, etc)
+  // Validación de documentos
+  tenantDocsValidated: boolean("tenant_docs_validated").notNull().default(false), // Documentos del inquilino validados
+  ownerDocsValidated: boolean("owner_docs_validated").notNull().default(false), // Documentos del propietario validados
+  tenantDocsValidatedBy: varchar("tenant_docs_validated_by").references(() => users.id), // Usuario que validó documentos del inquilino
+  ownerDocsValidatedBy: varchar("owner_docs_validated_by").references(() => users.id), // Usuario que validó documentos del propietario
+  tenantDocsValidatedAt: timestamp("tenant_docs_validated_at"), // Fecha de validación de documentos del inquilino
+  ownerDocsValidatedAt: timestamp("owner_docs_validated_at"), // Fecha de validación de documentos del propietario
+  // Contrato elaborado
+  elaboratedContractUrl: text("elaborated_contract_url"), // URL del contrato elaborado final subido por el abogado
+  elaboratedContractUploadedBy: varchar("elaborated_contract_uploaded_by").references(() => users.id), // Usuario que subió el contrato elaborado
+  elaboratedContractUploadedAt: timestamp("elaborated_contract_uploaded_at"), // Fecha de subida del contrato elaborado
   notes: text("notes"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),

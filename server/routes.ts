@@ -25338,6 +25338,362 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/external/contracts - Create contract from completed rental forms (tenant + owner)
+  app.post("/api/external/contracts", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { rentalFormGroupId } = req.body;
+      
+      if (!rentalFormGroupId) {
+        return res.status(400).json({ message: "rentalFormGroupId is required" });
+      }
+      
+      // Get agency ID from user
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User not associated with any agency" });
+      }
+      
+      // Check if contract already exists for this group
+      const existingContract = await db.select()
+        .from(externalRentalContracts)
+        .where(eq(externalRentalContracts.rentalFormGroupId, rentalFormGroupId))
+        .limit(1);
+      
+      if (existingContract.length > 0) {
+        return res.status(400).json({ 
+          message: "Contract already exists for this rental form group",
+          contractId: existingContract[0].id
+        });
+      }
+      
+      // Get both forms (tenant and owner) for this rental group
+      const forms = await db.select()
+        .from(tenantRentalFormTokens)
+        .where(eq(tenantRentalFormTokens.rentalFormGroupId, rentalFormGroupId));
+      
+      if (forms.length < 2) {
+        return res.status(400).json({ 
+          message: "Both tenant and owner forms must exist for this group" 
+        });
+      }
+      
+      const tenantForm = forms.find((f: any) => f.recipient_type === 'tenant');
+      const ownerForm = forms.find((f: any) => f.recipient_type === 'owner');
+      
+      if (!tenantForm || !ownerForm) {
+        return res.status(400).json({ 
+          message: "Both tenant and owner forms are required" 
+        });
+      }
+      
+      // Verify both forms are completed
+      if (!tenantForm.is_used || !ownerForm.is_used) {
+        return res.status(400).json({ 
+          message: "Both tenant and owner forms must be completed before creating a contract" 
+        });
+      }
+      
+      // Get unit to verify it exists and get agency
+      const unit = await storage.getExternalUnit(tenantForm.external_unit_id!);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify agency ownership via unit's agency
+      if (unit.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Extract data from forms
+      const tenantData = tenantForm.tenant_data as any;
+      const ownerData = ownerForm.owner_data as any;
+      
+      if (!tenantData || !ownerData) {
+        return res.status(400).json({ 
+          message: "Form data is incomplete" 
+        });
+      }
+      
+      // Calculate lease dates from tenant data
+      const startDate = new Date(tenantData.desiredMoveInDate || tenantData.preferredMoveInDate || Date.now());
+      let leaseDurationMonths = 12; // default
+      
+      // Try to calculate from move in/out dates if available
+      if (tenantData.desiredMoveOutDate && tenantData.desiredMoveInDate) {
+        const moveIn = new Date(tenantData.desiredMoveInDate);
+        const moveOut = new Date(tenantData.desiredMoveOutDate);
+        const diffMonths = (moveOut.getFullYear() - moveIn.getFullYear()) * 12 + (moveOut.getMonth() - moveIn.getMonth());
+        leaseDurationMonths = diffMonths > 0 ? diffMonths : 12;
+      } else if (tenantData.leaseDuration) {
+        leaseDurationMonths = parseInt(tenantData.leaseDuration) || 12;
+      }
+      
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + leaseDurationMonths);
+      
+      // Extract monthly rent from tenant data (try multiple field names)
+      const monthlyRent = tenantData.proposedMonthlyRent || tenantData.monthlyRent || tenantData.monthlyIncome || '0';
+      
+      // Create contract
+      const contract = await storage.createExternalRentalContract({
+        agencyId,
+        unitId: tenantForm.external_unit_id!,
+        rentalFormGroupId,
+        tenantName: tenantData.fullName,
+        tenantEmail: tenantData.email,
+        tenantPhone: tenantData.whatsapp || tenantData.phone || tenantData.workPhone,
+        monthlyRent: String(monthlyRent),
+        currency: 'MXN',
+        securityDeposit: String(tenantData.securityDeposit || monthlyRent || '0'),
+        rentalPurpose: 'living',
+        leaseDurationMonths,
+        startDate,
+        endDate,
+        status: 'pending_validation',
+        hasPet: tenantData.hasPets === 'yes' || tenantData.hasPets === true || tenantData.hasPets === 'Sí',
+        petName: tenantData.petName,
+        petPhotoUrl: tenantData.petPhoto || tenantData.petPhotoUrl,
+        petDescription: tenantData.petDescription,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(
+        req, 
+        "create", 
+        "external_rental_contract", 
+        contract.id, 
+        `Created contract from completed rental forms (group: ${rentalFormGroupId})`
+      );
+      
+      res.status(201).json(contract);
+    } catch (error: any) {
+      console.error("Error creating contract from forms:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/contracts - Get all contracts for agency
+  app.get("/api/external/contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User not associated with any agency" });
+      }
+      
+      const { status, limit = '50', offset = '0' } = req.query;
+      const limitNum = parseInt(limit as string, 10);
+      const offsetNum = parseInt(offset as string, 10);
+      
+      // Get contracts with unit and form details
+      const contracts = await db.select({
+        contract: externalRentalContracts,
+        unit: externalUnits,
+        condominium: externalCondominiums,
+      })
+        .from(externalRentalContracts)
+        .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .where(
+          status 
+            ? and(
+                eq(externalRentalContracts.agencyId, agencyId),
+                eq(externalRentalContracts.status, status as any)
+              )
+            : eq(externalRentalContracts.agencyId, agencyId)
+        )
+        .orderBy(desc(externalRentalContracts.createdAt))
+        .limit(limitNum)
+        .offset(offsetNum);
+      
+      res.json(contracts);
+    } catch (error: any) {
+      console.error("Error fetching contracts:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/contracts/:id - Get contract details with forms
+  app.get("/api/external/contracts/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get contract
+      const contract = await storage.getExternalRentalContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Get unit details
+      const unit = await storage.getExternalUnit(contract.unitId);
+      
+      // Get forms if rentalFormGroupId exists
+      let tenantForm = null;
+      let ownerForm = null;
+      
+      if (contract.rentalFormGroupId) {
+        const forms = await db.select()
+          .from(tenantRentalFormTokens)
+          .where(eq(tenantRentalFormTokens.rentalFormGroupId, contract.rentalFormGroupId));
+        
+        const rawTenantForm = forms.find((f: any) => f.recipient_type === 'tenant');
+        const rawOwnerForm = forms.find((f: any) => f.recipient_type === 'owner');
+        
+        // Map to camelCase for frontend
+        tenantForm = rawTenantForm ? {
+          ...rawTenantForm,
+          tenantData: rawTenantForm.tenant_data,
+          recipientType: rawTenantForm.recipient_type,
+          externalUnitId: rawTenantForm.external_unit_id,
+          externalClientId: rawTenantForm.external_client_id,
+          rentalFormGroupId: rawTenantForm.rental_form_group_id,
+          externalUnitOwnerId: rawTenantForm.external_unit_owner_id,
+          isUsed: rawTenantForm.is_used,
+          usedAt: rawTenantForm.used_at,
+          createdAt: rawTenantForm.created_at,
+          updatedAt: rawTenantForm.updated_at,
+          expiresAt: rawTenantForm.expires_at,
+          createdBy: rawTenantForm.created_by,
+        } : null;
+        
+        ownerForm = rawOwnerForm ? {
+          ...rawOwnerForm,
+          ownerData: rawOwnerForm.owner_data,
+          recipientType: rawOwnerForm.recipient_type,
+          externalUnitId: rawOwnerForm.external_unit_id,
+          externalClientId: rawOwnerForm.external_client_id,
+          rentalFormGroupId: rawOwnerForm.rental_form_group_id,
+          externalUnitOwnerId: rawOwnerForm.external_unit_owner_id,
+          isUsed: rawOwnerForm.is_used,
+          usedAt: rawOwnerForm.used_at,
+          createdAt: rawOwnerForm.created_at,
+          updatedAt: rawOwnerForm.updated_at,
+          expiresAt: rawOwnerForm.expires_at,
+          createdBy: rawOwnerForm.created_by,
+        } : null;
+      }
+      
+      res.json({
+        contract,
+        unit,
+        tenantForm,
+        ownerForm,
+      });
+    } catch (error: any) {
+      console.error("Error fetching contract details:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/contracts/:id/validate-documents - Validate tenant or owner documents
+  app.patch("/api/external/contracts/:id/validate-documents", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { documentType } = req.body; // 'tenant' or 'owner'
+      
+      if (!['tenant', 'owner'].includes(documentType)) {
+        return res.status(400).json({ message: "documentType must be 'tenant' or 'owner'" });
+      }
+      
+      // Get contract
+      const contract = await storage.getExternalRentalContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Update validation status
+      const updateData: any = {};
+      const now = new Date();
+      
+      if (documentType === 'tenant') {
+        updateData.tenantDocsValidated = true;
+        updateData.tenantDocsValidatedBy = req.user.id;
+        updateData.tenantDocsValidatedAt = now;
+      } else {
+        updateData.ownerDocsValidated = true;
+        updateData.ownerDocsValidatedBy = req.user.id;
+        updateData.ownerDocsValidatedAt = now;
+      }
+      
+      // Check if both are now validated and update status
+      const bothValidated = 
+        (documentType === 'tenant' && contract.ownerDocsValidated) ||
+        (documentType === 'owner' && contract.tenantDocsValidated);
+      
+      if (bothValidated) {
+        updateData.status = 'documents_validated';
+      }
+      
+      const updatedContract = await storage.updateExternalRentalContract(id, updateData);
+      
+      await createAuditLog(
+        req, 
+        "update", 
+        "external_rental_contract", 
+        id, 
+        `Validated ${documentType} documents`
+      );
+      
+      res.json(updatedContract);
+    } catch (error: any) {
+      console.error("Error validating documents:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/contracts/:id/upload-contract - Upload elaborated contract file
+  app.patch("/api/external/contracts/:id/upload-contract", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { contractUrl } = req.body;
+      
+      if (!contractUrl) {
+        return res.status(400).json({ message: "contractUrl is required" });
+      }
+      
+      // Get contract
+      const contract = await storage.getExternalRentalContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Update contract with elaborated contract URL
+      const updatedContract = await storage.updateExternalRentalContract(id, {
+        elaboratedContractUrl: contractUrl,
+        elaboratedContractUploadedBy: req.user.id,
+        elaboratedContractUploadedAt: new Date(),
+        status: 'contract_uploaded',
+      });
+      
+      await createAuditLog(
+        req, 
+        "update", 
+        "external_rental_contract", 
+        id, 
+        `Uploaded elaborated contract`
+      );
+      
+      res.json(updatedContract);
+    } catch (error: any) {
+      console.error("Error uploading contract:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.post("/api/external-rental-contracts", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       // Try parsing as extended schema first (with services), fall back to basic schema
