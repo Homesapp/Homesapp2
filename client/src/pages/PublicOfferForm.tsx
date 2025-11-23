@@ -347,19 +347,37 @@ export default function PublicOfferForm() {
 
   type OfferFormValues = z.infer<typeof offerFormSchema>;
 
-  const { data: validationData, isLoading: isValidating } = useQuery({
+  const { data: validationData, isLoading: isValidating, error: validationError } = useQuery({
     queryKey: ["/api/offer-tokens", token, "validate"],
     queryFn: async () => {
+      console.log("[PublicOfferForm] Fetching validation for token:", token);
       const res = await fetch(`/api/offer-tokens/${token}/validate`);
+      console.log("[PublicOfferForm] Response status:", res.status);
+      
       if (!res.ok) {
         const error = await res.json();
+        console.error("[PublicOfferForm] Validation failed:", error);
         throw new Error(error.message || text.invalidLinkMessage);
       }
-      return res.json();
+      
+      const data = await res.json();
+      console.log("[PublicOfferForm] Validation data:", data);
+      return data;
     },
     enabled: !!token,
     retry: false,
   });
+  
+  // Log validation state for debugging
+  useEffect(() => {
+    console.log("[PublicOfferForm] Validation state:", {
+      isValidating,
+      hasData: !!validationData,
+      isValid: validationData?.valid,
+      hasError: !!validationError,
+      error: validationError?.message
+    });
+  }, [isValidating, validationData, validationError]);
 
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerFormSchema),
