@@ -23448,15 +23448,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
       if (!hasAccess) return;
       
-      const owner = await storage.getActiveExternalUnitOwner(unitId);
+      // Get all owners for this unit and filter only active ones
+      const allOwners = await storage.getExternalUnitOwnersByUnit(unitId);
+      const activeOwners = allOwners.filter(owner => owner.isActive);
       
-      if (!owner) {
-        return res.status(404).json({ message: "No active owner found for this unit" });
-      }
-      
-      res.json(owner);
+      res.json(activeOwners);
     } catch (error: any) {
-      console.error("Error fetching active unit owner:", error);
+      console.error("Error fetching active unit owners:", error);
       handleGenericError(res, error);
     }
   });
