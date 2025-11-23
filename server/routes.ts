@@ -24316,6 +24316,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `${condominium.name} - ${unit.unitNumber}`
             : null;
           
+          // Get dual form status if this token is part of a rental form group
+          let dualFormStatus = null;
+          if (token.rentalFormGroupId) {
+            // Find the companion form in the same group
+            const companionForm = await db.query.tenantRentalFormTokens.findFirst({
+              where: and(
+                eq(tenantRentalFormTokens.rentalFormGroupId, token.rentalFormGroupId),
+                ne(tenantRentalFormTokens.id, token.id)
+              ),
+            });
+            
+            if (companionForm) {
+              dualFormStatus = {
+                hasDual: true,
+                dualType: companionForm.recipientType,
+                dualCompleted: companionForm.isUsed,
+              };
+            }
+          }
+          
           return {
             ...token,
             unit,
@@ -24323,6 +24343,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             client,
             clientName,
             propertyTitle,
+            recipientType: token.recipientType,
+            rentalFormGroupId: token.rentalFormGroupId,
+            dualFormStatus,
           };
         })
       );

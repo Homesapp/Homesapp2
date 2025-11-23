@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink, RefreshCw, FileDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, ExternalLink, RefreshCw, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Users, User } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -150,6 +150,50 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
     return sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
 
+  const getFormTypeBadge = (recipientType: string) => {
+    if (recipientType === 'owner') {
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <User className="h-3 w-3" />
+          {language === "es" ? "Propietario" : "Owner"}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="default" className="gap-1">
+        <Users className="h-3 w-3" />
+        {language === "es" ? "Inquilino" : "Tenant"}
+      </Badge>
+    );
+  };
+
+  const getDualFormStatus = (token: any) => {
+    if (!token.dualFormStatus?.hasDual) {
+      return (
+        <span className="text-xs text-muted-foreground">
+          {language === "es" ? "Sin dual" : "No dual"}
+        </span>
+      );
+    }
+
+    const dualTypeText = token.dualFormStatus.dualType === 'owner'
+      ? (language === "es" ? "Propietario" : "Owner")
+      : (language === "es" ? "Inquilino" : "Tenant");
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {dualTypeText}:
+        </span>
+        {token.dualFormStatus.dualCompleted ? (
+          <Badge variant="default" className="text-xs">{language === "es" ? "Completado" : "Completed"}</Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs">{language === "es" ? "Pendiente" : "Pending"}</Badge>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -195,7 +239,10 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
             return (
               <Card key={token.id} className="hover-elevate" data-testid={`card-form-${token.id}`}>
                 <CardHeader>
-                  <CardTitle className="text-base">{token.clientName || "-"}</CardTitle>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <CardTitle className="text-base">{token.clientName || "-"}</CardTitle>
+                    {getFormTypeBadge(token.recipientType)}
+                  </div>
                   <CardDescription>{token.propertyTitle || "-"}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -235,6 +282,14 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                       <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
                     )}
                   </div>
+                  {token.rentalFormGroupId && (
+                    <div className="flex items-center justify-between text-sm pt-2 border-t">
+                      <span className="text-muted-foreground">
+                        {language === "es" ? "Formulario Dual" : "Dual Form"}
+                      </span>
+                      {getDualFormStatus(token)}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 pt-2">
                     {token.isUsed && (
                       <Button
@@ -312,6 +367,15 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer hover-elevate"
+                  onClick={() => handleSort("recipientType")}
+                >
+                  <div className="flex items-center gap-2">
+                    {language === "es" ? "Tipo" : "Type"}
+                    {getSortIcon("recipientType")}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover-elevate"
                   onClick={() => handleSort("createdAt")}
                 >
                   <div className="flex items-center gap-2">
@@ -329,6 +393,7 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                   </div>
                 </TableHead>
                 <TableHead>{language === "es" ? "Estado" : "Status"}</TableHead>
+                <TableHead>{language === "es" ? "Dual" : "Dual"}</TableHead>
                 <TableHead className="text-right">{language === "es" ? "Acciones" : "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
@@ -341,6 +406,7 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                   <TableRow key={token.id}>
                     <TableCell className="font-medium">{token.clientName || "-"}</TableCell>
                     <TableCell>{token.propertyTitle || "-"}</TableCell>
+                    <TableCell>{getFormTypeBadge(token.recipientType)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {token.createdAt
                         ? format(new Date(token.createdAt), "dd/MM/yyyy", {
@@ -363,6 +429,9 @@ export default function ExternalRentalFormLinks({ searchTerm, statusFilter, view
                       ) : (
                         <Badge variant="outline">{language === "es" ? "Activo" : "Active"}</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      {getDualFormStatus(token)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
