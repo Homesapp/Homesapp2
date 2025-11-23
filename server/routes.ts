@@ -194,7 +194,7 @@ import {
   externalMaintenanceTickets,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, asc, sql, ne } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
 
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
@@ -25493,7 +25493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/external/contracts - Get all contracts for agency
+  // GET /api/external/contracts - Get all contracts for agency (only completed ones where both tenant AND owner submitted forms)
   app.get("/api/external/contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
@@ -25505,23 +25505,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limitNum = parseInt(limit as string, 10);
       const offsetNum = parseInt(offset as string, 10);
       
-      // Get contracts with unit and form details
+      // Subquery to check if both tenant and owner forms are completed
+      // A form group is considered complete when:
+      // - There is a tenant token with non-null tenant_data
+      // - There is an owner token with non-null owner_data
+      const completedFormsSubquery = db
+        .select({
+          rentalFormGroupId: tenantRentalFormTokens.rentalFormGroupId,
+          tenantCompleted: sql<boolean>`bool_or(recipient_type = 'tenant' AND tenant_data IS NOT NULL)`.as('tenant_completed'),
+          ownerCompleted: sql<boolean>`bool_or(recipient_type = 'owner' AND owner_data IS NOT NULL)`.as('owner_completed'),
+        })
+        .from(tenantRentalFormTokens)
+        .where(isNotNull(tenantRentalFormTokens.rentalFormGroupId))
+        .groupBy(tenantRentalFormTokens.rentalFormGroupId)
+        .as('completed_forms');
+      
+      // Main query - get contracts with unit and form completion status
+      let whereConditions = [
+        eq(externalRentalContracts.agencyId, agencyId),
+        // Only show contracts where both forms are completed
+        sql`${completedFormsSubquery.tenantCompleted} = true`,
+        sql`${completedFormsSubquery.ownerCompleted} = true`,
+      ];
+      
+      // NOTE: We do NOT filter out cancelled contracts - they should remain visible with a badge
+      // The frontend will show a "Cancelado" badge for contracts where cancelledAt is not null
+      
+      // Filter by status if provided
+      if (status) {
+        whereConditions.push(eq(externalRentalContracts.status, status as any));
+      }
+      
       const contracts = await db.select({
         contract: externalRentalContracts,
         unit: externalUnits,
         condominium: externalCondominiums,
       })
         .from(externalRentalContracts)
+        .innerJoin(completedFormsSubquery, eq(externalRentalContracts.rentalFormGroupId, completedFormsSubquery.rentalFormGroupId))
         .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
         .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .where(
-          status 
-            ? and(
-                eq(externalRentalContracts.agencyId, agencyId),
-                eq(externalRentalContracts.status, status as any)
-              )
-            : eq(externalRentalContracts.agencyId, agencyId)
-        )
+        .where(and(...whereConditions))
         .orderBy(desc(externalRentalContracts.createdAt))
         .limit(limitNum)
         .offset(offsetNum);
@@ -25832,6 +25856,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Owner data updated" });
     } catch (error: any) {
       console.error("Error updating owner data:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/contracts/:id/cancel - Cancel contract (soft delete)
+  app.patch("/api/external/contracts/:id/cancel", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get contract
+      const contract = await storage.getExternalRentalContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, contract.agencyId);
+      if (!hasAccess) return;
+      
+      // Check if already cancelled
+      if (contract.cancelledAt) {
+        return res.status(400).json({ message: "Contract is already cancelled" });
+      }
+      
+      // Cancel contract (soft delete)
+      // Note: We do NOT update the status - cancelled contracts retain their original status
+      // and appear with a "Cancelado" badge alongside their status badge
+      await storage.updateExternalRentalContract(id, {
+        cancelledAt: new Date(),
+        cancelledBy: req.user.id,
+      });
+      
+      await createAuditLog(
+        req, 
+        "update", 
+        "external_rental_contract", 
+        id, 
+        `Cancelled contract`
+      );
+      
+      res.json({ success: true, message: "Contract cancelled successfully" });
+    } catch (error: any) {
+      console.error("Error cancelling contract:", error);
       handleGenericError(res, error);
     }
   });

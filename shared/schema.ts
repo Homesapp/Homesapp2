@@ -5049,6 +5049,8 @@ export const externalRentalContracts = pgTable("external_rental_contracts", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  cancelledAt: timestamp("cancelled_at"), // Soft delete - cuando se cancela el contrato
+  cancelledBy: varchar("cancelled_by").references(() => users.id), // Usuario que canceló el contrato
 }, (table) => [
   index("idx_external_contracts_agency").on(table.agencyId),
   index("idx_external_contracts_unit").on(table.unitId),

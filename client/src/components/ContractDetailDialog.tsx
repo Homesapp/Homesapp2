@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ import {
   Edit,
   X,
   Save,
+  XCircle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -42,6 +44,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   const [editingOwner, setEditingOwner] = useState(false);
   const [tenantFormData, setTenantFormData] = useState<any>({});
   const [ownerFormData, setOwnerFormData] = useState<any>({});
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Fetch contract details
   const { data, isLoading } = useQuery({
@@ -209,6 +212,35 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
     },
   });
 
+  // Cancel contract mutation
+  const cancelContractMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest(`/api/external/contracts/${contractId}/cancel`, {
+        method: 'PATCH',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external/contracts', contractId] });
+      toast({
+        title: language === "es" ? "Contrato cancelado" : "Contract cancelled",
+        description: language === "es" 
+          ? "El contrato ha sido cancelado correctamente" 
+          : "Contract has been cancelled successfully",
+      });
+      setShowCancelDialog(false);
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "No se pudo cancelar el contrato" : "Could not cancel contract"),
+        variant: "destructive",
+      });
+      setShowCancelDialog(false);
+    },
+  });
+
   const getStatusLabel = (status: string) => {
     const labels: Record<string, Record<string, string>> = {
       pending_validation: { es: "Pendiente Validación", en: "Pending Validation" },
@@ -307,9 +339,27 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
             <DialogTitle>
               {language === "es" ? "Detalles del Contrato" : "Contract Details"}
             </DialogTitle>
-            <Badge variant={getStatusVariant(contract.status)}>
-              {getStatusLabel(contract.status)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={getStatusVariant(contract.status)}>
+                {getStatusLabel(contract.status)}
+              </Badge>
+              {contract.cancelledAt && (
+                <Badge variant="destructive">
+                  {language === "es" ? "Cancelado" : "Cancelled"}
+                </Badge>
+              )}
+              {!contract.cancelledAt && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowCancelDialog(true)}
+                  data-testid="button-cancel-contract"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Cancelar Contrato" : "Cancel Contract"}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
@@ -809,6 +859,35 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
           )}
         </div>
       </DialogContent>
+
+      {/* Cancel Contract Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "es" ? "¿Cancelar contrato?" : "Cancel contract?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "es"
+                ? "Esta acción marcará el contrato como cancelado. El registro permanecerá en el sistema pero no se podrá reactivar. ¿Estás seguro de que deseas continuar?"
+                : "This action will mark the contract as cancelled. The record will remain in the system but cannot be reactivated. Are you sure you want to continue?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-confirmation-no">
+              {language === "es" ? "No, mantener contrato" : "No, keep contract"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelContractMutation.mutate()}
+              disabled={cancelContractMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-cancel-confirmation-yes"
+            >
+              {language === "es" ? "Sí, cancelar contrato" : "Yes, cancel contract"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

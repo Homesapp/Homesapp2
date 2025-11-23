@@ -161,9 +161,16 @@ export default function ExternalContractProcesses({ searchTerm, statusFilter, vi
                     <span className="text-sm text-muted-foreground">
                       {language === "es" ? "Estado" : "Status"}
                     </span>
-                    <Badge variant={getStatusVariant(contract.status)}>
-                      {getStatusLabel(contract.status)}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant={getStatusVariant(contract.status)}>
+                        {getStatusLabel(contract.status)}
+                      </Badge>
+                      {contract.cancelledAt && (
+                        <Badge variant="destructive">
+                          {language === "es" ? "Cancelado" : "Cancelled"}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <Button
                     variant="outline"
@@ -215,9 +222,16 @@ export default function ExternalContractProcesses({ searchTerm, statusFilter, vi
                       })}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusVariant(contract.status)}>
-                        {getStatusLabel(contract.status)}
-                      </Badge>
+                      <div className="flex gap-2">
+                        <Badge variant={getStatusVariant(contract.status)}>
+                          {getStatusLabel(contract.status)}
+                        </Badge>
+                        {contract.cancelledAt && (
+                          <Badge variant="destructive">
+                            {language === "es" ? "Cancelado" : "Cancelled"}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button 
