@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import ChangeReviewStep from "./ChangeReviewStep";
 
 interface ExternalEditOfferDialogProps {
   open: boolean;
@@ -47,6 +48,8 @@ type OfferEditValues = z.infer<typeof offerEditSchema>;
 export default function ExternalEditOfferDialog({ open, onOpenChange, offerToken }: ExternalEditOfferDialogProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [step, setStep] = useState<1 | 2>(1); // 1 = edit form, 2 = review changes
+  const [originalData, setOriginalData] = useState<OfferEditValues | null>(null);
 
   const form = useForm<OfferEditValues>({
     resolver: zodResolver(offerEditSchema),
@@ -73,11 +76,11 @@ export default function ExternalEditOfferDialog({ open, onOpenChange, offerToken
     },
   });
 
-  // Pre-fill form when offerToken changes
+  // Pre-fill form when dialog opens and reset step
   useEffect(() => {
-    if (offerToken?.offerData) {
+    if (open && offerToken?.offerData) {
       const data = offerToken.offerData;
-      form.reset({
+      const initialValues = {
         nombreCompleto: data.nombreCompleto || "",
         nacionalidad: data.nacionalidad || "",
         edad: data.edad || null,
@@ -97,9 +100,12 @@ export default function ExternalEditOfferDialog({ open, onOpenChange, offerToken
         contractCost: data.contractCost || null,
         clientEmail: data.clientEmail || "",
         clientPhone: data.clientPhone || "",
-      });
+      };
+      form.reset(initialValues);
+      setOriginalData(initialValues);
+      setStep(1); // Reset to step 1 when opening
     }
-  }, [offerToken, form]);
+  }, [open, offerToken, form]);
 
   const updateMutation = useMutation({
     mutationFn: async (values: OfferEditValues) => {
@@ -125,8 +131,42 @@ export default function ExternalEditOfferDialog({ open, onOpenChange, offerToken
     },
   });
 
+  const handleNext = async () => {
+    // Validate form before moving to review step
+    const isValid = await form.trigger();
+    if (isValid) {
+      setStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    setStep(1);
+  };
+
   const onSubmit = (values: OfferEditValues) => {
     updateMutation.mutate(values);
+  };
+
+  const fieldLabels: Record<string, string> = {
+    nombreCompleto: language === "es" ? "Nombre Completo" : "Full Name",
+    nacionalidad: language === "es" ? "Nacionalidad" : "Nationality",
+    edad: language === "es" ? "Edad" : "Age",
+    tiempoResidenciaTulum: language === "es" ? "Tiempo en Tulum" : "Time in Tulum",
+    trabajoPosicion: language === "es" ? "Posición" : "Position",
+    companiaTrabaja: language === "es" ? "Compañía" : "Company",
+    tieneMascotas: language === "es" ? "Tiene Mascotas" : "Has Pets",
+    ingresoMensualPromedio: language === "es" ? "Ingreso Mensual" : "Monthly Income",
+    numeroInquilinos: language === "es" ? "Número de Inquilinos" : "Number of Tenants",
+    tieneGarante: language === "es" ? "Tiene Garante" : "Has Guarantor",
+    usoInmueble: language === "es" ? "Uso del Inmueble" : "Property Use",
+    rentaOfertada: language === "es" ? "Renta Ofertada" : "Offered Rent",
+    rentasAdelantadas: language === "es" ? "Rentas Adelantadas" : "Advance Rents",
+    fechaIngreso: language === "es" ? "Fecha de Ingreso" : "Move-in Date",
+    fechaSalida: language === "es" ? "Fecha de Salida" : "Move-out Date",
+    duracionContrato: language === "es" ? "Duración del Contrato" : "Contract Duration",
+    contractCost: language === "es" ? "Costo del Contrato" : "Contract Cost",
+    clientEmail: "Email",
+    clientPhone: language === "es" ? "Teléfono" : "Phone",
   };
 
   return (
@@ -145,6 +185,9 @@ export default function ExternalEditOfferDialog({ open, onOpenChange, offerToken
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Step 1: Edit Form */}
+            {step === 1 && (
+              <div className="space-y-6">
             {/* Personal Information */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium">
@@ -453,25 +496,69 @@ export default function ExternalEditOfferDialog({ open, onOpenChange, offerToken
                 />
               </div>
             </div>
+              </div>
+            )}
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={updateMutation.isPending}
-                data-testid="button-cancel"
-              >
-                {language === "es" ? "Cancelar" : "Cancel"}
-              </Button>
-              <Button
-                type="submit"
-                disabled={updateMutation.isPending}
-                data-testid="button-save"
-              >
-                {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {language === "es" ? "Guardar Cambios" : "Save Changes"}
-              </Button>
+            {/* Step 2: Review Changes */}
+            {step === 2 && originalData && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  {language === "es" ? "Revisar Cambios" : "Review Changes"}
+                </h3>
+                <ChangeReviewStep
+                  originalData={originalData}
+                  newData={form.getValues()}
+                  fieldLabels={fieldLabels}
+                  language={language}
+                />
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              {step === 1 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    disabled={updateMutation.isPending}
+                    data-testid="button-cancel"
+                  >
+                    {language === "es" ? "Cancelar" : "Cancel"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    data-testid="button-next"
+                  >
+                    {language === "es" ? "Siguiente" : "Next"}
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              
+              {step === 2 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={updateMutation.isPending}
+                    data-testid="button-back"
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    {language === "es" ? "Atrás" : "Back"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={updateMutation.isPending}
+                    data-testid="button-save"
+                  >
+                    {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {language === "es" ? "Guardar Cambios" : "Save Changes"}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </form>
         </Form>
