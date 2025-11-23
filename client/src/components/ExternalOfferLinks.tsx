@@ -3,12 +3,13 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink, RefreshCw, FileDown, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, ExternalLink, RefreshCw, FileDown, Eye, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import ExternalGenerateOfferLinkDialog from "./ExternalGenerateOfferLinkDialog";
+import ExternalEditOfferDialog from "./ExternalEditOfferDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
@@ -22,6 +23,8 @@ interface ExternalOfferLinksProps {
 export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode }: ExternalOfferLinksProps) {
   const { language } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<any>(null);
   const { toast } = useToast();
   
   // Pagination state
@@ -318,6 +321,19 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => {
+                            setEditingOffer(token);
+                            setEditDialogOpen(true);
+                          }}
+                          className="flex-1"
+                          data-testid="button-edit-offer"
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          {language === "es" ? "Editar" : "Edit"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => viewOfferPDF(token.id)}
                           className="flex-1"
                           data-testid="button-view-offer-pdf"
@@ -456,6 +472,18 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => {
+                                setEditingOffer(token);
+                                setEditDialogOpen(true);
+                              }}
+                              title={language === "es" ? "Editar oferta" : "Edit offer"}
+                              data-testid="button-edit-offer"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => viewOfferPDF(token.id)}
                               title={language === "es" ? "Ver PDF" : "View PDF"}
                               data-testid="button-view-offer-pdf"
@@ -506,6 +534,11 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
       )}
 
       <ExternalGenerateOfferLinkDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <ExternalEditOfferDialog 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen}
+        offerToken={editingOffer}
+      />
     </>
   );
 }
