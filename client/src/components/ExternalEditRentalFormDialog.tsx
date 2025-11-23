@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,9 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import ChangeReviewStep from "./ChangeReviewStep";
 import {
   Form,
   FormControl,
@@ -76,6 +78,8 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
   const { toast } = useToast();
   const { language } = useLanguage();
   const isOwnerForm = rentalFormToken?.recipientType === 'owner';
+  const [step, setStep] = useState<1 | 2>(1); // 1 = edit form, 2 = review changes
+  const [originalData, setOriginalData] = useState<TenantFormEditValues | OwnerFormEditValues | null>(null);
 
   // Use appropriate schema based on form type
   const tenantForm = useForm<TenantFormEditValues>({
@@ -96,7 +100,7 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
       const data = rentalFormToken.tenantData;
       
       if (isOwnerForm) {
-        ownerForm.reset({
+        const initialValues = {
           fullName: data.fullName || "",
           email: data.email || "",
           whatsapp: data.whatsapp || "",
@@ -110,9 +114,11 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
           minimumRentalPeriod: data.minimumRentalPeriod || "",
           maximumOccupants: data.maximumOccupants || undefined,
           petsAllowed: data.petsAllowed || false,
-        });
+        };
+        ownerForm.reset(initialValues);
+        setOriginalData(initialValues);
       } else {
-        tenantForm.reset({
+        const initialValues = {
           fullName: data.fullName || "",
           email: data.email || "",
           whatsapp: data.whatsapp || "",
@@ -131,8 +137,11 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
           numberOfOccupants: data.numberOfOccupants || undefined,
           hasPets: data.hasPets || false,
           hasVehicle: data.hasVehicle || false,
-        });
+        };
+        tenantForm.reset(initialValues);
+        setOriginalData(initialValues);
       }
+      setStep(1); // Reset to step 1 when opening
     }
   }, [open, rentalFormToken, isOwnerForm, tenantForm, ownerForm]);
 
@@ -160,9 +169,59 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
     },
   });
 
+  const handleNext = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      setStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    setStep(1);
+  };
+
   const onSubmit = (data: TenantFormEditValues | OwnerFormEditValues) => {
     updateMutation.mutate(data);
   };
+
+  const tenantFieldLabels: Record<string, string> = {
+    fullName: language === "es" ? "Nombre Completo" : "Full Name",
+    email: "Email",
+    whatsapp: "WhatsApp",
+    nationality: language === "es" ? "Nacionalidad" : "Nationality",
+    age: language === "es" ? "Edad" : "Age",
+    maritalStatus: language === "es" ? "Estado Civil" : "Marital Status",
+    timeInTulum: language === "es" ? "Tiempo en Tulum" : "Time in Tulum",
+    address: language === "es" ? "Dirección" : "Address",
+    jobPosition: language === "es" ? "Posición" : "Job Position",
+    companyName: language === "es" ? "Nombre de la Empresa" : "Company Name",
+    workAddress: language === "es" ? "Dirección del Trabajo" : "Work Address",
+    workPhone: language === "es" ? "Teléfono del Trabajo" : "Work Phone",
+    monthlyIncome: language === "es" ? "Ingreso Mensual" : "Monthly Income",
+    desiredMoveInDate: language === "es" ? "Fecha de Entrada" : "Move-in Date",
+    desiredMoveOutDate: language === "es" ? "Fecha de Salida" : "Move-out Date",
+    numberOfOccupants: language === "es" ? "Número de Ocupantes" : "Number of Occupants",
+    hasPets: language === "es" ? "Tiene Mascotas" : "Has Pets",
+    hasVehicle: language === "es" ? "Tiene Vehículo" : "Has Vehicle",
+  };
+
+  const ownerFieldLabels: Record<string, string> = {
+    fullName: language === "es" ? "Nombre Completo" : "Full Name",
+    email: "Email",
+    whatsapp: "WhatsApp",
+    nationality: language === "es" ? "Nacionalidad" : "Nationality",
+    age: language === "es" ? "Edad" : "Age",
+    address: language === "es" ? "Dirección" : "Address",
+    bankName: language === "es" ? "Nombre del Banco" : "Bank Name",
+    accountNumber: language === "es" ? "Número de Cuenta" : "Account Number",
+    clabe: "CLABE",
+    paymentPreference: language === "es" ? "Preferencia de Pago" : "Payment Preference",
+    minimumRentalPeriod: language === "es" ? "Período Mínimo de Renta" : "Minimum Rental Period",
+    maximumOccupants: language === "es" ? "Ocupantes Máximos" : "Maximum Occupants",
+    petsAllowed: language === "es" ? "Mascotas Permitidas" : "Pets Allowed",
+  };
+
+  const fieldLabels = isOwnerForm ? ownerFieldLabels : tenantFieldLabels;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -178,6 +237,9 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Step 1: Edit Form */}
+            {step === 1 && (
+              <div className="space-y-4">
             {/* Common fields */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -543,24 +605,70 @@ export default function ExternalEditRentalFormDialog({ open, onOpenChange, renta
                 </div>
               </>
             )}
+              </div>
+            )}
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={updateMutation.isPending}
-                data-testid="button-cancel"
-              >
-                {language === "es" ? "Cancelar" : "Cancel"}
-              </Button>
-              <Button type="submit" disabled={updateMutation.isPending} data-testid="button-submit">
-                {updateMutation.isPending 
-                  ? (language === "es" ? "Guardando..." : "Saving...")
-                  : (language === "es" ? "Guardar Cambios" : "Save Changes")
-                }
-              </Button>
-            </div>
+            {/* Step 2: Review Changes */}
+            {step === 2 && originalData && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  {language === "es" ? "Revisar Cambios" : "Review Changes"}
+                </h3>
+                <ChangeReviewStep
+                  originalData={originalData}
+                  newData={form.getValues()}
+                  fieldLabels={fieldLabels}
+                  language={language}
+                />
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              {step === 1 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    disabled={updateMutation.isPending}
+                    data-testid="button-cancel"
+                  >
+                    {language === "es" ? "Cancelar" : "Cancel"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    data-testid="button-next"
+                  >
+                    {language === "es" ? "Siguiente" : "Next"}
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              
+              {step === 2 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={updateMutation.isPending}
+                    data-testid="button-back"
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    {language === "es" ? "Atrás" : "Back"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={updateMutation.isPending}
+                    data-testid="button-save"
+                  >
+                    {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {language === "es" ? "Guardar Cambios" : "Save Changes"}
+                  </Button>
+                </>
+              )}
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>
