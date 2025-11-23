@@ -24182,6 +24182,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertExternalClientSchema.parse(req.body);
       
+      // Check for duplicates before creating
+      const duplicate = await storage.checkExternalClientDuplicate(
+        agencyId,
+        validatedData.firstName,
+        validatedData.lastName,
+        validatedData.phone
+      );
+      
+      if (duplicate) {
+        return res.status(409).json({ 
+          message: "Duplicate client detected",
+          detail: `A client with the name ${duplicate.firstName} ${duplicate.lastName} and matching phone number last 4 digits already exists in your agency.`,
+          duplicate: {
+            id: duplicate.id,
+            firstName: duplicate.firstName,
+            lastName: duplicate.lastName,
+            phone: duplicate.phone,
+            email: duplicate.email,
+          }
+        });
+      }
+      
       const client = await storage.createExternalClient({
         ...validatedData,
         agencyId,
@@ -24321,6 +24343,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const validatedData = insertExternalLeadSchema.parse(req.body);
+      
+      // Check for duplicates before creating
+      // For broker type, use phoneLast4; for seller type, extract from phone
+      const phoneToCheck = validatedData.registrationType === 'broker' 
+        ? validatedData.phoneLast4 
+        : validatedData.phone;
+        
+      const duplicate = await storage.checkExternalLeadDuplicate(
+        agencyId,
+        validatedData.firstName,
+        validatedData.lastName,
+        phoneToCheck
+      );
+      
+      if (duplicate) {
+        return res.status(409).json({ 
+          message: "Duplicate lead detected",
+          detail: `A lead with the name ${duplicate.firstName} ${duplicate.lastName} and matching phone number last 4 digits already exists in your agency.`,
+          duplicate: {
+            id: duplicate.id,
+            firstName: duplicate.firstName,
+            lastName: duplicate.lastName,
+            registrationType: duplicate.registrationType,
+            phoneLast4: duplicate.phoneLast4,
+            phone: duplicate.phone,
+            email: duplicate.email,
+          }
+        });
+      }
       
       const lead = await storage.createExternalLead({
         ...validatedData,

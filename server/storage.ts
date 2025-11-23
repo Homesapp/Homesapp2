@@ -1283,6 +1283,8 @@ export interface IStorage {
   updateExternalLead(id: string, updates: Partial<InsertExternalLead>): Promise<ExternalLead>;
   deleteExternalLead(id: string): Promise<void>;
   convertLeadToClient(leadId: string, clientId: string): Promise<void>;
+  checkExternalClientDuplicate(agencyId: string, firstName: string, lastName: string, phone?: string | null, excludeId?: string): Promise<ExternalClient | null>;
+  checkExternalLeadDuplicate(agencyId: string, firstName: string, lastName: string, phoneOrLast4?: string | null, excludeId?: string): Promise<ExternalLead | null>;
 
   // External Client Documents
   getExternalClientDocuments(clientId: string): Promise<ExternalClientDocument[]>;
@@ -9058,6 +9060,87 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(externalLeads.id, leadId));
+  }
+
+  async checkExternalClientDuplicate(
+    agencyId: string, 
+    firstName: string, 
+    lastName: string, 
+    phone?: string | null, 
+    excludeId?: string
+  ): Promise<ExternalClient | null> {
+    const { normalizeName, extractLast4Digits } = await import('./utils/duplicateDetection');
+    
+    const normalizedFirst = normalizeName(firstName);
+    const normalizedLast = normalizeName(lastName);
+    const last4 = extractLast4Digits(phone);
+    
+    if (!last4 || last4.length !== 4) {
+      return null; // Can't check without valid phone last 4 digits
+    }
+    
+    // Get all clients for this agency
+    const clients = await db.select()
+      .from(externalClients)
+      .where(eq(externalClients.agencyId, agencyId));
+    
+    // Check for duplicates by comparing normalized names and last 4 digits
+    for (const client of clients) {
+      if (excludeId && client.id === excludeId) continue;
+      
+      const clientFirst = normalizeName(client.firstName);
+      const clientLast = normalizeName(client.lastName);
+      const clientLast4 = extractLast4Digits(client.phone);
+      
+      if (clientFirst === normalizedFirst && 
+          clientLast === normalizedLast && 
+          clientLast4 === last4) {
+        return client;
+      }
+    }
+    
+    return null;
+  }
+
+  async checkExternalLeadDuplicate(
+    agencyId: string, 
+    firstName: string, 
+    lastName: string, 
+    phoneOrLast4?: string | null, 
+    excludeId?: string
+  ): Promise<ExternalLead | null> {
+    const { normalizeName, extractLast4Digits } = await import('./utils/duplicateDetection');
+    
+    const normalizedFirst = normalizeName(firstName);
+    const normalizedLast = normalizeName(lastName);
+    const last4 = extractLast4Digits(phoneOrLast4);
+    
+    if (!last4 || last4.length !== 4) {
+      return null; // Can't check without valid phone last 4 digits
+    }
+    
+    // Get all leads for this agency
+    const leads = await db.select()
+      .from(externalLeads)
+      .where(eq(externalLeads.agencyId, agencyId));
+    
+    // Check for duplicates by comparing normalized names and last 4 digits
+    for (const lead of leads) {
+      if (excludeId && lead.id === excludeId) continue;
+      
+      const leadFirst = normalizeName(lead.firstName);
+      const leadLast = normalizeName(lead.lastName);
+      // For leads, check both phone and phoneLast4 fields
+      const leadLast4 = lead.phoneLast4 || extractLast4Digits(lead.phone);
+      
+      if (leadFirst === normalizedFirst && 
+          leadLast === normalizedLast && 
+          leadLast4 === last4) {
+        return lead;
+      }
+    }
+    
+    return null;
   }
 
   // External Client Documents operations

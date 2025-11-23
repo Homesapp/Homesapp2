@@ -13,6 +13,7 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { DraggableSidebarSection, SortableMenuItem } from "@/components/DraggableSidebarSection";
 import {
   Home,
   Building2,
@@ -474,21 +475,27 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
           </SidebarGroup>
         )}
 
-        {/* External Agency Users - Flat structure */}
+        {/* External Agency Users - Flat structure with drag & drop */}
         {isExternalAgencyUser && filteredExternalManagement.length > 0 && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredExternalManagement.map((item) => (
-                  <SidebarMenuItem key={item.titleKey}>
-                    <SidebarMenuButton asChild isActive={location === item.url}>
-                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
-                        <item.icon />
-                        <span>{t(item.titleKey)}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                <DraggableSidebarSection items={filteredExternalManagement} userRole={userRole}>
+                  {(orderedItems) =>
+                    orderedItems.map((item) => (
+                      <SortableMenuItem key={item.titleKey} item={item}>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton asChild isActive={location === item.url}>
+                            <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                              <item.icon />
+                              <span>{t(item.titleKey)}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      </SortableMenuItem>
+                    ))
+                  }
+                </DraggableSidebarSection>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -680,16 +687,22 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {filteredExternalManagement.map((item) => (
-                            <SidebarMenuSubItem key={item.titleKey}>
-                              <SidebarMenuSubButton asChild isActive={location === item.url}>
-                                <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
-                                  <item.icon />
-                                  <span>{t(item.titleKey)}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          <DraggableSidebarSection items={filteredExternalManagement} userRole={userRole}>
+                            {(orderedItems) =>
+                              orderedItems.map((item) => (
+                                <SortableMenuItem key={item.titleKey} item={item}>
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                                        <item.icon />
+                                        <span>{t(item.titleKey)}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                </SortableMenuItem>
+                              ))
+                            }
+                          </DraggableSidebarSection>
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </SidebarMenuItem>

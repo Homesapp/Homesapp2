@@ -1,5 +1,18 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Custom error class that preserves HTTP status and parsed error data
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(status: number, message: string, data?: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -7,15 +20,20 @@ async function throwIfResNotOk(res: Response) {
     // Try to parse JSON error response
     try {
       const errorData = JSON.parse(text);
-      // If there's a message field, use it directly
-      if (errorData.message) {
-        throw new Error(errorData.message);
+      // Throw ApiError with status and parsed data
+      throw new ApiError(
+        res.status,
+        errorData.message || errorData.detail || `${res.status}: ${text}`,
+        errorData
+      );
+    } catch (error) {
+      // If error is already an ApiError, rethrow it
+      if (error instanceof ApiError) {
+        throw error;
       }
-    } catch {
-      // If JSON parsing fails, use the raw text
+      // Otherwise throw a generic ApiError
+      throw new ApiError(res.status, `${res.status}: ${text}`);
     }
-    
-    throw new Error(`${res.status}: ${text}`);
   }
 }
 

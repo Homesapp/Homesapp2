@@ -80,7 +80,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, ApiError } from "@/lib/queryClient";
 import type { ExternalClient, ExternalLead } from "@shared/schema";
 import { insertExternalClientSchema, insertExternalLeadSchema, updateExternalLeadSchema } from "@shared/schema";
 import { z } from "zod";
@@ -272,13 +272,23 @@ export default function ExternalClients() {
       form.reset();
     },
     onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: language === "es" ? "Error" : "Error",
-        description: error.message || (language === "es" 
-          ? "No se pudo crear el cliente."
-          : "Failed to create client."),
-      });
+      if (error instanceof ApiError && error.status === 409 && error.data?.duplicate) {
+        toast({
+          variant: "destructive",
+          title: language === "es" ? "Cliente Duplicado" : "Duplicate Client",
+          description: error.data.detail || (language === "es"
+            ? `Ya existe un cliente con el mismo nombre y últimos 4 dígitos de teléfono.`
+            : `A client with the same name and phone last 4 digits already exists.`),
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: language === "es" ? "Error" : "Error",
+          description: error instanceof ApiError ? error.data?.detail || error.message : error.message || (language === "es" 
+            ? "No se pudo crear el cliente."
+            : "Failed to create client."),
+        });
+      }
     },
   });
 
@@ -372,13 +382,23 @@ export default function ExternalClients() {
       leadForm.reset();
     },
     onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: language === "es" ? "Error" : "Error",
-        description: error.message || (language === "es" 
-          ? "No se pudo crear el lead."
-          : "Failed to create lead."),
-      });
+      if (error instanceof ApiError && error.status === 409 && error.data?.duplicate) {
+        toast({
+          variant: "destructive",
+          title: language === "es" ? "Lead Duplicado" : "Duplicate Lead",
+          description: error.data.detail || (language === "es"
+            ? `Ya existe un lead con el mismo nombre y últimos 4 dígitos de teléfono.`
+            : `A lead with the same name and phone last 4 digits already exists.`),
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: language === "es" ? "Error" : "Error",
+          description: error instanceof ApiError ? error.data?.detail || error.message : error.message || (language === "es" 
+            ? "No se pudo crear el lead."
+            : "Failed to create lead."),
+        });
+      }
     },
   });
 
