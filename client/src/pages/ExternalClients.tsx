@@ -81,8 +81,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { ExternalClient } from "@shared/schema";
-import { insertExternalClientSchema } from "@shared/schema";
+import type { ExternalClient, ExternalLead } from "@shared/schema";
+import { insertExternalClientSchema, insertExternalLeadSchema, updateExternalLeadSchema } from "@shared/schema";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
@@ -91,6 +91,9 @@ type ClientFormData = z.infer<typeof insertExternalClientSchema>;
 
 const editClientSchema = insertExternalClientSchema.partial();
 type EditClientFormData = z.infer<typeof editClientSchema>;
+
+type LeadFormData = z.infer<typeof insertExternalLeadSchema>;
+type EditLeadFormData = z.infer<typeof updateExternalLeadSchema>;
 
 type SortField = "name" | "email" | "phone" | "status" | "createdAt";
 type SortOrder = "asc" | "desc";
@@ -117,6 +120,20 @@ export default function ExternalClients() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExternalClient | null>(null);
+
+  // Lead states
+  const [isCreateLeadDialogOpen, setIsCreateLeadDialogOpen] = useState(false);
+  const [isEditLeadDialogOpen, setIsEditLeadDialogOpen] = useState(false);
+  const [isDeleteLeadDialogOpen, setIsDeleteLeadDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<ExternalLead | null>(null);
+  const [leadSearchTerm, setLeadSearchTerm] = useState("");
+  const debouncedLeadSearchTerm = useDebounce(leadSearchTerm, 400);
+  const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
+  const [leadRegistrationTypeFilter, setLeadRegistrationTypeFilter] = useState<string>("all");
+  const [leadCurrentPage, setLeadCurrentPage] = useState(1);
+  const [leadItemsPerPage, setLeadItemsPerPage] = useState(12);
+  const [leadSortField, setLeadSortField] = useState<string>("createdAt");
+  const [leadSortOrder, setLeadSortOrder] = useState<"asc" | "desc">("desc");
 
   useLayoutEffect(() => {
     setViewMode(isMobile ? "cards" : "table");
@@ -145,6 +162,40 @@ export default function ExternalClients() {
 
   const clients = clientsResponse?.data || [];
   const totalClients = clientsResponse?.total || 0;
+
+  const { data: leadsResponse, isLoading: leadsLoading } = useQuery<{ data: ExternalLead[]; total: number; limit: number; offset: number; hasMore: boolean }>({
+    queryKey: ["/api/external-leads", leadStatusFilter, leadRegistrationTypeFilter, debouncedLeadSearchTerm, leadSortField, leadSortOrder, leadCurrentPage, leadItemsPerPage],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (leadStatusFilter !== "all") params.append("status", leadStatusFilter);
+      if (leadRegistrationTypeFilter !== "all") params.append("registrationType", leadRegistrationTypeFilter);
+      if (debouncedLeadSearchTerm.trim()) params.append("search", debouncedLeadSearchTerm.trim());
+      if (leadSortField) params.append("sortField", leadSortField);
+      if (leadSortOrder) params.append("sortOrder", leadSortOrder);
+      params.append("limit", leadItemsPerPage.toString());
+      params.append("offset", ((leadCurrentPage - 1) * leadItemsPerPage).toString());
+      
+      const response = await fetch(`/api/external-leads?${params.toString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch leads');
+      return response.json();
+    },
+    enabled: activeTab === "leads",
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
+    keepPreviousData: true,
+  });
+
+  const leads = leadsResponse?.data || [];
+  const totalLeads = leadsResponse?.total || 0;
+  const paginatedLeads = leads;
+  const totalLeadPages = Math.max(1, Math.ceil(totalLeads / leadItemsPerPage));
+
+  useEffect(() => {
+    const clampedPage = Math.min(leadCurrentPage, totalLeadPages);
+    if (clampedPage !== leadCurrentPage) {
+      setLeadCurrentPage(clampedPage);
+    }
+  }, [totalLeadPages, leadCurrentPage]);
 
   // Backend handles all filtering, sorting, and pagination
   // No client-side processing needed
@@ -281,6 +332,106 @@ export default function ExternalClients() {
         description: error.message || (language === "es" 
           ? "No se pudo eliminar el cliente."
           : "Failed to delete client."),
+      });
+    },
+  });
+
+  const leadForm = useForm<LeadFormData>({
+    resolver: zodResolver(insertExternalLeadSchema),
+    defaultValues: {
+      registrationType: "broker",
+      firstName: "",
+      lastName: "",
+      phoneLast4: "",
+      email: "",
+      phone: "",
+      status: "new",
+      source: "",
+      notes: "",
+    },
+  });
+
+  const editLeadForm = useForm<EditLeadFormData>({
+    resolver: zodResolver(updateExternalLeadSchema),
+  });
+
+  const createLeadMutation = useMutation({
+    mutationFn: async (data: LeadFormData) => {
+      const res = await apiRequest("POST", "/api/external-leads", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+      toast({
+        title: language === "es" ? "Lead creado" : "Lead created",
+        description: language === "es" 
+          ? "El lead se ha creado exitosamente."
+          : "Lead has been created successfully.",
+      });
+      setIsCreateLeadDialogOpen(false);
+      leadForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" 
+          ? "No se pudo crear el lead."
+          : "Failed to create lead."),
+      });
+    },
+  });
+
+  const updateLeadMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: EditLeadFormData }) => {
+      const res = await apiRequest("PATCH", `/api/external-leads/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+      toast({
+        title: language === "es" ? "Lead actualizado" : "Lead updated",
+        description: language === "es" 
+          ? "El lead se ha actualizado exitosamente."
+          : "Lead has been updated successfully.",
+      });
+      setIsEditLeadDialogOpen(false);
+      setSelectedLead(null);
+      editLeadForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" 
+          ? "No se pudo actualizar el lead."
+          : "Failed to update lead."),
+      });
+    },
+  });
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/external-leads/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+      toast({
+        title: language === "es" ? "Lead eliminado" : "Lead deleted",
+        description: language === "es" 
+          ? "El lead se ha eliminado exitosamente."
+          : "Lead has been deleted successfully.",
+      });
+      setIsDeleteLeadDialogOpen(false);
+      setSelectedLead(null);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" 
+          ? "No se pudo eliminar el lead."
+          : "Failed to delete lead."),
       });
     },
   });
@@ -1199,13 +1350,700 @@ export default function ExternalClients() {
 
         {/* Leads Tab Content */}
         <TabsContent value="leads" className="space-y-6 mt-6">
-          <div className="flex justify-center items-center py-12">
-            <p className="text-muted-foreground">
-              {language === "es" ? "Sección de Leads - En construcción" : "Leads Section - Under construction"}
-            </p>
+          {/* Create Button */}
+          <div className="flex justify-end">
+            <Button 
+              onClick={() => setIsCreateLeadDialogOpen(true)}
+              data-testid="button-create-lead"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {language === "es" ? "Nuevo Lead" : "New Lead"}
+            </Button>
           </div>
+
+          {/* Search and Filters for Leads */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={language === "es" ? "Buscar por nombre, email o teléfono..." : "Search by name, email or phone..."}
+                    value={leadSearchTerm}
+                    onChange={(e) => setLeadSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-lead-search"
+                  />
+                </div>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="flex-shrink-0 relative"
+                      data-testid="button-lead-filters"
+                    >
+                      <Filter className="h-4 w-4" />
+                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all") && (
+                        <Badge variant="default" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                          {(leadStatusFilter !== "all" ? 1 : 0) + (leadRegistrationTypeFilter !== "all" ? 1 : 0)}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-medium mb-2">{language === "es" ? "Estado" : "Status"}</h4>
+                        <Select value={leadStatusFilter} onValueChange={setLeadStatusFilter}>
+                          <SelectTrigger data-testid="select-lead-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
+                            <SelectItem value="new">{language === "es" ? "Nuevo" : "New"}</SelectItem>
+                            <SelectItem value="contacted">{language === "es" ? "Contactado" : "Contacted"}</SelectItem>
+                            <SelectItem value="qualified">{language === "es" ? "Calificado" : "Qualified"}</SelectItem>
+                            <SelectItem value="converted">{language === "es" ? "Convertido" : "Converted"}</SelectItem>
+                            <SelectItem value="lost">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">{language === "es" ? "Tipo de Registro" : "Registration Type"}</h4>
+                        <Select value={leadRegistrationTypeFilter} onValueChange={setLeadRegistrationTypeFilter}>
+                          <SelectTrigger data-testid="select-lead-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
+                            <SelectItem value="broker">{language === "es" ? "Broker" : "Broker"}</SelectItem>
+                            <SelectItem value="seller">{language === "es" ? "Vendedor" : "Seller"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setLeadStatusFilter("all");
+                            setLeadRegistrationTypeFilter("all");
+                          }}
+                          className="w-full"
+                          data-testid="button-lead-clear-filters"
+                        >
+                          {language === "es" ? "Limpiar Filtros" : "Clear Filters"}
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Leads Content */}
+          {leadsLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="text-muted-foreground">{language === "es" ? "Cargando..." : "Loading..."}</div>
+            </div>
+          ) : paginatedLeads.length === 0 ? (
+            <Card>
+              <CardContent className="flex justify-center py-12">
+                <p className="text-muted-foreground">
+                  {language === "es" ? "No se encontraron leads" : "No leads found"}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {viewMode === "table" ? (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{language === "es" ? "Nombre" : "Name"}</TableHead>
+                          <TableHead>{language === "es" ? "Tipo" : "Type"}</TableHead>
+                          <TableHead>{language === "es" ? "Contacto" : "Contact"}</TableHead>
+                          <TableHead>{language === "es" ? "Estado" : "Status"}</TableHead>
+                          <TableHead>{language === "es" ? "Fuente" : "Source"}</TableHead>
+                          <TableHead>{language === "es" ? "Fecha" : "Date"}</TableHead>
+                          <TableHead className="text-right">{language === "es" ? "Acciones" : "Actions"}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedLeads.map((lead) => (
+                          <TableRow key={lead.id}>
+                            <TableCell className="font-medium">{`${lead.firstName} ${lead.lastName}`}</TableCell>
+                            <TableCell>
+                              <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"}>
+                                {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1 text-sm">
+                                {lead.registrationType === "broker" ? (
+                                  <div>****{lead.phoneLast4}</div>
+                                ) : (
+                                  <>
+                                    {lead.phone && <div>{lead.phone}</div>}
+                                    {lead.email && <div className="text-muted-foreground">{lead.email}</div>}
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  lead.status === "converted" ? "default" :
+                                  lead.status === "lost" ? "destructive" :
+                                  "secondary"
+                                }
+                              >
+                                {language === "es" 
+                                  ? { new: "Nuevo", contacted: "Contactado", qualified: "Calificado", converted: "Convertido", lost: "Perdido" }[lead.status]
+                                  : { new: "New", contacted: "Contacted", qualified: "Qualified", converted: "Converted", lost: "Lost" }[lead.status]
+                                }
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{lead.source || "-"}</TableCell>
+                            <TableCell className="text-sm">
+                              {lead.createdAt ? format(new Date(lead.createdAt), "dd MMM yyyy", { locale: language === "es" ? es : enUS }) : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedLead(lead);
+                                    editLeadForm.reset(lead);
+                                    setIsEditLeadDialogOpen(true);
+                                  }}
+                                  data-testid={`button-edit-lead-${lead.id}`}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedLead(lead);
+                                    setIsDeleteLeadDialogOpen(true);
+                                  }}
+                                  data-testid={`button-delete-lead-${lead.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {paginatedLeads.map((lead) => (
+                    <Card key={lead.id} className="hover-elevate">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <CardTitle className="text-base">{`${lead.firstName} ${lead.lastName}`}</CardTitle>
+                            <div className="flex gap-2">
+                              <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"} className="text-xs">
+                                {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                              </Badge>
+                              <Badge 
+                                variant={
+                                  lead.status === "converted" ? "default" :
+                                  lead.status === "lost" ? "destructive" :
+                                  "secondary"
+                                }
+                                className="text-xs"
+                              >
+                                {language === "es" 
+                                  ? { new: "Nuevo", contacted: "Contactado", qualified: "Calificado", converted: "Convertido", lost: "Perdido" }[lead.status]
+                                  : { new: "New", contacted: "Contacted", qualified: "Qualified", converted: "Converted", lost: "Lost" }[lead.status]
+                                }
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                editLeadForm.reset(lead);
+                                setIsEditLeadDialogOpen(true);
+                              }}
+                              data-testid={`button-edit-lead-${lead.id}`}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsDeleteLeadDialogOpen(true);
+                              }}
+                              data-testid={`button-delete-lead-${lead.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div>
+                          {lead.registrationType === "broker" ? (
+                            <div className="text-muted-foreground">****{lead.phoneLast4}</div>
+                          ) : (
+                            <>
+                              {lead.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-3 w-3 text-muted-foreground" />
+                                  <span>{lead.phone}</span>
+                                </div>
+                              )}
+                              {lead.email && (
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-3 w-3 text-muted-foreground" />
+                                  <span className="truncate">{lead.email}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {lead.source && (
+                          <div className="text-muted-foreground">
+                            {language === "es" ? "Fuente" : "Source"}: {lead.source}
+                          </div>
+                        )}
+                        <div className="text-muted-foreground">
+                          {lead.createdAt ? format(new Date(lead.createdAt), "dd MMM yyyy", { locale: language === "es" ? es : enUS }) : "-"}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              <ExternalPaginationControls
+                currentPage={leadCurrentPage}
+                totalPages={totalLeadPages}
+                totalItems={totalLeads}
+                itemsPerPage={leadItemsPerPage}
+                onPageChange={setLeadCurrentPage}
+                onItemsPerPageChange={(value) => {
+                  setLeadItemsPerPage(value);
+                  setLeadCurrentPage(1);
+                }}
+                language={language}
+                isMobile={isMobile}
+              />
+            </>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Create Lead Dialog */}
+      <Dialog open={isCreateLeadDialogOpen} onOpenChange={setIsCreateLeadDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Crear Nuevo Lead" : "Create New Lead"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Complete la información del nuevo lead. Los campos marcados con * son obligatorios."
+                : "Fill in the information for the new lead. Fields marked with * are required."}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...leadForm}>
+            <form onSubmit={leadForm.handleSubmit((data) => createLeadMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={leadForm.control}
+                name="registrationType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Tipo de Registro *" : "Registration Type *"}</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-create-lead-type">
+                          <SelectValue placeholder={language === "es" ? "Seleccione el tipo" : "Select type"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="broker">{language === "es" ? "Broker (solo últimos 4 dígitos)" : "Broker (last 4 digits only)"}</SelectItem>
+                        <SelectItem value="seller">{language === "es" ? "Vendedor (contacto completo)" : "Seller (full contact)"}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={leadForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Nombre *" : "First Name *"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-create-lead-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={leadForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Apellido *" : "Last Name *"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-create-lead-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {leadForm.watch("registrationType") === "broker" ? (
+                <FormField
+                  control={leadForm.control}
+                  name="phoneLast4"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Últimos 4 dígitos del teléfono *" : "Last 4 Phone Digits *"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} maxLength={4} placeholder="1234" data-testid="input-create-lead-phonelast4" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={leadForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Teléfono *" : "Phone *"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} data-testid="input-create-lead-phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={leadForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Email *" : "Email *"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} type="email" data-testid="input-create-lead-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={leadForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Estado" : "Status"}</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-create-lead-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="new">{language === "es" ? "Nuevo" : "New"}</SelectItem>
+                          <SelectItem value="contacted">{language === "es" ? "Contactado" : "Contacted"}</SelectItem>
+                          <SelectItem value="qualified">{language === "es" ? "Calificado" : "Qualified"}</SelectItem>
+                          <SelectItem value="converted">{language === "es" ? "Convertido" : "Converted"}</SelectItem>
+                          <SelectItem value="lost">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={leadForm.control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Fuente" : "Source"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} data-testid="input-create-lead-source" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={leadForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} data-testid="input-create-lead-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateLeadDialogOpen(false)}
+                  data-testid="button-create-lead-cancel"
+                >
+                  {language === "es" ? "Cancelar" : "Cancel"}
+                </Button>
+                <Button type="submit" disabled={createLeadMutation.isPending} data-testid="button-create-lead-submit">
+                  {createLeadMutation.isPending 
+                    ? (language === "es" ? "Creando..." : "Creating...")
+                    : (language === "es" ? "Crear Lead" : "Create Lead")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Lead Dialog */}
+      <Dialog open={isEditLeadDialogOpen} onOpenChange={setIsEditLeadDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Editar Lead" : "Edit Lead"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Modifique la información del lead."
+                : "Modify the lead information."}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editLeadForm}>
+            <form onSubmit={editLeadForm.handleSubmit((data) => selectedLead && updateLeadMutation.mutate({ id: selectedLead.id, data }))} className="space-y-4">
+              {selectedLead && (
+                <div className="rounded-lg bg-muted p-3 text-sm">
+                  <strong>{language === "es" ? "Tipo de Registro: " : "Registration Type: "}</strong>
+                  {selectedLead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={editLeadForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Nombre" : "First Name"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} data-testid="input-edit-lead-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editLeadForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Apellido" : "Last Name"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} data-testid="input-edit-lead-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {selectedLead?.registrationType === "broker" ? (
+                <FormField
+                  control={editLeadForm.control}
+                  name="phoneLast4"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Últimos 4 dígitos del teléfono" : "Last 4 Phone Digits"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} maxLength={4} placeholder="1234" data-testid="input-edit-lead-phonelast4" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={editLeadForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} data-testid="input-edit-lead-phone" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editLeadForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-lead-email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={editLeadForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Estado" : "Status"}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-lead-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="new">{language === "es" ? "Nuevo" : "New"}</SelectItem>
+                          <SelectItem value="contacted">{language === "es" ? "Contactado" : "Contacted"}</SelectItem>
+                          <SelectItem value="qualified">{language === "es" ? "Calificado" : "Qualified"}</SelectItem>
+                          <SelectItem value="converted">{language === "es" ? "Convertido" : "Converted"}</SelectItem>
+                          <SelectItem value="lost">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editLeadForm.control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Fuente" : "Source"}</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} data-testid="input-edit-lead-source" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editLeadForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} data-testid="input-edit-lead-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditLeadDialogOpen(false)}
+                  data-testid="button-edit-lead-cancel"
+                >
+                  {language === "es" ? "Cancelar" : "Cancel"}
+                </Button>
+                <Button type="submit" disabled={updateLeadMutation.isPending} data-testid="button-edit-lead-submit">
+                  {updateLeadMutation.isPending 
+                    ? (language === "es" ? "Guardando..." : "Saving...")
+                    : (language === "es" ? "Guardar Cambios" : "Save Changes")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Lead Dialog */}
+      <Dialog open={isDeleteLeadDialogOpen} onOpenChange={setIsDeleteLeadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Eliminar Lead" : "Delete Lead"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? `¿Está seguro de que desea eliminar a ${selectedLead?.firstName} ${selectedLead?.lastName}? Esta acción no se puede deshacer.`
+                : `Are you sure you want to delete ${selectedLead?.firstName} ${selectedLead?.lastName}? This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteLeadDialogOpen(false)}
+              data-testid="button-delete-lead-cancel"
+            >
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => selectedLead && deleteLeadMutation.mutate(selectedLead.id)}
+              disabled={deleteLeadMutation.isPending}
+              data-testid="button-delete-lead-confirm"
+            >
+              {deleteLeadMutation.isPending 
+                ? (language === "es" ? "Eliminando..." : "Deleting...")
+                : (language === "es" ? "Eliminar" : "Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
