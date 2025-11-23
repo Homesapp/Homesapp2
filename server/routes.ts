@@ -13762,7 +13762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: users.id,
             firstName: users.firstName,
             lastName: users.lastName,
-            profilePictureUrl: users.profilePictureUrl,
+            profilePictureUrl: users.profileImageUrl,
           })
           .from(users)
           .where(eq(users.id, offerToken.createdBy))
@@ -14248,7 +14248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: users.id,
             firstName: users.firstName,
             lastName: users.lastName,
-            profilePictureUrl: users.profilePictureUrl,
+            profilePictureUrl: users.profileImageUrl,
           })
           .from(users)
           .where(eq(users.id, rentalFormToken.createdBy))
