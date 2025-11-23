@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink, RefreshCw, FileDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, ExternalLink, RefreshCw, FileDown, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
@@ -62,6 +62,38 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
       toast({
         title: language === "es" ? "Error" : "Error",
         description: language === "es" ? "No se pudo descargar el PDF" : "Could not download PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to view PDF with authentication
+  const viewOfferPDF = async (offerId: string) => {
+    try {
+      const response = await fetch(`/api/external/offers/${offerId}/pdf`, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for authentication
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load PDF');
+      }
+
+      // Convert response to blob
+      const blob = await response.blob();
+      
+      // Create blob URL and open in new tab
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      
+      // Cleanup after a delay to ensure the PDF loads
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (error) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es" ? "No se pudo visualizar el PDF" : "Could not view PDF",
         variant: "destructive",
       });
     }
@@ -282,16 +314,28 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                   </div>
                   <div className="flex items-center gap-2 pt-2">
                     {token.isUsed && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => downloadOfferPDF(token.id)}
-                        className="flex-1"
-                        data-testid="button-download-offer-pdf"
-                      >
-                        <FileDown className="h-4 w-4 mr-2" />
-                        {language === "es" ? "PDF" : "PDF"}
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewOfferPDF(token.id)}
+                          className="flex-1"
+                          data-testid="button-view-offer-pdf"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          {language === "es" ? "Ver" : "View"}
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => downloadOfferPDF(token.id)}
+                          className="flex-1"
+                          data-testid="button-download-offer-pdf"
+                        >
+                          <FileDown className="h-4 w-4 mr-2" />
+                          {language === "es" ? "Descargar" : "Download"}
+                        </Button>
+                      </>
                     )}
                     {canRegenerate && (
                       <Button
@@ -408,15 +452,26 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {token.isUsed && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => downloadOfferPDF(token.id)}
-                            title={language === "es" ? "Descargar PDF" : "Download PDF"}
-                            data-testid="button-download-offer-pdf"
-                          >
-                            <FileDown className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => viewOfferPDF(token.id)}
+                              title={language === "es" ? "Ver PDF" : "View PDF"}
+                              data-testid="button-view-offer-pdf"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => downloadOfferPDF(token.id)}
+                              title={language === "es" ? "Descargar PDF" : "Download PDF"}
+                              data-testid="button-download-offer-pdf"
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                         {canRegenerate && (
                           <Button
