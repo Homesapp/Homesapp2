@@ -32,6 +32,41 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // Helper function to download PDF with authentication
+  const downloadOfferPDF = async (offerId: string) => {
+    try {
+      const response = await fetch(`/api/external/offers/${offerId}/pdf`, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for authentication
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      // Convert response to blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `oferta-${offerId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es" ? "No se pudo descargar el PDF" : "Could not download PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
   const { data: offerTokens, isLoading } = useQuery({
     queryKey: ["/api/external/offer-tokens"],
     queryFn: async () => {
@@ -250,7 +285,7 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => window.open(`/api/external/offers/${token.id}/pdf`, "_blank")}
+                        onClick={() => downloadOfferPDF(token.id)}
                         className="flex-1"
                         data-testid="button-download-offer-pdf"
                       >
@@ -376,7 +411,7 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => window.open(`/api/external/offers/${token.id}/pdf`, "_blank")}
+                            onClick={() => downloadOfferPDF(token.id)}
                             title={language === "es" ? "Descargar PDF" : "Download PDF"}
                             data-testid="button-download-offer-pdf"
                           >
