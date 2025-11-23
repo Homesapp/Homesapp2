@@ -55,8 +55,8 @@ export default function ExternalContracts() {
   };
 
   return (
-    <div className="h-full flex flex-col p-6">
-      <div className="mb-6">
+    <div className="container mx-auto p-6 space-y-6">
+      <div>
         <h1 className="text-3xl font-bold">
           {language === "es" ? "Contratos" : "Contracts"}
         </h1>
@@ -67,8 +67,8 @@ export default function ExternalContracts() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="offers" className="gap-2">
             <FileText className="h-4 w-4" />
             {language === "es" ? "Ofertas de Renta" : "Rental Offers"}
@@ -84,7 +84,7 @@ export default function ExternalContracts() {
         </TabsList>
 
         {/* Search and Filters - Shared across all tabs */}
-        <Card className="mb-6">
+        <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Search Input */}
