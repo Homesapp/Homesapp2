@@ -108,17 +108,17 @@ export function SortableMenuItem({
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
     >
-      <div
+      <span
         {...attributes}
         {...listeners}
         role="button"
         tabIndex={0}
         aria-label={`Drag to reorder ${item.titleKey}`}
-        className="absolute left-0 top-0 bottom-0 flex items-center -translate-x-full pr-1 hidden group-hover/menu-item:flex focus-visible:flex cursor-grab active:cursor-grabbing p-1 hover-elevate active-elevate-2 rounded-md z-10 focus-visible:ring-2 focus-visible:ring-primary"
+        className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/menu-item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 hover-elevate active-elevate-2 rounded-md z-50 focus-visible:ring-2 focus-visible:ring-primary pointer-events-auto"
         data-testid={`drag-handle-${item.titleKey}`}
       >
         <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </span>
       {children}
     </li>
   );
@@ -154,17 +154,17 @@ export function SortableMenuSubItem({
       data-slot="sidebar-menu-sub-item"
       data-sidebar="menu-sub-item"
     >
-      <div
+      <span
         {...attributes}
         {...listeners}
         role="button"
         tabIndex={0}
         aria-label={`Drag to reorder ${item.titleKey}`}
-        className="absolute left-0 top-0 bottom-0 flex items-center -translate-x-full pr-1 hidden group-hover/menu-sub-item:flex focus-visible:flex cursor-grab active:cursor-grabbing p-1 hover-elevate active-elevate-2 rounded-md z-10 focus-visible:ring-2 focus-visible:ring-primary"
+        className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/menu-sub-item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 hover-elevate active-elevate-2 rounded-md z-50 focus-visible:ring-2 focus-visible:ring-primary pointer-events-auto"
         data-testid={`drag-handle-${item.titleKey}`}
       >
         <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </div>
+      </span>
       {children}
     </li>
   );
