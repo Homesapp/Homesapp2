@@ -365,6 +365,10 @@ import {
   type ExternalClientIncident,
   type InsertExternalClientIncident,
   type UpdateExternalClientIncident,
+  externalLeads,
+  type ExternalLead,
+  type InsertExternalLead,
+  type UpdateExternalLead,
   externalFinancialTransactions,
   type ExternalFinancialTransaction,
   type InsertExternalFinancialTransaction,
@@ -1270,6 +1274,15 @@ export interface IStorage {
   createExternalClient(client: InsertExternalClient): Promise<ExternalClient>;
   updateExternalClient(id: string, updates: Partial<InsertExternalClient>): Promise<ExternalClient>;
   deleteExternalClient(id: string): Promise<void>;
+
+  // External Leads
+  getExternalLead(id: string): Promise<ExternalLead | undefined>;
+  getExternalLeadsByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }): Promise<ExternalLead[]>;
+  getExternalLeadsCountByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; search?: string }): Promise<number>;
+  createExternalLead(lead: InsertExternalLead): Promise<ExternalLead>;
+  updateExternalLead(id: string, updates: Partial<InsertExternalLead>): Promise<ExternalLead>;
+  deleteExternalLead(id: string): Promise<void>;
+  convertLeadToClient(leadId: string, clientId: string): Promise<void>;
 
   // External Client Documents
   getExternalClientDocuments(clientId: string): Promise<ExternalClientDocument[]>;
@@ -8899,6 +8912,152 @@ export class DatabaseStorage implements IStorage {
   async deleteExternalClient(id: string): Promise<void> {
     await db.delete(externalClients)
       .where(eq(externalClients.id, id));
+  }
+
+  // External Leads operations
+  async getExternalLead(id: string): Promise<ExternalLead | undefined> {
+    const [lead] = await db.select()
+      .from(externalLeads)
+      .where(eq(externalLeads.id, id))
+      .limit(1);
+    return lead;
+  }
+
+  async getExternalLeadsByAgency(
+    agencyId: string, 
+    filters?: { status?: string; registrationType?: string; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }
+  ): Promise<ExternalLead[]> {
+    const conditions = [eq(externalLeads.agencyId, agencyId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(externalLeads.status, filters.status));
+    }
+    if (filters?.registrationType) {
+      conditions.push(eq(externalLeads.registrationType, filters.registrationType));
+    }
+    if (filters?.search && filters.search.trim().length > 0) {
+      const sanitized = filters.search
+        .trim()
+        .slice(0, 100)
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+      const searchPattern = `%${sanitized}%`;
+      conditions.push(
+        or(
+          ilike(externalLeads.name, searchPattern),
+          ilike(externalLeads.email, searchPattern),
+          ilike(externalLeads.phone, searchPattern),
+          ilike(externalLeads.phoneLast4, searchPattern)
+        )!
+      );
+    }
+    
+    let query = db.select()
+      .from(externalLeads)
+      .where(and(...conditions));
+    
+    const sortOrder = filters?.sortOrder || 'desc';
+    const sortFn = sortOrder === 'asc' ? asc : desc;
+    
+    switch (filters?.sortField) {
+      case 'name':
+        query = query.orderBy(sortFn(externalLeads.name));
+        break;
+      case 'status':
+        query = query.orderBy(sortFn(externalLeads.status));
+        break;
+      case 'registrationType':
+        query = query.orderBy(sortFn(externalLeads.registrationType));
+        break;
+      case 'createdAt':
+      default:
+        query = query.orderBy(sortFn(externalLeads.createdAt));
+        break;
+    }
+    
+    if (filters?.limit !== undefined) {
+      query = query.limit(filters.limit);
+    }
+    if (filters?.offset !== undefined) {
+      query = query.offset(filters.offset);
+    }
+    
+    return await query;
+  }
+  
+  async getExternalLeadsCountByAgency(
+    agencyId: string,
+    filters?: { status?: string; registrationType?: string; search?: string }
+  ): Promise<number> {
+    const conditions = [eq(externalLeads.agencyId, agencyId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(externalLeads.status, filters.status));
+    }
+    if (filters?.registrationType) {
+      conditions.push(eq(externalLeads.registrationType, filters.registrationType));
+    }
+    if (filters?.search && filters.search.trim().length > 0) {
+      const sanitized = filters.search
+        .trim()
+        .slice(0, 100)
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+      const searchPattern = `%${sanitized}%`;
+      conditions.push(
+        or(
+          ilike(externalLeads.name, searchPattern),
+          ilike(externalLeads.email, searchPattern),
+          ilike(externalLeads.phone, searchPattern),
+          ilike(externalLeads.phoneLast4, searchPattern)
+        )!
+      );
+    }
+    
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(externalLeads)
+      .where(and(...conditions));
+    
+    return result[0]?.count || 0;
+  }
+
+  async createExternalLead(lead: InsertExternalLead): Promise<ExternalLead> {
+    const [result] = await db.insert(externalLeads)
+      .values({
+        ...lead,
+        id: crypto.randomUUID(),
+      })
+      .returning();
+    return result;
+  }
+
+  async updateExternalLead(id: string, updates: Partial<InsertExternalLead>): Promise<ExternalLead> {
+    const [result] = await db.update(externalLeads)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(externalLeads.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalLead(id: string): Promise<void> {
+    await db.delete(externalLeads)
+      .where(eq(externalLeads.id, id));
+  }
+
+  async convertLeadToClient(leadId: string, clientId: string): Promise<void> {
+    await db.update(externalLeads)
+      .set({
+        status: 'converted',
+        convertedToClientId: clientId,
+        convertedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(externalLeads.id, leadId));
   }
 
   // External Client Documents operations

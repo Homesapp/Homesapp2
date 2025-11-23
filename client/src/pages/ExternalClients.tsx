@@ -40,6 +40,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -96,6 +102,7 @@ export default function ExternalClients() {
   const isMobile = useMobile();
   const [, navigate] = useLocation();
 
+  const [activeTab, setActiveTab] = useState<"clients" | "leads">("clients");
   const [viewMode, setViewMode] = useState<"cards" | "table">(isMobile ? "cards" : "table");
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 400);

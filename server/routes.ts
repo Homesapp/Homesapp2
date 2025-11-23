@@ -151,6 +151,9 @@ import {
   insertExternalClientDocumentSchema,
   insertExternalClientIncidentSchema,
   updateExternalClientIncidentSchema,
+  externalLeads,
+  insertExternalLeadSchema,
+  updateExternalLeadSchema,
   insertExternalPropertySchema,
   insertExternalRentalContractSchema,
   insertExternalRentalTenantSchema,
@@ -24236,6 +24239,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external client:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // ==============================
+  // External Leads Routes
+  // ==============================
+
+  // GET /api/external-leads - Get all leads for agency
+  app.get("/api/external-leads", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { status, registrationType, search, sortField, sortOrder, limit = '50', offset = '0' } = req.query;
+      
+      const limitNum = Math.max(1, Math.min(parseInt(limit as string, 10) || 50, 1000));
+      const offsetNum = Math.max(0, parseInt(offset as string, 10) || 0);
+      
+      const filters = {
+        status: status as string | undefined,
+        registrationType: registrationType as string | undefined,
+        search: search as string | undefined,
+        sortField: sortField as string | undefined,
+        sortOrder: (sortOrder === 'asc' || sortOrder === 'desc') ? sortOrder : 'desc' as 'asc' | 'desc',
+        limit: limitNum,
+        offset: offsetNum,
+      };
+      
+      const [leads, total] = await Promise.all([
+        storage.getExternalLeadsByAgency(agencyId, filters),
+        storage.getExternalLeadsCountByAgency(agencyId, {
+          status: filters.status,
+          registrationType: filters.registrationType,
+          search: filters.search,
+        }),
+      ]);
+      
+      res.json({
+        data: leads,
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore: offsetNum + leads.length < total,
+      });
+    } catch (error: any) {
+      console.error("Error fetching external leads:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-leads/:id - Get specific lead
+  app.get("/api/external-leads/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const lead = await storage.getExternalLead(id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      res.json(lead);
+    } catch (error: any) {
+      console.error("Error fetching external lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-leads - Create new lead
+  app.post("/api/external-leads", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const validatedData = insertExternalLeadSchema.parse(req.body);
+      
+      const lead = await storage.createExternalLead({
+        ...validatedData,
+        agencyId,
+        createdBy: req.user.id,
+      });
+      
+      await createAuditLog(req, "create", "external_lead", lead.id, "Created new lead");
+      res.status(201).json(lead);
+    } catch (error: any) {
+      console.error("Error creating external lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-leads/:id - Update lead
+  app.patch("/api/external-leads/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getExternalLead(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      const validatedData = updateExternalLeadSchema.parse(req.body);
+      const lead = await storage.updateExternalLead(id, validatedData);
+      
+      await createAuditLog(req, "update", "external_lead", id, "Updated lead");
+      res.json(lead);
+    } catch (error: any) {
+      console.error("Error updating external lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external-leads/:id - Delete lead
+  app.delete("/api/external-leads/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getExternalLead(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      await storage.deleteExternalLead(id);
+      
+      await createAuditLog(req, "delete", "external_lead", id, "Deleted lead");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external lead:", error);
       handleGenericError(res, error);
     }
   });

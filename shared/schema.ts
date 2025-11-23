@@ -56,6 +56,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "external_agency_accounting",
   "external_agency_maintenance",
   "external_agency_staff",
+  "external_agency_seller",
 ]);
 
 export const userStatusEnum = pgEnum("user_status", [
@@ -458,6 +459,11 @@ export const clientIncidentStatusEnum = pgEnum("client_incident_status", [
   "in_progress",
   "resolved",
   "closed"
+]);
+
+export const leadRegistrationTypeEnum = pgEnum("lead_registration_type", [
+  "broker", // Broker externo - solo últimos 4 dígitos del teléfono
+  "seller"  // Vendedor interno - datos completos
 ]);
 
 export const financialTransactionDirectionEnum = pgEnum("financial_transaction_direction", [
@@ -5631,6 +5637,93 @@ export const updateExternalClientIncidentSchema = insertExternalClientIncidentSc
 export type InsertExternalClientIncident = z.infer<typeof insertExternalClientIncidentSchema>;
 export type UpdateExternalClientIncident = z.infer<typeof updateExternalClientIncidentSchema>;
 export type ExternalClientIncident = typeof externalClientIncidents.$inferSelect;
+
+// External Leads - Leads registrados por brokers o sellers que se convierten en clientes
+export const externalLeads = pgTable("external_leads", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Tipo de registro
+  registrationType: leadRegistrationTypeEnum("registration_type").notNull(), // broker o seller
+  
+  // Información básica
+  name: varchar("name", { length: 200 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }), // Completo para seller
+  phoneLast4: varchar("phone_last_4", { length: 4 }), // Solo últimos 4 dígitos para broker
+  
+  // Preferencias de búsqueda
+  contractDuration: integer("contract_duration"), // Tiempo de contrato en meses
+  checkInDate: date("check_in_date"),
+  allowsPets: boolean("allows_pets").default(false),
+  estimatedRentCost: decimal("estimated_rent_cost", { precision: 10, scale: 2 }),
+  bedroomsDesired: integer("bedrooms_desired"),
+  unitTypeDesired: varchar("unit_type_desired", { length: 100 }), // apartment, house, studio, etc
+  neighborhoodDesired: varchar("neighborhood_desired", { length: 200 }),
+  notes: text("notes"),
+  
+  // Estado del lead
+  status: varchar("status", { length: 50 }).notNull().default("new"), // new, contacted, viewing, offer_sent, converted, lost
+  convertedToClientId: varchar("converted_to_client_id").references(() => externalClients.id), // Si se convirtió en cliente
+  convertedAt: timestamp("converted_at"), // Cuando se convirtió
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_leads_agency").on(table.agencyId),
+  index("idx_external_leads_status").on(table.status),
+  index("idx_external_leads_registration_type").on(table.registrationType),
+  index("idx_external_leads_converted").on(table.convertedToClientId),
+]);
+
+const baseExternalLeadSchema = createInsertSchema(externalLeads).omit({
+  id: true,
+  agencyId: true,
+  convertedToClientId: true,
+  convertedAt: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExternalLeadSchema = baseExternalLeadSchema.refine((data) => {
+  // Broker validation: must provide phoneLast4
+  if (data.registrationType === 'broker') {
+    return data.phoneLast4 && data.phoneLast4.length === 4;
+  }
+  // Seller validation: must provide full phone and email
+  if (data.registrationType === 'seller') {
+    return data.phone && data.phone.length > 0 && data.email && data.email.length > 0;
+  }
+  return true;
+}, {
+  message: "Broker must provide last 4 digits of phone. Seller must provide full phone and email.",
+});
+
+export const updateExternalLeadSchema = baseExternalLeadSchema.partial().refine((data) => {
+  // Only validate if registrationType is being updated or is present
+  if (!data.registrationType) return true;
+  
+  // Broker validation: if phoneLast4 is provided, must be 4 digits
+  if (data.registrationType === 'broker' && data.phoneLast4) {
+    return data.phoneLast4.length === 4;
+  }
+  // Seller validation: if updating to seller, ensure phone and email exist
+  if (data.registrationType === 'seller') {
+    if (data.phone !== undefined || data.email !== undefined) {
+      return (!data.phone || data.phone.length > 0) && (!data.email || data.email.length > 0);
+    }
+  }
+  return true;
+}, {
+  message: "Invalid data for registration type.",
+});
+
+export type InsertExternalLead = z.infer<typeof insertExternalLeadSchema>;
+export type UpdateExternalLead = z.infer<typeof updateExternalLeadSchema>;
+export type ExternalLead = typeof externalLeads.$inferSelect;
 
 // External Condominiums - Condominios gestionados por agencias externas
 export const externalCondominiums = pgTable("external_condominiums", {
