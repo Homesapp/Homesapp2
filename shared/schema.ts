@@ -505,6 +505,11 @@ export const externalQuotationStatusEnum = pgEnum("external_quotation_status", [
   "cancelled",              // Cancelada
 ]);
 
+export const externalTermsTypeEnum = pgEnum("external_terms_type", [
+  "tenant", // Términos para inquilinos
+  "owner",  // Términos para propietarios
+]);
+
 export const financialTransactionStatusEnum = pgEnum("financial_transaction_status", [
   "pending",      // Pendiente
   "posted",       // Contabilizado/Procesado
@@ -5885,11 +5890,6 @@ export type InsertExternalQuotationToken = z.infer<typeof insertExternalQuotatio
 export type ExternalQuotationToken = typeof externalQuotationTokens.$inferSelect;
 
 // External Terms and Conditions - Términos y condiciones para inquilinos y propietarios del sistema externo
-export const externalTermsTypeEnum = pgEnum("external_terms_type", [
-  "tenant", // Términos para inquilinos
-  "owner",  // Términos para propietarios
-]);
-
 export const externalTermsAndConditions = pgTable("external_terms_and_conditions", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
