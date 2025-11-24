@@ -25389,6 +25389,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "El formulario aún no ha sido completado" });
       }
 
+      // Get agency info for branding
+      const agency = await storage.getExternalAgency(agencyId);
+      const agencyName = agency?.name || '';
+      const templateStyle = (agency?.pdfTemplateStyle as 'professional' | 'modern' | 'elegant') || 'professional';
+
       // Get unit info
       const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
       const condo = unit?.condominiumId ? await storage.getExternalCondominium(unit.condominiumId) : null;
@@ -25407,7 +25412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate appropriate PDF based on recipient type
       let pdfBuffer;
       if (rentalFormToken.recipientType === 'tenant') {
-        pdfBuffer = await generateRentalFormPDF(rentalFormToken.tenantData, propertyForPDF);
+        pdfBuffer = await generateRentalFormPDF(rentalFormToken.tenantData, propertyForPDF, agencyName, templateStyle);
       } else {
         // For owner forms, use owner-specific PDF generator if available
         pdfBuffer = await generateOwnerFormPDF(rentalFormToken.tenantData, propertyForPDF);
