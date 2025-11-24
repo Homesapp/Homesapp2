@@ -14,7 +14,7 @@ import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendOfferLinkEmail } from "./gmail";
 import { getPropertyTitle } from "./propertyHelpers";
 import { setupGoogleAuth } from "./googleAuth";
-import { generateOfferPDF, generateRentalFormPDF, generateOwnerFormPDF } from "./pdfGenerator";
+import { generateOfferPDF, generateRentalFormPDF, generateOwnerFormPDF, generateQuotationPDF } from "./pdfGenerator";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
 import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter, propertySubmissionLimiter } from "./rateLimiters";
 import { encrypt, decrypt } from "./encryption";
@@ -28231,6 +28231,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result.quotation);
     } catch (error: any) {
       console.error("Error fetching public quotation:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/quotations/:id/pdf - Generate PDF for quotation
+  app.get("/api/external/quotations/:id/pdf", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      // Get quotation
+      const quotation = await storage.getExternalQuotationById(id, agencyId);
+      if (!quotation) {
+        return res.status(404).json({ message: "Quotation not found" });
+      }
+
+      // Get agency details
+      const agency = await storage.getExternalAgency(agencyId);
+      if (!agency) {
+        return res.status(404).json({ message: "Agency not found" });
+      }
+
+      // Prepare agency data for PDF
+      const agencyData = {
+        name: agency.name,
+        contact: agency.phone || agency.email || undefined,
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateQuotationPDF(quotation, agencyData);
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${id}.pdf"`);
+      res.send(pdfBuffer);
+
+      await createAuditLog(req, "view", "external_quotation", id, "Generated PDF for quotation");
+    } catch (error: any) {
+      console.error("Error generating quotation PDF:", error);
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ message: error.message });
+      }
       handleGenericError(res, error);
     }
   });
