@@ -24471,7 +24471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/external-lead-registration-links - List all registration links for agency
   app.get("/api/external-lead-registration-links", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
-      const agencyId = await getAgencyIdForUser(req.user);
+      const agencyId = await getUserAgencyId(req);
       if (!agencyId) {
         return res.status(403).json({ message: "User not associated with any agency" });
       }

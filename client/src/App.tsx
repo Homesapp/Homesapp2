@@ -127,6 +127,7 @@ import OwnerHoaPortal from "@/pages/OwnerHoaPortal";
 import PublicOfferForm from "@/pages/PublicOfferForm";
 import PublicRentalForm from "@/pages/PublicRentalForm";
 import PublicOwnerForm from "@/pages/PublicOwnerForm";
+import PublicLeadRegistration from "@/pages/PublicLeadRegistration";
 import PublicPropertySubmission from "@/pages/PublicPropertySubmission";
 import PropertySubmissionSuccess from "@/pages/PropertySubmissionSuccess";
 import AdminOfferManagement from "@/pages/AdminOfferManagement";
@@ -232,6 +233,7 @@ function AuthenticatedApp() {
         <Route path="/offer/:token" component={PublicOfferForm} />
         <Route path="/public-rental-form/:token" component={PublicRentalForm} />
         <Route path="/public-owner-form/:token" component={PublicOwnerForm} />
+        <Route path="/public/lead-registration/:token" component={PublicLeadRegistration} />
         <Route path="/submit-property/:token" component={PublicPropertySubmission} />
         <Route path="/property-submission-success" component={PropertySubmissionSuccess} />
         <Route path="/" component={PublicDashboard} />
