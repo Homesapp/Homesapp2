@@ -393,9 +393,9 @@ export default function ExternalQuotations() {
               Nueva Cotización
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-4 border-b">
+              <DialogTitle className="text-2xl">
                 {editingQuotation ? "Editar Cotización" : "Nueva Cotización"}
               </DialogTitle>
               <DialogDescription>
@@ -404,208 +404,234 @@ export default function ExternalQuotations() {
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Título</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-title" placeholder="Título de la cotización" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cliente (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 pt-4">
+                {/* Información General */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Información General</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Título de la Cotización</FormLabel>
                           <FormControl>
-                            <SelectTrigger data-testid="select-client">
-                              <SelectValue placeholder="Seleccionar cliente" />
-                            </SelectTrigger>
+                            <Input {...field} data-testid="input-title" placeholder="Ej: Reparación de plomería" className="text-base" />
                           </FormControl>
-                          <SelectContent>
-                            {clients.map((client: any) => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.firstName} {client.lastName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="unitId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unidad (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                    <FormField
+                      control={form.control}
+                      name="clientId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cliente</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-client">
+                                <SelectValue placeholder="Sin cliente asignado" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {clients.map((client: any) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.firstName} {client.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="unitId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unidad</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-unit">
+                                <SelectValue placeholder="Sin unidad asignada" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {units.map((unit: any) => (
+                                <SelectItem key={unit.id} value={unit.id}>
+                                  {unit.unitNumber} {unit.condominium?.name ? `- ${unit.condominium.name}` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Descripción del Trabajo</FormLabel>
                           <FormControl>
-                            <SelectTrigger data-testid="select-unit">
-                              <SelectValue placeholder="Seleccionar unidad" />
-                            </SelectTrigger>
+                            <Textarea {...field} data-testid="input-description" placeholder="Describa los trabajos a realizar..." rows={3} />
                           </FormControl>
-                          <SelectContent>
-                            {units.map((unit: any) => (
-                              <SelectItem key={unit.id} value={unit.id}>
-                                {unit.unitNumber} {unit.condominium?.name ? `- ${unit.condominium.name}` : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Descripción</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} data-testid="input-description" placeholder="Descripción del trabajo" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 {/* Services Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Servicios</h3>
-                    <Button type="button" variant="outline" size="sm" onClick={addService} data-testid="button-add-service">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 justify-between pb-2">
+                    <div className="flex items-center gap-2">
+                      <Plus className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">Servicios</h3>
+                      <Badge variant="secondary">{services.length}</Badge>
+                    </div>
+                    <Button type="button" onClick={addService} data-testid="button-add-service" size="sm">
                       <Plus className="h-4 w-4 mr-2" />
                       Agregar Servicio
                     </Button>
                   </div>
 
-                  {services.map((service, index) => (
-                    <Card key={service.id}>
-                      <CardContent className="pt-4 space-y-3">
-                        <div className="grid grid-cols-12 gap-3">
-                          <FormField
-                            control={form.control}
-                            name={`services.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem className="col-span-6">
-                                <FormLabel>Nombre del Servicio</FormLabel>
-                                <FormControl>
-                                  <Input {...field} data-testid={`input-service-name-${index}`} placeholder="Nombre" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name={`services.${index}.quantity`}
-                            render={({ field }) => (
-                              <FormItem className="col-span-2">
-                                <FormLabel>Cantidad</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="number"
-                                    min="1"
-                                    data-testid={`input-quantity-${index}`}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      setTimeout(() => updateServiceSubtotal(index), 0);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name={`services.${index}.unitPrice`}
-                            render={({ field }) => (
-                              <FormItem className="col-span-2">
-                                <FormLabel>Precio Unit.</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    data-testid={`input-unit-price-${index}`}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      setTimeout(() => updateServiceSubtotal(index), 0);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <div className="col-span-1 flex items-end">
+                  <div className="space-y-3">
+                    {services.map((service, index) => (
+                      <Card key={service.id} className="border-l-4 border-l-primary/30">
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <span className="text-sm font-medium text-muted-foreground">Servicio #{index + 1}</span>
                             <Button
                               type="button"
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               onClick={() => removeService(index)}
                               data-testid={`button-remove-service-${index}`}
                               disabled={services.length === 1}
+                              className="h-8 w-8 p-0"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
+                          
+                          <div className="space-y-3">
+                            <FormField
+                              control={form.control}
+                              name={`services.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Nombre del Servicio</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} data-testid={`input-service-name-${index}`} placeholder="Ej: Instalación de tubería" className="text-base" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                          <FormField
-                            control={form.control}
-                            name={`services.${index}.description`}
-                            render={({ field }) => (
-                              <FormItem className="col-span-11">
-                                <FormLabel>Descripción</FormLabel>
-                                <FormControl>
-                                  <Input {...field} data-testid={`input-service-description-${index}`} placeholder="Descripción del servicio" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                            <FormField
+                              control={form.control}
+                              name={`services.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Descripción (Opcional)</FormLabel>
+                                  <FormControl>
+                                    <Textarea {...field} data-testid={`input-service-description-${index}`} placeholder="Detalles adicionales..." rows={2} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                          <div className="col-span-12 text-right font-semibold">
-                            Subtotal: ${service.subtotal.toFixed(2)}
+                            <div className="grid grid-cols-3 gap-3">
+                              <FormField
+                                control={form.control}
+                                name={`services.${index}.quantity`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Cantidad</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        min="1"
+                                        data-testid={`input-quantity-${index}`}
+                                        className="text-base"
+                                        onChange={(e) => {
+                                          field.onChange(e);
+                                          setTimeout(() => updateServiceSubtotal(index), 0);
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`services.${index}.unitPrice`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Precio Unitario</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        data-testid={`input-unit-price-${index}`}
+                                        className="text-base"
+                                        placeholder="0.00"
+                                        onChange={(e) => {
+                                          field.onChange(e);
+                                          setTimeout(() => updateServiceSubtotal(index), 0);
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="flex flex-col justify-between">
+                                <FormLabel>Subtotal</FormLabel>
+                                <div className="flex items-center h-10 px-3 rounded-md border bg-muted">
+                                  <span className="text-base font-semibold">${service.subtotal.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Financials Summary */}
-                <Card>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span>Subtotal:</span>
-                      <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Resumen Financiero</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="text-lg font-semibold">${subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center py-2 border-t">
                       <div className="flex items-center gap-2">
-                        <span>Tarifa Administrativa:</span>
+                        <span className="text-muted-foreground">Tarifa Administrativa:</span>
                         <FormField
                           control={form.control}
                           name="adminFeePercentage"
@@ -616,31 +642,32 @@ export default function ExternalQuotations() {
                               min="0"
                               max="100"
                               step="0.01"
-                              className="w-20"
+                              className="w-16 h-8 text-center"
                               data-testid="input-admin-fee-percentage"
                             />
                           )}
                         />
-                        <span>%</span>
+                        <span className="text-sm">%</span>
                       </div>
-                      <span className="font-semibold">${adminFee.toFixed(2)}</span>
+                      <span className="text-lg font-semibold">${adminFee.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-lg font-bold pt-2 border-t">
-                      <span>Total:</span>
-                      <span>${total.toFixed(2)} MXN</span>
+                    <div className="flex justify-between items-center py-3 border-t-2 border-primary/20">
+                      <span className="text-lg font-bold">Total:</span>
+                      <span className="text-2xl font-bold text-primary">${total.toFixed(2)} MXN</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Additional Information */}
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                   <FormField
                     control={form.control}
                     name="notes"
                     render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Notas Internas (Opcional)</FormLabel>
+                      <FormItem>
+                        <FormLabel>Notas Internas</FormLabel>
                         <FormControl>
-                          <Textarea {...field} data-testid="input-notes" placeholder="Notas privadas" />
+                          <Textarea {...field} data-testid="input-notes" placeholder="Notas privadas para referencia interna..." rows={3} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -651,10 +678,10 @@ export default function ExternalQuotations() {
                     control={form.control}
                     name="terms"
                     render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Términos y Condiciones (Opcional)</FormLabel>
+                      <FormItem>
+                        <FormLabel>Términos y Condiciones</FormLabel>
                         <FormControl>
-                          <Textarea {...field} data-testid="input-terms" placeholder="Términos específicos de esta cotización" />
+                          <Textarea {...field} data-testid="input-terms" placeholder="Términos específicos de esta cotización..." rows={3} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -662,7 +689,8 @@ export default function ExternalQuotations() {
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4">
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -671,6 +699,7 @@ export default function ExternalQuotations() {
                       setEditingQuotation(null);
                     }}
                     data-testid="button-cancel"
+                    size="lg"
                   >
                     Cancelar
                   </Button>
@@ -678,6 +707,7 @@ export default function ExternalQuotations() {
                     type="submit"
                     data-testid="button-submit"
                     disabled={createMutation.isPending || updateMutation.isPending}
+                    size="lg"
                   >
                     {editingQuotation ? "Actualizar" : "Crear"} Cotización
                   </Button>
