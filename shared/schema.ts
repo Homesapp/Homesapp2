@@ -5765,6 +5765,55 @@ export type InsertExternalLeadRegistrationToken = z.infer<typeof insertExternalL
 export type CreateLeadRegistrationLink = z.infer<typeof createLeadRegistrationLinkSchema>;
 export type ExternalLeadRegistrationToken = typeof externalLeadRegistrationTokens.$inferSelect;
 
+// Broker Terms - Términos y condiciones para el programa de brokers
+export const brokerTerms = pgTable("broker_terms", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  version: varchar("version", { length: 50 }).notNull().unique(), // e.g., "1.0", "1.1", "2.0"
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Markdown o HTML del contenido
+  isActive: boolean("is_active").notNull().default(false), // Solo una versión activa a la vez
+  publishedAt: timestamp("published_at"),
+  publishedBy: varchar("published_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_broker_terms_active").on(table.isActive),
+  index("idx_broker_terms_published").on(table.publishedAt),
+]);
+
+export const insertBrokerTermsSchema = createInsertSchema(brokerTerms).omit({
+  id: true,
+  publishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBrokerTerms = z.infer<typeof insertBrokerTermsSchema>;
+export type BrokerTerms = typeof brokerTerms.$inferSelect;
+
+// Broker Terms Acceptances - Registro de aceptación de términos por brokers
+export const brokerTermsAcceptances = pgTable("broker_terms_acceptances", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  leadId: varchar("lead_id").notNull().references(() => externalLeads.id, { onDelete: "cascade" }),
+  termsId: varchar("terms_id").notNull().references(() => brokerTerms.id, { onDelete: "cascade" }),
+  termsVersion: varchar("terms_version", { length: 50 }).notNull(), // Versión aceptada
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4 o IPv6
+  userAgent: text("user_agent"), // Browser info
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_broker_terms_acc_lead").on(table.leadId),
+  index("idx_broker_terms_acc_terms").on(table.termsId),
+  unique("unique_lead_terms").on(table.leadId, table.termsId), // Un lead solo acepta una vez cada versión
+]);
+
+export const insertBrokerTermsAcceptanceSchema = createInsertSchema(brokerTermsAcceptances).omit({
+  id: true,
+  acceptedAt: true,
+});
+
+export type InsertBrokerTermsAcceptance = z.infer<typeof insertBrokerTermsAcceptanceSchema>;
+export type BrokerTermsAcceptance = typeof brokerTermsAcceptances.$inferSelect;
+
 // External Condominiums - Condominios gestionados por agencias externas
 export const externalCondominiums = pgTable("external_condominiums", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
