@@ -27846,8 +27846,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/external/configuration/terms - Get all terms for agency
   app.get("/api/external/configuration/terms", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const agencyId = await getUserExternalAgencyId(req, res);
-      if (!agencyId) return;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
 
       const type = req.query.type as 'tenant' | 'owner' | undefined;
       const terms = await storage.getExternalTermsAndConditions(agencyId, type);
@@ -27861,8 +27863,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/external/configuration/terms/active - Get active terms for agency
   app.get("/api/external/configuration/terms/active", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const agencyId = await getUserExternalAgencyId(req, res);
-      if (!agencyId) return;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
 
       const type = req.query.type as 'tenant' | 'owner';
       if (!type) {
@@ -27900,8 +27904,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/external/configuration/terms - Create new terms
   app.post("/api/external/configuration/terms", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
-      const agencyId = await getUserExternalAgencyId(req, res);
-      if (!agencyId) return;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
 
       const termsData = insertExternalTermsAndConditionsSchema.parse({
         ...req.body,
