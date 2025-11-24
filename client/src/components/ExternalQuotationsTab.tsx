@@ -114,7 +114,13 @@ export default function ExternalQuotations() {
 
   // Fetch properties for dropdown - only if agencyId is available
   const { data: properties = [] } = useQuery<any[]>({
-    queryKey: [`/api/external-properties?agencyId=${agencyId}`, agencyId],
+    queryKey: ["/api/external-properties", agencyId],
+    queryFn: async () => {
+      if (!agencyId) return [];
+      const response = await fetch(`/api/external-properties?agencyId=${agencyId}`);
+      if (!response.ok) throw new Error('Failed to fetch properties');
+      return response.json();
+    },
     enabled: !!agencyId,
   });
 
