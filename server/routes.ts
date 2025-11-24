@@ -14550,15 +14550,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create tenant rental form
+      // Use the correct property field depending on internal vs external system
+      const rentalFormData: any = {
+        tokenId: rentalFormToken.id,
+        leadId: rentalFormToken.leadId,
+        ...cleanedData,
+        status: 'pendiente',
+      };
+      
+      // Set property or external unit ID based on token
+      if (rentalFormToken.externalUnitId) {
+        rentalFormData.externalUnitId = rentalFormToken.externalUnitId;
+      } else if (rentalFormToken.propertyId) {
+        rentalFormData.propertyId = rentalFormToken.propertyId;
+      }
+      
       const [rentalForm] = await db
         .insert(tenantRentalForms)
-        .values({
-          tokenId: rentalFormToken.id,
-          propertyId: rentalFormToken.propertyId,
-          leadId: rentalFormToken.leadId,
-          ...cleanedData,
-          status: 'pendiente',
-        })
+        .values(rentalFormData)
         .returning();
 
       // Mark token as used

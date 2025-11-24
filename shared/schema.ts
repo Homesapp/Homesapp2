@@ -4712,7 +4712,8 @@ export type TenantRentalFormToken = typeof tenantRentalFormTokens.$inferSelect;
 export const tenantRentalForms = pgTable("tenant_rental_forms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tokenId: varchar("token_id").notNull().references(() => tenantRentalFormTokens.id, { onDelete: "cascade" }),
-  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Para sistema interno
+  externalUnitId: varchar("external_unit_id").references(() => externalUnits.id, { onDelete: "cascade" }), // Para sistema externo
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "set null" }),
   
   // Datos Generales del Arrendatario
