@@ -24653,6 +24653,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/public/external/terms-and-conditions/active - Public endpoint to get active terms
+  app.get("/api/public/external/terms-and-conditions/active", async (req, res) => {
+    try {
+      const { agencyId, type } = req.query;
+
+      if (!agencyId || !type) {
+        return res.status(400).json({ message: "Agency ID and type (tenant or owner) are required" });
+      }
+
+      if (type !== 'tenant' && type !== 'owner') {
+        return res.status(400).json({ message: "Type must be 'tenant' or 'owner'" });
+      }
+
+      const terms = await storage.getActiveExternalTermsAndConditions(agencyId as string, type as 'tenant' | 'owner');
+      res.json(terms || null);
+    } catch (error: any) {
+      console.error("Error fetching active terms:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // Public endpoint - GET registration form data (legacy token-based system)
   app.get("/api/leads/:token", async (req, res) => {
     try {

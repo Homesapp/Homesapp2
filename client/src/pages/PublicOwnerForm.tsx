@@ -95,6 +95,18 @@ export default function PublicOwnerForm() {
     enabled: !!token,
   });
 
+  // Fetch active terms and conditions
+  const { data: activeTerms } = useQuery({
+    queryKey: [`/api/public/external/terms-and-conditions/active`, tokenData?.externalAgency?.id],
+    queryFn: async () => {
+      if (!tokenData?.externalAgency?.id) return null;
+      const response = await fetch(`/api/public/external/terms-and-conditions/active?agencyId=${tokenData.externalAgency.id}&type=owner`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!tokenData?.externalAgency?.id,
+  });
+
   // Translation object
   const t = {
     es: {
@@ -1058,11 +1070,21 @@ export default function PublicOwnerForm() {
               {/* Step 5: Terms and Conditions */}
               {currentStep === 5 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">{text.step5}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {activeTerms?.title || text.step5}
+                  </h3>
                   
-                  <div className="p-4 border rounded-md bg-muted">
-                    <p className="text-sm">{text.termsText}</p>
-                  </div>
+                  {activeTerms ? (
+                    <div className="p-6 border rounded-lg bg-muted/30 max-h-96 overflow-y-auto">
+                      <div className="space-y-4 text-sm whitespace-pre-wrap">
+                        {activeTerms.content}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 border rounded-md bg-muted">
+                      <p className="text-sm">{text.termsText}</p>
+                    </div>
+                  )}
 
                   <div className="flex items-start space-x-2">
                     <Checkbox

@@ -108,6 +108,18 @@ export default function PublicRentalForm() {
     enabled: !!token,
   });
 
+  // Fetch active terms and conditions
+  const { data: activeTerms } = useQuery({
+    queryKey: [`/api/public/external/terms-and-conditions/active`, tokenData?.externalAgency?.id],
+    queryFn: async () => {
+      if (!tokenData?.externalAgency?.id) return null;
+      const response = await fetch(`/api/public/external/terms-and-conditions/active?agencyId=${tokenData.externalAgency.id}&type=tenant`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!tokenData?.externalAgency?.id,
+  });
+
   // Redirect to owner form if recipientType is 'owner'
   useEffect(() => {
     if (tokenData && tokenData.recipientType === 'owner') {
@@ -1359,8 +1371,13 @@ export default function PublicRentalForm() {
                 <div className="space-y-6">
                   <div className="p-6 border rounded-lg bg-muted/30 max-h-96 overflow-y-auto">
                     <h3 className="font-semibold text-lg mb-4">
-                      {language === 'es' ? 'TÉRMINOS Y CONDICIONES' : 'TERMS AND CONDITIONS'}
+                      {activeTerms?.title || (language === 'es' ? 'TÉRMINOS Y CONDICIONES' : 'TERMS AND CONDITIONS')}
                     </h3>
+                    {activeTerms ? (
+                      <div className="space-y-4 text-sm whitespace-pre-wrap">
+                        {activeTerms.content}
+                      </div>
+                    ) : (
                     <div className="space-y-4 text-sm text-muted-foreground">
                       {language === 'es' ? (
                         <>
@@ -1474,6 +1491,7 @@ export default function PublicRentalForm() {
                         </>
                       )}
                     </div>
+                    )}
                   </div>
 
                   <div className="flex items-start space-x-2">
