@@ -1319,7 +1319,7 @@ export default function ExternalMaintenance() {
                 testIdPrefix="cards"
               />
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 {paginatedTickets.map(ticket => {
                   const unitInfo = getUnitInfo(ticket.unitId);
                   const assignedName = getAssignedUserName(ticket.assignedTo);

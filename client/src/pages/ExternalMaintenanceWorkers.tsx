@@ -1139,7 +1139,7 @@ export default function ExternalMaintenanceWorkers() {
                       />
 
                       {/* Cards View */}
-                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                         {paginatedGroupedAssignments.map(({ worker, assignments: workerAssignments }) => (
                             <Card key={worker.id} className="hover-elevate flex flex-col" data-testid={`card-assignment-${worker.id}`}>
                               <CardHeader className="space-y-2">
@@ -1395,7 +1395,7 @@ export default function ExternalMaintenanceWorkers() {
                       />
 
                       {/* Cards View */}
-                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                         {paginatedWorkers.map((worker) => (
                           <Card key={worker.id} className="hover-elevate" data-testid={`card-worker-${worker.id}`}>
                             <CardHeader className="space-y-2">

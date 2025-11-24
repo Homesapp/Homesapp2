@@ -1239,7 +1239,7 @@ export default function ExternalCondominiums() {
                     </h2>
 
                     {condoUnits.length > 0 ? (
-                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-6 md:grid-cols-2">
                         {condoUnits.map((unit) => {
                           const activeContract = getActiveRentalContract(unit.id);
                           const isRented = activeContract !== null;
@@ -1379,7 +1379,7 @@ export default function ExternalCondominiums() {
                 />
 
                 {viewMode === "cards" ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-[2px]">
+                  <div className="grid gap-6 md:grid-cols-2 mt-[2px]">
                   {paginatedCondominiums.map((condo) => {
                   const condoUnits = getUnitsForCondo(condo.id);
                   const activeUnits = condoUnits.filter(u => u.isActive);
@@ -1859,7 +1859,7 @@ export default function ExternalCondominiums() {
                     testIdPrefix="units-cards"
                   />
 
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-[2px]">
+                  <div className="grid gap-6 md:grid-cols-2 mt-[2px]">
                 {paginatedUnits.map((unit) => {
                   const condo = condominiums?.find(c => c.id === unit.condominiumId);
                   const hasRental = hasActiveRental(unit.id);

@@ -966,7 +966,7 @@ export default function ExternalAccounts() {
             testIdPrefix="cards"
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {paginatedCardsUsers.map((user) => (
             <Card key={user.id} data-testid={`card-user-${user.id}`} className="overflow-hidden">
               <CardHeader className="bg-muted/50 pb-3">

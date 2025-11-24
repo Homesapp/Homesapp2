@@ -1447,7 +1447,7 @@ export default function ExternalAccounting() {
                 testIdPrefix="accounting-cards"
               />
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 {transactions.map((transaction) => (
                   <Card key={transaction.id} className="hover-elevate" data-testid={`card-transaction-${transaction.id}`}>
                     <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">

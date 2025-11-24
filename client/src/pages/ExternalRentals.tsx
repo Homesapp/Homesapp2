@@ -421,7 +421,7 @@ export default function ExternalRentals() {
       <Separator />
 
       {/* Statistics */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <Card data-testid="card-stats-total">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">

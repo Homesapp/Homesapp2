@@ -649,7 +649,7 @@ export default function ExternalPayments({ showHeader = true }: ExternalPayments
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {paginatedPayments.map((payment) => {
             const status = getPaymentStatus(payment);
             const statusInfo = statusConfig[status];

@@ -899,7 +899,7 @@ export default function ExternalClients() {
             />
 
             {viewMode === "cards" ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {paginatedClients.map((client) => (
                   <Card key={client.id} className="hover-elevate" data-testid={`card-client-${client.id}`}>
                   <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -1768,7 +1768,7 @@ export default function ExternalClients() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   {paginatedLeads.map((lead) => (
                     <Card key={lead.id} className="hover-elevate">
                       <CardHeader>

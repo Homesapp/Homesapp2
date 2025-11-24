@@ -845,7 +845,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
         </CardHeader>
         <CardContent>
           {accessLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
@@ -855,7 +855,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
               {language === "es" ? "No hay controles de acceso registrados" : "No access controls registered"}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {accessControls.map(access => (
                 <div
                   key={access.id}
