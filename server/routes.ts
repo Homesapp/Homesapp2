@@ -14614,6 +14614,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configure multer for tenant document uploads
+  const tenantDocumentStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'attached_assets/tenant_documents/');
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = crypto.randomBytes(4).toString('hex');
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext).toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20);
+      cb(null, `tenant_doc_${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const uploadTenantDocuments = multer({
+    storage: tenantDocumentStorage,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit for documents
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Tipo de archivo no permitido. Solo JPG, PNG, WEBP y PDF.'));
+      }
+    }
+  });
+
+  // Upload tenant documents via token (public route)
+  app.post("/api/rental-form-tokens/:token/upload-documents", uploadTenantDocuments.array('documents', 10), async (req: any, res) => {
+    try {
+      const { token } = req.params;
+      const { documentType } = req.body; // 'tenantId', 'tenantProofOfAddress', 'tenantProofOfIncome', 'guarantorId', 'guarantorProofOfAddress', 'guarantorProofOfIncome'
+      
+      // Validate token exists
+      const [rentalFormToken] = await db
+        .select()
+        .from(tenantRentalFormTokens)
+        .where(eq(tenantRentalFormTokens.token, token))
+        .limit(1);
+
+      if (!rentalFormToken) {
+        return res.status(404).json({ message: "Token no encontrado" });
+      }
+
+      // Verify this is a tenant token
+      if (rentalFormToken.recipientType !== 'tenant') {
+        return res.status(400).json({ message: "Este token no es para formulario de inquilino" });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(rentalFormToken.expiresAt)) {
+        return res.status(410).json({ message: "Este enlace ha expirado" });
+      }
+
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: "No se subieron archivos" });
+      }
+
+      if (!documentType) {
+        return res.status(400).json({ message: "Tipo de documento es requerido" });
+      }
+
+      // Validate document type
+      const validDocumentTypes = [
+        'tenantId',
+        'tenantProofOfAddress',
+        'tenantProofOfIncome',
+        'guarantorId',
+        'guarantorProofOfAddress',
+        'guarantorProofOfIncome'
+      ];
+
+      if (!validDocumentTypes.includes(documentType)) {
+        return res.status(400).json({ message: "Tipo de documento inválido" });
+      }
+
+      // Generate URLs for uploaded files
+      const documentUrls = (req.files as Express.Multer.File[]).map(file => {
+        return `/attached_assets/tenant_documents/${file.filename}`;
+      });
+
+      res.json({ 
+        message: "Documentos subidos exitosamente",
+        documentType,
+        urls: documentUrls 
+      });
+    } catch (error) {
+      console.error("Error uploading tenant documents:", error);
+      res.status(500).json({ message: "Error al subir documentos" });
+    }
+  });
+
   // Configure multer for owner document uploads
   const ownerDocumentStorage = multer.diskStorage({
     destination: (req, file, cb) => {
