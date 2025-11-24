@@ -72,6 +72,9 @@ import {
   UserCheck,
   Ban,
   CheckCheck,
+  Copy,
+  Link as LinkIcon,
+  RefreshCw,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -134,6 +137,10 @@ export default function ExternalClients() {
   const [leadItemsPerPage, setLeadItemsPerPage] = useState(12);
   const [leadSortField, setLeadSortField] = useState<string>("createdAt");
   const [leadSortOrder, setLeadSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Registration Link states
+  const [isRegistrationLinkDialogOpen, setIsRegistrationLinkDialogOpen] = useState(false);
+  const [registrationLinkType, setRegistrationLinkType] = useState<"seller" | "broker">("seller");
 
   useLayoutEffect(() => {
     setViewMode(isMobile ? "cards" : "table");
@@ -456,6 +463,106 @@ export default function ExternalClients() {
     },
   });
 
+  // Registration Links Query
+  const { data: registrationLinks = [] } = useQuery<any[]>({
+    queryKey: ["/api/external-lead-registration-links"],
+    queryFn: async () => {
+      const response = await fetch("/api/external-lead-registration-links", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch registration links");
+      return response.json();
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const createRegistrationLinkMutation = useMutation({
+    mutationFn: async (type: "seller" | "broker") => {
+      const res = await apiRequest("POST", "/api/external-lead-registration-links", {
+        agencyId: user?.agencyId,
+        agencyName: user?.agencyName || "Agency",
+        registrationType: type,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-lead-registration-links"] });
+      toast({
+        title: language === "es" ? "Link creado" : "Link created",
+        description: language === "es"
+          ? "El link de registro ha sido creado exitosamente."
+          : "Registration link has been created successfully.",
+      });
+      setIsRegistrationLinkDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es"
+          ? "No se pudo crear el link."
+          : "Failed to create link."),
+      });
+    },
+  });
+
+  const regenerateRegistrationLinkMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/external-lead-registration-links/${id}/regenerate`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-lead-registration-links"] });
+      toast({
+        title: language === "es" ? "Link regenerado" : "Link regenerated",
+        description: language === "es"
+          ? "El link ha sido regenerado exitosamente."
+          : "Link has been regenerated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es"
+          ? "No se pudo regenerar el link."
+          : "Failed to regenerate link."),
+      });
+    },
+  });
+
+  const deleteRegistrationLinkMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/external-lead-registration-links/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-lead-registration-links"] });
+      toast({
+        title: language === "es" ? "Link eliminado" : "Link deleted",
+        description: language === "es"
+          ? "El link ha sido eliminado exitosamente."
+          : "Link has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es"
+          ? "No se pudo eliminar el link."
+          : "Failed to delete link."),
+      });
+    },
+  });
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: language === "es" ? "Copiado" : "Copied",
+      description: language === "es"
+        ? "Link copiado al portapapeles."
+        : "Link copied to clipboard.",
+    });
+  };
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -541,13 +648,23 @@ export default function ExternalClients() {
             </Button>
           )}
           {activeTab === "leads" && (
-            <Button 
-              onClick={() => setIsCreateLeadDialogOpen(true)}
-              data-testid="button-create-lead"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {language === "es" ? "Nuevo Lead" : "New Lead"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsCreateLeadDialogOpen(true)}
+                data-testid="button-create-lead"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {language === "es" ? "Nuevo Lead" : "New Lead"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsRegistrationLinkDialogOpen(true)}
+                data-testid="button-create-registration-link"
+              >
+                <LinkIcon className="mr-2 h-4 w-4" />
+                {language === "es" ? "Generar Link" : "Generate Link"}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -1382,6 +1499,92 @@ export default function ExternalClients() {
 
         {/* Leads Tab Content */}
         <TabsContent value="leads" className="space-y-6 mt-6">
+          {/* Registration Links Section */}
+          {registrationLinks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {language === "es" ? "Links de Registro Públicos" : "Public Registration Links"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {registrationLinks.map((link: any) => {
+                  const expiresAt = new Date(link.expiresAt);
+                  const now = new Date();
+                  const isExpired = now > expiresAt;
+                  const isCompleted = !!link.completedAt;
+                  const fullUrl = `${window.location.origin}/public/lead-registration/${link.token}`;
+                  
+                  return (
+                    <div
+                      key={link.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                      data-testid={`registration-link-${link.id}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={link.registrationType === "seller" ? "default" : "secondary"}>
+                            {link.registrationType === "seller"
+                              ? (language === "es" ? "Vendedor" : "Seller")
+                              : (language === "es" ? "Broker" : "Broker")}
+                          </Badge>
+                          {isCompleted && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              {language === "es" ? "Completado" : "Completed"}
+                            </Badge>
+                          )}
+                          {isExpired && !isCompleted && (
+                            <Badge variant="outline" className="text-red-600 border-red-600">
+                              {language === "es" ? "Expirado" : "Expired"}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {fullUrl}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {language === "es" ? "Expira" : "Expires"}: {expiresAt.toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3">
+                        {!isCompleted && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => copyToClipboard(fullUrl)}
+                            data-testid={`button-copy-link-${link.id}`}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {isExpired && !isCompleted && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => regenerateRegistrationLinkMutation.mutate(link.id)}
+                            disabled={regenerateRegistrationLinkMutation.isPending}
+                            data-testid={`button-regenerate-link-${link.id}`}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteRegistrationLinkMutation.mutate(link.id)}
+                          disabled={deleteRegistrationLinkMutation.isPending}
+                          data-testid={`button-delete-link-${link.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Search and Filters for Leads */}
           <Card>
             <CardContent className="pt-6">
@@ -2061,6 +2264,71 @@ export default function ExternalClients() {
               {deleteLeadMutation.isPending 
                 ? (language === "es" ? "Eliminando..." : "Deleting...")
                 : (language === "es" ? "Eliminar" : "Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Registration Link Dialog */}
+      <Dialog open={isRegistrationLinkDialogOpen} onOpenChange={setIsRegistrationLinkDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Generar Link de Registro" : "Generate Registration Link"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es"
+                ? "Selecciona el tipo de registro para generar un link público."
+                : "Select the registration type to generate a public link."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">
+                {language === "es" ? "Tipo de Registro" : "Registration Type"}
+              </h4>
+              <Tabs value={registrationLinkType} onValueChange={(v) => setRegistrationLinkType(v as "seller" | "broker")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="seller" data-testid="tab-seller">
+                    {language === "es" ? "Vendedor" : "Seller"}
+                  </TabsTrigger>
+                  <TabsTrigger value="broker" data-testid="tab-broker">
+                    {language === "es" ? "Broker" : "Broker"}
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="seller" className="mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {language === "es"
+                      ? "Los vendedores proporcionarán nombre completo, email y teléfono."
+                      : "Sellers will provide full name, email, and phone number."}
+                  </p>
+                </TabsContent>
+                <TabsContent value="broker" className="mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {language === "es"
+                      ? "Los brokers proporcionarán nombre completo y últimos 4 dígitos del teléfono."
+                      : "Brokers will provide full name and last 4 digits of phone."}
+                  </p>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRegistrationLinkDialogOpen(false)}
+              data-testid="button-cancel-registration-link"
+            >
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </Button>
+            <Button
+              onClick={() => createRegistrationLinkMutation.mutate(registrationLinkType)}
+              disabled={createRegistrationLinkMutation.isPending}
+              data-testid="button-create-registration-link"
+            >
+              {createRegistrationLinkMutation.isPending
+                ? (language === "es" ? "Generando..." : "Generating...")
+                : (language === "es" ? "Generar Link" : "Generate Link")}
             </Button>
           </DialogFooter>
         </DialogContent>
