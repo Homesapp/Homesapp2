@@ -76,6 +76,8 @@ import {
   Copy,
   Link as LinkIcon,
   RefreshCw,
+  Building2,
+  Handshake,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -665,6 +667,94 @@ export default function ExternalClients() {
           </p>
         </div>
       </div>
+
+      {/* Public Registration Links Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <LinkIcon className="h-5 w-5" />
+            {language === "es" ? "Links de Registro Público" : "Public Registration Links"}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {language === "es" 
+              ? "Comparte estos links permanentes para recibir registros de vendedores y brokers"
+              : "Share these permanent links to receive registrations from sellers and brokers"}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Vendedor Link */}
+            <Card className="border-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-base">
+                    {language === "es" ? "Registro de Vendedor" : "Seller Registration"}
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="p-3 bg-muted rounded-md font-mono text-xs break-all">
+                  {`${window.location.origin}/leads/vendedor`}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/leads/vendedor`);
+                    toast({
+                      title: language === "es" ? "Link copiado" : "Link copied",
+                      description: language === "es" ? "El link ha sido copiado al portapapeles" : "The link has been copied to clipboard",
+                    });
+                  }}
+                  data-testid="button-copy-vendedor-link"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Copiar Link" : "Copy Link"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Broker Link */}
+            <Card className="border-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Handshake className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-base">
+                    {language === "es" ? "Registro de Broker" : "Broker Registration"}
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="p-3 bg-muted rounded-md font-mono text-xs break-all">
+                  {`${window.location.origin}/leads/broker`}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/leads/broker`);
+                    toast({
+                      title: language === "es" ? "Link copiado" : "Link copied",
+                      description: language === "es" ? "El link ha sido copiado al portapapeles" : "The link has been copied to clipboard",
+                    });
+                  }}
+                  data-testid="button-copy-broker-link"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Copiar Link" : "Copy Link"}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "clients" | "leads")}>
