@@ -4,6 +4,13 @@
 HomesApp is a SaaS platform for intelligent real estate property management in Tulum, Quintana Roo. It streamlines property management tasks including scheduling, client interactions, service coordination, and offer processing. Key features include role-based access, Google Calendar integration, a service provider marketplace, and digital agreement management. The platform aims to lead the Tulum market through advanced commission systems, marketing automation, predictive analytics, and AI capabilities.
 
 ## Recent Changes
+**November 24, 2025**: Fixed Critical Token Validation Bug
+- Resolved "Cannot convert undefined or null to object" error in token validation endpoints
+- Refactored `getRentalFormTokenDataLean` and `getOfferTokenDataLean` in server/storage.ts
+- Replaced complex Drizzle ORM leftJoin queries with separate parallel queries to avoid null mapping issues
+- Added validation to treat tokens as invalid if required external unit relationship is missing
+- Both rental form tokens (/api/rental-form-tokens/:token/validate) and offer tokens (/api/offer-tokens/:token/validate) now work correctly
+
 **November 24, 2025**: Integrated Quotations System into Maintenance Module
 - Converted ExternalQuotations from standalone page to tab-based component (ExternalQuotationsTab.tsx)
 - Implemented Shadcn Tabs UI in ExternalMaintenance.tsx with two tabs: "Tickets" and "Cotizaciones"

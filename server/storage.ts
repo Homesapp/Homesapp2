@@ -383,7 +383,7 @@ import {
   tenantRentalFormTokens,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, count, inArray } from "drizzle-orm";
+import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray } from "drizzle-orm";
 
 // Custom error class for not-found scenarios
 export class NotFoundError extends Error {
@@ -9621,141 +9621,191 @@ export class DatabaseStorage implements IStorage {
   // Lightweight methods for public forms - minimal fields, single query
 
   async getOfferTokenDataLean(token: string) {
-    const [result] = await db
-      .select({
-        // Token fields (COMPLETE - all needed for validation)
-        tokenId: offerTokens.id,
-        token: offerTokens.token,
-        isUsed: offerTokens.isUsed,
-        expiresAt: offerTokens.expiresAt,
-        offerData: offerTokens.offerData,
-        createdBy: offerTokens.createdBy,
-        propertyId: offerTokens.propertyId, // For internal system support
-        externalUnitId: offerTokens.externalUnitId,
-        externalClientId: offerTokens.externalClientId,
-        leadId: offerTokens.leadId, // For lead context display
-        
-        // Unit fields (only what's needed for display)
-        unitId: sql<string | null>`${externalUnits.id}`,
-        unitNumber: sql<string | null>`${externalUnits.unitNumber}`,
-        unitType: sql<string | null>`${externalUnits.propertyType}`,
-        bedrooms: sql<number | null>`${externalUnits.bedrooms}`,
-        bathrooms: sql<string | null>`${externalUnits.bathrooms}`,
-        size: sql<string | null>`${externalUnits.area}`,
-        description: sql<string | null>`${externalUnits.description}`,
-        photos: sql<string[] | null>`${externalUnits.photos}`,
-        monthlyRent: sql<string | null>`${externalUnits.monthlyRent}`,
-        currency: sql<string | null>`${externalUnits.currency}`,
-        includedServices: sql<string | null>`${externalUnits.includedServices}`,
-        condominiumIdFromUnit: sql<string | null>`${externalUnits.condominiumId}`,
-        
-        // Condominium (only name and address)
-        condoName: sql<string | null>`${externalCondominiums.name}`,
-        condoAddress: sql<string | null>`${externalCondominiums.address}`,
-        
-        // Client fields (minimal)
-        clientId: sql<string | null>`${externalClients.id}`,
-        clientFirstName: sql<string | null>`${externalClients.firstName}`,
-        clientLastName: sql<string | null>`${externalClients.lastName}`,
-        clientEmail: sql<string | null>`${externalClients.email}`,
-        clientPhone: sql<string | null>`${externalClients.phone}`,
-        
-        // Agency (only logo and name)
-        agencyId: sql<string | null>`${externalAgencies.id}`,
-        agencyName: sql<string | null>`${externalAgencies.name}`,
-        agencyLogo: sql<string | null>`${externalAgencies.logoUrl}`,
-        
-        // Creator user (for profile pic display)
-        creatorId: sql<string | null>`${users.id}`,
-        creatorFirstName: sql<string | null>`${users.firstName}`,
-        creatorLastName: sql<string | null>`${users.lastName}`,
-        creatorProfilePic: sql<string | null>`${users.profileImageUrl}`,
-      })
+    // First, get the token data
+    const [tokenData] = await db
+      .select()
       .from(offerTokens)
-      .leftJoin(externalUnits, eq(offerTokens.externalUnitId, externalUnits.id))
-      .leftJoin(externalClients, eq(offerTokens.externalClientId, externalClients.id))
-      .leftJoin(externalCondominiums, and(
-        isNotNull(externalUnits.condominiumId),
-        eq(externalUnits.condominiumId, externalCondominiums.id)
-      ))
-      .leftJoin(externalAgencies, and(
-        isNotNull(externalUnits.agencyId),
-        eq(externalUnits.agencyId, externalAgencies.id)
-      ))
-      .leftJoin(users, eq(offerTokens.createdBy, users.id))
       .where(eq(offerTokens.token, token))
       .limit(1);
 
-    return result;
+    if (!tokenData) {
+      return undefined;
+    }
+
+    // Get related data in parallel
+    const [unit, client, creator] = await Promise.all([
+      tokenData.externalUnitId
+        ? db.select().from(externalUnits).where(eq(externalUnits.id, tokenData.externalUnitId)).limit(1)
+        : Promise.resolve([undefined]),
+      tokenData.externalClientId
+        ? db.select().from(externalClients).where(eq(externalClients.id, tokenData.externalClientId)).limit(1)
+        : Promise.resolve([undefined]),
+      tokenData.createdBy
+        ? db.select().from(users).where(eq(users.id, tokenData.createdBy)).limit(1)
+        : Promise.resolve([undefined])
+    ]);
+
+    const unitData = unit?.[0];
+    const clientData = client?.[0];
+    const creatorData = creator?.[0];
+
+    // If token requires an external unit but it's missing, treat as invalid
+    if (tokenData.externalUnitId && !unitData) {
+      return undefined;
+    }
+
+    // Get condominium and agency if unit exists
+    let condoData, agencyData;
+    if (unitData) {
+      const [condo, agency] = await Promise.all([
+        unitData.condominiumId
+          ? db.select().from(externalCondominiums).where(eq(externalCondominiums.id, unitData.condominiumId)).limit(1)
+          : Promise.resolve([undefined]),
+        unitData.agencyId
+          ? db.select().from(externalAgencies).where(eq(externalAgencies.id, unitData.agencyId)).limit(1)
+          : Promise.resolve([undefined])
+      ]);
+      condoData = condo?.[0];
+      agencyData = agency?.[0];
+    }
+
+    // Construct the result object
+    return {
+      tokenId: tokenData.id,
+      token: tokenData.token,
+      isUsed: tokenData.isUsed,
+      expiresAt: tokenData.expiresAt,
+      offerData: tokenData.offerData,
+      createdBy: tokenData.createdBy,
+      propertyId: tokenData.propertyId,
+      externalUnitId: tokenData.externalUnitId,
+      externalClientId: tokenData.externalClientId,
+      leadId: tokenData.leadId,
+      
+      unitId: unitData?.id ?? null,
+      unitNumber: unitData?.unitNumber ?? null,
+      unitType: unitData?.propertyType ?? null,
+      bedrooms: unitData?.bedrooms ?? null,
+      bathrooms: unitData?.bathrooms ?? null,
+      size: unitData?.area ?? null,
+      description: unitData?.description ?? null,
+      photos: unitData?.photos ?? null,
+      monthlyRent: unitData?.monthlyRent ?? null,
+      currency: unitData?.currency ?? null,
+      includedServices: unitData?.includedServices ?? null,
+      
+      condoName: condoData?.name ?? null,
+      condoAddress: condoData?.address ?? null,
+      
+      clientId: clientData?.id ?? null,
+      clientFirstName: clientData?.firstName ?? null,
+      clientLastName: clientData?.lastName ?? null,
+      clientEmail: clientData?.email ?? null,
+      clientPhone: clientData?.phone ?? null,
+      
+      agencyId: agencyData?.id ?? null,
+      agencyName: agencyData?.name ?? null,
+      agencyLogo: agencyData?.logoUrl ?? null,
+      
+      creatorId: creatorData?.id ?? null,
+      creatorFirstName: creatorData?.firstName ?? null,
+      creatorLastName: creatorData?.lastName ?? null,
+      creatorProfilePic: creatorData?.profileImageUrl ?? null,
+    };
   }
 
   async getRentalFormTokenDataLean(token: string) {
-    const [result] = await db
-      .select({
-        // Token fields (COMPLETE - needed for validation and submission)
-        tokenId: tenantRentalFormTokens.id,
-        token: tenantRentalFormTokens.token,
-        isUsed: tenantRentalFormTokens.isUsed,
-        expiresAt: tenantRentalFormTokens.expiresAt,
-        recipientType: tenantRentalFormTokens.recipientType,
-        rentalFormGroupId: tenantRentalFormTokens.rentalFormGroupId,
-        tenantData: tenantRentalFormTokens.tenantData,
-        ownerData: tenantRentalFormTokens.ownerData,
-        createdBy: tenantRentalFormTokens.createdBy,
-        propertyId: tenantRentalFormTokens.propertyId, // For internal system support
-        externalUnitId: tenantRentalFormTokens.externalUnitId,
-        externalClientId: tenantRentalFormTokens.externalClientId,
-        externalUnitOwnerId: tenantRentalFormTokens.externalUnitOwnerId,
-        leadId: tenantRentalFormTokens.leadId,
-        
-        // Unit fields
-        unitId: sql<string | null>`${externalUnits.id}`,
-        unitNumber: sql<string | null>`${externalUnits.unitNumber}`,
-        unitType: sql<string | null>`${externalUnits.propertyType}`,
-        bedrooms: sql<number | null>`${externalUnits.bedrooms}`,
-        bathrooms: sql<string | null>`${externalUnits.bathrooms}`,
-        size: sql<string | null>`${externalUnits.area}`,
-        monthlyRent: sql<string | null>`${externalUnits.monthlyRent}`,
-        currency: sql<string | null>`${externalUnits.currency}`,
-        condominiumIdFromUnit: sql<string | null>`${externalUnits.condominiumId}`,
-        
-        // Condominium
-        condoName: sql<string | null>`${externalCondominiums.name}`,
-        condoAddress: sql<string | null>`${externalCondominiums.address}`,
-        
-        // Client fields
-        clientFirstName: sql<string | null>`${externalClients.firstName}`,
-        clientLastName: sql<string | null>`${externalClients.lastName}`,
-        clientEmail: sql<string | null>`${externalClients.email}`,
-        clientPhone: sql<string | null>`${externalClients.phone}`,
-        
-        // Agency
-        agencyId: sql<string | null>`${externalAgencies.id}`,
-        agencyName: sql<string | null>`${externalAgencies.name}`,
-        agencyLogo: sql<string | null>`${externalAgencies.logoUrl}`,
-        
-        // Creator user (needed for profile picture display)
-        creatorId: sql<string | null>`${users.id}`,
-        creatorFirstName: sql<string | null>`${users.firstName}`,
-        creatorLastName: sql<string | null>`${users.lastName}`,
-        creatorProfilePic: sql<string | null>`${users.profileImageUrl}`,
-      })
+    // First, get the token data
+    const [tokenData] = await db
+      .select()
       .from(tenantRentalFormTokens)
-      .leftJoin(externalUnits, eq(tenantRentalFormTokens.externalUnitId, externalUnits.id))
-      .leftJoin(externalClients, eq(tenantRentalFormTokens.externalClientId, externalClients.id))
-      .leftJoin(externalCondominiums, and(
-        isNotNull(externalUnits.condominiumId),
-        eq(externalUnits.condominiumId, externalCondominiums.id)
-      ))
-      .leftJoin(externalAgencies, and(
-        isNotNull(externalUnits.agencyId),
-        eq(externalUnits.agencyId, externalAgencies.id)
-      ))
-      .leftJoin(users, eq(tenantRentalFormTokens.createdBy, users.id))
       .where(eq(tenantRentalFormTokens.token, token))
       .limit(1);
 
-    return result;
+    if (!tokenData) {
+      return undefined;
+    }
+
+    // Get related data in parallel
+    const [unit, client, creator] = await Promise.all([
+      tokenData.externalUnitId
+        ? db.select().from(externalUnits).where(eq(externalUnits.id, tokenData.externalUnitId)).limit(1)
+        : Promise.resolve([undefined]),
+      tokenData.externalClientId
+        ? db.select().from(externalClients).where(eq(externalClients.id, tokenData.externalClientId)).limit(1)
+        : Promise.resolve([undefined]),
+      tokenData.createdBy
+        ? db.select().from(users).where(eq(users.id, tokenData.createdBy)).limit(1)
+        : Promise.resolve([undefined])
+    ]);
+
+    const unitData = unit?.[0];
+    const clientData = client?.[0];
+    const creatorData = creator?.[0];
+
+    // If token requires an external unit but it's missing, treat as invalid
+    if (tokenData.externalUnitId && !unitData) {
+      return undefined;
+    }
+
+    // Get condominium and agency if unit exists
+    let condoData, agencyData;
+    if (unitData) {
+      const [condo, agency] = await Promise.all([
+        unitData.condominiumId
+          ? db.select().from(externalCondominiums).where(eq(externalCondominiums.id, unitData.condominiumId)).limit(1)
+          : Promise.resolve([undefined]),
+        unitData.agencyId
+          ? db.select().from(externalAgencies).where(eq(externalAgencies.id, unitData.agencyId)).limit(1)
+          : Promise.resolve([undefined])
+      ]);
+      condoData = condo?.[0];
+      agencyData = agency?.[0];
+    }
+
+    // Construct the result object
+    return {
+      tokenId: tokenData.id,
+      token: tokenData.token,
+      isUsed: tokenData.isUsed,
+      expiresAt: tokenData.expiresAt,
+      recipientType: tokenData.recipientType,
+      rentalFormGroupId: tokenData.rentalFormGroupId,
+      tenantData: tokenData.tenantData,
+      ownerData: tokenData.ownerData,
+      createdBy: tokenData.createdBy,
+      propertyId: tokenData.propertyId,
+      externalUnitId: tokenData.externalUnitId,
+      externalClientId: tokenData.externalClientId,
+      externalUnitOwnerId: tokenData.externalUnitOwnerId,
+      leadId: tokenData.leadId,
+      
+      unitId: unitData?.id ?? null,
+      unitNumber: unitData?.unitNumber ?? null,
+      unitType: unitData?.propertyType ?? null,
+      bedrooms: unitData?.bedrooms ?? null,
+      bathrooms: unitData?.bathrooms ?? null,
+      size: unitData?.area ?? null,
+      monthlyRent: unitData?.monthlyRent ?? null,
+      currency: unitData?.currency ?? null,
+      
+      condoName: condoData?.name ?? null,
+      condoAddress: condoData?.address ?? null,
+      
+      clientFirstName: clientData?.firstName ?? null,
+      clientLastName: clientData?.lastName ?? null,
+      clientEmail: clientData?.email ?? null,
+      clientPhone: clientData?.phone ?? null,
+      
+      agencyId: agencyData?.id ?? null,
+      agencyName: agencyData?.name ?? null,
+      agencyLogo: agencyData?.logoUrl ?? null,
+      
+      creatorId: creatorData?.id ?? null,
+      creatorFirstName: creatorData?.firstName ?? null,
+      creatorLastName: creatorData?.lastName ?? null,
+      creatorProfilePic: creatorData?.profileImageUrl ?? null,
+    };
   }
 
   async getLatestOfferForPrefill(externalClientId: string) {
