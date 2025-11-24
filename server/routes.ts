@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { parse as parseCookie } from "cookie";
 import multer from "multer";
 import path from "path";
-import { storage } from "./storage";
+import { storage, NotFoundError } from "./storage";
 import { openAIService } from "./services/openai";
 import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
 import { requireResourceOwnership } from "./middleware/resourceOwnership";
@@ -28111,7 +28111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.name === "ZodError") {
         return handleZodError(res, error);
       }
-      if (error.message?.includes("not found")) {
+      if (error instanceof NotFoundError) {
         return res.status(404).json({ message: error.message });
       }
       handleGenericError(res, error);
@@ -28133,7 +28133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting quotation:", error);
-      if (error.message?.includes("not found")) {
+      if (error instanceof NotFoundError) {
         return res.status(404).json({ message: error.message });
       }
       handleGenericError(res, error);
@@ -28161,7 +28161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(quotation);
     } catch (error: any) {
       console.error("Error updating quotation status:", error);
-      if (error.message?.includes("not found")) {
+      if (error instanceof NotFoundError) {
         return res.status(404).json({ message: error.message });
       }
       if (error.message?.includes("Invalid status transition")) {

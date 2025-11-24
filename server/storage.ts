@@ -385,6 +385,14 @@ import {
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, count, inArray } from "drizzle-orm";
 
+// Custom error class for not-found scenarios
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
@@ -9925,7 +9933,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     if (!result) {
-      throw new Error('Quotation not found or does not belong to this agency');
+      throw new NotFoundError('Quotation not found or does not belong to this agency');
     }
     
     return result;
@@ -9943,7 +9951,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     if (result.length === 0) {
-      throw new Error('Quotation not found or does not belong to this agency');
+      throw new NotFoundError('Quotation not found or does not belong to this agency');
     }
   }
 
@@ -9951,7 +9959,7 @@ export class DatabaseStorage implements IStorage {
     // Get current quotation to validate transition
     const current = await this.getExternalQuotationById(id, agencyId);
     if (!current) {
-      throw new Error('Quotation not found or does not belong to this agency');
+      throw new NotFoundError('Quotation not found or does not belong to this agency');
     }
 
     // Define valid status transitions
