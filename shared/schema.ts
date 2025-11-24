@@ -5884,6 +5884,49 @@ export const insertExternalQuotationTokenSchema = createInsertSchema(externalQuo
 export type InsertExternalQuotationToken = z.infer<typeof insertExternalQuotationTokenSchema>;
 export type ExternalQuotationToken = typeof externalQuotationTokens.$inferSelect;
 
+// External Terms and Conditions - Términos y condiciones para inquilinos y propietarios del sistema externo
+export const externalTermsTypeEnum = pgEnum("external_terms_type", [
+  "tenant", // Términos para inquilinos
+  "owner",  // Términos para propietarios
+]);
+
+export const externalTermsAndConditions = pgTable("external_terms_and_conditions", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  type: externalTermsTypeEnum("type").notNull(), // tenant o owner
+  version: varchar("version", { length: 50 }).notNull(), // e.g., "1.0", "1.1", "2.0"
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Markdown o HTML del contenido
+  isActive: boolean("is_active").notNull().default(false), // Solo una versión activa a la vez por tipo y agencia
+  publishedAt: timestamp("published_at"),
+  publishedBy: varchar("published_by").references(() => users.id),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_terms_agency").on(table.agencyId),
+  index("idx_external_terms_type").on(table.type),
+  index("idx_external_terms_active").on(table.isActive),
+  index("idx_external_terms_published").on(table.publishedAt),
+  unique("unique_external_terms_active").on(table.agencyId, table.type, table.isActive), // Solo una versión activa por tipo y agencia
+]);
+
+export const insertExternalTermsAndConditionsSchema = createInsertSchema(externalTermsAndConditions).omit({
+  id: true,
+  publishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateExternalTermsAndConditionsSchema = insertExternalTermsAndConditionsSchema.partial().omit({
+  agencyId: true,
+  createdBy: true,
+});
+
+export type InsertExternalTermsAndConditions = z.infer<typeof insertExternalTermsAndConditionsSchema>;
+export type UpdateExternalTermsAndConditions = z.infer<typeof updateExternalTermsAndConditionsSchema>;
+export type ExternalTermsAndConditions = typeof externalTermsAndConditions.$inferSelect;
+
 // Broker Terms - Términos y condiciones para el programa de brokers
 export const brokerTerms = pgTable("broker_terms", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

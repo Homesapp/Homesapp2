@@ -791,17 +791,31 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
       <SidebarFooter>
         <div className={state === "collapsed" ? "flex flex-col items-center gap-1 p-2 border-t" : "p-2 border-t space-y-1"}>
           <RoleToggle />
-          <Link href="/ayuda" data-testid="link-help">
-            <Button
-              variant={state === "collapsed" ? "ghost" : "outline"}
-              size={state === "expanded" ? "default" : "icon"}
-              className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
-              data-testid="button-help"
-            >
-              <HelpCircle className="h-4 w-4" />
-              {state === "expanded" && <span>{t("help.title")}</span>}
-            </Button>
-          </Link>
+          {isExternalUser ? (
+            <Link href="/external/configuration" data-testid="link-configuration">
+              <Button
+                variant={state === "collapsed" ? "ghost" : "outline"}
+                size={state === "expanded" ? "default" : "icon"}
+                className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
+                data-testid="button-configuration"
+              >
+                <Settings className="h-4 w-4" />
+                {state === "expanded" && <span>{t("sidebar.configuration")}</span>}
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/ayuda" data-testid="link-help">
+              <Button
+                variant={state === "collapsed" ? "ghost" : "outline"}
+                size={state === "expanded" ? "default" : "icon"}
+                className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
+                data-testid="button-help"
+              >
+                <HelpCircle className="h-4 w-4" />
+                {state === "expanded" && <span>{t("help.title")}</span>}
+              </Button>
+            </Link>
+          )}
         </div>
       </SidebarFooter>
     </Sidebar>
