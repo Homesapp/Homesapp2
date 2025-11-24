@@ -1,0 +1,231 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { z } from "zod";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Building2, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+
+const vendedorFormSchema = z.object({
+  firstName: z.string().min(1, "Nombre requerido"),
+  lastName: z.string().min(1, "Apellido requerido"),
+  email: z.string().email("Email inválido"),
+  phone: z.string().min(10, "Teléfono debe tener al menos 10 dígitos"),
+  source: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type VendedorFormData = z.infer<typeof vendedorFormSchema>;
+
+export default function LeadRegistrationVendedor() {
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [submitted, setSubmitted] = useState(false);
+
+  const form = useForm<VendedorFormData>({
+    resolver: zodResolver(vendedorFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      source: "",
+      notes: "",
+    },
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (data: VendedorFormData) => {
+      return await apiRequest("/api/public/leads/vendedor", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      setSubmitted(true);
+      toast({
+        title: "¡Registro Exitoso!",
+        description: "Gracias por tu interés. Te contactaremos pronto.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Hubo un problema al enviar tu registro",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: VendedorFormData) => {
+    submitMutation.mutate(data);
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle2 className="h-10 w-10 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">¡Registro Completado!</CardTitle>
+            <CardDescription className="text-base">
+              Hemos recibido tu información. Nuestro equipo se pondrá en contacto contigo pronto.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+      <Card className="w-full max-w-2xl">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <Building2 className="h-10 w-10 text-primary" />
+          </div>
+          <CardTitle className="text-3xl">Registro de Vendedor</CardTitle>
+          <CardDescription className="text-base">
+            Completa tus datos para registrarte como vendedor de propiedades
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nombre *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Juan"
+                          data-testid="input-first-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Apellido *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Pérez"
+                          data-testid="input-last-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="ejemplo@email.com"
+                        data-testid="input-email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teléfono *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="tel"
+                        placeholder="+52 998 123 4567"
+                        data-testid="input-phone"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="source"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>¿Cómo nos conociste?</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Redes sociales, referencia, etc."
+                        data-testid="input-source"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comentarios adicionales</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Cuéntanos más sobre tus propiedades o experiencia..."
+                        rows={4}
+                        data-testid="input-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={submitMutation.isPending}
+                data-testid="button-submit"
+              >
+                {submitMutation.isPending ? "Enviando..." : "Registrarme"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

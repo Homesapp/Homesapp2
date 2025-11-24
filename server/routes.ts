@@ -24570,7 +24570,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public endpoint - GET registration form data
+  // Public simplified lead registration endpoints (no tokens required)
+  // POST /api/public/leads/vendedor - Public vendedor registration
+  app.post("/api/public/leads/vendedor", async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, source, notes } = req.body;
+      
+      // Basic validation
+      if (!firstName || !lastName || !email || !phone) {
+        return res.status(400).json({ message: "Faltan campos requeridos" });
+      }
+      
+      // For now, we'll assign to first available external agency
+      // In production, this could be based on domain, query param, or other logic
+      const agencies = await storage.getAllExternalAgencies();
+      if (!agencies || agencies.length === 0) {
+        return res.status(500).json({ message: "No hay agencias disponibles" });
+      }
+      
+      const agencyId = agencies[0].id;
+      
+      // Create lead
+      const lead = await storage.createExternalLead({
+        agencyId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        phoneLast4: phone.slice(-4),
+        registrationType: "seller",
+        status: "nuevo_lead",
+        source: source || "public_web_vendedor",
+        notes,
+      });
+      
+      res.status(201).json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Error creating vendedor lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/public/leads/broker - Public broker registration
+  app.post("/api/public/leads/broker", async (req, res) => {
+    try {
+      const { firstName, lastName, phoneLast4, source, notes } = req.body;
+      
+      // Basic validation
+      if (!firstName || !lastName || !phoneLast4) {
+        return res.status(400).json({ message: "Faltan campos requeridos" });
+      }
+      
+      // For now, we'll assign to first available external agency
+      const agencies = await storage.getAllExternalAgencies();
+      if (!agencies || agencies.length === 0) {
+        return res.status(500).json({ message: "No hay agencias disponibles" });
+      }
+      
+      const agencyId = agencies[0].id;
+      
+      // Create lead
+      const lead = await storage.createExternalLead({
+        agencyId,
+        firstName,
+        lastName,
+        email: null,
+        phone: null,
+        phoneLast4,
+        registrationType: "broker",
+        status: "nuevo_lead",
+        source: source || "public_web_broker",
+        notes,
+      });
+      
+      res.status(201).json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Error creating broker lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Public endpoint - GET registration form data (legacy token-based system)
   app.get("/api/leads/:token", async (req, res) => {
     try {
       const { token } = req.params;
