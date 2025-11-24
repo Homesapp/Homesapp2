@@ -4,6 +4,16 @@
 HomesApp is a SaaS platform for intelligent real estate property management in Tulum, Quintana Roo. It streamlines property management tasks including scheduling, client interactions, service coordination, and offer processing. Key features include role-based access, Google Calendar integration, a service provider marketplace, and digital agreement management. The platform aims to lead the Tulum market through advanced commission systems, marketing automation, predictive analytics, and AI capabilities.
 
 ## Recent Changes
+**November 24, 2025**: Multi-Agency PDF Template Selector with Smart Auto-Selection
+- Implemented agency dropdown selector in PDF design configuration for multi-agency contexts (master/admin users)
+- Built deterministic agency selection logic: single agency auto-selected, multiple agencies show dropdown
+- Fixed React hooks usage: useEffect for side effects (auto-selection), useMemo for value derivation
+- Removed blocking guard for multi-agency scenarios - templates always render when agency data available
+- Added comprehensive data-testid attributes to all interactive elements (SelectTrigger, SelectItem)
+- Agency selector uses Building2 icon and displays in CardHeader with min-width for proper layout
+- Mutations correctly use selected agency ID for multi-tenant isolation
+- System reactively updates when agencies change via React Query cache invalidation
+
 **November 24, 2025**: PDF Template Selection System with Multi-Tenancy Safeguards
 - Implemented "Diseños de PDF" configuration tab in ExternalConfiguration.tsx with 3 selectable template styles
 - Added visual template preview system showing color palettes for Professional, Modern, and Elegant designs
