@@ -155,6 +155,7 @@ import {
   insertExternalLeadSchema,
   updateExternalLeadSchema,
   insertExternalLeadRegistrationTokenSchema,
+  createLeadRegistrationLinkSchema,
   insertExternalPropertySchema,
   insertExternalRentalContractSchema,
   insertExternalRentalTenantSchema,
@@ -24439,11 +24440,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/external-lead-registration-links - Create registration link
   app.post("/api/external-lead-registration-links", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
-      const validatedData = insertExternalLeadRegistrationTokenSchema.parse(req.body);
+      // Solo requiere registrationType del frontend
+      const { registrationType } = createLeadRegistrationLinkSchema.parse(req.body);
       
-      // Verify agency ownership
-      const hasAccess = await verifyExternalAgencyOwnership(req, res, validatedData.agencyId);
-      if (!hasAccess) return;
+      // Obtener agencyId del usuario autenticado
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User not associated with any agency" });
+      }
+      
+      // Obtener nombre de la agencia
+      const agency = await storage.getExternalAgency(agencyId);
+      if (!agency) {
+        return res.status(404).json({ message: "Agency not found" });
+      }
       
       // Generate unique token
       const token = crypto.randomBytes(32).toString('base64url');
@@ -24453,14 +24463,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       expiresAt.setDate(expiresAt.getDate() + 7);
       
       const registrationToken = await storage.createExternalLeadRegistrationToken({
-        ...validatedData,
         token,
+        agencyId,
+        agencyName: agency.name,
+        registrationType,
         expiresAt,
         createdBy: req.user.id,
       });
       
       await createAuditLog(req, "create", "external_lead_registration_token", registrationToken.id, 
-        `Created ${validatedData.registrationType} registration link`);
+        `Created ${registrationType} registration link`);
       
       res.status(201).json(registrationToken);
     } catch (error: any) {
@@ -24553,7 +24565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public endpoint - GET registration form data
-  app.get("/api/public/external-lead-registration/:token", async (req, res) => {
+  app.get("/api/leads/:token", async (req, res) => {
     try {
       const { token } = req.params;
       const registrationToken = await storage.getExternalLeadRegistrationToken(token);
@@ -24585,7 +24597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public endpoint - Submit registration form
-  app.post("/api/public/external-lead-registration/:token", async (req, res) => {
+  app.post("/api/leads/:token", async (req, res) => {
     try {
       const { token } = req.params;
       const registrationToken = await storage.getExternalLeadRegistrationToken(token);

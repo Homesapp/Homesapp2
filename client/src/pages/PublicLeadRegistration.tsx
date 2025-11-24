@@ -41,9 +41,9 @@ export default function PublicLeadRegistration() {
     registrationType: "seller" | "broker";
     expiresAt: string;
   }>({
-    queryKey: [`/api/public/external-lead-registration/${token}`],
+    queryKey: [`/api/leads/${token}`],
     queryFn: async () => {
-      const response = await fetch(`/api/public/external-lead-registration/${token}`);
+      const response = await fetch(`/api/leads/${token}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to fetch registration form");
@@ -55,7 +55,7 @@ export default function PublicLeadRegistration() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await fetch(`/api/public/external-lead-registration/${token}`, {
+      const response = await fetch(`/api/leads/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

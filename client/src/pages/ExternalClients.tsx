@@ -1513,7 +1513,7 @@ export default function ExternalClients() {
                   const now = new Date();
                   const isExpired = now > expiresAt;
                   const isCompleted = !!link.completedAt;
-                  const fullUrl = `${window.location.origin}/public/lead-registration/${link.token}`;
+                  const fullUrl = `${window.location.origin}/leads/${link.token}`;
                   
                   return (
                     <div

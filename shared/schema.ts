@@ -5745,7 +5745,13 @@ export const insertExternalLeadRegistrationTokenSchema = createInsertSchema(exte
   updatedAt: true,
 });
 
+// Schema simplificado para crear links desde el frontend (solo requiere registrationType)
+export const createLeadRegistrationLinkSchema = z.object({
+  registrationType: leadRegistrationTypeEnum("registration_type"),
+});
+
 export type InsertExternalLeadRegistrationToken = z.infer<typeof insertExternalLeadRegistrationTokenSchema>;
+export type CreateLeadRegistrationLink = z.infer<typeof createLeadRegistrationLinkSchema>;
 export type ExternalLeadRegistrationToken = typeof externalLeadRegistrationTokens.$inferSelect;
 
 // External Condominiums - Condominios gestionados por agencias externas
