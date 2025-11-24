@@ -14768,6 +14768,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.params;
       const { documentType } = req.body; // 'idDocument', 'constitutiveAct', 'propertyDocuments', 'serviceReceipts', 'noDebtProof', etc.
+      console.log("[Owner Upload] Token:", token);
+      console.log("[Owner Upload] documentType:", documentType);
+      console.log("[Owner Upload] Files received:", req.files?.length || 0);
       
       // Validate token exists
       const [rentalFormToken] = await db
