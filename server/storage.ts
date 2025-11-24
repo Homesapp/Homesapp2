@@ -9636,45 +9636,52 @@ export class DatabaseStorage implements IStorage {
         leadId: offerTokens.leadId, // For lead context display
         
         // Unit fields (only what's needed for display)
-        unitId: externalUnits.id,
-        unitNumber: externalUnits.unitNumber,
-        unitType: externalUnits.propertyType,
-        bedrooms: externalUnits.bedrooms,
-        bathrooms: externalUnits.bathrooms,
-        size: externalUnits.area,
-        description: externalUnits.description,
-        photos: externalUnits.photos,
-        monthlyRent: externalUnits.monthlyRent,
-        currency: externalUnits.currency,
-        includedServices: externalUnits.includedServices,
+        unitId: sql<string | null>`${externalUnits.id}`,
+        unitNumber: sql<string | null>`${externalUnits.unitNumber}`,
+        unitType: sql<string | null>`${externalUnits.propertyType}`,
+        bedrooms: sql<number | null>`${externalUnits.bedrooms}`,
+        bathrooms: sql<string | null>`${externalUnits.bathrooms}`,
+        size: sql<string | null>`${externalUnits.area}`,
+        description: sql<string | null>`${externalUnits.description}`,
+        photos: sql<string[] | null>`${externalUnits.photos}`,
+        monthlyRent: sql<string | null>`${externalUnits.monthlyRent}`,
+        currency: sql<string | null>`${externalUnits.currency}`,
+        includedServices: sql<string | null>`${externalUnits.includedServices}`,
+        condominiumIdFromUnit: sql<string | null>`${externalUnits.condominiumId}`,
         
         // Condominium (only name and address)
-        condoName: externalCondominiums.name,
-        condoAddress: externalCondominiums.address,
+        condoName: sql<string | null>`${externalCondominiums.name}`,
+        condoAddress: sql<string | null>`${externalCondominiums.address}`,
         
         // Client fields (minimal)
-        clientId: externalClients.id,
-        clientFirstName: externalClients.firstName,
-        clientLastName: externalClients.lastName,
-        clientEmail: externalClients.email,
-        clientPhone: externalClients.phone,
+        clientId: sql<string | null>`${externalClients.id}`,
+        clientFirstName: sql<string | null>`${externalClients.firstName}`,
+        clientLastName: sql<string | null>`${externalClients.lastName}`,
+        clientEmail: sql<string | null>`${externalClients.email}`,
+        clientPhone: sql<string | null>`${externalClients.phone}`,
         
         // Agency (only logo and name)
-        agencyId: externalAgencies.id,
-        agencyName: externalAgencies.name,
-        agencyLogo: externalAgencies.logoUrl,
+        agencyId: sql<string | null>`${externalAgencies.id}`,
+        agencyName: sql<string | null>`${externalAgencies.name}`,
+        agencyLogo: sql<string | null>`${externalAgencies.logoUrl}`,
         
         // Creator user (for profile pic display)
-        creatorId: users.id,
-        creatorFirstName: users.firstName,
-        creatorLastName: users.lastName,
-        creatorProfilePic: users.profileImageUrl,
+        creatorId: sql<string | null>`${users.id}`,
+        creatorFirstName: sql<string | null>`${users.firstName}`,
+        creatorLastName: sql<string | null>`${users.lastName}`,
+        creatorProfilePic: sql<string | null>`${users.profileImageUrl}`,
       })
       .from(offerTokens)
       .leftJoin(externalUnits, eq(offerTokens.externalUnitId, externalUnits.id))
-      .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
       .leftJoin(externalClients, eq(offerTokens.externalClientId, externalClients.id))
-      .leftJoin(externalAgencies, eq(externalUnits.agencyId, externalAgencies.id))
+      .leftJoin(externalCondominiums, and(
+        isNotNull(externalUnits.condominiumId),
+        eq(externalUnits.condominiumId, externalCondominiums.id)
+      ))
+      .leftJoin(externalAgencies, and(
+        isNotNull(externalUnits.agencyId),
+        eq(externalUnits.agencyId, externalAgencies.id)
+      ))
       .leftJoin(users, eq(offerTokens.createdBy, users.id))
       .where(eq(offerTokens.token, token))
       .limit(1);
