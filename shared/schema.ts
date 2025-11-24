@@ -5726,6 +5726,36 @@ export type InsertExternalLead = z.infer<typeof insertExternalLeadSchema>;
 export type UpdateExternalLead = z.infer<typeof updateExternalLeadSchema>;
 export type ExternalLead = typeof externalLeads.$inferSelect;
 
+// External Lead Registration Tokens - Links públicos para registro de leads (vendedores/brokers)
+export const externalLeadRegistrationTokens = pgTable("external_lead_registration_tokens", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  token: varchar("token").notNull().unique(), // Token único para la URL pública
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  agencyName: varchar("agency_name", { length: 255 }).notNull(), // Nombre de agencia para mostrar en formulario
+  registrationType: leadRegistrationTypeEnum("registration_type").notNull(), // seller o broker
+  expiresAt: timestamp("expires_at").notNull(), // 7 días de expiración
+  completedAt: timestamp("completed_at"), // Cuando se completó el registro
+  leadId: varchar("lead_id").references(() => externalLeads.id, { onDelete: "set null" }), // Lead creado a partir de este token
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_lead_reg_tokens_agency").on(table.agencyId),
+  index("idx_external_lead_reg_tokens_expires").on(table.expiresAt),
+  index("idx_external_lead_reg_tokens_completed").on(table.completedAt),
+]);
+
+export const insertExternalLeadRegistrationTokenSchema = createInsertSchema(externalLeadRegistrationTokens).omit({
+  id: true,
+  completedAt: true,
+  leadId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalLeadRegistrationToken = z.infer<typeof insertExternalLeadRegistrationTokenSchema>;
+export type ExternalLeadRegistrationToken = typeof externalLeadRegistrationTokens.$inferSelect;
+
 // External Condominiums - Condominios gestionados por agencias externas
 export const externalCondominiums = pgTable("external_condominiums", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
