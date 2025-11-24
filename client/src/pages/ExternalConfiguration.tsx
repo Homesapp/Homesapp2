@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Settings, FileText, CheckCircle, XCircle, Plus, Edit, Trash2, Building2, Plug, Calendar, Bot } from "lucide-react";
+import { Settings, FileText, CheckCircle, XCircle, Plus, Edit, Trash2, Building2, Plug, Calendar, Bot, FileSpreadsheet, Upload, Download, Eye } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -52,7 +52,7 @@ type TermsFormData = z.infer<typeof termsFormSchema>;
 export default function ExternalConfiguration() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"tenant" | "owner" | "designs" | "integrations">("tenant");
+  const [activeTab, setActiveTab] = useState<"tenant" | "owner" | "designs" | "integrations" | "data">("tenant");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerms, setEditingTerms] = useState<any>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
@@ -606,6 +606,286 @@ export default function ExternalConfiguration() {
     );
   };
 
+  // Google Sheets Import Component
+  const GoogleSheetsImport = ({ agencyId, language, toast }: { agencyId?: string, language: string, toast: any }) => {
+    const [spreadsheetId, setSpreadsheetId] = useState("");
+    const [sheetRange, setSheetRange] = useState("Sheet1!A2:M");
+    const [selectedCondominiumId, setSelectedCondominiumId] = useState<string | null>(null);
+    const [previewData, setPreviewData] = useState<any>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+    // Fetch condominiums
+    const { data: condominiums, isLoading: isLoadingCondominiums } = useQuery({
+      queryKey: [`/api/external-condominiums`, agencyId],
+      enabled: !!agencyId,
+    });
+
+    // Preview mutation
+    const previewMutation = useMutation({
+      mutationFn: async () => {
+        const response = await apiRequest('GET', `/api/external-agencies/${agencyId}/preview-sheets-data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&sheetRange=${encodeURIComponent(sheetRange)}`);
+        return response;
+      },
+      onSuccess: (data) => {
+        setPreviewData(data);
+        setIsPreviewOpen(true);
+      },
+      onError: (error: any) => {
+        toast({
+          title: language === "es" ? "Error" : "Error",
+          description: error.message || (language === "es" ? "Error al obtener vista previa" : "Failed to get preview"),
+          variant: "destructive",
+        });
+      },
+    });
+
+    // Import mutation
+    const importMutation = useMutation({
+      mutationFn: async () => {
+        return apiRequest('POST', `/api/external-agencies/${agencyId}/import-units-from-sheets`, {
+          spreadsheetId,
+          sheetRange,
+          condominiumId: selectedCondominiumId,
+        });
+      },
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/external-units'] });
+        toast({
+          title: language === "es" ? "Importación completada" : "Import complete",
+          description: data.message,
+        });
+        setIsPreviewOpen(false);
+        setPreviewData(null);
+      },
+      onError: (error: any) => {
+        toast({
+          title: language === "es" ? "Error" : "Error",
+          description: error.message || (language === "es" ? "Error al importar datos" : "Failed to import data"),
+          variant: "destructive",
+        });
+      },
+    });
+
+    const extractSpreadsheetId = (input: string) => {
+      // Extract ID from URL like https://docs.google.com/spreadsheets/d/1abc123/edit
+      const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (match) {
+        return match[1];
+      }
+      return input;
+    };
+
+    const handleSpreadsheetIdChange = (value: string) => {
+      const extractedId = extractSpreadsheetId(value);
+      setSpreadsheetId(extractedId);
+    };
+
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              {language === "es" ? "Importar Unidades desde Google Sheets" : "Import Units from Google Sheets"}
+            </CardTitle>
+            <CardDescription>
+              {language === "es" 
+                ? "Importa datos de unidades desde una hoja de cálculo de Google Sheets. Asegúrate de que la hoja tenga el formato correcto."
+                : "Import unit data from a Google Sheets spreadsheet. Make sure the sheet has the correct format."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Template info */}
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <h4 className="font-medium">
+                {language === "es" ? "Formato esperado de la hoja:" : "Expected sheet format:"}
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {language === "es" 
+                  ? "Columnas: A) Número de Unidad, B) Nombre del Condominio, C) Propósito de Renta, D) Piso, E) Recámaras, F) Baños, G) Tamaño (m²), H) Monto de Renta, I) Monto de Depósito, J) Nombre del Propietario, K) Email del Propietario, L) Teléfono del Propietario, M) Notas"
+                  : "Columns: A) Unit Number, B) Condominium Name, C) Rent Purpose, D) Floor, E) Bedrooms, F) Bathrooms, G) Size (sqm), H) Rent Amount, I) Deposit Amount, J) Owner Name, K) Owner Email, L) Owner Phone, M) Notes"}
+              </p>
+            </div>
+
+            {/* Condominium selector */}
+            <div className="space-y-2">
+              <Label htmlFor="condominium">
+                {language === "es" ? "Condominio destino *" : "Destination Condominium *"}
+              </Label>
+              <Select 
+                value={selectedCondominiumId || ""} 
+                onValueChange={setSelectedCondominiumId}
+              >
+                <SelectTrigger data-testid="select-condominium-import">
+                  <SelectValue placeholder={language === "es" ? "Selecciona un condominio" : "Select a condominium"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {condominiums?.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id} data-testid={`select-condo-item-${c.id}`}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {language === "es" 
+                  ? "Las unidades importadas se asignarán a este condominio."
+                  : "Imported units will be assigned to this condominium."}
+              </p>
+            </div>
+
+            {/* Spreadsheet ID */}
+            <div className="space-y-2">
+              <Label htmlFor="spreadsheetId">
+                {language === "es" ? "URL o ID de la hoja de cálculo *" : "Spreadsheet URL or ID *"}
+              </Label>
+              <Input
+                id="spreadsheetId"
+                value={spreadsheetId}
+                onChange={(e) => handleSpreadsheetIdChange(e.target.value)}
+                placeholder={language === "es" 
+                  ? "https://docs.google.com/spreadsheets/d/1abc123... o simplemente el ID"
+                  : "https://docs.google.com/spreadsheets/d/1abc123... or just the ID"}
+                data-testid="input-spreadsheet-id"
+              />
+            </div>
+
+            {/* Range */}
+            <div className="space-y-2">
+              <Label htmlFor="sheetRange">
+                {language === "es" ? "Rango de celdas" : "Cell Range"}
+              </Label>
+              <Input
+                id="sheetRange"
+                value={sheetRange}
+                onChange={(e) => setSheetRange(e.target.value)}
+                placeholder="Sheet1!A2:M"
+                data-testid="input-sheet-range"
+              />
+              <p className="text-sm text-muted-foreground">
+                {language === "es" 
+                  ? "Por defecto: Sheet1!A2:M (omite la fila de encabezados)"
+                  : "Default: Sheet1!A2:M (skips the header row)"}
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-4">
+              <Button
+                variant="outline"
+                onClick={() => previewMutation.mutate()}
+                disabled={!spreadsheetId || !selectedCondominiumId || previewMutation.isPending}
+                data-testid="button-preview-sheets"
+              >
+                {previewMutation.isPending ? (
+                  <>
+                    {language === "es" ? "Cargando..." : "Loading..."}
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Vista Previa" : "Preview"}
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => importMutation.mutate()}
+                disabled={!spreadsheetId || !selectedCondominiumId || importMutation.isPending}
+                data-testid="button-import-sheets"
+              >
+                {importMutation.isPending ? (
+                  <>
+                    {language === "es" ? "Importando..." : "Importing..."}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Importar Datos" : "Import Data"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Preview Dialog */}
+        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {language === "es" ? "Vista Previa de Datos" : "Data Preview"}
+              </DialogTitle>
+              <DialogDescription>
+                {language === "es" 
+                  ? `Se encontraron ${previewData?.totalRows || 0} filas. Mostrando las primeras 10:`
+                  : `Found ${previewData?.totalRows || 0} rows. Showing first 10:`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {previewData?.preview && previewData.preview.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b bg-muted">
+                      <th className="p-2 text-left">{language === "es" ? "# Unidad" : "Unit #"}</th>
+                      <th className="p-2 text-left">{language === "es" ? "Propósito" : "Purpose"}</th>
+                      <th className="p-2 text-left">{language === "es" ? "Piso" : "Floor"}</th>
+                      <th className="p-2 text-left">{language === "es" ? "Recámaras" : "Bedrooms"}</th>
+                      <th className="p-2 text-left">{language === "es" ? "Baños" : "Bathrooms"}</th>
+                      <th className="p-2 text-left">{language === "es" ? "Renta" : "Rent"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.preview.map((row: any, index: number) => (
+                      <tr key={index} className="border-b">
+                        <td className="p-2">{row.unitNumber || '-'}</td>
+                        <td className="p-2">{row.rentPurpose || '-'}</td>
+                        <td className="p-2">{row.floorNumber || '-'}</td>
+                        <td className="p-2">{row.bedrooms || '-'}</td>
+                        <td className="p-2">{row.bathrooms || '-'}</td>
+                        <td className="p-2">{row.rentAmount || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {language === "es" ? "No se encontraron datos" : "No data found"}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsPreviewOpen(false)}
+                data-testid="button-close-preview"
+              >
+                {language === "es" ? "Cerrar" : "Close"}
+              </Button>
+              <Button
+                onClick={() => importMutation.mutate()}
+                disabled={importMutation.isPending || !previewData?.preview?.length}
+                data-testid="button-confirm-import"
+              >
+                {importMutation.isPending ? (
+                  <>
+                    {language === "es" ? "Importando..." : "Importing..."}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Confirmar Importación" : "Confirm Import"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-6xl" data-testid="page-external-configuration">
       <div className="flex items-center justify-between mb-6">
@@ -626,7 +906,7 @@ export default function ExternalConfiguration() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full max-w-3xl grid-cols-4">
+        <TabsList className="grid w-full max-w-4xl grid-cols-5">
           <TabsTrigger value="tenant" data-testid="tab-tenant-terms">
             {t("configuration.tenantTerms")}
           </TabsTrigger>
@@ -639,6 +919,10 @@ export default function ExternalConfiguration() {
           <TabsTrigger value="integrations" data-testid="tab-integrations">
             <Plug className="h-4 w-4 mr-2" />
             {language === "es" ? "Integraciones" : "Integrations"}
+          </TabsTrigger>
+          <TabsTrigger value="data" data-testid="tab-data-import">
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            {language === "es" ? "Importar Datos" : "Import Data"}
           </TabsTrigger>
         </TabsList>
 
@@ -931,6 +1215,73 @@ export default function ExternalConfiguration() {
               )}
 
               <IntegrationsContent 
+                agencyId={agency?.id} 
+                language={language}
+                toast={toast}
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="data" className="mt-6">
+          {isLoadingAgencies ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center text-muted-foreground">
+                  {language === "es" 
+                    ? "Cargando información de la agencia..."
+                    : "Loading agency information..."}
+                </div>
+              </CardContent>
+            </Card>
+          ) : hasNoAgency ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    {language === "es" 
+                      ? "No hay agencia configurada"
+                      : "No agency configured"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "es" 
+                      ? "Contacta al administrador para configurar tu agencia primero."
+                      : "Contact the administrator to configure your agency first."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {hasMultipleAgencies && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      <Label className="text-base font-medium">
+                        {language === "es" ? "Agencia" : "Agency"}
+                      </Label>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Select value={agency?.id} onValueChange={setSelectedAgencyId}>
+                      <SelectTrigger className="w-full min-w-[250px]" data-testid="select-agency-data">
+                        <SelectValue placeholder={language === "es" ? "Selecciona una agencia" : "Select an agency"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agencies?.map((a: any) => (
+                          <SelectItem key={a.id} value={a.id} data-testid={`select-agency-data-item-${a.id}`}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </CardContent>
+                </Card>
+              )}
+
+              <GoogleSheetsImport 
                 agencyId={agency?.id} 
                 language={language}
                 toast={toast}

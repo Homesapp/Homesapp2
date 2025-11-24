@@ -152,10 +152,13 @@ export default function ActiveRentals() {
     queryKey: [rentalsEndpoint],
   });
 
+  // Memoize rentals length to avoid dependency issues
+  const rentalsLength = rentals?.length ?? 0;
+  
   // Reset rentals page when data changes (useLayoutEffect for synchronous execution)
   useLayoutEffect(() => {
     setRentalsPage(1);
-  }, [rentals.length]);
+  }, [rentalsLength]);
 
   // Obtener contratos en proceso del cliente
   const { data: contracts = [], isLoading: contractsLoading } = useQuery({
