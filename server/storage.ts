@@ -1377,6 +1377,17 @@ export interface IStorage {
   publishExternalTermsAndConditions(id: string, publishedBy: string): Promise<any>;
   unpublishExternalTermsAndConditions(id: string): Promise<any>;
   deleteExternalTermsAndConditions(id: string): Promise<void>;
+
+  // External Management System - Quotations operations
+  getExternalQuotations(agencyId: string): Promise<ExternalQuotation[]>;
+  getExternalQuotationById(id: string, agencyId: string): Promise<ExternalQuotation | undefined>;
+  createExternalQuotation(quotation: InsertExternalQuotation): Promise<ExternalQuotation>;
+  updateExternalQuotation(id: string, agencyId: string, updates: UpdateExternalQuotation): Promise<ExternalQuotation>;
+  deleteExternalQuotation(id: string, agencyId: string): Promise<void>;
+  updateExternalQuotationStatus(id: string, agencyId: string, status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'cancelled', timestamp?: Date): Promise<ExternalQuotation>;
+  createExternalQuotationToken(tokenData: InsertExternalQuotationToken): Promise<ExternalQuotationToken>;
+  getExternalQuotationByToken(token: string): Promise<{ quotation: ExternalQuotation; token: ExternalQuotationToken } | undefined>;
+  incrementQuotationTokenAccess(tokenId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -9869,6 +9880,180 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(externalTermsAndConditions)
       .where(eq(externalTermsAndConditions.id, id));
+  }
+
+  // External Management System - Quotations operations
+  async getExternalQuotations(agencyId: string): Promise<ExternalQuotation[]> {
+    return await db
+      .select()
+      .from(externalQuotations)
+      .where(eq(externalQuotations.agencyId, agencyId))
+      .orderBy(desc(externalQuotations.createdAt));
+  }
+
+  async getExternalQuotationById(id: string, agencyId: string): Promise<ExternalQuotation | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalQuotations)
+      .where(
+        and(
+          eq(externalQuotations.id, id),
+          eq(externalQuotations.agencyId, agencyId)
+        )
+      );
+    return result;
+  }
+
+  async createExternalQuotation(quotationData: InsertExternalQuotation): Promise<ExternalQuotation> {
+    const [result] = await db
+      .insert(externalQuotations)
+      .values(quotationData)
+      .returning();
+    return result;
+  }
+
+  async updateExternalQuotation(id: string, agencyId: string, updates: UpdateExternalQuotation): Promise<ExternalQuotation> {
+    const [result] = await db
+      .update(externalQuotations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(
+        and(
+          eq(externalQuotations.id, id),
+          eq(externalQuotations.agencyId, agencyId)
+        )
+      )
+      .returning();
+    
+    if (!result) {
+      throw new Error('Quotation not found or does not belong to this agency');
+    }
+    
+    return result;
+  }
+
+  async deleteExternalQuotation(id: string, agencyId: string): Promise<void> {
+    const result = await db
+      .delete(externalQuotations)
+      .where(
+        and(
+          eq(externalQuotations.id, id),
+          eq(externalQuotations.agencyId, agencyId)
+        )
+      )
+      .returning();
+    
+    if (result.length === 0) {
+      throw new Error('Quotation not found or does not belong to this agency');
+    }
+  }
+
+  async updateExternalQuotationStatus(id: string, agencyId: string, status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'cancelled', timestamp?: Date): Promise<ExternalQuotation> {
+    // Get current quotation to validate transition
+    const current = await this.getExternalQuotationById(id, agencyId);
+    if (!current) {
+      throw new Error('Quotation not found or does not belong to this agency');
+    }
+
+    // Define valid status transitions
+    const validTransitions: Record<string, string[]> = {
+      'draft': ['sent', 'cancelled'],
+      'sent': ['accepted', 'rejected', 'cancelled'],
+      'accepted': ['cancelled'],  // Can only cancel accepted quotations
+      'rejected': [],  // Terminal state
+      'cancelled': [],  // Terminal state
+    };
+
+    // Validate transition
+    const allowedNextStates = validTransitions[current.status] || [];
+    if (!allowedNextStates.includes(status)) {
+      throw new Error(`Invalid status transition from ${current.status} to ${status}`);
+    }
+
+    // Clear all status timestamps and set only the appropriate one
+    const updates: any = {
+      status,
+      sentAt: null,
+      approvedAt: null,
+      rejectedAt: null,
+      cancelledAt: null,
+      updatedAt: new Date()
+    };
+    
+    // Set appropriate timestamp based on status (draft has no timestamp)
+    if (status === 'sent') {
+      updates.sentAt = timestamp || new Date();
+    } else if (status === 'accepted') {
+      updates.approvedAt = timestamp || new Date();
+    } else if (status === 'rejected') {
+      updates.rejectedAt = timestamp || new Date();
+    } else if (status === 'cancelled') {
+      updates.cancelledAt = timestamp || new Date();
+    }
+
+    const [result] = await db
+      .update(externalQuotations)
+      .set(updates)
+      .where(
+        and(
+          eq(externalQuotations.id, id),
+          eq(externalQuotations.agencyId, agencyId)
+        )
+      )
+      .returning();
+    
+    if (!result) {
+      throw new Error('Quotation not found or does not belong to this agency');
+    }
+    
+    return result;
+  }
+
+  async createExternalQuotationToken(tokenData: InsertExternalQuotationToken): Promise<ExternalQuotationToken> {
+    const [result] = await db
+      .insert(externalQuotationTokens)
+      .values(tokenData)
+      .returning();
+    return result;
+  }
+
+  async getExternalQuotationByToken(token: string): Promise<{ quotation: ExternalQuotation; token: ExternalQuotationToken } | undefined> {
+    // First get the token and check expiration before joining
+    const [tokenRecord] = await db
+      .select()
+      .from(externalQuotationTokens)
+      .where(eq(externalQuotationTokens.token, token))
+      .limit(1);
+
+    if (!tokenRecord) return undefined;
+
+    // Reject expired tokens immediately
+    if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) {
+      return undefined;
+    }
+
+    // Token is valid, get the quotation (no agency check for public access)
+    const [quotation] = await db
+      .select()
+      .from(externalQuotations)
+      .where(eq(externalQuotations.id, tokenRecord.quotationId))
+      .limit(1);
+
+    if (!quotation) return undefined;
+
+    return {
+      quotation,
+      token: tokenRecord,
+    };
+  }
+
+  async incrementQuotationTokenAccess(tokenId: string): Promise<void> {
+    await db
+      .update(externalQuotationTokens)
+      .set({
+        accessCount: sql`${externalQuotationTokens.accessCount} + 1`,
+        lastAccessedAt: new Date(),
+      })
+      .where(eq(externalQuotationTokens.id, tokenId));
   }
 }
 
