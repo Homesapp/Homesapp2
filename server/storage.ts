@@ -8817,10 +8817,10 @@ export class DatabaseStorage implements IStorage {
       const searchPattern = `%${sanitized}%`;
       conditions.push(
         or(
-          sql`lower(${externalClients.firstName}) LIKE ${searchPattern}`,
-          sql`lower(${externalClients.lastName}) LIKE ${searchPattern}`,
-          sql`lower(${externalClients.email}) LIKE ${searchPattern}`,
-          sql`lower(${externalClients.phone}) LIKE ${searchPattern}`
+          sql`lower(${externalClients.firstName}) LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`lower(${externalClients.lastName}) LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`lower(${externalClients.email}) LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`lower(${externalClients.phone}) LIKE ${searchPattern} ESCAPE '\\'`
         )!
       );
     }
@@ -8887,10 +8887,10 @@ export class DatabaseStorage implements IStorage {
       const searchPattern = `%${sanitized}%`;
       conditions.push(
         or(
-          sql`lower(${externalClients.firstName}) LIKE ${searchPattern}`,
-          sql`lower(${externalClients.lastName}) LIKE ${searchPattern}`,
-          sql`lower(${externalClients.email}) LIKE ${searchPattern}`,
-          sql`lower(${externalClients.phone}) LIKE ${searchPattern}`
+          sql`lower(${externalClients.firstName}) LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`lower(${externalClients.lastName}) LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`lower(${externalClients.email}) LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`lower(${externalClients.phone}) LIKE ${searchPattern} ESCAPE '\\'`
         )!
       );
     }
