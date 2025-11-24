@@ -9702,41 +9702,48 @@ export class DatabaseStorage implements IStorage {
         leadId: tenantRentalFormTokens.leadId,
         
         // Unit fields
-        unitId: externalUnits.id,
-        unitNumber: externalUnits.unitNumber,
-        unitType: externalUnits.propertyType,
-        bedrooms: externalUnits.bedrooms,
-        bathrooms: externalUnits.bathrooms,
-        size: externalUnits.area,
-        monthlyRent: externalUnits.monthlyRent,
-        currency: externalUnits.currency,
+        unitId: sql<string | null>`${externalUnits.id}`,
+        unitNumber: sql<string | null>`${externalUnits.unitNumber}`,
+        unitType: sql<string | null>`${externalUnits.propertyType}`,
+        bedrooms: sql<number | null>`${externalUnits.bedrooms}`,
+        bathrooms: sql<string | null>`${externalUnits.bathrooms}`,
+        size: sql<string | null>`${externalUnits.area}`,
+        monthlyRent: sql<string | null>`${externalUnits.monthlyRent}`,
+        currency: sql<string | null>`${externalUnits.currency}`,
+        condominiumIdFromUnit: sql<string | null>`${externalUnits.condominiumId}`,
         
         // Condominium
-        condoName: externalCondominiums.name,
-        condoAddress: externalCondominiums.address,
+        condoName: sql<string | null>`${externalCondominiums.name}`,
+        condoAddress: sql<string | null>`${externalCondominiums.address}`,
         
         // Client fields
-        clientFirstName: externalClients.firstName,
-        clientLastName: externalClients.lastName,
-        clientEmail: externalClients.email,
-        clientPhone: externalClients.phone,
+        clientFirstName: sql<string | null>`${externalClients.firstName}`,
+        clientLastName: sql<string | null>`${externalClients.lastName}`,
+        clientEmail: sql<string | null>`${externalClients.email}`,
+        clientPhone: sql<string | null>`${externalClients.phone}`,
         
         // Agency
-        agencyId: externalAgencies.id,
-        agencyName: externalAgencies.name,
-        agencyLogo: externalAgencies.logoUrl,
+        agencyId: sql<string | null>`${externalAgencies.id}`,
+        agencyName: sql<string | null>`${externalAgencies.name}`,
+        agencyLogo: sql<string | null>`${externalAgencies.logoUrl}`,
         
         // Creator user (needed for profile picture display)
-        creatorId: users.id,
-        creatorFirstName: users.firstName,
-        creatorLastName: users.lastName,
-        creatorProfilePic: users.profileImageUrl,
+        creatorId: sql<string | null>`${users.id}`,
+        creatorFirstName: sql<string | null>`${users.firstName}`,
+        creatorLastName: sql<string | null>`${users.lastName}`,
+        creatorProfilePic: sql<string | null>`${users.profileImageUrl}`,
       })
       .from(tenantRentalFormTokens)
       .leftJoin(externalUnits, eq(tenantRentalFormTokens.externalUnitId, externalUnits.id))
-      .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
       .leftJoin(externalClients, eq(tenantRentalFormTokens.externalClientId, externalClients.id))
-      .leftJoin(externalAgencies, eq(externalUnits.agencyId, externalAgencies.id))
+      .leftJoin(externalCondominiums, and(
+        isNotNull(externalUnits.condominiumId),
+        eq(externalUnits.condominiumId, externalCondominiums.id)
+      ))
+      .leftJoin(externalAgencies, and(
+        isNotNull(externalUnits.agencyId),
+        eq(externalUnits.agencyId, externalAgencies.id)
+      ))
       .leftJoin(users, eq(tenantRentalFormTokens.createdBy, users.id))
       .where(eq(tenantRentalFormTokens.token, token))
       .limit(1);
