@@ -5805,7 +5805,8 @@ export const externalQuotations = pgTable("external_quotations", {
   propertyId: varchar("property_id").references(() => externalProperties.id, { onDelete: "set null" }),
   unitId: varchar("unit_id").references(() => externalUnits.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
+  description: text("description"), // Descripción del trabajo/problema
+  solutionDescription: text("solution_description"), // Descripción de la solución propuesta
   
   // Servicios como JSONB array: [{ id, name, description, quantity, unitPrice, subtotal }]
   services: jsonb("services").notNull().default("[]"),

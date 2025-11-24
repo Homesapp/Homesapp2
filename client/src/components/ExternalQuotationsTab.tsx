@@ -65,6 +65,7 @@ type ServiceLine = z.infer<typeof serviceSchema>;
 const quotationFormSchema = z.object({
   title: z.string().min(1, "Título requerido"),
   description: z.string().optional(),
+  solutionDescription: z.string().optional(),
   clientId: z.string().optional(),
   propertyId: z.string().optional(),
   unitId: z.string().optional(),
@@ -264,6 +265,7 @@ export default function ExternalQuotations() {
     defaultValues: {
       title: "",
       description: "",
+      solutionDescription: "",
       clientId: "",
       propertyId: "",
       unitId: "",
@@ -312,6 +314,7 @@ export default function ExternalQuotations() {
     form.reset({
       title: quotation.title,
       description: quotation.description || "",
+      solutionDescription: (quotation as any).solutionDescription || "",
       clientId: quotation.clientId || "",
       propertyId: quotation.propertyId || "",
       unitId: quotation.unitId || "",
@@ -480,10 +483,24 @@ export default function ExternalQuotations() {
                       control={form.control}
                       name="description"
                       render={({ field }) => (
-                        <FormItem className="col-span-2">
+                        <FormItem>
                           <FormLabel>Descripción del Trabajo</FormLabel>
                           <FormControl>
                             <Textarea {...field} data-testid="input-description" placeholder="Describa los trabajos a realizar..." rows={3} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="solutionDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descripción de la Solución</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} data-testid="input-solution-description" placeholder="Describa la solución propuesta..." rows={3} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
