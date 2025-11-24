@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, CheckCircle2, AlertCircle, Building2, Upload } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Building2, Upload, Eye, X, FileText } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logoPath from "@assets/H mes (500 x 300 px)_1759672952263.png";
@@ -417,6 +417,61 @@ export default function PublicOwnerForm() {
     uploadDocumentMutation.mutate({ files: e.target.files, documentType });
     // Clear input for next upload
     e.target.value = '';
+  };
+
+  const removeDocument = (documentType: string, urlToRemove?: string) => {
+    if (documentType === 'idDocument') {
+      form.setValue('idDocumentUrl', '');
+    } else if (documentType === 'constitutiveAct') {
+      form.setValue('constitutiveActUrl', '');
+    } else if (documentType === 'servicesFormat') {
+      form.setValue('servicesFormatUrl', '');
+    } else if (documentType === 'internalRules') {
+      form.setValue('internalRulesUrl', '');
+    } else if (documentType === 'condoRegulations') {
+      form.setValue('condoRegulationsUrl', '');
+    } else if (documentType === 'propertyDocuments' && urlToRemove) {
+      const currentUrls = form.getValues('propertyDocumentsUrls') || [];
+      form.setValue('propertyDocumentsUrls', currentUrls.filter(url => url !== urlToRemove));
+    } else if (documentType === 'serviceReceipts' && urlToRemove) {
+      const currentUrls = form.getValues('serviceReceiptsUrls') || [];
+      form.setValue('serviceReceiptsUrls', currentUrls.filter(url => url !== urlToRemove));
+    } else if (documentType === 'noDebtProof' && urlToRemove) {
+      const currentUrls = form.getValues('noDebtProofUrls') || [];
+      form.setValue('noDebtProofUrls', currentUrls.filter(url => url !== urlToRemove));
+    }
+  };
+
+  const renderDocumentDisplay = (url: string, onRemove: () => void) => {
+    const fileName = url.split('/').pop() || 'documento';
+    const cleanFileName = fileName.length > 40 ? fileName.substring(0, 37) + '...' : fileName;
+    
+    return (
+      <div className="flex items-center gap-2 p-2 bg-muted rounded-md" data-testid="document-display">
+        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <span className="text-sm flex-1 truncate">{cleanFileName}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => window.open(url, '_blank')}
+          data-testid="button-view-document"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          onClick={onRemove}
+          data-testid="button-remove-document"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
   };
 
   // Redirect if token validation fails
@@ -902,36 +957,40 @@ export default function PublicOwnerForm() {
                     {/* ID Document */}
                     <div className="space-y-2">
                       <Label htmlFor="idDocument">{text.idDocument} *</Label>
-                      <Input
-                        id="idDocument"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleDocumentUpload(e, 'idDocument')}
-                        disabled={uploadDocumentMutation.isPending}
-                        data-testid="input-idDocument"
-                      />
-                      {form.watch('idDocumentUrl') && (
-                        <p className="text-sm text-green-600">
-                          ✓ {language === "es" ? "Documento subido" : "Document uploaded"}
-                        </p>
+                      {form.watch('idDocumentUrl') ? (
+                        renderDocumentDisplay(
+                          form.watch('idDocumentUrl')!, 
+                          () => removeDocument('idDocument')
+                        )
+                      ) : (
+                        <Input
+                          id="idDocument"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleDocumentUpload(e, 'idDocument')}
+                          disabled={uploadDocumentMutation.isPending}
+                          data-testid="input-idDocument"
+                        />
                       )}
                     </div>
 
                     {/* Constitutive Act */}
                     <div className="space-y-2">
                       <Label htmlFor="constitutiveAct">{text.constitutiveAct}</Label>
-                      <Input
-                        id="constitutiveAct"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleDocumentUpload(e, 'constitutiveAct')}
-                        disabled={uploadDocumentMutation.isPending}
-                        data-testid="input-constitutiveAct"
-                      />
-                      {form.watch('constitutiveActUrl') && (
-                        <p className="text-sm text-green-600">
-                          ✓ {language === "es" ? "Documento subido" : "Document uploaded"}
-                        </p>
+                      {form.watch('constitutiveActUrl') ? (
+                        renderDocumentDisplay(
+                          form.watch('constitutiveActUrl')!, 
+                          () => removeDocument('constitutiveAct')
+                        )
+                      ) : (
+                        <Input
+                          id="constitutiveAct"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleDocumentUpload(e, 'constitutiveAct')}
+                          disabled={uploadDocumentMutation.isPending}
+                          data-testid="input-constitutiveAct"
+                        />
                       )}
                       <p className="text-xs text-muted-foreground">
                         {language === "es" 
@@ -945,6 +1004,11 @@ export default function PublicOwnerForm() {
                       <Label htmlFor="propertyDocuments">
                         {language === "es" ? "Documentos de la Propiedad" : "Property Documents"}
                       </Label>
+                      {form.watch('propertyDocumentsUrls')?.map((url, index) => (
+                        <div key={index}>
+                          {renderDocumentDisplay(url, () => removeDocument('propertyDocuments', url))}
+                        </div>
+                      ))}
                       <Input
                         id="propertyDocuments"
                         type="file"
@@ -954,11 +1018,6 @@ export default function PublicOwnerForm() {
                         disabled={uploadDocumentMutation.isPending}
                         data-testid="input-propertyDocuments"
                       />
-                      {form.watch('propertyDocumentsUrls')?.length > 0 && (
-                        <p className="text-sm text-green-600">
-                          ✓ {form.watch('propertyDocumentsUrls').length} {language === "es" ? "documento(s) subido(s)" : "document(s) uploaded"}
-                        </p>
-                      )}
                     </div>
 
                     {/* Service Receipts */}
@@ -966,6 +1025,11 @@ export default function PublicOwnerForm() {
                       <Label htmlFor="serviceReceipts">
                         {language === "es" ? "Recibos de Servicios" : "Service Receipts"}
                       </Label>
+                      {form.watch('serviceReceiptsUrls')?.map((url, index) => (
+                        <div key={index}>
+                          {renderDocumentDisplay(url, () => removeDocument('serviceReceipts', url))}
+                        </div>
+                      ))}
                       <Input
                         id="serviceReceipts"
                         type="file"
@@ -975,11 +1039,6 @@ export default function PublicOwnerForm() {
                         disabled={uploadDocumentMutation.isPending}
                         data-testid="input-serviceReceipts"
                       />
-                      {form.watch('serviceReceiptsUrls')?.length > 0 && (
-                        <p className="text-sm text-green-600">
-                          ✓ {form.watch('serviceReceiptsUrls').length} {language === "es" ? "documento(s) subido(s)" : "document(s) uploaded"}
-                        </p>
-                      )}
                     </div>
 
                     {/* No Debt Proof */}
@@ -987,6 +1046,11 @@ export default function PublicOwnerForm() {
                       <Label htmlFor="noDebtProof">
                         {language === "es" ? "Comprobante de No Adeudo" : "No Debt Proof"}
                       </Label>
+                      {form.watch('noDebtProofUrls')?.map((url, index) => (
+                        <div key={index}>
+                          {renderDocumentDisplay(url, () => removeDocument('noDebtProof', url))}
+                        </div>
+                      ))}
                       <Input
                         id="noDebtProof"
                         type="file"
@@ -996,64 +1060,65 @@ export default function PublicOwnerForm() {
                         disabled={uploadDocumentMutation.isPending}
                         data-testid="input-noDebtProof"
                       />
-                      {form.watch('noDebtProofUrls')?.length > 0 && (
-                        <p className="text-sm text-green-600">
-                          ✓ {form.watch('noDebtProofUrls').length} {language === "es" ? "documento(s) subido(s)" : "document(s) uploaded"}
-                        </p>
-                      )}
                     </div>
 
                     {/* Services Format */}
                     <div className="space-y-2">
                       <Label htmlFor="servicesFormat">{text.servicesFormat}</Label>
-                      <Input
-                        id="servicesFormat"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleDocumentUpload(e, 'servicesFormat')}
-                        disabled={uploadDocumentMutation.isPending}
-                        data-testid="input-servicesFormat"
-                      />
-                      {form.watch('servicesFormatUrl') && (
-                        <p className="text-sm text-green-600">
-                          ✓ {language === "es" ? "Documento subido" : "Document uploaded"}
-                        </p>
+                      {form.watch('servicesFormatUrl') ? (
+                        renderDocumentDisplay(
+                          form.watch('servicesFormatUrl')!, 
+                          () => removeDocument('servicesFormat')
+                        )
+                      ) : (
+                        <Input
+                          id="servicesFormat"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleDocumentUpload(e, 'servicesFormat')}
+                          disabled={uploadDocumentMutation.isPending}
+                          data-testid="input-servicesFormat"
+                        />
                       )}
                     </div>
 
                     {/* Internal Rules */}
                     <div className="space-y-2">
                       <Label htmlFor="internalRules">{text.internalRules}</Label>
-                      <Input
-                        id="internalRules"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleDocumentUpload(e, 'internalRules')}
-                        disabled={uploadDocumentMutation.isPending}
-                        data-testid="input-internalRules"
-                      />
-                      {form.watch('internalRulesUrl') && (
-                        <p className="text-sm text-green-600">
-                          ✓ {language === "es" ? "Documento subido" : "Document uploaded"}
-                        </p>
+                      {form.watch('internalRulesUrl') ? (
+                        renderDocumentDisplay(
+                          form.watch('internalRulesUrl')!, 
+                          () => removeDocument('internalRules')
+                        )
+                      ) : (
+                        <Input
+                          id="internalRules"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleDocumentUpload(e, 'internalRules')}
+                          disabled={uploadDocumentMutation.isPending}
+                          data-testid="input-internalRules"
+                        />
                       )}
                     </div>
 
                     {/* Condo Regulations */}
                     <div className="space-y-2">
                       <Label htmlFor="condoRegulations">{text.condoRegulations}</Label>
-                      <Input
-                        id="condoRegulations"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleDocumentUpload(e, 'condoRegulations')}
-                        disabled={uploadDocumentMutation.isPending}
-                        data-testid="input-condoRegulations"
-                      />
-                      {form.watch('condoRegulationsUrl') && (
-                        <p className="text-sm text-green-600">
-                          ✓ {language === "es" ? "Documento subido" : "Document uploaded"}
-                        </p>
+                      {form.watch('condoRegulationsUrl') ? (
+                        renderDocumentDisplay(
+                          form.watch('condoRegulationsUrl')!, 
+                          () => removeDocument('condoRegulations')
+                        )
+                      ) : (
+                        <Input
+                          id="condoRegulations"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleDocumentUpload(e, 'condoRegulations')}
+                          disabled={uploadDocumentMutation.isPending}
+                          data-testid="input-condoRegulations"
+                        />
                       )}
                     </div>
 

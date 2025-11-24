@@ -656,7 +656,13 @@ export async function generateRentalFormPDF(
   });
 }
 
-export async function generateOwnerFormPDF(ownerData: any, property: any): Promise<Buffer> {
+export async function generateOwnerFormPDF(
+  ownerData: any,
+  property: any,
+  agencyName: string = '',
+  agencyLogoUrl: string | null = null,
+  templateStyle: TemplateStyle = 'professional'
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -669,185 +675,146 @@ export async function generateOwnerFormPDF(ownerData: any, property: any): Promi
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const primaryColor = '#3b82f6';
-      const secondaryColor = '#64748b';
-      const accentColor = '#10b981';
-      const bgColor = '#f8fafc';
-      const borderColor = '#e2e8f0';
+      const colors = PDF_TEMPLATES[templateStyle] || PDF_TEMPLATES.professional;
 
-      // Header with background
-      doc.rect(0, 0, 595, 120)
-        .fillColor('#1e40af')
-        .fill();
+      // Header with dual logos
+      let yPosition = 40;
+      yPosition = drawDualLogos(doc, yPosition, agencyName, agencyLogoUrl, colors);
 
-      doc.fontSize(32)
-        .fillColor('#ffffff')
-        .text('HomesApp', 50, 35);
-
-      doc.fontSize(14)
-        .fillColor('#bfdbfe')
-        .text('Tulum Rental Homes ™', 50, 75);
-
-      // Title Section
-      doc.fontSize(24)
-        .fillColor('#1e293b')
-        .text('Formulario de Propietario', 50, 150);
-
-      doc.fontSize(10)
-        .fillColor(secondaryColor)
+      // Title
+      doc.fontSize(22)
+        .fillColor(colors.primary)
+        .font('Helvetica-Bold')
+        .text('Formulario de Propietario (Arrendador)', 50, yPosition, { align: 'center', width: 495 });
+      
+      yPosition += 35;
+      doc.fontSize(9)
+        .fillColor(colors.textSecondary)
+        .font('Helvetica')
         .text(`Generado el ${new Date().toLocaleDateString('es-MX', { 
           year: 'numeric', 
           month: 'long', 
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
-        })}`, 50, 185);
-
-      doc.moveTo(50, 210)
-        .lineTo(545, 210)
-        .strokeColor(borderColor)
-        .lineWidth(2)
-        .stroke();
-
-      let yPosition = 230;
-
-      // Property Section
-      doc.rect(50, yPosition - 5, 495, 70)
-        .fillColor(bgColor)
-        .fill();
-
-      doc.fontSize(16)
-        .fillColor(primaryColor)
-        .text('PROPIEDAD', 60, yPosition + 5);
-      
-      yPosition += 30;
-      doc.fontSize(12)
-        .fillColor('#1e293b')
-        .font('Helvetica-Bold')
-        .text(`${property.title || 'Sin título'}`, 60, yPosition);
-      
-      yPosition += 20;
-      doc.fontSize(10)
-        .font('Helvetica')
-        .fillColor(secondaryColor)
-        .text(`${property.address || 'Dirección no disponible'}`, 60, yPosition);
-
-      yPosition += 50;
-
-      // Owner Personal Information
-      doc.fontSize(16)
-        .fillColor(primaryColor)
-        .text('INFORMACIÓN DEL PROPIETARIO', 50, yPosition);
+        })}`, 50, yPosition, { align: 'center', width: 495 });
 
       yPosition += 25;
-      const ownerInfo = [
+      doc.moveTo(50, yPosition)
+        .lineTo(545, yPosition)
+        .strokeColor(colors.border)
+        .lineWidth(1)
+        .stroke();
+
+      yPosition += 25;
+
+      // Property Section
+      yPosition = drawSectionHeader(doc, 'PROPIEDAD', yPosition, colors, true);
+      yPosition = drawKeyValueGrid(doc, [
+        { label: 'Propiedad', value: property.title || 'Sin título' },
+        { label: 'Dirección', value: property.address || 'No disponible' },
+        { label: 'Subdivisión', value: ownerData.subdivision },
+        { label: 'Número de unidad', value: ownerData.unitNumber },
+      ], yPosition, colors);
+
+      // Owner Personal Information
+      yPosition = drawSectionHeader(doc, 'INFORMACIÓN PERSONAL DEL PROPIETARIO', yPosition, colors, true);
+      yPosition = drawKeyValueGrid(doc, [
         { label: 'Nombre completo', value: ownerData.fullName },
-        { label: 'Email', value: ownerData.email },
-        { label: 'Teléfono', value: ownerData.phone },
         { label: 'Nacionalidad', value: ownerData.nationality },
-        { label: 'Dirección', value: ownerData.address },
-      ];
+        { label: 'Teléfono', value: ownerData.phoneNumber },
+        { label: 'WhatsApp', value: ownerData.whatsappNumber },
+        { label: 'Email', value: ownerData.email },
+        { label: 'Permite subarrendamiento', value: ownerData.subleasingAllowed ? 'Sí' : 'No' },
+      ], yPosition, colors);
 
-      ownerInfo.forEach(({ label, value }) => {
-        if (value) {
-          doc.fontSize(9)
-            .fillColor(secondaryColor)
-            .text(`${label}:`, 50, yPosition);
-          
-          doc.fontSize(10)
-            .fillColor('#1e293b')
-            .font('Helvetica-Bold')
-            .text(value, 180, yPosition);
-          
-          doc.font('Helvetica');
-          yPosition += 20;
-        }
-      });
-
-      yPosition += 15;
+      // Property Details
+      yPosition = drawSectionHeader(doc, 'DETALLES DE LA RENTA', yPosition, colors, true);
+      yPosition = drawKeyValueGrid(doc, [
+        { label: 'Renta mensual acordada', value: ownerData.agreedRent ? `$${parseFloat(ownerData.agreedRent).toLocaleString()} MXN` : null },
+        { label: 'Depósito de garantía', value: ownerData.agreedDeposit ? `$${parseFloat(ownerData.agreedDeposit).toLocaleString()} MXN` : null },
+        { label: 'Fecha de entrada', value: ownerData.moveInDate ? new Date(ownerData.moveInDate).toLocaleDateString('es-MX') : null },
+        { label: 'Duración del contrato', value: ownerData.contractDuration },
+        { label: 'Permite mascotas', value: ownerData.petsAllowed ? 'Sí' : 'No' },
+      ], yPosition, colors);
 
       // Bank Information
-      if (ownerData.bankName || ownerData.accountNumber) {
-        doc.fontSize(16)
-          .fillColor(primaryColor)
-          .text('INFORMACIÓN BANCARIA', 50, yPosition);
+      yPosition = drawSectionHeader(doc, 'INFORMACIÓN BANCARIA', yPosition, colors, true);
+      yPosition = drawKeyValueGrid(doc, [
+        { label: 'Nombre del banco', value: ownerData.bankName },
+        { label: 'CLABE interbancaria', value: ownerData.interbankCode },
+        { label: 'Número de cuenta/tarjeta', value: ownerData.accountOrCardNumber },
+        { label: 'Nombre del titular', value: ownerData.accountHolderName },
+        { label: 'Código SWIFT', value: ownerData.swiftCode },
+        { label: 'Dirección del banco', value: ownerData.bankAddress },
+        { label: 'Email del banco', value: ownerData.bankEmail },
+      ], yPosition, colors);
 
-        yPosition += 25;
-        const bankInfo = [
-          { label: 'Banco', value: ownerData.bankName },
-          { label: 'Número de cuenta', value: ownerData.accountNumber },
-          { label: 'CLABE', value: ownerData.clabe },
-        ];
-
-        bankInfo.forEach(({ label, value }) => {
-          if (value) {
-            doc.fontSize(9)
-              .fillColor(secondaryColor)
-              .text(`${label}:`, 50, yPosition);
-            
-            doc.fontSize(10)
-              .fillColor('#1e293b')
-              .font('Helvetica-Bold')
-              .text(value, 180, yPosition);
-            
-            doc.font('Helvetica');
-            yPosition += 20;
-          }
-        });
-
-        yPosition += 15;
+      // Special Notes
+      if (ownerData.specialNotes) {
+        yPosition = drawSectionHeader(doc, 'NOTAS ESPECIALES', yPosition, colors, true);
+        doc.fontSize(9)
+          .fillColor(colors.textPrimary)
+          .font('Helvetica')
+          .text(ownerData.specialNotes, 60, yPosition, { width: 475, align: 'left' });
+        yPosition += Math.ceil(doc.heightOfString(ownerData.specialNotes, { width: 475 })) + 20;
       }
 
-      // Property Preferences
-      if (ownerData.preferredRentAmount || ownerData.minimumContractDuration) {
-        doc.fontSize(16)
-          .fillColor(primaryColor)
-          .text('PREFERENCIAS DE RENTA', 50, yPosition);
+      // Owner Documents - New Page
+      doc.addPage();
+      yPosition = 50;
+      yPosition = drawSectionHeader(doc, 'DOCUMENTOS DEL PROPIETARIO', yPosition, colors, true);
+      yPosition += 10;
 
-        yPosition += 25;
-        const preferences = [
-          { label: 'Renta preferida', value: ownerData.preferredRentAmount ? `$${parseFloat(ownerData.preferredRentAmount).toLocaleString()} USD` : null },
-          { label: 'Duración mínima', value: ownerData.minimumContractDuration },
-          { label: 'Acepta mascotas', value: ownerData.acceptsPets === 'yes' ? 'Sí' : ownerData.acceptsPets === 'no' ? 'No' : null },
-        ];
+      const ownerDocuments = [
+        { label: 'Identificación oficial', url: ownerData.idDocumentUrl },
+        { label: 'Acta constitutiva', url: ownerData.constitutiveActUrl },
+        { label: 'Formato de servicios', url: ownerData.servicesFormatUrl },
+        { label: 'Reglamento interno', url: ownerData.internalRulesUrl },
+        { label: 'Reglamento del condominio', url: ownerData.condoRegulationsUrl },
+      ];
 
-        preferences.forEach(({ label, value }) => {
-          if (value) {
-            doc.fontSize(9)
-              .fillColor(secondaryColor)
-              .text(`${label}:`, 50, yPosition);
-            
-            doc.fontSize(10)
-              .fillColor('#1e293b')
-              .font('Helvetica-Bold')
-              .text(value, 180, yPosition);
-            
-            doc.font('Helvetica');
-            yPosition += 20;
-          }
+      // Add arrays for multiple documents
+      if (ownerData.propertyDocumentsUrls && ownerData.propertyDocumentsUrls.length > 0) {
+        ownerData.propertyDocumentsUrls.forEach((url: string, index: number) => {
+          ownerDocuments.push({ 
+            label: `Documento de propiedad ${index + 1}`, 
+            url 
+          });
         });
       }
+
+      if (ownerData.serviceReceiptsUrls && ownerData.serviceReceiptsUrls.length > 0) {
+        ownerData.serviceReceiptsUrls.forEach((url: string, index: number) => {
+          ownerDocuments.push({ 
+            label: `Recibo de servicio ${index + 1}`, 
+            url 
+          });
+        });
+      }
+
+      if (ownerData.noDebtProofUrls && ownerData.noDebtProofUrls.length > 0) {
+        ownerData.noDebtProofUrls.forEach((url: string, index: number) => {
+          ownerDocuments.push({ 
+            label: `Comprobante de no adeudo ${index + 1}`, 
+            url 
+          });
+        });
+      }
+
+      yPosition = drawDocumentList(doc, '', ownerDocuments, yPosition, colors);
 
       // Footer
       doc.rect(0, doc.page.height - 60, 595, 60)
-        .fillColor('#f1f5f9')
+        .fillColor(colors.surface)
         .fill();
 
-      doc.fontSize(8)
-        .fillColor(secondaryColor)
-        .text(
-          'Este documento es un formulario de propietario generado automáticamente por HomesApp.',
-          50,
-          doc.page.height - 45,
-          { width: 495, align: 'center' }
-        );
-      
       doc.fontSize(7)
-        .fillColor(secondaryColor)
+        .fillColor(colors.textSecondary)
         .text(
-          'HomesApp se reserva el derecho de aprobar o rechazar solicitudes según políticas internas.',
+          'Este documento es un formulario de propietario generado automáticamente.',
           50,
-          doc.page.height - 25,
+          doc.page.height - 40,
           { width: 495, align: 'center' }
         );
 

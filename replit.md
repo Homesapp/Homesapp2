@@ -4,6 +4,24 @@
 HomesApp is a SaaS platform for intelligent real estate property management in Tulum, Quintana Roo. It streamlines property management tasks including scheduling, client interactions, service coordination, and offer processing. Key features include role-based access, Google Calendar integration, a service provider marketplace, and digital agreement management. The platform aims to lead the Tulum market through advanced commission systems, marketing automation, predictive analytics, and AI capabilities.
 
 ## Recent Changes
+**November 24, 2025**: PDF Template Selection System with Multi-Tenancy Safeguards
+- Implemented "Diseños de PDF" configuration tab in ExternalConfiguration.tsx with 3 selectable template styles
+- Added visual template preview system showing color palettes for Professional, Modern, and Elegant designs
+- Created robust multi-state guard system handling: loading, no agency, multiple agencies, and single agency scenarios
+- Implemented deterministic agency selection: `agency = agencies?.length === 1 ? agencies[0] : undefined`
+- Added safety for multi-agency contexts: master/admin users see informative message directing them to agency-specific views
+- Template selection only enabled when exactly one agency is present (typical for external_agency_admin users)
+- Backend mutation endpoint validates agency exists before updating pdfTemplateStyle
+- Fully reactive to agency data changes via React Query auto-refetch
+
+**November 24, 2025**: Owner Form PDF Generator Modernization
+- Completely refactored generateOwnerFormPDF to use PDF_TEMPLATES system matching tenant form PDFs
+- Implemented modular helper functions: drawDualLogos, drawSectionHeader, drawKeyValueGrid, drawDocumentList, drawSignatureBlock
+- Added dual branding support: displays both HomesApp and agency logos side-by-side
+- All 8 owner document types properly displayed in generated PDFs: ID, constitutive act, property documents, service receipts, no-debt proof, services format, internal rules, condo regulations
+- Enhanced owner form document upload UI with view/download/remove buttons for better user experience
+- Made property_id nullable in tenant_rental_forms schema to support external system integration
+
 **November 24, 2025**: Advanced PDF Template System for Rental Forms
 - Implemented 3 selectable PDF design templates (Professional, Modern, Elegant) for rental form PDFs
 - Added `pdfTemplateStyle` field to external_agencies table allowing agencies to choose their preferred design

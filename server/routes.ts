@@ -25416,7 +25416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdfBuffer = await generateRentalFormPDF(rentalFormToken.tenantData, propertyForPDF, agencyName, agencyLogoUrl, templateStyle);
       } else {
         // For owner forms, use owner-specific PDF generator if available
-        pdfBuffer = await generateOwnerFormPDF(rentalFormToken.tenantData, propertyForPDF);
+        pdfBuffer = await generateOwnerFormPDF(rentalFormToken.tenantData, propertyForPDF, agencyName, agencyLogoUrl, templateStyle);
       }
 
       // Set headers for PDF download
