@@ -109,6 +109,8 @@ const t = {
     totalCosts: "Costos totales:",
     contractCost: "Costo de contrato:",
     securityDeposit: "Depósito de seguridad:",
+    firstMonthRent: "Primer mes de renta:",
+    totalToPay: "TOTAL A PAGAR:",
     month: "mes",
     months: "meses",
     customContractDesc: "Especifica la fecha de salida para contrato personalizado",
@@ -250,6 +252,8 @@ const t = {
     totalCosts: "Total costs:",
     contractCost: "Contract cost:",
     securityDeposit: "Security deposit:",
+    firstMonthRent: "First month rent:",
+    totalToPay: "TOTAL TO PAY:",
     month: "month",
     months: "months",
     customContractDesc: "Specify move-out date for custom contract",
@@ -1125,6 +1129,11 @@ export default function PublicOfferForm() {
                         • {text.contractCost} ${contractCost.toLocaleString()} MXN
                         <br />
                         • {text.securityDeposit} ${securityDeposit.toLocaleString()} {form.watch("currency")} ({securityDepositMonths} {securityDepositMonths === 1 ? text.month : text.months})
+                        <br />
+                        • {text.firstMonthRent} ${monthlyRent.toLocaleString()} {form.watch("currency")}
+                        <br />
+                        <br />
+                        <strong className="text-base">{text.totalToPay} ${(contractCost + securityDeposit + monthlyRent).toLocaleString()} {form.watch("currency")}</strong>
                       </p>
                     </div>
                   )}
