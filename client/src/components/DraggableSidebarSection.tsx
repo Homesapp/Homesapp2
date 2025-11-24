@@ -108,16 +108,17 @@ export function SortableMenuItem({
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
     >
-      <button
+      <div
         {...attributes}
         {...listeners}
-        type="button"
+        role="button"
+        tabIndex={0}
         aria-label={`Drag to reorder ${item.titleKey}`}
         className="absolute -left-6 top-1/2 -translate-y-1/2 w-5 h-5 opacity-0 group-hover/menu-item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center"
         data-testid={`drag-handle-${item.titleKey}`}
       >
         <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </button>
+      </div>
       {children}
     </li>
   );
@@ -153,16 +154,17 @@ export function SortableMenuSubItem({
       data-slot="sidebar-menu-sub-item"
       data-sidebar="menu-sub-item"
     >
-      <button
+      <div
         {...attributes}
         {...listeners}
-        type="button"
+        role="button"
+        tabIndex={0}
         aria-label={`Drag to reorder ${item.titleKey}`}
         className="absolute -left-6 top-1/2 -translate-y-1/2 w-5 h-5 opacity-0 group-hover/menu-sub-item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center"
         data-testid={`drag-handle-${item.titleKey}`}
       >
         <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </button>
+      </div>
       {children}
     </li>
   );
