@@ -1798,6 +1798,7 @@ export default function ExternalCondominiums() {
                 </Table>
                   </CardContent>
                 </Card>
+                )}
               </>
             )}
             </div>
