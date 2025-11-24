@@ -26207,40 +26207,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(tenantRentalFormTokens)
           .where(eq(tenantRentalFormTokens.rentalFormGroupId, contract.rentalFormGroupId));
         
-        const rawTenantForm = forms.find((f: any) => f.recipient_type === 'tenant');
-        const rawOwnerForm = forms.find((f: any) => f.recipient_type === 'owner');
+        const rawTenantForm = forms.find((f: any) => f.recipientType === 'tenant');
+        const rawOwnerForm = forms.find((f: any) => f.recipientType === 'owner');
         
-        // Map to camelCase for frontend
+        // Return data with proper structure - Drizzle returns camelCase already
         tenantForm = rawTenantForm ? {
           ...rawTenantForm,
-          tenantData: rawTenantForm.tenant_data,
-          recipientType: rawTenantForm.recipient_type,
-          externalUnitId: rawTenantForm.external_unit_id,
-          externalClientId: rawTenantForm.external_client_id,
-          rentalFormGroupId: rawTenantForm.rental_form_group_id,
-          externalUnitOwnerId: rawTenantForm.external_unit_owner_id,
-          isUsed: rawTenantForm.is_used,
-          usedAt: rawTenantForm.used_at,
-          createdAt: rawTenantForm.created_at,
-          updatedAt: rawTenantForm.updated_at,
-          expiresAt: rawTenantForm.expires_at,
-          createdBy: rawTenantForm.created_by,
+          // Ensure tenantData and ownerData are exposed properly
+          tenantData: rawTenantForm.tenantData,
+          ownerData: rawTenantForm.ownerData,
         } : null;
         
         ownerForm = rawOwnerForm ? {
           ...rawOwnerForm,
-          ownerData: rawOwnerForm.owner_data,
-          recipientType: rawOwnerForm.recipient_type,
-          externalUnitId: rawOwnerForm.external_unit_id,
-          externalClientId: rawOwnerForm.external_client_id,
-          rentalFormGroupId: rawOwnerForm.rental_form_group_id,
-          externalUnitOwnerId: rawOwnerForm.external_unit_owner_id,
-          isUsed: rawOwnerForm.is_used,
-          usedAt: rawOwnerForm.used_at,
-          createdAt: rawOwnerForm.created_at,
-          updatedAt: rawOwnerForm.updated_at,
-          expiresAt: rawOwnerForm.expires_at,
-          createdBy: rawOwnerForm.created_by,
+          // Ensure tenantData and ownerData are exposed properly
+          tenantData: rawOwnerForm.tenantData,
+          ownerData: rawOwnerForm.ownerData,
         } : null;
       }
       
