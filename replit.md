@@ -4,6 +4,29 @@
 HomesApp is a SaaS platform for intelligent real estate property management in Tulum, Quintana Roo. It streamlines property management tasks including scheduling, client interactions, service coordination, and offer processing. Key features include role-based access, Google Calendar integration, a service provider marketplace, and digital agreement management. The platform aims to lead the Tulum market through advanced commission systems, marketing automation, predictive analytics, and AI capabilities.
 
 ## Recent Changes
+**November 24, 2025**: Advanced PDF Template System for Rental Forms
+- Implemented 3 selectable PDF design templates (Professional, Modern, Elegant) for rental form PDFs
+- Added `pdfTemplateStyle` field to external_agencies table allowing agencies to choose their preferred design
+- Completely redesigned rental form PDFs with modular helper functions:
+  - `drawDualLogos`: Displays both HomesApp and agency branding side-by-side
+  - `drawSectionHeader`: Creates consistent section headers with optional backgrounds
+  - `drawKeyValueGrid`: Renders data in clean two-column layouts
+  - `drawDocumentList`: Shows uploaded documents (tenant/guarantor IDs, proofs of address/income)
+  - `drawSignatureBlock`: Displays digital signature status and signature lines
+- Replaced hardcoded blue colors with neutral professional palettes (browns, tans, grays)
+- PDF now includes ALL data from rental forms:
+  - Complete tenant information (personal, employment, contacts)
+  - Full guarantor details (personal, employment, contacts, documents)
+  - All uploaded documents for both tenant and guarantor (6 document types)
+  - Digital signature sections with status indicators
+  - References with complete contact information
+- Templates use professional color schemes:
+  - Professional: Warm browns and beige tones
+  - Modern: Cool slate grays with soft blue accents
+  - Elegant: Deep espresso with muted rose gold accents
+- Automatic page breaks ensure content never overflows
+- Backend automatically fetches agency branding from external_agencies table
+
 **November 24, 2025**: Collapsible Public Registration Links
 - Made "Links de Registro Público" section collapsible in ExternalClients page
 - Section now starts collapsed by default to reduce visual clutter
