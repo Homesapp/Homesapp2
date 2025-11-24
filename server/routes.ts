@@ -12,6 +12,7 @@ import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { syncMaintenanceTicketToGoogleCalendar, deleteMaintenanceTicketFromGoogleCalendar } from "./googleCalendarService";
 import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendOfferLinkEmail } from "./gmail";
+import { readUnitsFromSheet, getSpreadsheetInfo } from "./googleSheets";
 import { getPropertyTitle } from "./propertyHelpers";
 import { setupGoogleAuth } from "./googleAuth";
 import { generateOfferPDF, generateRentalFormPDF, generateOwnerFormPDF, generateQuotationPDF } from "./pdfGenerator";
@@ -23614,6 +23615,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external unit:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Google Sheets import endpoint for external units
+  app.post("/api/external-agencies/:agencyId/import-units-from-sheets", isAuthenticated, requireRole(['master', 'admin', 'external_agency_admin']), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      const { spreadsheetId, sheetRange, condominiumId } = req.body;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Se requiere el ID de la hoja de cálculo (spreadsheetId)" });
+      }
+
+      if (!condominiumId) {
+        return res.status(400).json({ message: "Se requiere seleccionar un condominio" });
+      }
+
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+
+      // Verify condominium belongs to agency
+      const condominium = await storage.getExternalCondominium(condominiumId);
+      if (!condominium || condominium.agencyId !== agencyId) {
+        return res.status(400).json({ message: "El condominio no pertenece a esta agencia" });
+      }
+
+      // Read data from Google Sheets
+      const range = sheetRange || 'Sheet1!A2:M';
+      const rows = await readUnitsFromSheet(spreadsheetId, range);
+
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "No se encontraron datos en la hoja de cálculo" });
+      }
+
+      const results = {
+        imported: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
+
+      for (const row of rows) {
+        try {
+          if (!row.unitNumber) {
+            results.skipped++;
+            continue;
+          }
+
+          // Check if unit already exists
+          const existingUnits = await storage.getExternalUnitsByAgency(agencyId);
+          const existingUnit = existingUnits.find(u => 
+            u.unitNumber === row.unitNumber && u.condominiumId === condominiumId
+          );
+
+          if (existingUnit) {
+            results.skipped++;
+            continue;
+          }
+
+          // Create new unit
+          await storage.createExternalUnit({
+            agencyId,
+            condominiumId,
+            unitNumber: row.unitNumber,
+            rentPurpose: (row.rentPurpose as 'long_term' | 'vacation' | 'both') || 'long_term',
+            floorNumber: row.floorNumber ? parseInt(row.floorNumber) : undefined,
+            bedrooms: row.bedrooms ? parseInt(row.bedrooms) : undefined,
+            bathrooms: row.bathrooms ? parseFloat(row.bathrooms) : undefined,
+            size: row.size ? parseFloat(row.size) : undefined,
+            rentAmount: row.rentAmount || undefined,
+            depositAmount: row.depositAmount || undefined,
+            notes: row.notes || undefined,
+            isActive: true,
+            createdBy: req.user.id,
+          });
+
+          results.imported++;
+        } catch (err: any) {
+          results.errors.push(`Error en fila ${row.unitNumber}: ${err.message}`);
+        }
+      }
+
+      await createAuditLog(req, "import", "external_units", agencyId, `Imported ${results.imported} units from Google Sheets`);
+
+      res.json({
+        message: `Importación completada: ${results.imported} unidades importadas, ${results.skipped} omitidas`,
+        ...results,
+      });
+    } catch (error: any) {
+      console.error("Error importing units from Google Sheets:", error);
+      if (error.message?.includes('Google Sheet not connected')) {
+        return res.status(400).json({ message: "Google Sheets no está conectado. Por favor, configura la conexión primero." });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Get Google Sheets info (for preview)
+  app.get("/api/external-agencies/:agencyId/sheets-info", isAuthenticated, requireRole(['master', 'admin', 'external_agency_admin']), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      const { spreadsheetId } = req.query;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Se requiere el ID de la hoja de cálculo" });
+      }
+
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+
+      const info = await getSpreadsheetInfo(spreadsheetId as string);
+      res.json(info);
+    } catch (error: any) {
+      console.error("Error getting spreadsheet info:", error);
+      if (error.message?.includes('Google Sheet not connected')) {
+        return res.status(400).json({ message: "Google Sheets no está conectado. Por favor, configura la conexión primero." });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Preview Google Sheets data before import
+  app.get("/api/external-agencies/:agencyId/preview-sheets-data", isAuthenticated, requireRole(['master', 'admin', 'external_agency_admin']), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      const { spreadsheetId, sheetRange } = req.query;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Se requiere el ID de la hoja de cálculo" });
+      }
+
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+
+      const range = (sheetRange as string) || 'Sheet1!A2:M';
+      const rows = await readUnitsFromSheet(spreadsheetId as string, range);
+
+      res.json({
+        totalRows: rows.length,
+        preview: rows.slice(0, 10), // First 10 rows for preview
+        columns: ['unitNumber', 'condominiumName', 'rentPurpose', 'floorNumber', 'bedrooms', 'bathrooms', 'size', 'rentAmount', 'depositAmount', 'ownerName', 'ownerEmail', 'ownerPhone', 'notes'],
+      });
+    } catch (error: any) {
+      console.error("Error previewing spreadsheet data:", error);
+      if (error.message?.includes('Google Sheet not connected')) {
+        return res.status(400).json({ message: "Google Sheets no está conectado. Por favor, configura la conexión primero." });
+      }
       handleGenericError(res, error);
     }
   });
