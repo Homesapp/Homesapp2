@@ -112,16 +112,9 @@ export default function ExternalQuotations() {
   
   const clients = clientsResponse?.data || [];
 
-  // Fetch properties for dropdown - only if agencyId is available
-  const { data: properties = [] } = useQuery<any[]>({
-    queryKey: ["/api/external-properties", agencyId],
-    queryFn: async () => {
-      if (!agencyId) return [];
-      const response = await fetch(`/api/external-properties?agencyId=${agencyId}`);
-      if (!response.ok) throw new Error('Failed to fetch properties');
-      return response.json();
-    },
-    enabled: !!agencyId,
+  // Fetch units for dropdown
+  const { data: units = [] } = useQuery<any[]>({
+    queryKey: ["/api/external-units"],
   });
 
   // Create quotation mutation
@@ -442,7 +435,7 @@ export default function ExternalQuotations() {
                           <SelectContent>
                             {clients.map((client: any) => (
                               <SelectItem key={client.id} value={client.id}>
-                                {client.name}
+                                {client.firstName} {client.lastName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -454,20 +447,20 @@ export default function ExternalQuotations() {
 
                   <FormField
                     control={form.control}
-                    name="propertyId"
+                    name="unitId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Propiedad (Opcional)</FormLabel>
+                        <FormLabel>Unidad (Opcional)</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-property">
-                              <SelectValue placeholder="Seleccionar propiedad" />
+                            <SelectTrigger data-testid="select-unit">
+                              <SelectValue placeholder="Seleccionar unidad" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {properties.map((property: any) => (
-                              <SelectItem key={property.id} value={property.id}>
-                                {property.name}
+                            {units.map((unit: any) => (
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.unitNumber} {unit.condominium?.name ? `- ${unit.condominium.name}` : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>

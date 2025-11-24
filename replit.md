@@ -4,11 +4,14 @@
 HomesApp is a SaaS platform for intelligent real estate property management in Tulum, Quintana Roo. It streamlines property management tasks including scheduling, client interactions, service coordination, and offer processing. Key features include role-based access, Google Calendar integration, a service provider marketplace, and digital agreement management. The platform aims to lead the Tulum market through advanced commission systems, marketing automation, predictive analytics, and AI capabilities.
 
 ## Recent Changes
-**November 24, 2025**: Fixed Quotations Form SelectItem Error
+**November 24, 2025**: Fixed Quotations Form SelectItem Error and Unit/Client Display
 - Resolved "select_item must have a value prop that is not an empty string" error when creating new quotations
 - Removed invalid SelectItem components with empty string values for "Ninguno/Ninguna" options
-- Modified clientId and propertyId Select components to use undefined for optional values instead of empty strings
-- Quotation creation form now works correctly with optional client and property fields
+- Modified clientId and unitId Select components to use undefined for optional values instead of empty strings
+- Changed quotations form to use "Unidades" instead of "Propiedades" for external agencies (external_units table)
+- Fixed client display to show firstName + lastName instead of non-existent name field
+- Fixed units query to use /api/external-units endpoint instead of /api/external-properties
+- Unit dropdown now displays unit number and condominium name when available
 
 **November 24, 2025**: Tenant/Guarantor Document Upload System Implemented
 - Added comprehensive document upload functionality to rental application forms
