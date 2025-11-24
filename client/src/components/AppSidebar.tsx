@@ -106,6 +106,9 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
   const { t, language } = useLanguage();
   const { state } = useSidebar();
 
+  // Determine if user is from external agency
+  const isExternalUser = userRole?.startsWith('external_agency_') || false;
+
   // Fetch sidebar visibility configurations for the current role
   const { data: roleVisibilityConfig } = useQuery<
     Array<{menuItemKey: string, visible: boolean}>,
