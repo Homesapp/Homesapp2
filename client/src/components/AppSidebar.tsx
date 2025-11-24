@@ -297,6 +297,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.externalRentals", url: "/external/rentals", icon: FileText, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalAccounting", url: "/external/accounting", icon: DollarSign, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalMaintenance", url: "/external/maintenance", icon: Wrench, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
+    { titleKey: "sidebar.externalQuotations", url: "/external/quotations", icon: FileText, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
     { titleKey: "sidebar.externalCalendar", url: "/external/calendar", icon: Calendar, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance"] },
     { titleKey: "sidebar.externalOwners", url: "/external/owners/portfolio", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalMaintenanceWorkers", url: "/external/maintenance-workers", icon: HardHat, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
