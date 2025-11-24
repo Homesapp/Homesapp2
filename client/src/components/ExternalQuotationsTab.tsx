@@ -128,16 +128,13 @@ export default function ExternalQuotations() {
       const adminFee = subtotal * (adminFeePercentage / 100);
       const total = subtotal + adminFee;
 
-      return apiRequest("/api/external/quotations", {
-        method: "POST",
-        body: JSON.stringify({
-          ...rest,
-          services,
-          subtotal,
-          adminFee,
-          adminFeePercentage,
-          total,
-        }),
+      return apiRequest("POST", "/api/external/quotations", {
+        ...rest,
+        services,
+        subtotal,
+        adminFee,
+        adminFeePercentage,
+        total,
       });
     },
     onSuccess: () => {
@@ -165,16 +162,13 @@ export default function ExternalQuotations() {
       const adminFee = subtotal * (adminFeePercentage / 100);
       const total = subtotal + adminFee;
 
-      return apiRequest(`/api/external/quotations/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          ...rest,
-          services,
-          subtotal,
-          adminFee,
-          adminFeePercentage,
-          total,
-        }),
+      return apiRequest("PATCH", `/api/external/quotations/${id}`, {
+        ...rest,
+        services,
+        subtotal,
+        adminFee,
+        adminFeePercentage,
+        total,
       });
     },
     onSuccess: () => {
@@ -196,9 +190,7 @@ export default function ExternalQuotations() {
   // Delete quotation mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/external/quotations/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/external/quotations/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external/quotations"] });
@@ -216,10 +208,7 @@ export default function ExternalQuotations() {
   // Update status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest(`/api/external/quotations/${id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+      return apiRequest("PATCH", `/api/external/quotations/${id}/status`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external/quotations"] });
@@ -237,10 +226,7 @@ export default function ExternalQuotations() {
   // Generate share link mutation
   const shareMutation = useMutation({
     mutationFn: async ({ id, expiresInDays }: { id: string; expiresInDays: number }) => {
-      return apiRequest(`/api/external/quotations/${id}/share`, {
-        method: "POST",
-        body: JSON.stringify({ expiresInDays }),
-      });
+      return apiRequest("POST", `/api/external/quotations/${id}/share`, { expiresInDays });
     },
     onSuccess: (data: any) => {
       const fullUrl = `${window.location.origin}${data.publicUrl}`;

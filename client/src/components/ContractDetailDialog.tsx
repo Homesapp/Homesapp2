@@ -74,10 +74,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   // Update tenant data mutation
   const updateTenantDataMutation = useMutation({
     mutationFn: async (tenantData: any) => {
-      return apiRequest(`/api/external/contracts/${contractId}/update-tenant-data`, {
-        method: 'PATCH',
-        body: { tenantData },
-      });
+      return apiRequest('PATCH', `/api/external/contracts/${contractId}/update-tenant-data`, { tenantData });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
@@ -102,10 +99,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   // Update owner data mutation
   const updateOwnerDataMutation = useMutation({
     mutationFn: async (ownerData: any) => {
-      return apiRequest(`/api/external/contracts/${contractId}/update-owner-data`, {
-        method: 'PATCH',
-        body: { ownerData },
-      });
+      return apiRequest('PATCH', `/api/external/contracts/${contractId}/update-owner-data`, { ownerData });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
@@ -130,10 +124,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   // Validate tenant documents mutation
   const validateTenantDocsMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest(`/api/external/contracts/${contractId}/validate-documents`, {
-        method: 'PATCH',
-        body: { documentType: 'tenant' },
-      });
+      return apiRequest('PATCH', `/api/external/contracts/${contractId}/validate-documents`, { documentType: 'tenant' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
@@ -157,10 +148,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   // Validate owner documents mutation
   const validateOwnerDocsMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest(`/api/external/contracts/${contractId}/validate-documents`, {
-        method: 'PATCH',
-        body: { documentType: 'owner' },
-      });
+      return apiRequest('PATCH', `/api/external/contracts/${contractId}/validate-documents`, { documentType: 'owner' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
@@ -187,10 +175,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
       if (!contractFileUrl.trim()) {
         throw new Error(language === "es" ? "Por favor ingrese la URL del contrato" : "Please enter the contract URL");
       }
-      return apiRequest(`/api/external/contracts/${contractId}/upload-contract`, {
-        method: 'PATCH',
-        body: { contractUrl: contractFileUrl },
-      });
+      return apiRequest('PATCH', `/api/external/contracts/${contractId}/upload-contract`, { contractUrl: contractFileUrl });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
@@ -215,9 +200,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   // Cancel contract mutation
   const cancelContractMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest(`/api/external/contracts/${contractId}/cancel`, {
-        method: 'PATCH',
-      });
+      return apiRequest('PATCH', `/api/external/contracts/${contractId}/cancel`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/contracts'] });
