@@ -45,6 +45,7 @@ import type { ExternalQuotation } from "@shared/schema";
 import { FileText, Plus, Send, Check, X, Ban, Link2, Trash2, Eye, Pencil, Search, Filter, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -88,6 +89,7 @@ const statusConfig = {
 export default function ExternalQuotations() {
   const { toast } = useToast();
   const isMobile = useMobile();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<ExternalQuotation | null>(null);
   const [viewQuotation, setViewQuotation] = useState<ExternalQuotation | null>(null);
@@ -95,6 +97,8 @@ export default function ExternalQuotations() {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  const agencyId = user?.externalAgencyId;
 
   // Fetch quotations
   const { data: quotations = [], isLoading } = useQuery<ExternalQuotation[]>({
@@ -108,9 +112,10 @@ export default function ExternalQuotations() {
   
   const clients = clientsResponse?.data || [];
 
-  // Fetch properties for dropdown
+  // Fetch properties for dropdown - only if agencyId is available
   const { data: properties = [] } = useQuery<any[]>({
-    queryKey: ["/api/external-properties"],
+    queryKey: [`/api/external-properties?agencyId=${agencyId}`, agencyId],
+    enabled: !!agencyId,
   });
 
   // Create quotation mutation
