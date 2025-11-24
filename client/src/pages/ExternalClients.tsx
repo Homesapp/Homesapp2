@@ -58,6 +58,7 @@ import {
   Trash2,
   LayoutGrid,
   Table as TableIcon,
+  Columns,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -89,6 +90,7 @@ import { insertExternalClientSchema, insertExternalLeadSchema, updateExternalLea
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
+import LeadKanbanView from "@/components/external/LeadKanbanView";
 
 type ClientFormData = z.infer<typeof insertExternalClientSchema>;
 
@@ -109,7 +111,7 @@ export default function ExternalClients() {
   const [, navigate] = useLocation();
 
   const [activeTab, setActiveTab] = useState<"clients" | "leads">("clients");
-  const [viewMode, setViewMode] = useState<"cards" | "table">(isMobile ? "cards" : "table");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "kanban">(isMobile ? "cards" : "table");
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -362,7 +364,7 @@ export default function ExternalClients() {
       phoneLast4: "",
       email: "",
       phone: "",
-      status: "new",
+      status: "nuevo_lead",
       source: "",
       notes: "",
     },
@@ -459,6 +461,25 @@ export default function ExternalClients() {
         description: error.message || (language === "es" 
           ? "No se pudo eliminar el lead."
           : "Failed to delete lead."),
+      });
+    },
+  });
+
+  const updateLeadStatusMutation = useMutation({
+    mutationFn: async ({ leadId, status }: { leadId: string; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/external-leads/${leadId}`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" 
+          ? "No se pudo actualizar el estado del lead."
+          : "Failed to update lead status."),
       });
     },
   });
@@ -607,6 +628,26 @@ export default function ExternalClients() {
     
     const config = statusMap[status as keyof typeof statusMap] || statusMap.active;
     return <Badge variant={config.variant} className="text-xs">{config.label}</Badge>;
+  };
+
+  const getLeadStatusLabel = (status: string) => {
+    const labels: Record<string, { es: string; en: string }> = {
+      nuevo_lead: { es: "Nuevo Lead", en: "New Lead" },
+      cita_coordinada: { es: "Cita Coordinada", en: "Appointment Scheduled" },
+      interesado: { es: "Interesado", en: "Interested" },
+      oferta_enviada: { es: "Oferta Enviada", en: "Offer Sent" },
+      proceso_renta: { es: "Proceso de Renta", en: "Rental Process" },
+      renta_concretada: { es: "Renta Concretada", en: "Rental Completed" },
+      perdido: { es: "Perdido", en: "Lost" },
+      muerto: { es: "Muerto", en: "Dead" },
+    };
+    return labels[status]?.[language === "es" ? "es" : "en"] || status;
+  };
+
+  const getLeadStatusVariant = (status: string): "default" | "destructive" | "secondary" | "outline" => {
+    if (status === "renta_concretada") return "default";
+    if (status === "perdido" || status === "muerto") return "destructive";
+    return "secondary";
   };
 
   return (
@@ -1600,6 +1641,39 @@ export default function ExternalClients() {
                   />
                 </div>
 
+                {/* View Mode Toggle - Desktop only */}
+                {!isMobile && activeTab === "leads" && (
+                  <>
+                    <Button
+                      variant={viewMode === "cards" ? "default" : "outline"}
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => setViewMode("cards")}
+                      data-testid="button-view-cards"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "table" ? "default" : "outline"}
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => setViewMode("table")}
+                      data-testid="button-view-table"
+                    >
+                      <TableIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "kanban" ? "default" : "outline"}
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => setViewMode("kanban")}
+                      data-testid="button-view-kanban"
+                    >
+                      <Columns className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button 
@@ -1626,11 +1700,14 @@ export default function ExternalClients() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">{language === "es" ? "Todos" : "All"}</SelectItem>
-                            <SelectItem value="new">{language === "es" ? "Nuevo" : "New"}</SelectItem>
-                            <SelectItem value="contacted">{language === "es" ? "Contactado" : "Contacted"}</SelectItem>
-                            <SelectItem value="qualified">{language === "es" ? "Calificado" : "Qualified"}</SelectItem>
-                            <SelectItem value="converted">{language === "es" ? "Convertido" : "Converted"}</SelectItem>
-                            <SelectItem value="lost">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                            <SelectItem value="nuevo_lead">{language === "es" ? "Nuevo Lead" : "New Lead"}</SelectItem>
+                            <SelectItem value="cita_coordinada">{language === "es" ? "Cita Coordinada" : "Appointment Scheduled"}</SelectItem>
+                            <SelectItem value="interesado">{language === "es" ? "Interesado" : "Interested"}</SelectItem>
+                            <SelectItem value="oferta_enviada">{language === "es" ? "Oferta Enviada" : "Offer Sent"}</SelectItem>
+                            <SelectItem value="proceso_renta">{language === "es" ? "Proceso de Renta" : "Rental Process"}</SelectItem>
+                            <SelectItem value="renta_concretada">{language === "es" ? "Renta Concretada" : "Rental Completed"}</SelectItem>
+                            <SelectItem value="perdido">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                            <SelectItem value="muerto">{language === "es" ? "Muerto" : "Dead"}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1683,7 +1760,23 @@ export default function ExternalClients() {
             </Card>
           ) : (
             <>
-              {viewMode === "table" ? (
+              {viewMode === "kanban" ? (
+                <LeadKanbanView
+                  leads={leads}
+                  onUpdateStatus={(leadId, newStatus) => {
+                    updateLeadStatusMutation.mutate({ leadId, status: newStatus });
+                  }}
+                  onEdit={(lead) => {
+                    setSelectedLead(lead);
+                    editLeadForm.reset(lead);
+                    setIsEditLeadDialogOpen(true);
+                  }}
+                  onDelete={(lead) => {
+                    setSelectedLead(lead);
+                    setIsDeleteLeadDialogOpen(true);
+                  }}
+                />
+              ) : viewMode === "table" ? (
                 <Card>
                   <CardContent className="p-0">
                     <Table>
@@ -1720,17 +1813,8 @@ export default function ExternalClients() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge 
-                                variant={
-                                  lead.status === "converted" ? "default" :
-                                  lead.status === "lost" ? "destructive" :
-                                  "secondary"
-                                }
-                              >
-                                {language === "es" 
-                                  ? { new: "Nuevo", contacted: "Contactado", qualified: "Calificado", converted: "Convertido", lost: "Perdido" }[lead.status]
-                                  : { new: "New", contacted: "Contacted", qualified: "Qualified", converted: "Converted", lost: "Lost" }[lead.status]
-                                }
+                              <Badge variant={getLeadStatusVariant(lead.status)}>
+                                {getLeadStatusLabel(lead.status)}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-sm">{lead.source || "-"}</TableCell>
@@ -1749,7 +1833,7 @@ export default function ExternalClients() {
                                   }}
                                   data-testid={`button-edit-lead-${lead.id}`}
                                 >
-                                  <Edit2 className="h-4 w-4" />
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -1783,17 +1867,10 @@ export default function ExternalClients() {
                                 {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
                               </Badge>
                               <Badge 
-                                variant={
-                                  lead.status === "converted" ? "default" :
-                                  lead.status === "lost" ? "destructive" :
-                                  "secondary"
-                                }
+                                variant={getLeadStatusVariant(lead.status)}
                                 className="text-xs"
                               >
-                                {language === "es" 
-                                  ? { new: "Nuevo", contacted: "Contactado", qualified: "Calificado", converted: "Convertido", lost: "Perdido" }[lead.status]
-                                  : { new: "New", contacted: "Contacted", qualified: "Qualified", converted: "Converted", lost: "Lost" }[lead.status]
-                                }
+                                {getLeadStatusLabel(lead.status)}
                               </Badge>
                             </div>
                           </div>
@@ -2004,11 +2081,14 @@ export default function ExternalClients() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="new">{language === "es" ? "Nuevo" : "New"}</SelectItem>
-                          <SelectItem value="contacted">{language === "es" ? "Contactado" : "Contacted"}</SelectItem>
-                          <SelectItem value="qualified">{language === "es" ? "Calificado" : "Qualified"}</SelectItem>
-                          <SelectItem value="converted">{language === "es" ? "Convertido" : "Converted"}</SelectItem>
-                          <SelectItem value="lost">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                          <SelectItem value="nuevo_lead">{language === "es" ? "Nuevo Lead" : "New Lead"}</SelectItem>
+                          <SelectItem value="cita_coordinada">{language === "es" ? "Cita Coordinada" : "Appointment Scheduled"}</SelectItem>
+                          <SelectItem value="interesado">{language === "es" ? "Interesado" : "Interested"}</SelectItem>
+                          <SelectItem value="oferta_enviada">{language === "es" ? "Oferta Enviada" : "Offer Sent"}</SelectItem>
+                          <SelectItem value="proceso_renta">{language === "es" ? "Proceso de Renta" : "Rental Process"}</SelectItem>
+                          <SelectItem value="renta_concretada">{language === "es" ? "Renta Concretada" : "Rental Completed"}</SelectItem>
+                          <SelectItem value="perdido">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                          <SelectItem value="muerto">{language === "es" ? "Muerto" : "Dead"}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -2174,11 +2254,14 @@ export default function ExternalClients() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="new">{language === "es" ? "Nuevo" : "New"}</SelectItem>
-                          <SelectItem value="contacted">{language === "es" ? "Contactado" : "Contacted"}</SelectItem>
-                          <SelectItem value="qualified">{language === "es" ? "Calificado" : "Qualified"}</SelectItem>
-                          <SelectItem value="converted">{language === "es" ? "Convertido" : "Converted"}</SelectItem>
-                          <SelectItem value="lost">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                          <SelectItem value="nuevo_lead">{language === "es" ? "Nuevo Lead" : "New Lead"}</SelectItem>
+                          <SelectItem value="cita_coordinada">{language === "es" ? "Cita Coordinada" : "Appointment Scheduled"}</SelectItem>
+                          <SelectItem value="interesado">{language === "es" ? "Interesado" : "Interested"}</SelectItem>
+                          <SelectItem value="oferta_enviada">{language === "es" ? "Oferta Enviada" : "Offer Sent"}</SelectItem>
+                          <SelectItem value="proceso_renta">{language === "es" ? "Proceso de Renta" : "Rental Process"}</SelectItem>
+                          <SelectItem value="renta_concretada">{language === "es" ? "Renta Concretada" : "Rental Completed"}</SelectItem>
+                          <SelectItem value="perdido">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                          <SelectItem value="muerto">{language === "es" ? "Muerto" : "Dead"}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

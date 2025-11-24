@@ -467,6 +467,17 @@ export const leadRegistrationTypeEnum = pgEnum("lead_registration_type", [
   "seller"  // Vendedor interno - datos completos
 ]);
 
+export const externalLeadStatusEnum = pgEnum("external_lead_status", [
+  "nuevo_lead",           // Nuevo lead recién registrado
+  "cita_coordinada",      // Cita coordinada con el lead
+  "interesado",           // Lead mostró interés
+  "oferta_enviada",       // Oferta enviada al lead
+  "proceso_renta",        // En proceso de renta
+  "renta_concretada",     // Renta completada exitosamente
+  "perdido",              // Lead perdido (no interesado)
+  "muerto"                // Lead sin respuesta
+]);
+
 export const financialTransactionDirectionEnum = pgEnum("financial_transaction_direction", [
   "inflow",       // Dinero que entra (cobros)
   "outflow",      // Dinero que sale (pagos)
@@ -5655,7 +5666,7 @@ export const externalLeads = pgTable("external_leads", {
   phoneLast4: varchar("phone_last4", { length: 4 }), // Solo últimos 4 dígitos para broker
   
   // Estado y origen
-  status: varchar("status", { length: 50 }).notNull().default("new"), // new, contacted, viewing, offer_sent, converted, lost
+  status: externalLeadStatusEnum("status").notNull().default("nuevo_lead"),
   source: varchar("source", { length: 100 }), // de dónde vino el lead
   notes: text("notes"),
   
