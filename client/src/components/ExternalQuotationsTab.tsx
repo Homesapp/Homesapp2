@@ -427,14 +427,13 @@ export default function ExternalQuotations() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cliente (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger data-testid="select-client">
                               <SelectValue placeholder="Seleccionar cliente" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Ninguno</SelectItem>
                             {clients.map((client: any) => (
                               <SelectItem key={client.id} value={client.id}>
                                 {client.name}
@@ -453,14 +452,13 @@ export default function ExternalQuotations() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Propiedad (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger data-testid="select-property">
                               <SelectValue placeholder="Seleccionar propiedad" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Ninguna</SelectItem>
                             {properties.map((property: any) => (
                               <SelectItem key={property.id} value={property.id}>
                                 {property.name}
