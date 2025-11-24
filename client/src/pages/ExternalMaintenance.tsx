@@ -40,6 +40,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -88,6 +94,7 @@ import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
+import ExternalQuotationsTab from "@/components/ExternalQuotationsTab";
 
 type MaintenanceFormData = z.infer<typeof insertExternalMaintenanceTicketSchema>;
 
@@ -828,16 +835,30 @@ export default function ExternalMaintenance() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">{t.title}</h1>
-          <p className="text-muted-foreground mt-1">{t.subtitle}</p>
-        </div>
-        <Button onClick={() => setShowDialog(true)} data-testid="button-new-ticket">
-          <Plus className="mr-2 h-4 w-4" />
-          {t.newTicket}
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold" data-testid="text-page-title">{t.title}</h1>
+        <p className="text-muted-foreground mt-1">{t.subtitle}</p>
       </div>
+
+      {/* Tabs for Tickets and Quotations */}
+      <Tabs defaultValue="tickets" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="tickets" data-testid="tab-tickets">
+            {language === 'es' ? 'Tickets' : 'Tickets'}
+          </TabsTrigger>
+          <TabsTrigger value="quotations" data-testid="tab-quotations">
+            {language === 'es' ? 'Cotizaciones' : 'Quotations'}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tickets" className="space-y-6 mt-6">
+          {/* Tickets Content */}
+          <div className="flex justify-end">
+            <Button onClick={() => setShowDialog(true)} data-testid="button-new-ticket">
+              <Plus className="mr-2 h-4 w-4" />
+              {t.newTicket}
+            </Button>
+          </div>
 
       {/* Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
@@ -2153,6 +2174,12 @@ export default function ExternalMaintenance() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="quotations" className="mt-6">
+          <ExternalQuotationsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

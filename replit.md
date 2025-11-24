@@ -3,6 +3,14 @@
 ## Overview
 HomesApp is a SaaS platform for intelligent real estate property management in Tulum, Quintana Roo. It streamlines property management tasks including scheduling, client interactions, service coordination, and offer processing. Key features include role-based access, Google Calendar integration, a service provider marketplace, and digital agreement management. The platform aims to lead the Tulum market through advanced commission systems, marketing automation, predictive analytics, and AI capabilities.
 
+## Recent Changes
+**November 24, 2025**: Integrated Quotations System into Maintenance Module
+- Converted ExternalQuotations from standalone page to tab-based component (ExternalQuotationsTab.tsx)
+- Implemented Shadcn Tabs UI in ExternalMaintenance.tsx with two tabs: "Tickets" and "Cotizaciones"
+- Removed standalone /external/quotations route and sidebar navigation entry
+- Quotations now accessible exclusively through Maintenance section tab navigation
+- Maintains full CRUD functionality, PDF generation, and public sharing capabilities
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
