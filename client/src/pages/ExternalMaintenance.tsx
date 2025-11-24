@@ -834,10 +834,12 @@ export default function ExternalMaintenance() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">{t.title}</h1>
-        <p className="text-muted-foreground mt-1">{t.subtitle}</p>
+      {/* Header with New Ticket Button */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">{t.title}</h1>
+          <p className="text-muted-foreground mt-1">{t.subtitle}</p>
+        </div>
       </div>
 
       {/* Tabs for Tickets and Quotations */}
@@ -852,8 +854,12 @@ export default function ExternalMaintenance() {
         </TabsList>
 
         <TabsContent value="tickets" className="space-y-6 mt-6">
-          {/* Tickets Content */}
-          <div className="flex justify-end">
+          {/* Tickets Header with Action */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">{language === 'es' ? 'Tickets' : 'Tickets'}</h2>
+              <p className="text-sm text-muted-foreground">{t.subtitle}</p>
+            </div>
             <Button onClick={() => setShowDialog(true)} data-testid="button-new-ticket">
               <Plus className="mr-2 h-4 w-4" />
               {t.newTicket}
@@ -1253,35 +1259,31 @@ export default function ExternalMaintenance() {
             {t.today}
           </Button>
           
-          {/* View Mode Toggles - Desktop Only */}
-          {!isMobile && (
-            <>
-              <Button
-                variant={viewMode === "cards" ? "default" : "outline"}
-                size="icon"
-                className="flex-shrink-0"
-                onClick={() => {
-                  setViewMode("cards");
-                  setManualViewModeOverride(false);
-                }}
-                data-testid="button-view-cards"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "outline"}
-                size="icon"
-                className="flex-shrink-0"
-                onClick={() => {
-                  setViewMode("table");
-                  setManualViewModeOverride(true);
-                }}
-                data-testid="button-view-table"
-              >
-                <TableIcon className="h-4 w-4" />
-              </Button>
-            </>
-          )}
+          {/* View Mode Toggles */}
+          <Button
+            variant={viewMode === "cards" ? "default" : "outline"}
+            size="icon"
+            className="flex-shrink-0"
+            onClick={() => {
+              setViewMode("cards");
+              setManualViewModeOverride(false);
+            }}
+            data-testid="button-view-cards"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "table" ? "default" : "outline"}
+            size="icon"
+            className="flex-shrink-0"
+            onClick={() => {
+              setViewMode("table");
+              setManualViewModeOverride(true);
+            }}
+            data-testid="button-view-table"
+          >
+            <TableIcon className="h-4 w-4" />
+          </Button>
           </div>
         </CardContent>
       </Card>

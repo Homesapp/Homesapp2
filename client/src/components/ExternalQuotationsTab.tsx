@@ -42,7 +42,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ExternalQuotation } from "@shared/schema";
-import { FileText, Plus, Send, Check, X, Ban, Link2, Trash2, Eye, Pencil } from "lucide-react";
+import { FileText, Plus, Send, Check, X, Ban, Link2, Trash2, Eye, Pencil, Search, Filter, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -85,10 +87,14 @@ const statusConfig = {
 
 export default function ExternalQuotations() {
   const { toast } = useToast();
+  const isMobile = useMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<ExternalQuotation | null>(null);
   const [viewQuotation, setViewQuotation] = useState<ExternalQuotation | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Fetch quotations
   const { data: quotations = [], isLoading } = useQuery<ExternalQuotation[]>({
@@ -351,16 +357,22 @@ export default function ExternalQuotations() {
   };
 
   // Filter quotations
-  const filteredQuotations = quotations.filter(q => 
-    filterStatus === "all" || q.status === filterStatus
-  );
+  const filteredQuotations = quotations.filter(q => {
+    const matchesStatus = filterStatus === "all" || q.status === filterStatus;
+    const matchesSearch = searchTerm === "" || 
+      q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      q.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      q.quotationNumber?.includes(searchTerm);
+    return matchesStatus && matchesSearch;
+  });
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header with Action */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Cotizaciones</h1>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl font-semibold">Cotizaciones</h2>
+          <p className="text-sm text-muted-foreground">
             Gestiona cotizaciones para servicios de mantenimiento
           </p>
         </div>
@@ -674,28 +686,93 @@ export default function ExternalQuotations() {
         </Dialog>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        <Button
-          variant={filterStatus === "all" ? "default" : "outline"}
-          onClick={() => setFilterStatus("all")}
-          data-testid="filter-all"
-        >
-          Todas
-        </Button>
-        {Object.entries(statusConfig).map(([status, config]) => (
-          <Button
-            key={status}
-            variant={filterStatus === status ? "default" : "outline"}
-            onClick={() => setFilterStatus(status)}
-            data-testid={`filter-${status}`}
-          >
-            {config.label}
-          </Button>
-        ))}
-      </div>
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por título, descripción o número..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-quotations"
+              />
+            </div>
 
-      {/* Quotations Table */}
+            {/* Filter Button with Popover */}
+            <Popover open={filtersExpanded} onOpenChange={setFiltersExpanded}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="flex-shrink-0 relative"
+                  data-testid="button-toggle-filters-quotations"
+                >
+                  <Filter className="h-4 w-4" />
+                  {filterStatus !== "all" && (
+                    <Badge variant="default" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                      1
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96" align="end">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Estado</label>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={filterStatus === "all" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setFilterStatus("all")}
+                        data-testid="filter-all"
+                      >
+                        Todas
+                      </Button>
+                      {Object.entries(statusConfig).map(([status, config]) => (
+                        <Button
+                          key={status}
+                          variant={filterStatus === status ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setFilterStatus(status)}
+                          data-testid={`filter-${status}`}
+                        >
+                          {config.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* View Mode Toggles */}
+            <Button
+              variant={viewMode === "cards" ? "default" : "outline"}
+              size="icon"
+              className="flex-shrink-0"
+              onClick={() => setViewMode("cards")}
+              data-testid="button-view-cards-quotations"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "outline"}
+              size="icon"
+              className="flex-shrink-0"
+              onClick={() => setViewMode("table")}
+              data-testid="button-view-table-quotations"
+            >
+              <TableIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quotations Content */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Cotizaciones</CardTitle>
@@ -704,13 +781,17 @@ export default function ExternalQuotations() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading && (
             <div className="text-center py-8 text-muted-foreground">Cargando...</div>
-          ) : filteredQuotations.length === 0 ? (
+          )}
+          
+          {!isLoading && filteredQuotations.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               No hay cotizaciones {filterStatus !== "all" && `con estado "${statusConfig[filterStatus as keyof typeof statusConfig]?.label}"`}
             </div>
-          ) : (
+          )}
+          
+          {!isLoading && filteredQuotations.length > 0 && viewMode === "table" && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -810,6 +891,121 @@ export default function ExternalQuotations() {
                 })}
               </TableBody>
             </Table>
+          )}
+          
+          {!isLoading && filteredQuotations.length > 0 && viewMode === "cards" && (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredQuotations.map((quotation) => {
+                const StatusIcon = statusConfig[quotation.status].icon;
+                return (
+                  <Card key={quotation.id} data-testid={`card-quotation-${quotation.id}`} className="hover-elevate">
+                    <CardHeader className="space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base line-clamp-2">{quotation.title}</CardTitle>
+                        <Badge className={statusConfig[quotation.status].color}>
+                          <StatusIcon className="mr-1 h-3 w-3" />
+                          {statusConfig[quotation.status].label}
+                        </Badge>
+                      </div>
+                      <CardDescription className="line-clamp-2">
+                        {quotation.description || "Sin descripción"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Cliente:</span>
+                          <p className="font-medium truncate">
+                            {clients.find((c: any) => c.id === quotation.clientId)?.name || "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Total:</span>
+                          <p className="font-bold text-lg">${parseFloat(quotation.total).toFixed(2)}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Fecha:</span>
+                          <p className="font-medium">
+                            {format(new Date(quotation.createdAt), "dd/MM/yyyy", { locale: es })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewQuotation(quotation)}
+                          data-testid={`button-view-${quotation.id}`}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Ver
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(quotation)}
+                          data-testid={`button-edit-${quotation.id}`}
+                        >
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                        {quotation.status === "draft" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "sent" })}
+                            data-testid={`button-send-${quotation.id}`}
+                          >
+                            <Send className="h-3 w-3 mr-1 text-blue-500" />
+                            Enviar
+                          </Button>
+                        )}
+                        {quotation.status === "sent" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "accepted" })}
+                              data-testid={`button-accept-${quotation.id}`}
+                            >
+                              <Check className="h-3 w-3 mr-1 text-green-500" />
+                              Aceptar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "rejected" })}
+                              data-testid={`button-reject-${quotation.id}`}
+                            >
+                              <X className="h-3 w-3 mr-1 text-red-500" />
+                              Rechazar
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => shareMutation.mutate({ id: quotation.id, expiresInDays: 30 })}
+                          data-testid={`button-share-${quotation.id}`}
+                        >
+                          <Link2 className="h-3 w-3 mr-1" />
+                          Compartir
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(quotation.id)}
+                          data-testid={`button-delete-${quotation.id}`}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1 text-destructive" />
+                          Eliminar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
