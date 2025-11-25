@@ -25322,13 +25322,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agencyId, firstName, lastName, phoneLast4
       );
       
-      if (duplicateCheck.isDuplicate) {
+      if (duplicateCheck && !duplicateCheck.isExpired) {
         return res.status(409).json({
-          message: duplicateCheck.detail,
-          detail: duplicateCheck.detail,
+          message: `Este lead ya fue registrado por ${duplicateCheck.sellerName || "otro vendedor"}. Quedan ${duplicateCheck.daysRemaining} días para que expire.`,
+          detail: `Este lead ya fue registrado por ${duplicateCheck.sellerName || "otro vendedor"}. Quedan ${duplicateCheck.daysRemaining} días para que expire.`,
           duplicate: {
             sellerName: duplicateCheck.sellerName,
-            timeRemainingText: duplicateCheck.timeRemainingText,
             daysRemaining: duplicateCheck.daysRemaining
           }
         });
@@ -25408,13 +25407,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agencyId, firstName, lastName, phoneLast4
       );
       
-      if (duplicateCheck.isDuplicate) {
+      if (duplicateCheck && !duplicateCheck.isExpired) {
         return res.status(409).json({
-          message: duplicateCheck.detail,
-          detail: duplicateCheck.detail,
+          message: `Este lead ya fue registrado por ${duplicateCheck.sellerName || "otro vendedor"}. Quedan ${duplicateCheck.daysRemaining} días para que expire.`,
+          detail: `Este lead ya fue registrado por ${duplicateCheck.sellerName || "otro vendedor"}. Quedan ${duplicateCheck.daysRemaining} días para que expire.`,
           duplicate: {
             sellerName: duplicateCheck.sellerName,
-            timeRemainingText: duplicateCheck.timeRemainingText,
             daysRemaining: duplicateCheck.daysRemaining
           }
         });
