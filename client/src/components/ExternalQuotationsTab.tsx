@@ -114,9 +114,16 @@ export default function ExternalQuotations() {
   const clients = clientsResponse?.data || [];
 
   // Fetch units for dropdown
-  const { data: units = [] } = useQuery<any[]>({
-    queryKey: ["/api/external-units"],
+  const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({
+    queryKey: ["/api/external-units", "for-quotations-dialog"],
+    queryFn: async () => {
+      const response = await fetch('/api/external-units?limit=1000', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch units');
+      return response.json();
+    },
   });
+  
+  const units = unitsResponse?.data || [];
 
   // Create quotation mutation
   const createMutation = useMutation({

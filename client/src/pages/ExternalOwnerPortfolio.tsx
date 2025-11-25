@@ -187,15 +187,15 @@ export default function ExternalOwnerPortfolio() {
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
-  // Static/semi-static data: units for dropdowns
-  const { data: units } = useQuery<ExternalUnit[]>({
-    queryKey: ['/api/external-units'],
+  // Lightweight units for dropdowns
+  const { data: units } = useQuery<{ id: string; unitNumber: string; condominiumId: string }[]>({
+    queryKey: ['/api/external-units-for-filters'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
-  // Static/semi-static data: condominiums for dropdowns
-  const { data: condominiums } = useQuery<ExternalCondominium[]>({
-    queryKey: ['/api/external-condominiums'],
+  // Lightweight condominiums for dropdowns (only id+name)
+  const { data: condominiums } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['/api/external-condominiums-for-filters'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 

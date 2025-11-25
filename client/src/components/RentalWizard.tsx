@@ -123,25 +123,27 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     idPhotoUrl: string;
   }>>([]);
 
-  const { data: condominiums, isLoading: condominiumsLoading } = useQuery<ExternalCondominium[]>({
-    queryKey: ["/api/external-condominiums"],
+  const { data: condominiumsResponse, isLoading: condominiumsLoading } = useQuery<{ data: ExternalCondominium[], total: number }>({
+    queryKey: ["/api/external-condominiums", "for-rental-wizard"],
     queryFn: async () => {
-      const response = await fetch("/api/external-condominiums");
+      const response = await fetch("/api/external-condominiums?limit=1000", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch condominiums");
       return response.json();
     },
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
+  const condominiums = condominiumsResponse?.data;
 
-  const { data: availableUnits, isLoading: unitsLoading } = useQuery<UnitWithDetails[]>({
-    queryKey: ["/api/external-units"],
+  const { data: unitsResponse, isLoading: unitsLoading } = useQuery<{ data: UnitWithDetails[], total: number }>({
+    queryKey: ["/api/external-units", "for-rental-wizard"],
     queryFn: async () => {
-      const response = await fetch("/api/external-units");
+      const response = await fetch("/api/external-units?limit=1000", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch units");
       return response.json();
     },
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
+  const availableUnits = unitsResponse?.data;
 
   const { data: clientsResponse, isLoading: clientsLoading } = useQuery<PaginatedResponse<ExternalClient>>({
     queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection

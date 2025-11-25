@@ -70,11 +70,17 @@ export default function ExternalGenerateRentalFormLinkDialog({
   const [clientSearchTerm, setClientSearchTerm] = useState<string>("");
 
   // Queries
-  const { data: units, isLoading: isLoadingUnits } = useQuery<ExternalUnitWithCondominium[]>({
-    queryKey: ["/api/external-units"],
+  const { data: unitsResponse, isLoading: isLoadingUnits } = useQuery<{ data: ExternalUnitWithCondominium[], total: number }>({
+    queryKey: ["/api/external-units", "for-rental-form-dialog"],
+    queryFn: async () => {
+      const response = await fetch('/api/external-units?limit=1000', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch units');
+      return response.json();
+    },
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
+  const units = unitsResponse?.data || [];
 
   const { data: clientsResponse, isLoading: isLoadingClients } = useQuery<PaginatedResponse<ExternalClient>>({
     queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection

@@ -240,12 +240,14 @@ export default function ExternalMaintenance() {
     queryKey: ['/api/external-tickets'],
   });
 
-  const { data: condominiums } = useQuery<ExternalCondominium[]>({
-    queryKey: ['/api/external-condominiums'],
+  // Lightweight condominiums for dropdowns (only id+name)
+  const { data: condominiums } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['/api/external-condominiums-for-filters'],
   });
 
-  const { data: units } = useQuery<ExternalUnit[]>({
-    queryKey: ['/api/external-units'],
+  // Lightweight units for dropdowns
+  const { data: units } = useQuery<{ id: string; unitNumber: string; condominiumId: string }[]>({
+    queryKey: ['/api/external-units-for-filters'],
   });
 
   const { data: agencyUsers } = useQuery<any[]>({

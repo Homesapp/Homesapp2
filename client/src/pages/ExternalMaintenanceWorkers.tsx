@@ -187,10 +187,16 @@ export default function ExternalMaintenanceWorkers() {
   });
 
   // Static/semi-static data: units for dropdowns
-  const { data: units } = useQuery<any[]>({
-    queryKey: ['/api/external-units'],
+  const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({
+    queryKey: ['/api/external-units', 'for-workers-dropdown'],
+    queryFn: async () => {
+      const response = await fetch('/api/external-units?limit=1000', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch units');
+      return response.json();
+    },
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
+  const units = unitsResponse?.data;
 
   const form = useForm<CreateAssignmentForm>({
     resolver: zodResolver(createAssignmentSchema),

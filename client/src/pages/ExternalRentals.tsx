@@ -138,16 +138,17 @@ export default function ExternalRentals() {
   });
 
   // Get available units - fresh data for selection, only when dialog open
-  const { data: availableUnits } = useQuery<ExternalUnit[]>({
-    queryKey: ["/api/external-units", "available"],
+  const { data: availableUnitsResponse } = useQuery<{ data: ExternalUnit[], total: number }>({
+    queryKey: ["/api/external-units", "available-for-dialog"],
     queryFn: async () => {
-      const response = await fetch("/api/external-units?status=available", { credentials: "include" });
+      const response = await fetch("/api/external-units?status=available&limit=1000", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch available units");
       return response.json();
     },
     enabled: selectUnitDialogOpen,
     staleTime: 0, // Always fetch fresh when dialog opens
   });
+  const availableUnits = availableUnitsResponse?.data;
 
   // Fetch all payments - uses default 5 min cache
   const { data: payments = [] } = useQuery<Array<{

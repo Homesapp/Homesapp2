@@ -74,14 +74,26 @@ export default function ExternalCalendar() {
   });
 
   // Fetch units for ticket details
-  const { data: units = [] } = useQuery<any[]>({
-    queryKey: ["/api/external-units"],
+  const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({
+    queryKey: ["/api/external-units", "for-calendar"],
+    queryFn: async () => {
+      const response = await fetch('/api/external-units?limit=1000', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch units');
+      return response.json();
+    },
   });
+  const units = unitsResponse?.data || [];
 
   // Fetch condominiums for filtering
-  const { data: condominiums = [] } = useQuery<any[]>({
-    queryKey: ["/api/external-condominiums"],
+  const { data: condominiumsResponse } = useQuery<{ data: any[], total: number }>({
+    queryKey: ["/api/external-condominiums", "for-calendar"],
+    queryFn: async () => {
+      const response = await fetch('/api/external-condominiums?limit=1000', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch condominiums');
+      return response.json();
+    },
   });
+  const condominiums = condominiumsResponse?.data || [];
 
   // Fetch owners for payment details
   const { data: owners = [] } = useQuery<any[]>({

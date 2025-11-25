@@ -66,6 +66,7 @@ export default function ExternalCondominiums() {
   
   // Unit filters state
   const [unitSearchText, setUnitSearchText] = useState("");
+  const debouncedUnitSearchText = useDebounce(unitSearchText, 400);
   const [selectedCondoFilter, setSelectedCondoFilter] = useState<string>("all");
   const [rentalStatusFilter, setRentalStatusFilter] = useState<string>("all");
   const [unitStatusFilter, setUnitStatusFilter] = useState<string>("all"); // active, suspended, all
@@ -158,18 +159,37 @@ export default function ExternalCondominiums() {
   const condominiums = condominiumsResponse?.data || [];
   const condoTotalPages = Math.max(1, Math.ceil((condominiumsResponse?.total || 0) / condoItemsPerPage));
 
-  // Static/semi-static data: units list for dropdowns (load all with high limit)
+  // Lightweight condominiums lookup (only id+name for units table and filters)
+  const { data: allCondominiums, isLoading: allCondominiumsLoading } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['/api/external-condominiums-for-filters'],
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    cacheTime: 60 * 60 * 1000, // 1 hour
+  });
+
+  // Units with full backend pagination - data, filtering, sorting all handled by server
   const { data: unitsResponse, isLoading: unitsLoading } = useQuery<{ data: ExternalUnit[], total: number }>({
-    queryKey: ['/api/external-units', { limit: 2000 }],
+    queryKey: ['/api/external-units', unitsPage, unitsPerPage, debouncedUnitSearchText, selectedCondoFilter, unitStatusFilter, unitsSortColumn, unitsSortDirection],
     queryFn: async () => {
-      const response = await fetch('/api/external-units?limit=2000', { credentials: 'include' });
+      const params = new URLSearchParams();
+      params.append('limit', unitsPerPage.toString());
+      params.append('offset', ((unitsPage - 1) * unitsPerPage).toString());
+      if (debouncedUnitSearchText) params.append('search', debouncedUnitSearchText);
+      if (selectedCondoFilter !== 'all') params.append('condominiumId', selectedCondoFilter);
+      if (unitStatusFilter !== 'all') params.append('isActive', unitStatusFilter === 'active' ? 'true' : 'false');
+      if (unitsSortColumn) {
+        params.append('sortField', unitsSortColumn);
+        params.append('sortOrder', unitsSortDirection);
+      }
+      const response = await fetch(`/api/external-units?${params.toString()}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch units');
       return response.json();
     },
-    staleTime: 30 * 60 * 1000, // 30 minutes (rarely changes)
-    cacheTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+    keepPreviousData: true,
   });
   const units = unitsResponse?.data || [];
+  const unitsTotalFromBackend = unitsResponse?.total || 0;
 
   // Frequently changing data: rental contracts
   const contractsQuery = useQuery<ExternalRentalContract[]>({
@@ -704,91 +724,44 @@ export default function ExternalCondominiums() {
   };
 
   const getCondominiumName = (condoId: string): string => {
-    return condominiums?.find(c => c.id === condoId)?.name || '';
+    return allCondominiums?.find(c => c.id === condoId)?.name || '';
   };
 
-  const filteredUnits = units?.filter(unit => {
-    // Filter by search text (unit number or condominium name)
-    const searchLower = unitSearchText.toLowerCase();
-    const matchesSearch = !searchLower || 
-      unit.unitNumber.toLowerCase().includes(searchLower) ||
-      getCondominiumName(unit.condominiumId).toLowerCase().includes(searchLower);
-
-    // Filter by condominium
-    const matchesCondominium = selectedCondoFilter === "all" || unit.condominiumId === selectedCondoFilter;
-
-    // Filter by rental status
-    const hasRental = hasActiveRental(unit.id);
-    const matchesRentalStatus = rentalStatusFilter === "all" || 
-      (rentalStatusFilter === "with-rental" && hasRental === true) ||
-      (rentalStatusFilter === "without-rental" && hasRental === false);
-
-    // Filter by unit status (active/suspended)
-    const matchesUnitStatus = unitStatusFilter === "all" ||
-      (unitStatusFilter === "active" && unit.isActive) ||
-      (unitStatusFilter === "suspended" && !unit.isActive);
-
-    return matchesSearch && matchesCondominium && matchesRentalStatus && matchesUnitStatus;
-  }) || [];
-
-  // Sort units with useMemo
-  const sortedUnits = useMemo(() => {
-    return [...filteredUnits].sort((a, b) => {
-      if (!unitsSortColumn) return 0;
-      
-      let aVal: any = (a as any)[unitsSortColumn];
-      let bVal: any = (b as any)[unitsSortColumn];
-      
-      // Special case for condominium name
-      if (unitsSortColumn === 'condominiumName') {
-        aVal = getCondominiumName(a.condominiumId);
-        bVal = getCondominiumName(b.condominiumId);
-      }
-      
-      // Handle numeric columns
-      if (unitsSortColumn === 'bedrooms' || unitsSortColumn === 'bathrooms' || unitsSortColumn === 'squareMeters') {
-        const aNum = parseFloat(aVal || '0');
-        const bNum = parseFloat(bVal || '0');
-        return unitsSortDirection === "asc" ? aNum - bNum : bNum - aNum;
-      }
-      
-      // Handle boolean columns
-      if (unitsSortColumn === 'isActive') {
-        const aActive = aVal ? 1 : 0;
-        const bActive = bVal ? 1 : 0;
-        return unitsSortDirection === "asc" ? aActive - bActive : bActive - aActive;
-      }
-      
-      // Handle string columns
-      if (typeof aVal === "string" || typeof bVal === "string") {
-        aVal = (aVal || '').toString().toLowerCase();
-        bVal = (bVal || '').toString().toLowerCase();
-      }
-      
-      if (aVal < bVal) return unitsSortDirection === "asc" ? -1 : 1;
-      if (aVal > bVal) return unitsSortDirection === "asc" ? 1 : -1;
-      return 0;
+  // Backend now handles search, condominiumId, isActive filters and sorting
+  // Only rental-status filter is applied client-side (using currentContractId from backend)
+  const filteredUnits = useMemo(() => {
+    if (!units || units.length === 0) return [];
+    if (rentalStatusFilter === "all") return units;
+    
+    return units.filter((unit: any) => {
+      const hasRental = !!unit.currentContractId;
+      if (rentalStatusFilter === "with-rental") return hasRental;
+      if (rentalStatusFilter === "without-rental") return !hasRental;
+      return true;
     });
-  }, [filteredUnits, unitsSortColumn, unitsSortDirection, getCondominiumName]);
+  }, [units, rentalStatusFilter]);
 
-  // Paginate units
-  const paginatedUnits = useMemo(() => {
-    return sortedUnits.slice((unitsPage - 1) * unitsPerPage, unitsPage * unitsPerPage);
-  }, [sortedUnits, unitsPage, unitsPerPage]);
+  // Units are already sorted by backend - use directly for display
+  const paginatedUnits = filteredUnits;
   
-  const unitsTotalPages = Math.ceil(sortedUnits.length / unitsPerPage);
+  // Calculate total pages from backend total (adjusted for client-side rental filter)
+  const unitsTotalPages = Math.ceil(
+    rentalStatusFilter === "all" 
+      ? unitsTotalFromBackend / unitsPerPage 
+      : filteredUnits.length / unitsPerPage
+  );
 
   // Clamp unitsPage to valid range when data length changes
   useEffect(() => {
-    if (!sortedUnits || sortedUnits.length === 0) {
+    if (unitsTotalFromBackend === 0) {
       setUnitsPage(1);
       return;
     }
-    const maxPage = Math.ceil(sortedUnits.length / unitsPerPage) || 1;
+    const maxPage = Math.ceil(unitsTotalFromBackend / unitsPerPage) || 1;
     if (unitsPage > maxPage) {
       setUnitsPage(maxPage);
     }
-  }, [sortedUnits.length, unitsPerPage]);
+  }, [unitsTotalFromBackend, unitsPerPage]);
 
   const handleUnitsSort = (column: string) => {
     if (unitsSortColumn === column) {
@@ -1005,13 +978,14 @@ export default function ExternalCondominiums() {
                             >
                               {language === "es" ? "Todos" : "All"}
                             </Button>
-                            {condominiums?.map(condo => (
+                            {allCondominiumsLoading ? (
+                              <span className="text-sm text-muted-foreground">{language === "es" ? "Cargando..." : "Loading..."}</span>
+                            ) : allCondominiums?.map(condo => (
                               <Button
                                 key={condo.id}
                                 variant={selectedCondoFilter === condo.id ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setSelectedCondoFilter(condo.id)}
-                                disabled={condosLoading}
                                 data-testid={`button-filter-condominium-${condo.id}`}
                               >
                                 {condo.name}
@@ -1867,7 +1841,7 @@ export default function ExternalCondominiums() {
 
                   <div className="grid gap-6 md:grid-cols-2 mt-[2px]">
                 {paginatedUnits.map((unit) => {
-                  const condo = condominiums?.find(c => c.id === unit.condominiumId);
+                  const condo = allCondominiums?.find(c => c.id === unit.condominiumId);
                   const hasRental = hasActiveRental(unit.id);
                   const unitServices = allUnitServices?.[unit.id] || [];
                   
@@ -2011,7 +1985,7 @@ export default function ExternalCondominiums() {
                         </TableHeader>
                   <TableBody>
                     {paginatedUnits.map((unit) => {
-                      const condo = condominiums?.find(c => c.id === unit.condominiumId);
+                      const condo = allCondominiums?.find(c => c.id === unit.condominiumId);
                       const hasRental = hasActiveRental(unit.id);
                       const unitServices = allUnitServices?.[unit.id] || [];
                       const serviceTypes = unitServices.map(s => {
