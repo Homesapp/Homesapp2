@@ -24936,15 +24936,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imported: 0,
         duplicates: 0,
         errors: [] as Array<{ row: number; name: string; error: string }>,
+        warnings: [] as Array<{ row: number; name: string; warning: string }>,
       };
 
-      // Pre-fetch all existing leads for this agency for duplicate detection
+      // Pre-fetch ALL existing leads for this agency for duplicate detection
+      // Important: Include ALL leads (even expired) to prevent re-importing historical data
       const existingLeads = await db.select()
         .from(externalLeads)
-        .where(and(
-          eq(externalLeads.agencyId, agencyId),
-          gte(externalLeads.validUntil, new Date())
-        ));
+        .where(eq(externalLeads.agencyId, agencyId));
 
       // Normalize function for names
       const normalizeName = (name: string): string => {
@@ -25047,10 +25046,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Warn but don't fail if original date is missing - use current date but log it
+          // Track warning if original date is missing - use current date but report to admin
           if (!originalCreatedAt) {
             originalCreatedAt = new Date();
-            console.warn(`Import row ${rowNum}: Missing original date for ${firstName} ${lastName}, using current date`);
+            results.warnings.push({
+              row: rowNum,
+              name: `${firstName} ${lastName}`.trim(),
+              warning: 'Missing registration date - using current date (lead will start fresh 3-month period)',
+            });
           }
 
           // Calculate validUntil (3 months from original date)
@@ -25180,13 +25183,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await createAuditLog(req, "create", "external_lead_import", null, 
-        `Imported ${results.imported} leads (${results.duplicates} duplicates skipped, ${results.errors.length} errors)`);
+        `Imported ${results.imported} leads (${results.duplicates} duplicates skipped, ${results.errors.length} errors, ${results.warnings.length} warnings)`);
 
       res.json({
         success: true,
         imported: results.imported,
         duplicates: results.duplicates,
         errors: results.errors,
+        warnings: results.warnings,
         total: importData.length,
       });
     } catch (error: any) {

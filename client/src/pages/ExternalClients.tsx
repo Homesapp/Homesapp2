@@ -174,7 +174,7 @@ export default function ExternalClients() {
   const [importData, setImportData] = useState<any[]>([]);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importStep, setImportStep] = useState<"upload" | "preview" | "importing" | "complete">("upload");
-  const [importResults, setImportResults] = useState<{ imported: number; duplicates: number; errors: any[] } | null>(null);
+  const [importResults, setImportResults] = useState<{ imported: number; duplicates: number; errors: any[]; warnings?: any[] } | null>(null);
 
   useLayoutEffect(() => {
     setViewMode(isMobile ? "cards" : "table");
@@ -3214,7 +3214,7 @@ export default function ExternalClients() {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="pt-6 text-center">
                     <p className="text-3xl font-bold text-green-600">{importResults.imported}</p>
@@ -3233,6 +3233,14 @@ export default function ExternalClients() {
                 </Card>
                 <Card>
                   <CardContent className="pt-6 text-center">
+                    <p className="text-3xl font-bold text-orange-500">{importResults.warnings?.length || 0}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {language === "es" ? "Advertencias" : "Warnings"}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6 text-center">
                     <p className="text-3xl font-bold text-red-600">{importResults.errors.length}</p>
                     <p className="text-sm text-muted-foreground">
                       {language === "es" ? "Errores" : "Errors"}
@@ -3240,6 +3248,26 @@ export default function ExternalClients() {
                   </CardContent>
                 </Card>
               </div>
+
+              {importResults.warnings && importResults.warnings.length > 0 && (
+                <div className="border border-orange-200 rounded-lg p-4 max-h-40 overflow-y-auto bg-orange-50 dark:bg-orange-950/20">
+                  <h4 className="font-medium mb-2 text-orange-600">
+                    {language === "es" ? "Advertencias (sin fecha de registro original):" : "Warnings (missing original registration date):"}
+                  </h4>
+                  <ul className="text-sm space-y-1">
+                    {importResults.warnings.slice(0, 10).map((warning: any, index: number) => (
+                      <li key={index} className="text-muted-foreground">
+                        {language === "es" ? "Fila" : "Row"} {warning.row}: {warning.name} - {warning.warning}
+                      </li>
+                    ))}
+                    {importResults.warnings.length > 10 && (
+                      <li className="text-muted-foreground">
+                        ... {language === "es" ? "y" : "and"} {importResults.warnings.length - 10} {language === "es" ? "más" : "more"}
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
 
               {importResults.errors.length > 0 && (
                 <div className="border rounded-lg p-4 max-h-40 overflow-y-auto">
