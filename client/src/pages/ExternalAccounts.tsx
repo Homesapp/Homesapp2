@@ -13,11 +13,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck } from "lucide-react";
-import { useState, useLayoutEffect, useEffect, useMemo } from "react";
+import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck, Shield, Users, Save, X, Loader2 } from "lucide-react";
+import { useState, useLayoutEffect, useEffect, useMemo, useCallback } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { z } from "zod";
-import type { User } from "@shared/schema";
+import type { User, ExternalRolePermission, ExternalUserPermission } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,6 +97,54 @@ const SPECIALTY_LABELS = {
   },
 };
 
+const PERMISSION_ROLES = [
+  "external_agency_admin",
+  "external_agency_accounting",
+  "external_agency_maintenance",
+  "external_agency_staff",
+  "external_agency_seller",
+] as const;
+
+const PERMISSION_SECTIONS_CONFIG = {
+  dashboard: { actions: ["view"] },
+  condominiums: { actions: ["view", "create", "edit", "delete"] },
+  units: { actions: ["view", "create", "edit", "delete"] },
+  owners: { actions: ["view", "create", "edit", "delete"] },
+  clients: { actions: ["view", "create", "edit", "delete", "import"] },
+  leads: { actions: ["view", "create", "edit", "delete", "import", "reassign"] },
+  rentals: { actions: ["view", "create", "edit", "delete", "generate_pdf"] },
+  payments: { actions: ["view", "create", "edit", "delete", "mark_paid", "send_reminder"] },
+  maintenance: { actions: ["view", "create", "edit", "delete"] },
+  workers: { actions: ["view", "create", "edit", "delete"] },
+  calendar: { actions: ["view", "create", "edit", "delete", "sync_google"] },
+  accounting: { actions: ["view", "create", "edit", "delete", "export"] },
+  configuration: { actions: ["view", "edit"] },
+  accounts: { actions: ["view", "create", "edit", "delete", "suspend", "permissions"] },
+  quotations: { actions: ["view", "create", "edit", "delete", "generate_pdf"] },
+  accesses: { actions: ["view", "create", "edit", "delete"] },
+} as const;
+
+type PermissionSection = keyof typeof PERMISSION_SECTIONS_CONFIG;
+type PermissionAction = "view" | "create" | "edit" | "delete" | "import" | "reassign" | "generate_pdf" | "mark_paid" | "send_reminder" | "sync_google" | "export" | "suspend" | "permissions";
+
+interface RolePermissionsResponse {
+  permissions: ExternalRolePermission[];
+  defaults: Record<string, Record<string, string[]>>;
+  sections: string[];
+  actions: string[];
+  sectionLabels: Record<string, Record<string, string>>;
+  actionLabels: Record<string, Record<string, string>>;
+}
+
+interface UserPermissionsResponse {
+  permissions: ExternalUserPermission[];
+  users: { id: string; firstName: string; lastName: string; email: string; role: string }[];
+  sections: string[];
+  actions: string[];
+  sectionLabels: Record<string, Record<string, string>>;
+  actionLabels: Record<string, Record<string, string>>;
+}
+
 export default function ExternalAccounts() {
   const { language } = useLanguage();
   const { toast } = useToast();
@@ -129,6 +180,16 @@ export default function ExternalAccounts() {
   const [sortColumn, setSortColumn] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string>("users");
+
+  // Permissions state
+  const [rolePermissionsState, setRolePermissionsState] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
+  const [userPermissionsState, setUserPermissionsState] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
+  const [selectedPermissionsUser, setSelectedPermissionsUser] = useState<string | null>(null);
+  const [hasRolePermissionsChanges, setHasRolePermissionsChanges] = useState(false);
+  const [hasUserPermissionsChanges, setHasUserPermissionsChanges] = useState(false);
+
   // Auto-detect mobile and set view mode (SSR-safe)
   useEffect(() => {
     const checkMobile = () => {
@@ -147,6 +208,279 @@ export default function ExternalAccounts() {
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ['/api/external-agency-users'],
   });
+
+  // Permissions queries
+  const { data: rolePermissionsData, isLoading: isLoadingRolePermissions } = useQuery<RolePermissionsResponse>({
+    queryKey: ['/api/external/permissions/roles'],
+    enabled: activeTab === "permissions",
+  });
+
+  const { data: userPermissionsData, isLoading: isLoadingUserPermissions } = useQuery<UserPermissionsResponse>({
+    queryKey: ['/api/external/permissions/users'],
+    enabled: activeTab === "permissions",
+  });
+
+  // Initialize role permissions state from server data
+  useEffect(() => {
+    if (rolePermissionsData) {
+      const newState: Record<string, Record<string, Record<string, boolean>>> = {};
+      
+      for (const role of PERMISSION_ROLES) {
+        newState[role] = {};
+        for (const [section, config] of Object.entries(PERMISSION_SECTIONS_CONFIG)) {
+          newState[role][section] = {};
+          for (const action of config.actions) {
+            const existing = rolePermissionsData.permissions.find(
+              p => p.role === role && p.section === section && p.action === action
+            );
+            if (existing) {
+              newState[role][section][action] = existing.allowed;
+            } else {
+              const defaults = rolePermissionsData.defaults?.[role]?.[section] || [];
+              newState[role][section][action] = defaults.includes(action);
+            }
+          }
+        }
+      }
+      setRolePermissionsState(newState);
+      setHasRolePermissionsChanges(false);
+    }
+  }, [rolePermissionsData]);
+
+  // Initialize user permissions state when a user is selected
+  useEffect(() => {
+    if (userPermissionsData && selectedPermissionsUser) {
+      const userPerms = userPermissionsData.permissions.filter(p => p.userId === selectedPermissionsUser);
+      const newState: Record<string, Record<string, boolean>> = {};
+      
+      for (const [section, config] of Object.entries(PERMISSION_SECTIONS_CONFIG)) {
+        newState[section] = {};
+        for (const action of config.actions) {
+          const existing = userPerms.find(p => p.section === section && p.action === action);
+          if (existing) {
+            newState[section][action] = existing.allowed;
+          }
+        }
+      }
+      setUserPermissionsState(prev => ({
+        ...prev,
+        [selectedPermissionsUser]: newState,
+      }));
+      setHasUserPermissionsChanges(false);
+    }
+  }, [userPermissionsData, selectedPermissionsUser]);
+
+  // Role permissions mutation
+  const saveRolePermissionsMutation = useMutation({
+    mutationFn: async (permissions: { role: string; section: string; action: string; allowed: boolean }[]) => {
+      const res = await apiRequest("PATCH", "/api/external/permissions/roles", { permissions });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external/permissions/roles'] });
+      setHasRolePermissionsChanges(false);
+      toast({
+        title: language === "es" ? "Permisos guardados" : "Permissions saved",
+        description: language === "es" 
+          ? "Los permisos de rol se han guardado correctamente"
+          : "Role permissions have been saved successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es" 
+          ? "No se pudieron guardar los permisos"
+          : "Could not save permissions",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // User permissions mutation
+  const saveUserPermissionsMutation = useMutation({
+    mutationFn: async ({ userId, permissions }: { userId: string; permissions: { section: string; action: string; allowed: boolean }[] }) => {
+      const res = await apiRequest("PATCH", `/api/external/permissions/users/${userId}`, { permissions });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external/permissions/users'] });
+      setHasUserPermissionsChanges(false);
+      toast({
+        title: language === "es" ? "Permisos guardados" : "Permissions saved",
+        description: language === "es" 
+          ? "Los permisos de usuario se han guardado correctamente"
+          : "User permissions have been saved successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es" 
+          ? "No se pudieron guardar los permisos"
+          : "Could not save permissions",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Clear user permissions mutation
+  const clearUserPermissionsMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest("DELETE", `/api/external/permissions/users/${userId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external/permissions/users'] });
+      if (selectedPermissionsUser) {
+        setUserPermissionsState(prev => {
+          const newState = { ...prev };
+          delete newState[selectedPermissionsUser];
+          return newState;
+        });
+      }
+      toast({
+        title: language === "es" ? "Permisos restablecidos" : "Permissions reset",
+        description: language === "es" 
+          ? "Los permisos de usuario se han restablecido a los valores por defecto del rol"
+          : "User permissions have been reset to role defaults",
+      });
+    },
+  });
+
+  // Helper functions for permissions
+  const handleRolePermissionChange = useCallback((role: string, section: string, action: string, allowed: boolean) => {
+    setRolePermissionsState(prev => ({
+      ...prev,
+      [role]: {
+        ...prev[role],
+        [section]: {
+          ...prev[role]?.[section],
+          [action]: allowed,
+        },
+      },
+    }));
+    setHasRolePermissionsChanges(true);
+  }, []);
+
+  const handleUserPermissionChange = useCallback((section: string, action: string, allowed: boolean) => {
+    if (!selectedPermissionsUser) return;
+    setUserPermissionsState(prev => ({
+      ...prev,
+      [selectedPermissionsUser]: {
+        ...prev[selectedPermissionsUser],
+        [section]: {
+          ...prev[selectedPermissionsUser]?.[section],
+          [action]: allowed,
+        },
+      },
+    }));
+    setHasUserPermissionsChanges(true);
+  }, [selectedPermissionsUser]);
+
+  const handleSaveRolePermissions = useCallback(() => {
+    const permissions: { role: string; section: string; action: string; allowed: boolean }[] = [];
+    for (const [role, sections] of Object.entries(rolePermissionsState)) {
+      for (const [section, actions] of Object.entries(sections)) {
+        for (const [action, allowed] of Object.entries(actions)) {
+          permissions.push({ role, section, action, allowed });
+        }
+      }
+    }
+    saveRolePermissionsMutation.mutate(permissions);
+  }, [rolePermissionsState, saveRolePermissionsMutation]);
+
+  const handleSaveUserPermissions = useCallback(() => {
+    if (!selectedPermissionsUser) return;
+    const userPerms = userPermissionsState[selectedPermissionsUser] || {};
+    const permissions: { section: string; action: string; allowed: boolean }[] = [];
+    for (const [section, actions] of Object.entries(userPerms)) {
+      for (const [action, allowed] of Object.entries(actions)) {
+        if (allowed !== undefined) {
+          permissions.push({ section, action, allowed });
+        }
+      }
+    }
+    saveUserPermissionsMutation.mutate({ userId: selectedPermissionsUser, permissions });
+  }, [selectedPermissionsUser, userPermissionsState, saveUserPermissionsMutation]);
+
+  // Get section and action labels
+  const getSectionLabel = useCallback((section: string) => {
+    const labels: Record<string, Record<string, string>> = {
+      es: {
+        dashboard: "Panel",
+        condominiums: "Condominios",
+        units: "Unidades",
+        owners: "Propietarios",
+        clients: "Clientes",
+        leads: "Leads",
+        rentals: "Rentas",
+        payments: "Pagos",
+        maintenance: "Mantenimiento",
+        workers: "Trabajadores",
+        calendar: "Calendario",
+        accounting: "Contabilidad",
+        configuration: "Configuracion",
+        accounts: "Cuentas",
+        quotations: "Cotizaciones",
+        accesses: "Accesos",
+      },
+      en: {
+        dashboard: "Dashboard",
+        condominiums: "Condominiums",
+        units: "Units",
+        owners: "Owners",
+        clients: "Clients",
+        leads: "Leads",
+        rentals: "Rentals",
+        payments: "Payments",
+        maintenance: "Maintenance",
+        workers: "Workers",
+        calendar: "Calendar",
+        accounting: "Accounting",
+        configuration: "Configuration",
+        accounts: "Accounts",
+        quotations: "Quotations",
+        accesses: "Accesses",
+      },
+    };
+    return labels[language]?.[section] || section;
+  }, [language]);
+
+  const getActionLabel = useCallback((action: string) => {
+    const labels: Record<string, Record<string, string>> = {
+      es: {
+        view: "Ver",
+        create: "Crear",
+        edit: "Editar",
+        delete: "Eliminar",
+        import: "Importar",
+        reassign: "Reasignar",
+        generate_pdf: "Generar PDF",
+        mark_paid: "Marcar pagado",
+        send_reminder: "Enviar recordatorio",
+        sync_google: "Sincronizar Google",
+        export: "Exportar",
+        suspend: "Suspender",
+        permissions: "Permisos",
+      },
+      en: {
+        view: "View",
+        create: "Create",
+        edit: "Edit",
+        delete: "Delete",
+        import: "Import",
+        reassign: "Reassign",
+        generate_pdf: "Generate PDF",
+        mark_paid: "Mark paid",
+        send_reminder: "Send reminder",
+        sync_google: "Sync Google",
+        export: "Export",
+        suspend: "Suspend",
+        permissions: "Permissions",
+      },
+    };
+    return labels[language]?.[action] || action;
+  }, [language]);
 
   const form = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
@@ -587,20 +921,34 @@ The HomesApp Team`;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header (outside Card) */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {language === "es" ? "Cuentas de Usuario" : "User Accounts"}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {language === "es" 
-              ? "Administra los usuarios de tu agencia con diferentes roles"
-              : "Manage your agency users with different roles"}
-          </p>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">
+          {language === "es" ? "Cuentas de Usuario" : "User Accounts"}
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          {language === "es" 
+            ? "Administra usuarios y permisos de tu agencia"
+            : "Manage users and permissions for your agency"}
+        </p>
+      </div>
 
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="users" className="gap-2" data-testid="tab-users">
+            <Users className="h-4 w-4" />
+            {language === "es" ? "Usuarios" : "Users"}
+          </TabsTrigger>
+          <TabsTrigger value="permissions" className="gap-2" data-testid="tab-permissions">
+            <Shield className="h-4 w-4" />
+            {language === "es" ? "Permisos" : "Permissions"}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-6">
+          <div className="flex items-center justify-end">
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-user">
               <Plus className="mr-2 h-4 w-4" />
@@ -1529,6 +1877,276 @@ The HomesApp Team`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </TabsContent>
+
+        {/* Permissions Tab */}
+        <TabsContent value="permissions" className="space-y-6">
+          {isLoadingRolePermissions || isLoadingUserPermissions ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-48" />
+                  <Skeleton className="h-64 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {/* Role Permissions Section */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      {language === "es" ? "Permisos por Rol" : "Role Permissions"}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === "es" 
+                        ? "Define los permisos predeterminados para cada rol de usuario"
+                        : "Define default permissions for each user role"}
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    onClick={handleSaveRolePermissions}
+                    disabled={!hasRolePermissionsChanges || saveRolePermissionsMutation.isPending}
+                    data-testid="button-save-role-permissions"
+                  >
+                    {saveRolePermissionsMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {language === "es" ? "Guardando..." : "Saving..."}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        {language === "es" ? "Guardar Cambios" : "Save Changes"}
+                      </>
+                    )}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="w-full">
+                    <div className="min-w-[800px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-48 sticky left-0 bg-background">
+                              {language === "es" ? "Seccion / Accion" : "Section / Action"}
+                            </TableHead>
+                            {PERMISSION_ROLES.map(role => (
+                              <TableHead key={role} className="text-center min-w-[100px]">
+                                <Badge variant="outline" className="text-xs">
+                                  {ROLE_LABELS[language][role]}
+                                </Badge>
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(PERMISSION_SECTIONS_CONFIG).flatMap(([section, config]) => [
+                            <TableRow key={`${section}-header`} className="bg-muted/50">
+                              <TableCell colSpan={PERMISSION_ROLES.length + 1} className="font-medium">
+                                {getSectionLabel(section)}
+                              </TableCell>
+                            </TableRow>,
+                            ...config.actions.map(action => (
+                              <TableRow key={`${section}-${action}`}>
+                                <TableCell className="pl-8 text-sm text-muted-foreground">
+                                  {getActionLabel(action)}
+                                </TableCell>
+                                {PERMISSION_ROLES.map(role => (
+                                  <TableCell key={`${section}-${action}-${role}`} className="text-center">
+                                    <Checkbox
+                                      checked={rolePermissionsState[role]?.[section]?.[action] ?? false}
+                                      onCheckedChange={(checked) => 
+                                        handleRolePermissionChange(role, section, action, !!checked)
+                                      }
+                                      data-testid={`checkbox-role-${role}-${section}-${action}`}
+                                    />
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))
+                          ])}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* User Permissions Override Section */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserIcon className="h-5 w-5" />
+                      {language === "es" ? "Permisos de Usuario" : "User Permissions"}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === "es" 
+                        ? "Configura permisos especificos para usuarios individuales que anulan los permisos del rol"
+                        : "Configure specific permissions for individual users that override role permissions"}
+                    </CardDescription>
+                  </div>
+                  {selectedPermissionsUser && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => clearUserPermissionsMutation.mutate(selectedPermissionsUser)}
+                        disabled={clearUserPermissionsMutation.isPending}
+                        data-testid="button-reset-user-permissions"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        {language === "es" ? "Restablecer" : "Reset"}
+                      </Button>
+                      <Button 
+                        onClick={handleSaveUserPermissions}
+                        disabled={!hasUserPermissionsChanges || saveUserPermissionsMutation.isPending}
+                        data-testid="button-save-user-permissions"
+                      >
+                        {saveUserPermissionsMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {language === "es" ? "Guardando..." : "Saving..."}
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            {language === "es" ? "Guardar" : "Save"}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <Select
+                        value={selectedPermissionsUser || ""}
+                        onValueChange={setSelectedPermissionsUser}
+                      >
+                        <SelectTrigger className="w-80" data-testid="select-permissions-user">
+                          <SelectValue placeholder={language === "es" ? "Seleccionar usuario..." : "Select user..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userPermissionsData?.users.map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName} ({ROLE_LABELS[language][user.role as keyof typeof ROLE_LABELS['es']] || user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedPermissionsUser ? (
+                      <ScrollArea className="w-full">
+                        <div className="min-w-[600px]">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-48">
+                                  {language === "es" ? "Seccion / Accion" : "Section / Action"}
+                                </TableHead>
+                                <TableHead className="text-center w-32">
+                                  {language === "es" ? "Rol Default" : "Role Default"}
+                                </TableHead>
+                                <TableHead className="text-center w-32">
+                                  {language === "es" ? "Override" : "Override"}
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {Object.entries(PERMISSION_SECTIONS_CONFIG).flatMap(([section, config]) => {
+                                const selectedUser = userPermissionsData?.users.find(u => u.id === selectedPermissionsUser);
+                                const userRole = selectedUser?.role || "";
+                                
+                                return [
+                                  <TableRow key={`user-${section}-header`} className="bg-muted/50">
+                                    <TableCell colSpan={3} className="font-medium">
+                                      {getSectionLabel(section)}
+                                    </TableCell>
+                                  </TableRow>,
+                                  ...config.actions.map(action => {
+                                    const roleDefault = rolePermissionsState[userRole]?.[section]?.[action] ?? false;
+                                    const userOverride = userPermissionsState[selectedPermissionsUser]?.[section]?.[action];
+                                    const hasOverride = userOverride !== undefined;
+                                    
+                                    return (
+                                      <TableRow key={`user-${section}-${action}`}>
+                                        <TableCell className="pl-8 text-sm text-muted-foreground">
+                                          {getActionLabel(action)}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                          <Badge variant={roleDefault ? "default" : "secondary"} className="text-xs">
+                                            {roleDefault 
+                                              ? (language === "es" ? "Si" : "Yes")
+                                              : (language === "es" ? "No" : "No")}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                          <Select
+                                            value={hasOverride ? (userOverride ? "allow" : "deny") : "inherit"}
+                                            onValueChange={(value) => {
+                                              if (value === "inherit") {
+                                                setUserPermissionsState(prev => {
+                                                  const newState = { ...prev };
+                                                  if (newState[selectedPermissionsUser]?.[section]) {
+                                                    delete newState[selectedPermissionsUser][section][action];
+                                                  }
+                                                  return newState;
+                                                });
+                                                setHasUserPermissionsChanges(true);
+                                              } else {
+                                                handleUserPermissionChange(section, action, value === "allow");
+                                              }
+                                            }}
+                                          >
+                                            <SelectTrigger 
+                                              className="w-24 h-8 text-xs"
+                                              data-testid={`select-user-perm-${section}-${action}`}
+                                            >
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="inherit">
+                                                {language === "es" ? "Heredar" : "Inherit"}
+                                              </SelectItem>
+                                              <SelectItem value="allow">
+                                                {language === "es" ? "Permitir" : "Allow"}
+                                              </SelectItem>
+                                              <SelectItem value="deny">
+                                                {language === "es" ? "Denegar" : "Deny"}
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })
+                                ];
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        {language === "es" 
+                          ? "Selecciona un usuario para configurar sus permisos individuales"
+                          : "Select a user to configure their individual permissions"}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
