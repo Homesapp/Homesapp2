@@ -13,7 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter } from "lucide-react";
+import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck } from "lucide-react";
 import { useState, useLayoutEffect, useEffect, useMemo } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { z } from "zod";
@@ -100,6 +100,8 @@ export default function ExternalAccounts() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [suspendUserId, setSuspendUserId] = useState<string | null>(null);
+  const [unsuspendUserId, setUnsuspendUserId] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [tempEmail, setTempEmail] = useState<string | null>(null);
   const [tempUserName, setTempUserName] = useState<string | null>(null);
@@ -297,6 +299,56 @@ export default function ExternalAccounts() {
         description: language === "es"
           ? "No se pudo eliminar el usuario"
           : "Could not delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest("POST", `/api/external-agency-users/${userId}/suspend`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external-agency-users'] });
+      setSuspendUserId(null);
+      toast({
+        title: language === "es" ? "Usuario suspendido" : "User suspended",
+        description: language === "es" 
+          ? "El usuario ha sido suspendido exitosamente"
+          : "User has been suspended successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es"
+          ? "No se pudo suspender el usuario"
+          : "Could not suspend user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unsuspendMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest("POST", `/api/external-agency-users/${userId}/unsuspend`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external-agency-users'] });
+      setUnsuspendUserId(null);
+      toast({
+        title: language === "es" ? "Usuario reactivado" : "User reactivated",
+        description: language === "es" 
+          ? "El usuario ha sido reactivado exitosamente"
+          : "User has been reactivated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es"
+          ? "No se pudo reactivar el usuario"
+          : "Could not reactivate user",
         variant: "destructive",
       });
     },
@@ -1063,9 +1115,15 @@ The HomesApp Team`;
                         ) : '-'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.status === 'approved' ? 'default' : 'secondary'}>
-                          {user.status}
-                        </Badge>
+                        {user.isSuspended ? (
+                          <Badge variant="destructive">
+                            {language === "es" ? "Suspendido" : "Suspended"}
+                          </Badge>
+                        ) : (
+                          <Badge variant={user.status === 'approved' ? 'default' : 'secondary'}>
+                            {user.status}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -1086,6 +1144,27 @@ The HomesApp Team`;
                           >
                             <RotateCw className="h-4 w-4" />
                           </Button>
+                          {user.isSuspended ? (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => setUnsuspendUserId(user.id)}
+                              data-testid={`button-reactivate-${user.id}`}
+                              title={language === "es" ? "Reactivar cuenta" : "Reactivate account"}
+                            >
+                              <UserCheck className="h-4 w-4 text-green-600" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => setSuspendUserId(user.id)}
+                              data-testid={`button-suspend-${user.id}`}
+                              title={language === "es" ? "Suspender cuenta" : "Suspend account"}
+                            >
+                              <Ban className="h-4 w-4 text-orange-600" />
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="icon"
@@ -1157,9 +1236,15 @@ The HomesApp Team`;
                 )}
 
                 <div className="pt-2 flex items-center justify-between gap-2 border-t">
-                  <Badge variant={user.status === 'approved' ? 'default' : 'secondary'} className="text-xs">
-                    {user.status}
-                  </Badge>
+                  {user.isSuspended ? (
+                    <Badge variant="destructive" className="text-xs">
+                      {language === "es" ? "Suspendido" : "Suspended"}
+                    </Badge>
+                  ) : (
+                    <Badge variant={user.status === 'approved' ? 'default' : 'secondary'} className="text-xs">
+                      {user.status}
+                    </Badge>
+                  )}
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
@@ -1178,6 +1263,27 @@ The HomesApp Team`;
                     >
                       <RotateCw className="h-4 w-4" />
                     </Button>
+                    {user.isSuspended ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setUnsuspendUserId(user.id)}
+                        data-testid={`button-reactivate-card-${user.id}`}
+                        title={language === "es" ? "Reactivar cuenta" : "Reactivate account"}
+                      >
+                        <UserCheck className="h-4 w-4 text-green-600" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSuspendUserId(user.id)}
+                        data-testid={`button-suspend-card-${user.id}`}
+                        title={language === "es" ? "Suspender cuenta" : "Suspend account"}
+                      >
+                        <Ban className="h-4 w-4 text-orange-600" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1359,6 +1465,66 @@ The HomesApp Team`;
               data-testid="button-confirm-delete"
             >
               {language === "es" ? "Eliminar" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Suspend Confirmation Dialog */}
+      <AlertDialog open={!!suspendUserId} onOpenChange={(open) => !open && setSuspendUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "es" ? "¿Suspender usuario?" : "Suspend user?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "es"
+                ? "El usuario no podrá iniciar sesión mientras esté suspendido. Puede reactivar la cuenta en cualquier momento."
+                : "The user will not be able to log in while suspended. You can reactivate the account at any time."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-suspend">
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => suspendUserId && suspendMutation.mutate(suspendUserId)}
+              className="bg-orange-600 text-white hover:bg-orange-700"
+              data-testid="button-confirm-suspend"
+            >
+              {suspendMutation.isPending 
+                ? (language === "es" ? "Suspendiendo..." : "Suspending...")
+                : (language === "es" ? "Suspender" : "Suspend")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate Confirmation Dialog */}
+      <AlertDialog open={!!unsuspendUserId} onOpenChange={(open) => !open && setUnsuspendUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "es" ? "¿Reactivar usuario?" : "Reactivate user?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "es"
+                ? "El usuario podrá iniciar sesión nuevamente después de ser reactivado."
+                : "The user will be able to log in again after being reactivated."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-reactivate">
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => unsuspendUserId && unsuspendMutation.mutate(unsuspendUserId)}
+              className="bg-green-600 text-white hover:bg-green-700"
+              data-testid="button-confirm-reactivate"
+            >
+              {unsuspendMutation.isPending 
+                ? (language === "es" ? "Reactivando..." : "Reactivating...")
+                : (language === "es" ? "Reactivar" : "Reactivate")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

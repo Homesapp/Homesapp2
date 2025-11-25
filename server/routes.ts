@@ -21823,6 +21823,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // Suspend external agency user
+  app.post("/api/external-agency-users/:id/suspend", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user || user.externalAgencyId !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to suspend this user" });
+      }
+
+      const adminId = req.user?.claims?.sub || req.user?.id;
+      if (id === adminId) {
+        return res.status(400).json({ message: "No puedes suspender tu propia cuenta" });
+      }
+
+      await db
+        .update(users)
+        .set({
+          isSuspended: true,
+          suspendedAt: new Date(),
+          suspendedById: adminId,
+        })
+        .where(eq(users.id, id));
+
+      await createAuditLog(req, "update", "user", id, `Suspended external agency user ${user.firstName} ${user.lastName}`);
+      res.json({ message: "Usuario suspendido exitosamente" });
+    } catch (error: any) {
+      console.error("Error suspending external agency user:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Unsuspend/Reactivate external agency user
+  app.post("/api/external-agency-users/:id/unsuspend", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user || user.externalAgencyId !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to reactivate this user" });
+      }
+
+      await db
+        .update(users)
+        .set({
+          isSuspended: false,
+          suspendedAt: null,
+          suspendedById: null,
+        })
+        .where(eq(users.id, id));
+
+      await createAuditLog(req, "update", "user", id, `Reactivated external agency user ${user.firstName} ${user.lastName}`);
+      res.json({ message: "Usuario reactivado exitosamente" });
+    } catch (error: any) {
+      console.error("Error reactivating external agency user:", error);
+      handleGenericError(res, error);
+    }
+  });
   // External Worker Assignments Routes
   app.get("/api/external-worker-assignments", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
