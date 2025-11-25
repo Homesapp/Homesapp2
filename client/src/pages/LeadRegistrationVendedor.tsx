@@ -10,10 +10,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, CheckCircle2, Loader2, Home } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, Home, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import logoPath from "@assets/H mes (500 x 300 px)_1759672952263.png";
+
+interface PropertyInterest {
+  condominiumId: string;
+  condominiumName: string;
+  unitIds: string[];
+}
 
 const COUNTRY_CODES = [
   { code: "+52", country: "MX", flag: "MX" },
@@ -77,6 +84,9 @@ export default function LeadRegistrationVendedor() {
   const [selectedUnitTypes, setSelectedUnitTypes] = useState<string[]>([]);
   const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<string[]>([]);
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
+  const [propertyInterests, setPropertyInterests] = useState<PropertyInterest[]>([]);
+  const [unitTypeOpen, setUnitTypeOpen] = useState(false);
+  const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
 
   // Fetch agency info for logo
   const { data: agencyData } = useQuery<{ id: string; name: string; logoUrl: string }>({
@@ -153,6 +163,14 @@ export default function LeadRegistrationVendedor() {
     mutationFn: async (data: VendedorFormData) => {
       const fullPhone = `${data.countryCode}${data.phone}`;
       const seller = sellers.find(s => s.id === data.sellerId);
+      
+      // Serialize property interests to comma-separated format for backend compatibility
+      const allCondominiumIds = propertyInterests.map(p => p.condominiumId).join(",");
+      const allUnitIds = propertyInterests.flatMap(p => p.unitIds).join(",");
+      const propertyInterestsSummary = propertyInterests.map(p => 
+        `${p.condominiumName}: ${p.unitIds.length} unidad(es)`
+      ).join("; ");
+      
       const response = await fetch("/api/public/leads/vendedor", {
         method: "POST",
         headers: {
@@ -163,8 +181,10 @@ export default function LeadRegistrationVendedor() {
           phone: fullPhone,
           desiredUnitType: data.desiredUnitTypes?.join(", ") || "",
           desiredNeighborhood: data.desiredNeighborhoods?.join(", ") || "",
-          interestedUnitId: data.interestedUnitIds?.join(",") || "",
-          sellerName: seller?.fullName || "",
+          interestedCondominiumId: allCondominiumIds || "",
+          interestedUnitId: allUnitIds || "",
+          propertyInterestsSummary: propertyInterestsSummary || "",
+          sellerName: seller?.fullName || data.sellerName || "",
           sellerId: data.sellerId,
         }),
       });
@@ -438,155 +458,279 @@ export default function LeadRegistrationVendedor() {
                   />
                   <FormItem className="col-span-2">
                     <FormLabel>Tipo de Unidad (opcional, múltiple)</FormLabel>
-                    <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[40px]">
-                      {UNIT_TYPES.map((type) => (
-                        <label
-                          key={type}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm cursor-pointer transition-colors ${
-                            selectedUnitTypes.includes(type)
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted hover:bg-muted/80"
-                          }`}
+                    <Popover open={unitTypeOpen} onOpenChange={setUnitTypeOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={unitTypeOpen}
+                          className="w-full justify-between font-normal"
+                          data-testid="dropdown-unit-types"
                         >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={selectedUnitTypes.includes(type)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedUnitTypes([...selectedUnitTypes, type]);
-                              } else {
-                                setSelectedUnitTypes(selectedUnitTypes.filter(t => t !== type));
-                              }
-                            }}
-                            data-testid={`checkbox-unit-type-${type.toLowerCase().replace(/[^a-z]/g, '-')}`}
-                          />
-                          {type}
-                        </label>
-                      ))}
-                    </div>
-                  </FormItem>
-                </div>
-                <FormItem>
-                  <FormLabel>Zona Deseada (opcional, múltiple)</FormLabel>
-                  <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[40px]">
-                    {NEIGHBORHOODS.map((zone) => (
-                      <label
-                        key={zone}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm cursor-pointer transition-colors ${
-                          selectedNeighborhoods.includes(zone)
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/80"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={selectedNeighborhoods.includes(zone)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedNeighborhoods([...selectedNeighborhoods, zone]);
-                            } else {
-                              setSelectedNeighborhoods(selectedNeighborhoods.filter(z => z !== zone));
-                            }
-                          }}
-                          data-testid={`checkbox-neighborhood-${zone.toLowerCase().replace(/[^a-z]/g, '-')}`}
-                        />
-                        {zone}
-                      </label>
-                    ))}
-                  </div>
-                </FormItem>
-              </div>
-
-              {/* Property Interest Section */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Propiedad de Interés (Opcional)
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Si el cliente está interesado en propiedades específicas de nuestro portafolio, selecciónalas aquí.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="interestedCondominiumId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Condominio</FormLabel>
-                        <Select 
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setSelectedCondominiumId(value);
-                            setSelectedUnitIds([]);
-                          }} 
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-condominium">
-                              <SelectValue placeholder={isLoadingCondos ? "Cargando..." : "Seleccionar condominio"} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {condominiums.map((condo) => (
-                              <SelectItem key={condo.id} value={condo.id}>
-                                {condo.name} {condo.neighborhood ? `(${condo.neighborhood})` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormItem>
-                    <FormLabel>Unidades de Interés (múltiple)</FormLabel>
-                    {!selectedCondominiumId ? (
-                      <p className="text-xs text-muted-foreground p-2 border rounded-md">
-                        Primero seleccione un condominio
-                      </p>
-                    ) : isLoadingUnits ? (
-                      <div className="flex items-center gap-2 p-2 border rounded-md">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Cargando unidades...</span>
-                      </div>
-                    ) : units.length === 0 ? (
-                      <p className="text-xs text-muted-foreground p-2 border rounded-md">
-                        Sin unidades disponibles
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 p-2 border rounded-md max-h-32 overflow-y-auto">
-                        {units.map((unit) => (
-                          <label
-                            key={unit.id}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm cursor-pointer transition-colors ${
-                              selectedUnitIds.includes(unit.id)
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted hover:bg-muted/80"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={selectedUnitIds.includes(unit.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedUnitIds([...selectedUnitIds, unit.id]);
-                                } else {
-                                  setSelectedUnitIds(selectedUnitIds.filter(id => id !== unit.id));
-                                }
-                              }}
-                              data-testid={`checkbox-unit-${unit.id}`}
-                            />
-                            <Home className="h-3 w-3" />
-                            {unit.unitNumber} {unit.type ? `(${unit.type})` : ""}
-                          </label>
+                          {selectedUnitTypes.length === 0
+                            ? "Seleccionar tipos de unidad..."
+                            : `${selectedUnitTypes.length} seleccionado(s)`}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-2" align="start">
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {UNIT_TYPES.map((type) => (
+                            <div key={type} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`unit-type-${type}`}
+                                checked={selectedUnitTypes.includes(type)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedUnitTypes([...selectedUnitTypes, type]);
+                                  } else {
+                                    setSelectedUnitTypes(selectedUnitTypes.filter(t => t !== type));
+                                  }
+                                }}
+                                data-testid={`checkbox-unit-type-${type.toLowerCase().replace(/[^a-z]/g, '-')}`}
+                              />
+                              <label
+                                htmlFor={`unit-type-${type}`}
+                                className="text-sm cursor-pointer flex-1"
+                              >
+                                {type}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedUnitTypes.length > 0 && (
+                          <div className="mt-2 pt-2 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-xs"
+                              onClick={() => setSelectedUnitTypes([])}
+                            >
+                              Limpiar selección
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                    {selectedUnitTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedUnitTypes.map((type) => (
+                          <span key={type} className="px-2 py-0.5 bg-primary/10 text-primary rounded-md text-xs">
+                            {type}
+                          </span>
                         ))}
                       </div>
                     )}
                   </FormItem>
                 </div>
+                <FormItem>
+                  <FormLabel>Zona Deseada (opcional, múltiple)</FormLabel>
+                  <Popover open={neighborhoodOpen} onOpenChange={setNeighborhoodOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={neighborhoodOpen}
+                        className="w-full justify-between font-normal"
+                        data-testid="dropdown-neighborhoods"
+                      >
+                        {selectedNeighborhoods.length === 0
+                          ? "Seleccionar zonas..."
+                          : `${selectedNeighborhoods.length} zona(s) seleccionada(s)`}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-2" align="start">
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {NEIGHBORHOODS.map((zone) => (
+                          <div key={zone} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`neighborhood-${zone}`}
+                              checked={selectedNeighborhoods.includes(zone)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedNeighborhoods([...selectedNeighborhoods, zone]);
+                                } else {
+                                  setSelectedNeighborhoods(selectedNeighborhoods.filter(z => z !== zone));
+                                }
+                              }}
+                              data-testid={`checkbox-neighborhood-${zone.toLowerCase().replace(/[^a-z]/g, '-')}`}
+                            />
+                            <label
+                              htmlFor={`neighborhood-${zone}`}
+                              className="text-sm cursor-pointer flex-1"
+                            >
+                              {zone}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      {selectedNeighborhoods.length > 0 && (
+                        <div className="mt-2 pt-2 border-t">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs"
+                            onClick={() => setSelectedNeighborhoods([])}
+                          >
+                            Limpiar selección
+                          </Button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                  {selectedNeighborhoods.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {selectedNeighborhoods.map((zone) => (
+                        <span key={zone} className="px-2 py-0.5 bg-primary/10 text-primary rounded-md text-xs">
+                          {zone}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </FormItem>
+              </div>
+
+              {/* Property Interest Section - Multiple Condominiums */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Propiedades de Interés (Opcional)
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Puedes agregar múltiples propiedades de diferentes condominios que le interesen al cliente.
+                </p>
+                
+                {/* Add new property interest */}
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormItem>
+                      <FormLabel>Condominio</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          setSelectedCondominiumId(value);
+                          setSelectedUnitIds([]);
+                        }} 
+                        value={selectedCondominiumId}
+                      >
+                        <SelectTrigger data-testid="select-condominium">
+                          <SelectValue placeholder={isLoadingCondos ? "Cargando..." : "Seleccionar condominio"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {condominiums.map((condo) => (
+                            <SelectItem key={condo.id} value={condo.id}>
+                              {condo.name} {condo.neighborhood ? `(${condo.neighborhood})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>Unidades de Interés</FormLabel>
+                      {!selectedCondominiumId ? (
+                        <p className="text-xs text-muted-foreground p-2 border rounded-md bg-background">
+                          Primero seleccione un condominio
+                        </p>
+                      ) : isLoadingUnits ? (
+                        <div className="flex items-center gap-2 p-2 border rounded-md bg-background">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">Cargando unidades...</span>
+                        </div>
+                      ) : units.length === 0 ? (
+                        <p className="text-xs text-muted-foreground p-2 border rounded-md bg-background">
+                          Sin unidades disponibles
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 p-2 border rounded-md max-h-32 overflow-y-auto bg-background">
+                          {units.map((unit) => (
+                            <label
+                              key={unit.id}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm cursor-pointer transition-colors ${
+                                selectedUnitIds.includes(unit.id)
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted hover:bg-muted/80"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={selectedUnitIds.includes(unit.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedUnitIds([...selectedUnitIds, unit.id]);
+                                  } else {
+                                    setSelectedUnitIds(selectedUnitIds.filter(id => id !== unit.id));
+                                  }
+                                }}
+                                data-testid={`checkbox-unit-${unit.id}`}
+                              />
+                              <Home className="h-3 w-3" />
+                              {unit.unitNumber} {unit.type ? `(${unit.type})` : ""}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </FormItem>
+                  </div>
+                  {selectedCondominiumId && selectedUnitIds.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        const condo = condominiums.find(c => c.id === selectedCondominiumId);
+                        if (condo) {
+                          const selectedUnits = units.filter(u => selectedUnitIds.includes(u.id));
+                          setPropertyInterests([...propertyInterests, {
+                            condominiumId: selectedCondominiumId,
+                            condominiumName: condo.name,
+                            unitIds: selectedUnitIds,
+                          }]);
+                          setSelectedCondominiumId("");
+                          setSelectedUnitIds([]);
+                        }
+                      }}
+                      data-testid="button-add-property-interest"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar a la lista ({selectedUnitIds.length} unidad{selectedUnitIds.length !== 1 ? "es" : ""})
+                    </Button>
+                  )}
+                </div>
+
+                {/* List of added property interests */}
+                {propertyInterests.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Propiedades agregadas:</p>
+                    {propertyInterests.map((interest, index) => (
+                      <div 
+                        key={`${interest.condominiumId}-${index}`} 
+                        className="flex items-center justify-between p-3 border rounded-md bg-background"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{interest.condominiumName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {interest.unitIds.length} unidad{interest.unitIds.length !== 1 ? "es" : ""} seleccionada{interest.unitIds.length !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setPropertyInterests(propertyInterests.filter((_, i) => i !== index));
+                          }}
+                          data-testid={`button-remove-property-interest-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
