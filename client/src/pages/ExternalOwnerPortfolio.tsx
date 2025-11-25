@@ -239,10 +239,7 @@ export default function ExternalOwnerPortfolio() {
   // Create owner mutation
   const createOwnerMutation = useMutation({
     mutationFn: async (data: OwnerFormValues) => {
-      return await apiRequest("/api/external-unit-owners", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/external-unit-owners", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external-owners'] });
@@ -287,15 +284,12 @@ export default function ExternalOwnerPortfolio() {
 
       // Update all matching records
       const updatePromises = ownersToUpdate.map(owner =>
-        apiRequest(`/api/external-unit-owners/${owner.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            ownerName: updateData.ownerName,
-            ownerEmail: updateData.ownerEmail,
-            ownerPhone: updateData.ownerPhone,
-            // Keep the original unitId for each record
-            unitId: owner.unitId,
-          }),
+        apiRequest("PATCH", `/api/external-unit-owners/${owner.id}`, {
+          ownerName: updateData.ownerName,
+          ownerEmail: updateData.ownerEmail,
+          ownerPhone: updateData.ownerPhone,
+          // Keep the original unitId for each record
+          unitId: owner.unitId,
         })
       );
 
