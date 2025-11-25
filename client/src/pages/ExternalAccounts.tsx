@@ -934,28 +934,30 @@ The HomesApp Team`;
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="users" className="gap-2" data-testid="tab-users">
-            <Users className="h-4 w-4" />
-            {language === "es" ? "Usuarios" : "Users"}
-          </TabsTrigger>
-          <TabsTrigger value="permissions" className="gap-2" data-testid="tab-permissions">
-            <Shield className="h-4 w-4" />
-            {language === "es" ? "Permisos" : "Permissions"}
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="users" className="gap-2" data-testid="tab-users">
+              <Users className="h-4 w-4" />
+              {language === "es" ? "Usuarios" : "Users"}
+            </TabsTrigger>
+            <TabsTrigger value="permissions" className="gap-2" data-testid="tab-permissions">
+              <Shield className="h-4 w-4" />
+              {language === "es" ? "Permisos" : "Permissions"}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Users Tab */}
-        <TabsContent value="users" className="space-y-6">
-          <div className="flex items-center justify-end">
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-user">
+          {activeTab === "users" && (
+            <Button data-testid="button-create-user" onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {language === "es" ? "Crear Usuario" : "Create User"}
             </Button>
-          </DialogTrigger>
-          <DialogContent data-testid="dialog-create-user" className="max-w-xl max-h-[90vh] overflow-y-auto">
+          )}
+        </div>
+
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-6 mt-4">
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogContent data-testid="dialog-create-user" className="max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader className="pb-4 border-b">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1134,7 +1136,6 @@ The HomesApp Team`;
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Welcome Modal with Credentials */}
       <Dialog open={showWelcomeModal} onOpenChange={(open) => !open && closeWelcomeModal()}>
@@ -1880,7 +1881,7 @@ The HomesApp Team`;
         </TabsContent>
 
         {/* Permissions Tab */}
-        <TabsContent value="permissions" className="space-y-6">
+        <TabsContent value="permissions" className="space-y-6 mt-4">
           {isLoadingRolePermissions || isLoadingUserPermissions ? (
             <Card>
               <CardContent className="p-6">
@@ -1894,13 +1895,13 @@ The HomesApp Team`;
             <div className="space-y-6">
               {/* Role Permissions Section */}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
                       <Shield className="h-5 w-5" />
                       {language === "es" ? "Permisos por Rol" : "Role Permissions"}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="mt-1">
                       {language === "es" 
                         ? "Define los permisos predeterminados para cada rol de usuario"
                         : "Define default permissions for each user role"}
@@ -1924,52 +1925,60 @@ The HomesApp Team`;
                     )}
                   </Button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <ScrollArea className="w-full">
-                    <div className="min-w-[800px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-48 sticky left-0 bg-background">
-                              {language === "es" ? "Seccion / Accion" : "Section / Action"}
-                            </TableHead>
-                            {PERMISSION_ROLES.map(role => (
-                              <TableHead key={role} className="text-center min-w-[100px]">
-                                <Badge variant="outline" className="text-xs">
-                                  {ROLE_LABELS[language][role]}
-                                </Badge>
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.entries(PERMISSION_SECTIONS_CONFIG).flatMap(([section, config]) => [
-                            <TableRow key={`${section}-header`} className="bg-muted/50">
-                              <TableCell colSpan={PERMISSION_ROLES.length + 1} className="font-medium">
-                                {getSectionLabel(section)}
-                              </TableCell>
-                            </TableRow>,
-                            ...config.actions.map(action => (
-                              <TableRow key={`${section}-${action}`}>
-                                <TableCell className="pl-8 text-sm text-muted-foreground">
+                    <div className="min-w-[900px]">
+                      {/* Sticky Header */}
+                      <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b">
+                        <div className="grid" style={{ gridTemplateColumns: `200px repeat(${PERMISSION_ROLES.length}, 1fr)` }}>
+                          <div className="px-4 py-3 font-medium text-sm border-r">
+                            {language === "es" ? "Seccion / Accion" : "Section / Action"}
+                          </div>
+                          {PERMISSION_ROLES.map(role => (
+                            <div key={role} className="px-3 py-3 text-center border-r last:border-r-0">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {ROLE_LABELS[language][role]}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Permission Rows */}
+                      <div className="divide-y">
+                        {Object.entries(PERMISSION_SECTIONS_CONFIG).map(([section, config]) => (
+                          <div key={section}>
+                            {/* Section Header */}
+                            <div className="bg-muted/40 px-4 py-2.5 font-semibold text-sm border-b">
+                              {getSectionLabel(section)}
+                            </div>
+                            {/* Action Rows */}
+                            {config.actions.map((action, actionIndex) => (
+                              <div 
+                                key={`${section}-${action}`}
+                                className={`grid hover:bg-muted/30 transition-colors ${actionIndex < config.actions.length - 1 ? 'border-b border-dashed' : ''}`}
+                                style={{ gridTemplateColumns: `200px repeat(${PERMISSION_ROLES.length}, 1fr)` }}
+                              >
+                                <div className="px-4 py-2.5 pl-8 text-sm text-muted-foreground border-r flex items-center">
                                   {getActionLabel(action)}
-                                </TableCell>
+                                </div>
                                 {PERMISSION_ROLES.map(role => (
-                                  <TableCell key={`${section}-${action}-${role}`} className="text-center">
+                                  <div key={`${section}-${action}-${role}`} className="px-3 py-2 flex items-center justify-center border-r last:border-r-0">
                                     <Checkbox
                                       checked={rolePermissionsState[role]?.[section]?.[action] ?? false}
                                       onCheckedChange={(checked) => 
                                         handleRolePermissionChange(role, section, action, !!checked)
                                       }
+                                      className="h-4 w-4"
                                       data-testid={`checkbox-role-${role}-${section}-${action}`}
                                     />
-                                  </TableCell>
+                                  </div>
                                 ))}
-                              </TableRow>
-                            ))
-                          ])}
-                        </TableBody>
-                      </Table>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <ScrollBar orientation="horizontal" />
                   </ScrollArea>
@@ -1978,13 +1987,13 @@ The HomesApp Team`;
 
               {/* User Permissions Override Section */}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
                       <UserIcon className="h-5 w-5" />
                       {language === "es" ? "Permisos de Usuario" : "User Permissions"}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="mt-1">
                       {language === "es" 
                         ? "Configura permisos especificos para usuarios individuales que anulan los permisos del rol"
                         : "Configure specific permissions for individual users that override role permissions"}
@@ -2021,72 +2030,78 @@ The HomesApp Team`;
                     </div>
                   )}
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Select
-                        value={selectedPermissionsUser || ""}
-                        onValueChange={setSelectedPermissionsUser}
-                      >
-                        <SelectTrigger className="w-80" data-testid="select-permissions-user">
-                          <SelectValue placeholder={language === "es" ? "Seleccionar usuario..." : "Select user..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {userPermissionsData?.users.map(user => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.firstName} {user.lastName} ({ROLE_LABELS[language][user.role as keyof typeof ROLE_LABELS['es']] || user.role})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <CardContent className="p-0">
+                  <div className="p-4 border-b bg-muted/30">
+                    <Select
+                      value={selectedPermissionsUser || ""}
+                      onValueChange={setSelectedPermissionsUser}
+                    >
+                      <SelectTrigger className="w-80" data-testid="select-permissions-user">
+                        <SelectValue placeholder={language === "es" ? "Seleccionar usuario..." : "Select user..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userPermissionsData?.users.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.firstName} {user.lastName} ({ROLE_LABELS[language][user.role as keyof typeof ROLE_LABELS['es']] || user.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                     {selectedPermissionsUser ? (
                       <ScrollArea className="w-full">
                         <div className="min-w-[600px]">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-48">
-                                  {language === "es" ? "Seccion / Accion" : "Section / Action"}
-                                </TableHead>
-                                <TableHead className="text-center w-32">
-                                  {language === "es" ? "Rol Default" : "Role Default"}
-                                </TableHead>
-                                <TableHead className="text-center w-32">
-                                  {language === "es" ? "Override" : "Override"}
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {Object.entries(PERMISSION_SECTIONS_CONFIG).flatMap(([section, config]) => {
-                                const selectedUser = userPermissionsData?.users.find(u => u.id === selectedPermissionsUser);
-                                const userRole = selectedUser?.role || "";
-                                
-                                return [
-                                  <TableRow key={`user-${section}-header`} className="bg-muted/50">
-                                    <TableCell colSpan={3} className="font-medium">
-                                      {getSectionLabel(section)}
-                                    </TableCell>
-                                  </TableRow>,
-                                  ...config.actions.map(action => {
+                          {/* Sticky Header */}
+                          <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b">
+                            <div className="grid" style={{ gridTemplateColumns: '200px 120px 120px' }}>
+                              <div className="px-4 py-3 font-medium text-sm border-r">
+                                {language === "es" ? "Seccion / Accion" : "Section / Action"}
+                              </div>
+                              <div className="px-3 py-3 text-center font-medium text-xs text-muted-foreground border-r">
+                                {language === "es" ? "Rol Default" : "Role Default"}
+                              </div>
+                              <div className="px-3 py-3 text-center font-medium text-xs text-muted-foreground">
+                                {language === "es" ? "Override" : "Override"}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Permission Rows */}
+                          <div className="divide-y">
+                            {Object.entries(PERMISSION_SECTIONS_CONFIG).map(([section, config]) => {
+                              const selectedUser = userPermissionsData?.users.find(u => u.id === selectedPermissionsUser);
+                              const userRole = selectedUser?.role || "";
+                              
+                              return (
+                                <div key={section}>
+                                  {/* Section Header */}
+                                  <div className="bg-muted/40 px-4 py-2.5 font-semibold text-sm border-b">
+                                    {getSectionLabel(section)}
+                                  </div>
+                                  {/* Action Rows */}
+                                  {config.actions.map((action, actionIndex) => {
                                     const roleDefault = rolePermissionsState[userRole]?.[section]?.[action] ?? false;
                                     const userOverride = userPermissionsState[selectedPermissionsUser]?.[section]?.[action];
                                     const hasOverride = userOverride !== undefined;
                                     
                                     return (
-                                      <TableRow key={`user-${section}-${action}`}>
-                                        <TableCell className="pl-8 text-sm text-muted-foreground">
+                                      <div 
+                                        key={`user-${section}-${action}`}
+                                        className={`grid hover:bg-muted/30 transition-colors ${actionIndex < config.actions.length - 1 ? 'border-b border-dashed' : ''}`}
+                                        style={{ gridTemplateColumns: '200px 120px 120px' }}
+                                      >
+                                        <div className="px-4 py-2.5 pl-8 text-sm text-muted-foreground border-r flex items-center">
                                           {getActionLabel(action)}
-                                        </TableCell>
-                                        <TableCell className="text-center">
+                                        </div>
+                                        <div className="px-3 py-2 flex items-center justify-center border-r">
                                           <Badge variant={roleDefault ? "default" : "secondary"} className="text-xs">
                                             {roleDefault 
                                               ? (language === "es" ? "Si" : "Yes")
                                               : (language === "es" ? "No" : "No")}
                                           </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
+                                        </div>
+                                        <div className="px-3 py-2 flex items-center justify-center">
                                           <Select
                                             value={hasOverride ? (userOverride ? "allow" : "deny") : "inherit"}
                                             onValueChange={(value) => {
@@ -2122,14 +2137,14 @@ The HomesApp Team`;
                                               </SelectItem>
                                             </SelectContent>
                                           </Select>
-                                        </TableCell>
-                                      </TableRow>
+                                        </div>
+                                      </div>
                                     );
-                                  })
-                                ];
-                              })}
-                            </TableBody>
-                          </Table>
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                         <ScrollBar orientation="horizontal" />
                       </ScrollArea>
@@ -2140,7 +2155,6 @@ The HomesApp Team`;
                           : "Select a user to configure their individual permissions"}
                       </div>
                     )}
-                  </div>
                 </CardContent>
               </Card>
             </div>
