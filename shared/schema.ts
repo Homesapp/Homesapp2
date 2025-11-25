@@ -5719,16 +5719,21 @@ export const externalLeads = pgTable("external_leads", {
   
   // Detalles de búsqueda de propiedad
   contractDuration: varchar("contract_duration", { length: 50 }), // e.g., "6 meses", "1 año"
-  checkInDate: timestamp("check_in_date"), // Fecha deseada de entrada
-  hasPets: varchar("has_pets", { length: 50 }), // "Sí", "No", "Perro", "Gato", etc.
-  estimatedRentCost: integer("estimated_rent_cost"), // Presupuesto del cliente
-  bedrooms: integer("bedrooms"), // Número de recámaras deseadas
+  checkInDate: timestamp("check_in_date"), // Fecha deseada de entrada (timestamp)
+  checkInDateText: varchar("check_in_date_text", { length: 100 }), // Fecha de mudanza como texto (ej: "Noviembre", "Inmediato")
+  hasPets: varchar("has_pets", { length: 100 }), // "Sí", "No", "1 Gato", "2 perros", etc.
+  estimatedRentCost: integer("estimated_rent_cost"), // Presupuesto del cliente (número)
+  estimatedRentCostText: varchar("estimated_rent_cost_text", { length: 50 }), // Presupuesto como texto (ej: "25-35mil")
+  bedrooms: integer("bedrooms"), // Número de recámaras deseadas (número)
+  bedroomsText: varchar("bedrooms_text", { length: 20 }), // Recámaras como texto (ej: "1/2", "1-2", "2/3")
   desiredUnitType: varchar("desired_unit_type", { length: 100 }), // Casa, Departamento, etc.
-  desiredNeighborhood: varchar("desired_neighborhood", { length: 200 }), // Colonia preferida
+  desiredProperty: varchar("desired_property", { length: 200 }), // Propiedad específica de interés (ej: "Naia naay E302", "Stella D101")
+  desiredNeighborhood: varchar("desired_neighborhood", { length: 200 }), // Colonia preferida (ej: "La veleta", "Aldea zama")
   
   // Vendedor (puede ser seleccionado o escrito manualmente)
   sellerId: varchar("seller_id").references(() => users.id), // Vendedor asignado (si es seleccionado)
   sellerName: varchar("seller_name", { length: 200 }), // Nombre del vendedor (si es texto libre)
+  assistantSellerName: varchar("assistant_seller_name", { length: 200 }), // Vendedor secundario/asistente
   
   // Estado y origen
   status: externalLeadStatusEnum("status").notNull().default("nuevo_lead"),
@@ -5739,14 +5744,19 @@ export const externalLeads = pgTable("external_leads", {
   firstContactDate: timestamp("first_contact_date"),
   lastContactDate: timestamp("last_contact_date"),
   
+  // Expiración del lead (3 meses por defecto)
+  validUntil: timestamp("valid_until"), // Fecha de expiración del lead
+  
   // Metadata
   createdBy: varchar("created_by").references(() => users.id),
+  originalCreatedAt: timestamp("original_created_at"), // Fecha original del registro (para importaciones)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_external_leads_agency").on(table.agencyId),
   index("idx_external_leads_status").on(table.status),
   index("idx_external_leads_registration_type").on(table.registrationType),
+  index("idx_external_leads_valid_until").on(table.validUntil),
 ]);
 
 const baseExternalLeadSchema = createInsertSchema(externalLeads).omit({
@@ -5755,6 +5765,8 @@ const baseExternalLeadSchema = createInsertSchema(externalLeads).omit({
   createdBy: true,
   createdAt: true,
   updatedAt: true,
+  validUntil: true, // Se calcula automáticamente (3 meses desde registro)
+  originalCreatedAt: true, // Solo para importaciones
 });
 
 export const insertExternalLeadSchema = baseExternalLeadSchema.refine((data) => {
