@@ -22785,7 +22785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // External Maintenance Tickets Routes
   app.get("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const { propertyId, assignedTo, status, priority } = req.query;
+      const { propertyId, assignedTo, status, priority, category, condominiumId, dateFilter, search, sortField, sortOrder, page, pageSize } = req.query;
       
       if (propertyId) {
         const tickets = await storage.getExternalMaintenanceTicketsByProperty(propertyId);
@@ -22797,20 +22797,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(tickets);
       }
       
-      // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
-      let agencyId = req.query.agencyId;
-      if (!agencyId) {
-        agencyId = await getUserAgencyId(req);
-        if (!agencyId) {
-          return res.status(400).json({ message: "User is not assigned to any agency" });
-        }
+      // Get agency ID from authenticated user (secure: never trust client-provided agencyId)
+      const userAgencyId = await getUserAgencyId(req);
+      if (!userAgencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
       }
       
+      // Use server-side pagination if page/pageSize are provided
+      if (page !== undefined && pageSize !== undefined) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(pageSize as string) || 20));
+        const offset = (pageNum - 1) * limit;
+        
+        const result = await storage.getExternalMaintenanceTicketsPaginated(userAgencyId, {
+          limit,
+          offset,
+          search: search as string,
+          status: status as string,
+          priority: priority as string,
+          category: category as string,
+          condominiumId: condominiumId as string,
+          dateFilter: dateFilter as string,
+          sortField: sortField as string,
+          sortOrder: sortOrder as 'asc' | 'desc',
+        });
+        
+        return res.json({
+          data: result.data,
+          total: result.total,
+          page: pageNum,
+          pageSize: limit,
+          totalPages: Math.ceil(result.total / limit),
+        });
+      }
+      
+      // Fallback: Legacy behavior without pagination (for backwards compatibility)
       const filters: any = {};
       if (status) filters.status = status;
       if (priority) filters.priority = priority;
       
-      const tickets = await storage.getExternalMaintenanceTicketsByAgency(agencyId, filters);
+      const tickets = await storage.getExternalMaintenanceTicketsByAgency(userAgencyId, filters);
       
       res.json(tickets);
     } catch (error: any) {
