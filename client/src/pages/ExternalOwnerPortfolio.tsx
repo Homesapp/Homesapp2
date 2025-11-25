@@ -60,6 +60,7 @@ import {
   Filter,
   X,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMobile } from "@/hooks/use-mobile";
