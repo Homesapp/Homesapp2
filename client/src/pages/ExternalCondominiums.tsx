@@ -81,6 +81,7 @@ export default function ExternalCondominiums() {
   // Condominium pagination state (default to 10 for table view)
   const [condoCurrentPage, setCondoCurrentPage] = useState(1);
   const [condoItemsPerPage, setCondoItemsPerPage] = useState(10); // Default: table mode
+  const [condoPageTransition, setCondoPageTransition] = useState(false);
   
   // Condominiums table sorting
   const [condosSortColumn, setCondosSortColumn] = useState<string>("");
@@ -92,8 +93,10 @@ export default function ExternalCondominiums() {
   // Units table pagination & sorting
   const [unitsPage, setUnitsPage] = useState(1);
   const [unitsPerPage, setUnitsPerPage] = useState(10);
+  const [unitsPageTransition, setUnitsPageTransition] = useState(false);
   const [unitsSortColumn, setUnitsSortColumn] = useState<string>("");
   const [unitsSortDirection, setUnitsSortDirection] = useState<"asc" | "desc">("asc");
+
 
   // Auto-switch view mode on genuine breakpoint transitions (only if no manual override)
   useEffect(() => {
@@ -195,6 +198,19 @@ export default function ExternalCondominiums() {
   });
   const units = unitsResponse?.data || [];
   const unitsTotalFromBackend = unitsResponse?.total || 0;
+
+  // Clear page transition when data loads
+  useEffect(() => {
+    if (!condosFetching && condoPageTransition) {
+      setCondoPageTransition(false);
+    }
+  }, [condosFetching, condoPageTransition]);
+
+  useEffect(() => {
+    if (!unitsFetching && unitsPageTransition) {
+      setUnitsPageTransition(false);
+    }
+  }, [unitsFetching, unitsPageTransition]);
 
   // Frequently changing data: rental contracts
   const contractsQuery = useQuery<ExternalRentalContract[]>({
@@ -1363,8 +1379,12 @@ export default function ExternalCondominiums() {
                   currentPage={condoCurrentPage}
                   totalPages={condoTotalPages}
                   itemsPerPage={condoItemsPerPage}
-                  onPageChange={setCondoCurrentPage}
+                  onPageChange={(page) => {
+                    setCondoPageTransition(true);
+                    setCondoCurrentPage(page);
+                  }}
                   onItemsPerPageChange={(items) => {
+                    setCondoPageTransition(true);
                     setCondoItemsPerPage(items);
                     setCondoCurrentPage(1);
                   }}
@@ -1717,7 +1737,7 @@ export default function ExternalCondominiums() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {condosFetching && !condosLoading ? (
+                    {(condoPageTransition || condosFetching) && !condosLoading ? (
                       <TableRow>
                         <TableCell colSpan={6} className="h-[300px] p-0">
                           <TableLoading minHeight="300px" />
@@ -1850,8 +1870,12 @@ export default function ExternalCondominiums() {
                     currentPage={unitsPage}
                     totalPages={unitsTotalPages}
                     itemsPerPage={unitsPerPage}
-                    onPageChange={setUnitsPage}
+                    onPageChange={(page) => {
+                      setUnitsPageTransition(true);
+                      setUnitsPage(page);
+                    }}
                     onItemsPerPageChange={(items) => {
+                      setUnitsPageTransition(true);
                       setUnitsPerPage(items);
                       setUnitsPage(1);
                     }}
@@ -1957,8 +1981,12 @@ export default function ExternalCondominiums() {
                     currentPage={unitsPage}
                     totalPages={unitsTotalPages}
                     itemsPerPage={unitsPerPage}
-                    onPageChange={setUnitsPage}
+                    onPageChange={(page) => {
+                      setUnitsPageTransition(true);
+                      setUnitsPage(page);
+                    }}
                     onItemsPerPageChange={(items) => {
+                      setUnitsPageTransition(true);
                       setUnitsPerPage(items);
                       setUnitsPage(1);
                     }}
@@ -2004,7 +2032,7 @@ export default function ExternalCondominiums() {
                           </TableRow>
                         </TableHeader>
                   <TableBody>
-                    {unitsFetching && !unitsLoading ? (
+                    {(unitsPageTransition || unitsFetching) && !unitsLoading ? (
                       <TableRow>
                         <TableCell colSpan={8} className="h-[300px] p-0">
                           <TableLoading minHeight="300px" />
