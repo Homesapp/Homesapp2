@@ -388,6 +388,12 @@ import {
   type InsertExternalQuotationToken,
   offerTokens,
   tenantRentalFormTokens,
+  externalRolePermissions,
+  type ExternalRolePermission,
+  type InsertExternalRolePermission,
+  externalUserPermissions,
+  type ExternalUserPermission,
+  type InsertExternalUserPermission,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between } from "drizzle-orm";
@@ -1182,6 +1188,22 @@ export interface IStorage {
     apiKey?: string | null;
     useReplitIntegration?: boolean;
   }): Promise<ExternalAgencyIntegration>;
+
+  // External Role Permissions operations
+  getExternalRolePermissions(agencyId: string): Promise<ExternalRolePermission[]>;
+  getExternalRolePermissionsByRole(agencyId: string, role: string): Promise<ExternalRolePermission[]>;
+  upsertExternalRolePermission(permission: InsertExternalRolePermission): Promise<ExternalRolePermission>;
+  bulkUpsertExternalRolePermissions(permissions: InsertExternalRolePermission[]): Promise<ExternalRolePermission[]>;
+  deleteExternalRolePermission(agencyId: string, role: string, section: string, action: string): Promise<void>;
+  deleteAllExternalRolePermissions(agencyId: string): Promise<void>;
+
+  // External User Permissions operations (overrides)
+  getExternalUserPermissions(agencyId: string): Promise<ExternalUserPermission[]>;
+  getExternalUserPermissionsByUser(agencyId: string, userId: string): Promise<ExternalUserPermission[]>;
+  upsertExternalUserPermission(permission: InsertExternalUserPermission): Promise<ExternalUserPermission>;
+  bulkUpsertExternalUserPermissions(permissions: InsertExternalUserPermission[]): Promise<ExternalUserPermission[]>;
+  deleteExternalUserPermission(agencyId: string, userId: string, section: string, action: string): Promise<void>;
+  deleteAllExternalUserPermissions(agencyId: string, userId: string): Promise<void>;
 
   // External Management System - Property operations
   getExternalProperty(id: string): Promise<ExternalProperty | undefined>;
@@ -7692,6 +7714,143 @@ export class DatabaseStorage implements IStorage {
       openaiUseReplitIntegration: config.useReplitIntegration,
       openaiConnectedAt: new Date(),
     });
+  }
+
+  // External Role Permissions operations
+  async getExternalRolePermissions(agencyId: string): Promise<ExternalRolePermission[]> {
+    return await db.select()
+      .from(externalRolePermissions)
+      .where(eq(externalRolePermissions.agencyId, agencyId))
+      .orderBy(asc(externalRolePermissions.role), asc(externalRolePermissions.section), asc(externalRolePermissions.action));
+  }
+
+  async getExternalRolePermissionsByRole(agencyId: string, role: string): Promise<ExternalRolePermission[]> {
+    return await db.select()
+      .from(externalRolePermissions)
+      .where(and(
+        eq(externalRolePermissions.agencyId, agencyId),
+        eq(externalRolePermissions.role, role)
+      ))
+      .orderBy(asc(externalRolePermissions.section), asc(externalRolePermissions.action));
+  }
+
+  async upsertExternalRolePermission(permission: InsertExternalRolePermission): Promise<ExternalRolePermission> {
+    const existing = await db.select()
+      .from(externalRolePermissions)
+      .where(and(
+        eq(externalRolePermissions.agencyId, permission.agencyId),
+        eq(externalRolePermissions.role, permission.role),
+        eq(externalRolePermissions.section, permission.section),
+        eq(externalRolePermissions.action, permission.action)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [updated] = await db.update(externalRolePermissions)
+        .set({ allowed: permission.allowed, updatedAt: new Date() })
+        .where(eq(externalRolePermissions.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db.insert(externalRolePermissions)
+      .values(permission)
+      .returning();
+    return created;
+  }
+
+  async bulkUpsertExternalRolePermissions(permissions: InsertExternalRolePermission[]): Promise<ExternalRolePermission[]> {
+    const results: ExternalRolePermission[] = [];
+    for (const permission of permissions) {
+      const result = await this.upsertExternalRolePermission(permission);
+      results.push(result);
+    }
+    return results;
+  }
+
+  async deleteExternalRolePermission(agencyId: string, role: string, section: string, action: string): Promise<void> {
+    await db.delete(externalRolePermissions)
+      .where(and(
+        eq(externalRolePermissions.agencyId, agencyId),
+        eq(externalRolePermissions.role, role),
+        eq(externalRolePermissions.section, section),
+        eq(externalRolePermissions.action, action)
+      ));
+  }
+
+  async deleteAllExternalRolePermissions(agencyId: string): Promise<void> {
+    await db.delete(externalRolePermissions)
+      .where(eq(externalRolePermissions.agencyId, agencyId));
+  }
+
+  // External User Permissions operations (overrides)
+  async getExternalUserPermissions(agencyId: string): Promise<ExternalUserPermission[]> {
+    return await db.select()
+      .from(externalUserPermissions)
+      .where(eq(externalUserPermissions.agencyId, agencyId))
+      .orderBy(asc(externalUserPermissions.userId), asc(externalUserPermissions.section), asc(externalUserPermissions.action));
+  }
+
+  async getExternalUserPermissionsByUser(agencyId: string, userId: string): Promise<ExternalUserPermission[]> {
+    return await db.select()
+      .from(externalUserPermissions)
+      .where(and(
+        eq(externalUserPermissions.agencyId, agencyId),
+        eq(externalUserPermissions.userId, userId)
+      ))
+      .orderBy(asc(externalUserPermissions.section), asc(externalUserPermissions.action));
+  }
+
+  async upsertExternalUserPermission(permission: InsertExternalUserPermission): Promise<ExternalUserPermission> {
+    const existing = await db.select()
+      .from(externalUserPermissions)
+      .where(and(
+        eq(externalUserPermissions.agencyId, permission.agencyId),
+        eq(externalUserPermissions.userId, permission.userId),
+        eq(externalUserPermissions.section, permission.section),
+        eq(externalUserPermissions.action, permission.action)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [updated] = await db.update(externalUserPermissions)
+        .set({ allowed: permission.allowed, updatedAt: new Date() })
+        .where(eq(externalUserPermissions.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db.insert(externalUserPermissions)
+      .values(permission)
+      .returning();
+    return created;
+  }
+
+  async bulkUpsertExternalUserPermissions(permissions: InsertExternalUserPermission[]): Promise<ExternalUserPermission[]> {
+    const results: ExternalUserPermission[] = [];
+    for (const permission of permissions) {
+      const result = await this.upsertExternalUserPermission(permission);
+      results.push(result);
+    }
+    return results;
+  }
+
+  async deleteExternalUserPermission(agencyId: string, userId: string, section: string, action: string): Promise<void> {
+    await db.delete(externalUserPermissions)
+      .where(and(
+        eq(externalUserPermissions.agencyId, agencyId),
+        eq(externalUserPermissions.userId, userId),
+        eq(externalUserPermissions.section, section),
+        eq(externalUserPermissions.action, action)
+      ));
+  }
+
+  async deleteAllExternalUserPermissions(agencyId: string, userId: string): Promise<void> {
+    await db.delete(externalUserPermissions)
+      .where(and(
+        eq(externalUserPermissions.agencyId, agencyId),
+        eq(externalUserPermissions.userId, userId)
+      ));
   }
 
   // External Management System - Property operations
