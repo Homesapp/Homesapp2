@@ -53,7 +53,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus,
@@ -101,6 +101,7 @@ import {
   Upload,
   FileSpreadsheet,
   AlertTriangle,
+  Save,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -3073,78 +3074,48 @@ export default function ExternalClients() {
       {/* Edit Lead Dialog */}
       <Dialog open={isEditLeadDialogOpen} onOpenChange={setIsEditLeadDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {language === "es" ? "Editar Lead" : "Edit Lead"}
-            </DialogTitle>
-            <DialogDescription>
-              {language === "es" 
-                ? "Modifique la información del lead."
-                : "Modify the lead information."}
-            </DialogDescription>
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Pencil className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-xl">
+                    {language === "es" ? "Editar Lead" : "Edit Lead"}
+                  </DialogTitle>
+                  {selectedLead && (
+                    <Badge variant={selectedLead.registrationType === "broker" ? "default" : "secondary"}>
+                      {selectedLead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                    </Badge>
+                  )}
+                </div>
+                <DialogDescription className="mt-1">
+                  {language === "es" 
+                    ? "Modifique la información del prospecto."
+                    : "Modify the prospect information."}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
           <Form {...editLeadForm}>
-            <form onSubmit={editLeadForm.handleSubmit((data) => selectedLead && updateLeadMutation.mutate({ id: selectedLead.id, data }))} className="space-y-4">
-              {selectedLead && (
-                <div className="rounded-lg bg-muted p-3 text-sm">
-                  <strong>{language === "es" ? "Tipo de Registro: " : "Registration Type: "}</strong>
-                  {selectedLead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={editLeadForm.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Nombre" : "First Name"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="input-edit-lead-firstname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editLeadForm.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Apellido" : "Last Name"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="input-edit-lead-lastname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {selectedLead?.registrationType === "broker" ? (
-                <FormField
-                  control={editLeadForm.control}
-                  name="phoneLast4"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Últimos 4 dígitos del teléfono" : "Last 4 Phone Digits"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} maxLength={4} placeholder="1234" data-testid="input-edit-lead-phonelast4" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ) : (
+            <form onSubmit={editLeadForm.handleSubmit((data) => selectedLead && updateLeadMutation.mutate({ id: selectedLead.id, data }))} className="space-y-6 py-4">
+              
+              {/* Personal Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {language === "es" ? "Información Personal" : "Personal Information"}
+                </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={editLeadForm.control}
-                    name="phone"
+                    name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
+                        <FormLabel>{language === "es" ? "Nombre" : "First Name"}</FormLabel>
                         <FormControl>
-                          <Input {...field} value={field.value || ""} data-testid="input-edit-lead-phone" />
+                          <Input {...field} value={field.value || ""} data-testid="input-edit-lead-firstname" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -3152,56 +3123,195 @@ export default function ExternalClients() {
                   />
                   <FormField
                     control={editLeadForm.control}
-                    name="email"
+                    name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
+                        <FormLabel>{language === "es" ? "Apellido" : "Last Name"}</FormLabel>
                         <FormControl>
-                          <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-lead-email" />
+                          <Input {...field} value={field.value || ""} data-testid="input-edit-lead-lastname" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+              </div>
+
+              {/* Contact Information Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  {language === "es" ? "Información de Contacto" : "Contact Information"}
+                </h3>
+                {selectedLead?.registrationType === "broker" ? (
+                  <FormField
+                    control={editLeadForm.control}
+                    name="phoneLast4"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Últimos 4 dígitos del teléfono" : "Last 4 Phone Digits"}</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} maxLength={4} placeholder="1234" data-testid="input-edit-lead-phonelast4" />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          {language === "es" ? "Por seguridad, solo se almacenan los últimos 4 dígitos" : "For security, only the last 4 digits are stored"}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={editLeadForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Teléfono" : "Phone"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} placeholder="+52 984 123 4567" data-testid="input-edit-lead-phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editLeadForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} type="email" placeholder="ejemplo@correo.com" data-testid="input-edit-lead-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Location Information Section - Only for Seller type */}
+              {selectedLead?.registrationType !== "broker" && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {language === "es" ? "Ubicación" : "Location"}
+                  </h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={editLeadForm.control}
+                      name="nationality"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Nacionalidad" : "Nationality"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Mexicana" : "Mexican"} data-testid="input-edit-lead-nationality" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editLeadForm.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{language === "es" ? "Ciudad" : "City"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} placeholder="Tulum" data-testid="input-edit-lead-city" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editLeadForm.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                          <FormLabel>{language === "es" ? "Dirección" : "Address"}</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Calle, número, colonia..." : "Street, number, neighborhood..."} data-testid="input-edit-lead-address" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={editLeadForm.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Estado" : "Status"}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+              {/* Status and Source Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  {language === "es" ? "Estado y Origen" : "Status & Source"}
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={editLeadForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Estado" : "Status"}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-lead-status">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="nuevo_lead">{language === "es" ? "Nuevo Lead" : "New Lead"}</SelectItem>
+                            <SelectItem value="cita_coordinada">{language === "es" ? "Cita Coordinada" : "Appointment Scheduled"}</SelectItem>
+                            <SelectItem value="interesado">{language === "es" ? "Interesado" : "Interested"}</SelectItem>
+                            <SelectItem value="oferta_enviada">{language === "es" ? "Oferta Enviada" : "Offer Sent"}</SelectItem>
+                            <SelectItem value="proceso_renta">{language === "es" ? "Proceso de Renta" : "Rental Process"}</SelectItem>
+                            <SelectItem value="renta_concretada">{language === "es" ? "Renta Concretada" : "Rental Completed"}</SelectItem>
+                            <SelectItem value="perdido">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
+                            <SelectItem value="muerto">{language === "es" ? "Muerto" : "Dead"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editLeadForm.control}
+                    name="source"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Fuente" : "Source"}</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-edit-lead-status">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Facebook, Referido, etc." : "Facebook, Referral, etc."} data-testid="input-edit-lead-source" />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="nuevo_lead">{language === "es" ? "Nuevo Lead" : "New Lead"}</SelectItem>
-                          <SelectItem value="cita_coordinada">{language === "es" ? "Cita Coordinada" : "Appointment Scheduled"}</SelectItem>
-                          <SelectItem value="interesado">{language === "es" ? "Interesado" : "Interested"}</SelectItem>
-                          <SelectItem value="oferta_enviada">{language === "es" ? "Oferta Enviada" : "Offer Sent"}</SelectItem>
-                          <SelectItem value="proceso_renta">{language === "es" ? "Proceso de Renta" : "Rental Process"}</SelectItem>
-                          <SelectItem value="renta_concretada">{language === "es" ? "Renta Concretada" : "Rental Completed"}</SelectItem>
-                          <SelectItem value="perdido">{language === "es" ? "Perdido" : "Lost"}</SelectItem>
-                          <SelectItem value="muerto">{language === "es" ? "Muerto" : "Dead"}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  {language === "es" ? "Notas y Comentarios" : "Notes & Comments"}
+                </h3>
                 <FormField
                   control={editLeadForm.control}
-                  name="source"
+                  name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Fuente" : "Source"}</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="input-edit-lead-source" />
+                        <Textarea 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder={language === "es" ? "Agregue notas relevantes sobre el prospecto..." : "Add relevant notes about the prospect..."}
+                          className="min-h-[100px]"
+                          data-testid="input-edit-lead-notes" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -3209,21 +3319,7 @@ export default function ExternalClients() {
                 />
               </div>
 
-              <FormField
-                control={editLeadForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{language === "es" ? "Notas" : "Notes"}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} value={field.value || ""} data-testid="input-edit-lead-notes" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
+              <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -3232,10 +3328,18 @@ export default function ExternalClients() {
                 >
                   {language === "es" ? "Cancelar" : "Cancel"}
                 </Button>
-                <Button type="submit" disabled={updateLeadMutation.isPending} data-testid="button-edit-lead-submit">
-                  {updateLeadMutation.isPending 
-                    ? (language === "es" ? "Guardando..." : "Saving...")
-                    : (language === "es" ? "Guardar Cambios" : "Save Changes")}
+                <Button type="submit" disabled={updateLeadMutation.isPending} className="gap-2" data-testid="button-edit-lead-submit">
+                  {updateLeadMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {language === "es" ? "Guardando..." : "Saving..."}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      {language === "es" ? "Guardar Cambios" : "Save Changes"}
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </form>
