@@ -1346,7 +1346,7 @@ export interface IStorage {
   // External Leads
   getExternalLead(id: string): Promise<ExternalLead | undefined>;
   getExternalLeadsByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }): Promise<ExternalLead[]>;
-  getExternalLeadsCountByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; search?: string }): Promise<number>;
+  getExternalLeadsCountByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string }): Promise<number>;
   createExternalLead(lead: InsertExternalLead): Promise<ExternalLead>;
   updateExternalLead(id: string, updates: Partial<InsertExternalLead>): Promise<ExternalLead>;
   deleteExternalLead(id: string): Promise<void>;
@@ -9384,6 +9384,30 @@ export class DatabaseStorage implements IStorage {
     return lead;
   }
 
+  async getExternalLeadsByAgency(
+    agencyId: string, 
+    filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }
+  ): Promise<ExternalLead[]> {
+    const conditions = [eq(externalLeads.agencyId, agencyId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(externalLeads.status, filters.status));
+    }
+    if (filters?.registrationType) {
+      conditions.push(eq(externalLeads.registrationType, filters.registrationType));
+    }
+    if (filters?.sellerId) {
+      conditions.push(or(eq(externalLeads.sellerId, filters.sellerId), eq(externalLeads.assignedSellerId, filters.sellerId))!);
+    }
+    if (filters?.expiringDays) {
+      const EXPIRY_DAYS = 90;
+      const now = new Date();
+      const expiryCheckDate = new Date(now.getTime() - (EXPIRY_DAYS - filters.expiringDays) * 24 * 60 * 60 * 1000);
+      conditions.push(gte(externalLeads.createdAt, expiryCheckDate));
+    }
+    if (filters?.search && filters.search.trim().length > 0) {
+      const sanitized = filters.search
+        .trim()
         .slice(0, 100)
         .replace(/\\/g, '\\\\')
         .replace(/%/g, '\\%')
@@ -9435,7 +9459,7 @@ export class DatabaseStorage implements IStorage {
   
   async getExternalLeadsCountByAgency(
     agencyId: string,
-    filters?: { status?: string; registrationType?: string; search?: string }
+    filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string }
   ): Promise<number> {
     const conditions = [eq(externalLeads.agencyId, agencyId)];
     
@@ -9443,25 +9467,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalLeads.status, filters.status));
     }
     if (filters?.registrationType) {
-    if (filters?.sellerId) {
-      conditions.push(or(eq(externalLeads.sellerId, filters.sellerId), eq(externalLeads.assignedSellerId, filters.sellerId))!);
-    }
-    if (filters?.expiringDays) {
-      const EXPIRY_DAYS = 90;
-      const now = new Date();
-      const expiryCheckDate = new Date(now.getTime() - (EXPIRY_DAYS - filters.expiringDays) * 24 * 60 * 60 * 1000);
-      conditions.push(gte(externalLeads.createdAt, expiryCheckDate));
-    }
       conditions.push(eq(externalLeads.registrationType, filters.registrationType));
-    if (filters?.sellerId) {
-      conditions.push(or(eq(externalLeads.sellerId, filters.sellerId), eq(externalLeads.assignedSellerId, filters.sellerId))!);
-    }
-    if (filters?.expiringDays) {
-      const EXPIRY_DAYS = 90;
-      const now = new Date();
-      const expiryCheckDate = new Date(now.getTime() - (EXPIRY_DAYS - filters.expiringDays) * 24 * 60 * 60 * 1000);
-      conditions.push(gte(externalLeads.createdAt, expiryCheckDate));
-    }
     }
     if (filters?.sellerId) {
       conditions.push(or(eq(externalLeads.sellerId, filters.sellerId), eq(externalLeads.assignedSellerId, filters.sellerId))!);
@@ -9497,7 +9503,6 @@ export class DatabaseStorage implements IStorage {
     
     return result[0]?.count || 0;
   }
-
   async createExternalLead(lead: InsertExternalLead): Promise<ExternalLead> {
     const [result] = await db.insert(externalLeads)
       .values({

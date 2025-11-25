@@ -21616,6 +21616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: users.role,
           status: users.status,
           maintenanceSpecialty: users.maintenanceSpecialty,
+          isSuspended: users.isSuspended,
           createdAt: users.createdAt,
         })
         .from(users)
@@ -28324,6 +28325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: users.lastName,
           phone: users.phone,
           maintenanceSpecialty: users.maintenanceSpecialty,
+          isSuspended: users.isSuspended,
         })
         .from(users)
         .where(and(
