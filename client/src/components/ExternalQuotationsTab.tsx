@@ -258,9 +258,25 @@ export default function ExternalQuotations() {
     onSuccess: (data: any) => {
       const fullUrl = `${window.location.origin}${data.publicUrl}`;
       navigator.clipboard.writeText(fullUrl);
+      
+      let description = "El enlace ha sido copiado";
+      if (data.expiresAt) {
+        try {
+          const dateValue = typeof data.expiresAt === 'string' ? data.expiresAt : String(data.expiresAt);
+          const expiresDate = new Date(dateValue);
+          if (!isNaN(expiresDate.getTime())) {
+            description = `El enlace expira el ${format(expiresDate, "dd/MM/yyyy", { locale: es })}`;
+          }
+        } catch {
+          // Keep default description
+        }
+      } else {
+        description = "El enlace ha sido copiado (sin expiracion)";
+      }
+      
       toast({
         title: "Enlace copiado al portapapeles",
-        description: `El enlace expira el ${format(new Date(data.expiresAt), "dd/MM/yyyy", { locale: es })}`,
+        description,
       });
     },
     onError: (error: any) => {
@@ -508,12 +524,12 @@ export default function ExternalQuotations() {
                     <FileText className="h-5 w-5 text-primary" />
                     <h3 className="text-lg font-semibold">Información General</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                     <FormField
                       control={form.control}
                       name="title"
                       render={({ field }) => (
-                        <FormItem className="col-span-2">
+                        <FormItem className="col-span-1 md:col-span-2">
                           <FormLabel>Título de la Cotización</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-title" placeholder="Ej: Reparación de plomería" className="text-base" />
@@ -523,31 +539,30 @@ export default function ExternalQuotations() {
                       )}
                     />
 
+                    {/* Row: Cliente + Public General Toggle */}
                     <FormField
                       control={form.control}
                       name="clientId"
                       render={({ field }) => (
-                        <FormItem>
-                          <div className="flex items-center justify-between">
-                            <FormLabel>Cliente</FormLabel>
+                        <FormItem className="col-span-1 md:col-span-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <FormLabel className="mb-0">Cliente</FormLabel>
                             <Button
                               type="button"
                               variant={usePublicGeneral ? "default" : "outline"}
                               size="sm"
                               onClick={() => {
                                 if (!usePublicGeneral) {
-                                  // Turning ON public general - save current client
                                   setPreviousClientId(field.value || "");
                                   field.onChange("");
                                 } else {
-                                  // Turning OFF public general - restore previous client
                                   field.onChange(previousClientId);
                                 }
                                 setUsePublicGeneral(!usePublicGeneral);
                               }}
                               data-testid="button-public-general"
                             >
-                              {usePublicGeneral ? "✓ Público en General" : "Público en General"}
+                              {usePublicGeneral ? "Publico en General" : "Publico en General"}
                             </Button>
                           </div>
                           {!usePublicGeneral && (
@@ -567,8 +582,8 @@ export default function ExternalQuotations() {
                             </Select>
                           )}
                           {usePublicGeneral && (
-                            <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                              Cotización para público en general (sin cliente específico)
+                            <div className="p-2 bg-primary/10 border border-primary/20 rounded-md text-sm">
+                              Cotizacion para publico en general
                             </div>
                           )}
                           <FormMessage />
@@ -576,7 +591,7 @@ export default function ExternalQuotations() {
                       )}
                     />
 
-                    {/* Condominium selector */}
+                    {/* Row: Condominio + Unidad */}
                     <FormField
                       control={form.control}
                       name="propertyId"
@@ -588,7 +603,6 @@ export default function ExternalQuotations() {
                               const condoId = value === "none" ? "" : value;
                               setSelectedCondominiumId(condoId);
                               field.onChange(condoId);
-                              // Clear unit selection when condominium changes
                               form.setValue("unitId", "");
                             }} 
                             value={selectedCondominiumId || "none"}

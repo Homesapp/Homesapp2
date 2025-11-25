@@ -833,7 +833,7 @@ export async function generateQuotationPDF(
     try {
       const doc = new PDFDocument({
         size: 'A4',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        margins: { top: 30, bottom: 30, left: 40, right: 40 },
       });
 
       const chunks: Buffer[] = [];
@@ -841,423 +841,186 @@ export async function generateQuotationPDF(
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const primaryColor = '#3b82f6';
-      const secondaryColor = '#64748b';
+      const primaryColor = '#1e40af';
+      const textColor = '#1e293b';
+      const mutedColor = '#64748b';
       const accentColor = '#10b981';
-      const bgColor = '#f8fafc';
-      const borderColor = '#e2e8f0';
-      const warningColor = '#f59e0b';
+      const bgLight = '#f8fafc';
 
-      // Header with dual branding
-      doc.rect(0, 0, 595, 140)
-        .fillColor('#1e40af')
-        .fill();
+      // Compact header bar
+      doc.rect(0, 0, 595, 70).fillColor(primaryColor).fill();
 
-      // HomesApp logo (left side)
-      doc.fontSize(28)
-        .fillColor('#ffffff')
-        .text('HomesApp', 50, 35);
+      // HomesApp branding (left)
+      doc.fontSize(20).fillColor('#ffffff').text('HomesApp', 40, 20);
+      doc.fontSize(8).fillColor('#bfdbfe').text('Tulum Rental Homes', 40, 45);
 
-      doc.fontSize(12)
-        .fillColor('#bfdbfe')
-        .text('Tulum Rental Homes ™', 50, 70);
-
-      // Agency name (right side) if provided
+      // Agency branding (right)
       if (agencyData?.name) {
-        doc.fontSize(14)
-          .fillColor('#ffffff')
-          .text(agencyData.name, 350, 40, { width: 195, align: 'right' });
-        
+        doc.fontSize(11).fillColor('#ffffff').text(agencyData.name, 350, 25, { width: 205, align: 'right' });
         if (agencyData.contact) {
-          doc.fontSize(9)
-            .fillColor('#bfdbfe')
-            .text(agencyData.contact, 350, 65, { width: 195, align: 'right' });
+          doc.fontSize(7).fillColor('#bfdbfe').text(agencyData.contact, 350, 42, { width: 205, align: 'right' });
         }
       }
 
-      // Quotation title
-      doc.fontSize(26)
-        .fillColor('#1e293b')
-        .text('COTIZACIÓN DE MANTENIMIENTO', 50, 165);
+      let y = 85;
 
-      // Quotation metadata
-      let yPosition = 205;
-      // Format quotation number as #0000001
+      // Title + Metadata row
+      doc.fontSize(16).fillColor(textColor).font('Helvetica-Bold').text('COTIZACION DE MANTENIMIENTO', 40, y);
+      doc.font('Helvetica');
+
+      // Quotation number & date on same line (right aligned)
       const quotationNumber = quotationData.sequenceNumber 
         ? `#${String(quotationData.sequenceNumber).padStart(7, '0')}`
         : `#${quotationData.id?.slice(0, 8) || 'N/A'}`;
-      doc.fontSize(10)
-        .fillColor(secondaryColor)
-        .text(`No. Cotización: ${quotationNumber}`, 50, yPosition);
-      
-      doc.text(
-        `Fecha: ${new Date(quotationData.createdAt || Date.now()).toLocaleDateString('es-MX', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric'
-        })}`,
-        350,
-        yPosition,
-        { width: 195, align: 'right' }
-      );
+      const dateStr = new Date(quotationData.createdAt || Date.now()).toLocaleDateString('es-MX', { 
+        day: '2-digit', month: 'short', year: 'numeric'
+      });
+      doc.fontSize(8).fillColor(mutedColor).text(`No. ${quotationNumber}  |  ${dateStr}`, 350, y + 4, { width: 205, align: 'right' });
 
-      yPosition += 25;
+      y += 25;
 
-      // Status badge
-      const statusColors: Record<string, string> = {
-        draft: secondaryColor,
-        sent: primaryColor,
-        approved: accentColor,
-        rejected: '#ef4444',
-        cancelled: secondaryColor
-      };
-      
-      const statusLabels: Record<string, string> = {
-        draft: 'BORRADOR',
-        sent: 'ENVIADA',
-        approved: 'APROBADA',
-        rejected: 'RECHAZADA',
-        cancelled: 'CANCELADA'
-      };
-
+      // Status + Created by + Unit in single compact row
+      const statusLabels: Record<string, string> = { draft: 'Borrador', sent: 'Enviada', approved: 'Aprobada', rejected: 'Rechazada', cancelled: 'Cancelada' };
+      const statusColors: Record<string, string> = { draft: mutedColor, sent: primaryColor, approved: accentColor, rejected: '#ef4444', cancelled: mutedColor };
       const status = quotationData.status || 'draft';
-      const statusColor = statusColors[status] || secondaryColor;
-      const statusLabel = statusLabels[status] || status.toUpperCase();
-
-      doc.fontSize(10)
-        .fillColor(statusColor)
-        .font('Helvetica-Bold')
-        .text(`Estado: ${statusLabel}`, 50, yPosition);
+      
+      doc.fontSize(8).fillColor(statusColors[status] || mutedColor).font('Helvetica-Bold').text(statusLabels[status] || status, 40, y);
       doc.font('Helvetica');
 
-      // Show maintenance manager who created the quote
+      let infoX = 120;
       if (quotationData.createdByName) {
-        yPosition += 18;
-        doc.fontSize(9)
-          .fillColor(secondaryColor)
-          .text('Elaborado por: ', 50, yPosition, { continued: true })
-          .font('Helvetica-Bold')
-          .fillColor('#1e293b')
-          .text(quotationData.createdByName);
-        doc.font('Helvetica');
+        doc.fontSize(7).fillColor(mutedColor).text(`Por: ${quotationData.createdByName}`, infoX, y);
+        infoX += 130;
       }
-
-      // Show unit if available
       if (quotationData.unitName) {
-        yPosition += 18;
-        doc.fontSize(9)
-          .fillColor(secondaryColor)
-          .text('Unidad: ', 50, yPosition, { continued: true })
-          .fillColor('#1e293b')
-          .text(quotationData.unitName);
+        doc.fontSize(7).fillColor(mutedColor).text(`Unidad: ${quotationData.unitName}`, infoX, y);
       }
 
-      yPosition += 10;
-      doc.moveTo(50, yPosition)
-        .lineTo(545, yPosition)
-        .strokeColor(borderColor)
-        .lineWidth(2)
-        .stroke();
+      y += 18;
+      doc.moveTo(40, y).lineTo(555, y).strokeColor('#e2e8f0').lineWidth(1).stroke();
+      y += 12;
 
-      yPosition += 25;
-
-      // Client Information Section
-      if (quotationData.clientName || quotationData.clientEmail || quotationData.clientPhone) {
-        // Check if we need a new page
-        if (yPosition > 680) {
-          doc.addPage();
-          yPosition = 50;
-        }
-
-        doc.rect(50, yPosition - 5, 495, 80)
-          .fillColor(bgColor)
-          .fill();
-
-        doc.fontSize(14)
-          .fillColor(primaryColor)
-          .text('INFORMACIÓN DEL CLIENTE', 60, yPosition + 5);
-
-        yPosition += 30;
-        
-        if (quotationData.clientName) {
-          doc.fontSize(9)
-            .fillColor(secondaryColor)
-            .text('Cliente:', 60, yPosition);
-          doc.fontSize(11)
-            .fillColor('#1e293b')
-            .font('Helvetica-Bold')
-            .text(quotationData.clientName, 180, yPosition);
-          doc.font('Helvetica');
-          yPosition += 18;
-        }
-
-        if (quotationData.clientEmail) {
-          doc.fontSize(9)
-            .fillColor(secondaryColor)
-            .text('Email:', 60, yPosition);
-          doc.fontSize(10)
-            .fillColor('#1e293b')
-            .text(quotationData.clientEmail, 180, yPosition);
-          yPosition += 18;
-        }
-
-        if (quotationData.clientPhone) {
-          doc.fontSize(9)
-            .fillColor(secondaryColor)
-            .text('Teléfono:', 60, yPosition);
-          doc.fontSize(10)
-            .fillColor('#1e293b')
-            .text(quotationData.clientPhone, 180, yPosition);
-          yPosition += 18;
-        }
-
-        yPosition += 20;
+      // Client info (compact inline if present)
+      if (quotationData.clientName) {
+        doc.rect(40, y, 515, 30).fillColor(bgLight).fill();
+        doc.fontSize(8).fillColor(primaryColor).font('Helvetica-Bold').text('CLIENTE', 50, y + 5);
+        doc.font('Helvetica').fontSize(8).fillColor(textColor);
+        let clientText = quotationData.clientName;
+        if (quotationData.clientEmail) clientText += `  |  ${quotationData.clientEmail}`;
+        if (quotationData.clientPhone) clientText += `  |  ${quotationData.clientPhone}`;
+        doc.text(clientText, 50, y + 17, { width: 495 });
+        y += 38;
       }
 
-      // Description Section
+      // Description (compact)
       if (quotationData.description) {
-        // Check if we need a new page
-        if (yPosition > 680) {
-          doc.addPage();
-          yPosition = 50;
-        }
-
-        doc.fontSize(14)
-          .fillColor(primaryColor)
-          .text('DESCRIPCIÓN', 50, yPosition);
-
-        yPosition += 25;
-        doc.fontSize(10)
-          .fillColor('#1e293b')
-          .text(quotationData.description, 50, yPosition, { width: 495 });
-        
-        const descLines = Math.ceil(quotationData.description.length / 80);
-        yPosition += descLines * 14 + 25;
+        doc.fontSize(8).fillColor(primaryColor).font('Helvetica-Bold').text('DESCRIPCION', 40, y);
+        doc.font('Helvetica').fontSize(8).fillColor(textColor);
+        y += 12;
+        const descText = quotationData.description.substring(0, 200) + (quotationData.description.length > 200 ? '...' : '');
+        doc.text(descText, 40, y, { width: 515 });
+        const descHeight = doc.heightOfString(descText, { width: 515 });
+        y += descHeight + 12;
       }
 
-      // Services Table Header
-      // Check if we need a new page
-      if (yPosition > 680) {
-        doc.addPage();
-        yPosition = 50;
-      }
-
-      doc.fontSize(14)
-        .fillColor(primaryColor)
-        .text('SERVICIOS', 50, yPosition);
-
-      yPosition += 25;
+      // Services table (compact)
+      doc.fontSize(9).fillColor(primaryColor).font('Helvetica-Bold').text('SERVICIOS', 40, y);
+      y += 15;
 
       // Table header
-      doc.rect(50, yPosition, 495, 30)
-        .fillColor('#1e40af')
-        .fill();
-
-      doc.fontSize(9)
-        .fillColor('#ffffff')
-        .font('Helvetica-Bold')
-        .text('DESCRIPCIÓN', 60, yPosition + 10, { width: 230 })
-        .text('CANT.', 295, yPosition + 10, { width: 45, align: 'center' })
-        .text('PRECIO UNIT.', 345, yPosition + 10, { width: 85, align: 'right' })
-        .text('SUBTOTAL', 435, yPosition + 10, { width: 100, align: 'right' });
-      
+      doc.rect(40, y, 515, 20).fillColor(primaryColor).fill();
+      doc.fontSize(7).fillColor('#ffffff').font('Helvetica-Bold');
+      doc.text('DESCRIPCION', 50, y + 6, { width: 220 });
+      doc.text('CANT.', 275, y + 6, { width: 40, align: 'center' });
+      doc.text('P. UNIT.', 320, y + 6, { width: 70, align: 'right' });
+      doc.text('SUBTOTAL', 400, y + 6, { width: 145, align: 'right' });
       doc.font('Helvetica');
-      yPosition += 30;
+      y += 20;
 
-      // Services rows
+      // Service rows (compact - all services)
       const services = quotationData.services || [];
+      const rowHeight = services.length > 12 ? 14 : 16;
+      const fontSize = services.length > 12 ? 6 : 7;
+      
       services.forEach((service: any, index: number) => {
-        // Check if we need a new page before writing service row
-        if (yPosition > 700) {
+        // Check if we need a new page
+        if (y > 720) {
           doc.addPage();
-          yPosition = 50;
-          
-          // Re-render table header on new page
-          doc.rect(50, yPosition, 495, 30)
-            .fillColor('#1e40af')
-            .fill();
-
-          doc.fontSize(9)
-            .fillColor('#ffffff')
-            .font('Helvetica-Bold')
-            .text('DESCRIPCIÓN', 60, yPosition + 10, { width: 230 })
-            .text('CANT.', 295, yPosition + 10, { width: 45, align: 'center' })
-            .text('PRECIO UNIT.', 345, yPosition + 10, { width: 85, align: 'right' })
-            .text('SUBTOTAL', 435, yPosition + 10, { width: 100, align: 'right' });
-          
+          y = 40;
+          // Re-render table header
+          doc.rect(40, y, 515, 18).fillColor(primaryColor).fill();
+          doc.fontSize(6).fillColor('#ffffff').font('Helvetica-Bold');
+          doc.text('DESCRIPCION', 50, y + 5, { width: 220 });
+          doc.text('CANT.', 275, y + 5, { width: 40, align: 'center' });
+          doc.text('P. UNIT.', 320, y + 5, { width: 70, align: 'right' });
+          doc.text('SUBTOTAL', 400, y + 5, { width: 145, align: 'right' });
           doc.font('Helvetica');
-          yPosition += 30;
+          y += 18;
         }
-
-        // Alternate row colors
-        if (index % 2 === 0) {
-          doc.rect(50, yPosition, 495, 25)
-            .fillColor(bgColor)
-            .fill();
-        }
-
-        // Use precomputed subtotal if available, otherwise calculate
-        const subtotal = service.subtotal ?? ((service.quantity || 0) * (service.unitPrice || 0));
-
-        // Use name as primary, description as secondary
-        const serviceDesc = service.name || service.description || 'Sin descripción';
-        doc.fontSize(9)
-          .fillColor('#1e293b')
-          .text(serviceDesc, 60, yPosition + 8, { width: 230 })
-          .text(String(service.quantity || 0), 295, yPosition + 8, { width: 45, align: 'center' })
-          .fillColor(secondaryColor)
-          .text(`$${(service.unitPrice || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 345, yPosition + 8, { width: 85, align: 'right' })
-          .fillColor('#1e293b')
-          .font('Helvetica-Bold')
-          .text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 435, yPosition + 8, { width: 100, align: 'right' });
         
+        const rowBg = index % 2 === 0 ? bgLight : '#ffffff';
+        doc.rect(40, y, 515, rowHeight).fillColor(rowBg).fill();
+        
+        const subtotal = service.subtotal ?? ((service.quantity || 0) * (service.unitPrice || 0));
+        const serviceDesc = (service.name || service.description || 'Sin descripcion').substring(0, 45);
+        
+        doc.fontSize(fontSize).fillColor(textColor);
+        doc.text(serviceDesc, 50, y + 3, { width: 220 });
+        doc.text(String(service.quantity || 0), 275, y + 3, { width: 40, align: 'center' });
+        doc.fillColor(mutedColor).text(`$${(service.unitPrice || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 320, y + 3, { width: 70, align: 'right' });
+        doc.fillColor(textColor).font('Helvetica-Bold').text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 400, y + 3, { width: 145, align: 'right' });
         doc.font('Helvetica');
-        yPosition += 25;
+        y += rowHeight;
       });
 
-      // Check if we need a new page for financials
-      if (yPosition > 650) {
+      y += 6;
+
+      // Check if we need new page for financials
+      if (y > 700) {
         doc.addPage();
-        yPosition = 50;
+        y = 40;
       }
 
-      yPosition += 15;
-
-      // Financials Section
-      doc.rect(50, yPosition, 495, 90)
-        .fillColor('#ecfdf5')
-        .fill();
-
-      yPosition += 15;
-
-      // Calculate totals from services if not provided directly
-      const calculatedSubtotal = services.reduce((sum: number, s: any) => {
-        const sSubtotal = s.subtotal ?? ((s.quantity || 0) * (s.unitPrice || 0));
-        return sum + Number(sSubtotal || 0);
-      }, 0);
+      // Financials (compact box aligned right)
+      const calculatedSubtotal = services.reduce((sum: number, s: any) => sum + Number(s.subtotal ?? (s.quantity || 0) * (s.unitPrice || 0)), 0);
       const subtotalValue = Number(quotationData.subtotal) || calculatedSubtotal;
       const adminFeePercentageValue = Number(quotationData.adminFeePercentage) || 15;
       const adminFeeValue = Number(quotationData.adminFee) || (subtotalValue * adminFeePercentageValue / 100);
       const totalValue = Number(quotationData.total) || (subtotalValue + adminFeeValue);
       const currency = quotationData.currency || 'MXN';
 
-      // Subtotal
-      doc.fontSize(11)
-        .fillColor(secondaryColor)
-        .text('Subtotal:', 350, yPosition, { width: 85, align: 'right' });
+      doc.rect(350, y, 205, 55).fillColor('#ecfdf5').fill();
       
-      doc.fontSize(12)
-        .fillColor('#1e293b')
-        .font('Helvetica-Bold')
-        .text(
-          `$${subtotalValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
-          435,
-          yPosition,
-          { width: 100, align: 'right' }
-        );
+      doc.fontSize(7).fillColor(mutedColor).text('Subtotal:', 360, y + 6);
+      doc.text(`$${subtotalValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 450, y + 6, { width: 95, align: 'right' });
+      doc.fontSize(6).fillColor(mutedColor).text(`Tarifa admin. (${adminFeePercentageValue}%):`, 360, y + 18);
+      doc.fillColor('#f59e0b').text(`$${adminFeeValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 450, y + 18, { width: 95, align: 'right' });
       
+      doc.moveTo(360, y + 32).lineTo(545, y + 32).strokeColor(accentColor).lineWidth(1).stroke();
+      doc.fontSize(9).fillColor(mutedColor).text('TOTAL:', 360, y + 38);
+      doc.fontSize(11).fillColor(accentColor).font('Helvetica-Bold').text(`$${totalValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })} ${currency}`, 430, y + 36, { width: 115, align: 'right' });
       doc.font('Helvetica');
-      yPosition += 25;
 
-      // Admin Fee
-      doc.fontSize(10)
-        .fillColor(secondaryColor)
-        .text(`Tarifa administrativa (${adminFeePercentageValue}%):`, 350, yPosition, { width: 85, align: 'right' });
-      
-      doc.fontSize(11)
-        .fillColor(warningColor)
-        .font('Helvetica-Bold')
-        .text(
-          `$${adminFeeValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
-          435,
-          yPosition,
-          { width: 100, align: 'right' }
-        );
-      
-      doc.font('Helvetica');
-      yPosition += 30;
+      y += 60;
 
-      // Total
-      doc.moveTo(350, yPosition - 5)
-        .lineTo(545, yPosition - 5)
-        .strokeColor(accentColor)
-        .lineWidth(2)
-        .stroke();
-
-      doc.fontSize(13)
-        .fillColor(secondaryColor)
-        .text('TOTAL:', 350, yPosition, { width: 85, align: 'right' });
-      
-      doc.fontSize(16)
-        .fillColor(accentColor)
-        .font('Helvetica-Bold')
-        .text(
-          `$${totalValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })} ${currency}`,
-          435,
-          yPosition - 2,
-          { width: 100, align: 'right' }
-        );
-      
-      doc.font('Helvetica');
-      yPosition += 40;
-
-      // Terms and Conditions
-      if (quotationData.terms) {
-        // Check if we need a new page
-        if (yPosition > 600) {
-          doc.addPage();
-          yPosition = 50;
-        }
-
-        doc.fontSize(14)
-          .fillColor(primaryColor)
-          .text('TÉRMINOS Y CONDICIONES', 50, yPosition);
-
-        yPosition += 25;
-        doc.fontSize(9)
-          .fillColor('#1e293b')
-          .text(quotationData.terms, 50, yPosition, { width: 495, align: 'justify' });
+      // Terms (compact, if space allows)
+      if (quotationData.terms && y < 720) {
+        doc.fontSize(7).fillColor(primaryColor).font('Helvetica-Bold').text('TERMINOS Y CONDICIONES', 40, y);
+        doc.font('Helvetica').fontSize(6).fillColor(mutedColor);
+        y += 10;
+        const maxTermsLength = y > 650 ? 200 : 400;
+        const termsText = quotationData.terms.substring(0, maxTermsLength) + (quotationData.terms.length > maxTermsLength ? '...' : '');
+        doc.text(termsText, 40, y, { width: 515, align: 'justify' });
+        const termsHeight = doc.heightOfString(termsText, { width: 515 });
+        y += termsHeight + 8;
       }
 
-      // Footer
-      doc.rect(0, doc.page.height - 70, 595, 70)
-        .fillColor('#f1f5f9')
-        .fill();
-
-      doc.fontSize(8)
-        .fillColor(secondaryColor)
-        .text(
-          'Esta cotización es válida por 30 días a partir de la fecha de emisión.',
-          50,
-          doc.page.height - 55,
-          { width: 495, align: 'center' }
-        );
-      
-      doc.fontSize(7)
-        .fillColor(secondaryColor)
-        .text(
-          agencyData?.name 
-            ? `${agencyData.name} | Powered by HomesApp`
-            : 'Powered by HomesApp - Sistema de Gestión de Propiedades',
-          50,
-          doc.page.height - 35,
-          { width: 495, align: 'center' }
-        );
-      
-      doc.fontSize(7)
-        .fillColor(secondaryColor)
-        .text(
-          `Generado el ${new Date().toLocaleDateString('es-MX', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}`,
-          50,
-          doc.page.height - 20,
-          { width: 495, align: 'center' }
-        );
+      // Footer (dynamic position based on content, at bottom of current page)
+      const footerY = Math.max(y + 10, 780);
+      doc.rect(0, footerY, 595, 62).fillColor(bgLight).fill();
+      doc.fontSize(6).fillColor(mutedColor);
+      doc.text('Cotizacion valida por 30 dias.', 40, footerY + 8, { width: 515, align: 'center' });
+      doc.text(agencyData?.name ? `${agencyData.name} | Powered by HomesApp` : 'Powered by HomesApp', 40, footerY + 18, { width: 515, align: 'center' });
 
       doc.end();
     } catch (error) {
