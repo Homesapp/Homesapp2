@@ -9442,6 +9442,17 @@ export class DatabaseStorage implements IStorage {
     phoneOrLast4?: string | null, 
     excludeId?: string
   ): Promise<ExternalLead | null> {
+    const result = await this.checkExternalLeadDuplicateWithExpiry(agencyId, firstName, lastName, phoneOrLast4, excludeId);
+    return result?.lead || null;
+  }
+
+  async checkExternalLeadDuplicateWithExpiry(
+    agencyId: string, 
+    firstName: string, 
+    lastName: string, 
+    phoneOrLast4?: string | null, 
+    excludeId?: string
+  ): Promise<{ lead: ExternalLead; isExpired: boolean; daysRemaining: number; sellerName: string | null; sellerId: string | null } | null> {
     const { normalizeName, extractLast4Digits } = await import('./utils/duplicateDetection');
     
     const normalizedFirst = normalizeName(firstName);
@@ -9449,27 +9460,52 @@ export class DatabaseStorage implements IStorage {
     const last4 = extractLast4Digits(phoneOrLast4);
     
     if (!last4 || last4.length !== 4) {
-      return null; // Can't check without valid phone last 4 digits
+      return null;
     }
     
-    // Get all leads for this agency
     const leads = await db.select()
       .from(externalLeads)
       .where(eq(externalLeads.agencyId, agencyId));
     
-    // Check for duplicates by comparing normalized names and last 4 digits
+    const EXPIRY_DAYS = 90;
+    const now = new Date();
+    
     for (const lead of leads) {
       if (excludeId && lead.id === excludeId) continue;
       
       const leadFirst = normalizeName(lead.firstName);
       const leadLast = normalizeName(lead.lastName);
-      // For leads, check both phone and phoneLast4 fields
       const leadLast4 = lead.phoneLast4 || extractLast4Digits(lead.phone);
       
       if (leadFirst === normalizedFirst && 
           leadLast === normalizedLast && 
           leadLast4 === last4) {
-        return lead;
+        
+        const createdAt = new Date(lead.createdAt);
+        const expiryDate = new Date(createdAt.getTime() + EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+        const daysRemaining = Math.max(0, Math.ceil((expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
+        const isExpired = now > expiryDate;
+        
+        let sellerName: string | null = null;
+        if (lead.sellerId) {
+          const seller = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, lead.sellerId))
+            .limit(1);
+          if (seller.length > 0) {
+            sellerName = `${seller[0].firstName} ${seller[0].lastName}`;
+          }
+        } else if (lead.sellerName) {
+          sellerName = lead.sellerName;
+        }
+        
+        return {
+          lead,
+          isExpired,
+          daysRemaining,
+          sellerName,
+          sellerId: lead.sellerId,
+        };
       }
     }
     

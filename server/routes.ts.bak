@@ -12,6 +12,7 @@ import { createGoogleMeetEvent, deleteGoogleMeetEvent } from "./googleCalendar";
 import { syncMaintenanceTicketToGoogleCalendar, deleteMaintenanceTicketFromGoogleCalendar } from "./googleCalendarService";
 import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendOfferLinkEmail } from "./gmail";
+import { readUnitsFromSheet, getSpreadsheetInfo } from "./googleSheets";
 import { getPropertyTitle } from "./propertyHelpers";
 import { setupGoogleAuth } from "./googleAuth";
 import { generateOfferPDF, generateRentalFormPDF, generateOwnerFormPDF, generateQuotationPDF } from "./pdfGenerator";
@@ -183,6 +184,8 @@ import {
   insertExternalOwnerNotificationSchema,
   insertExternalWorkerAssignmentSchema,
   insertExternalFinancialTransactionSchema,
+  insertExternalQuotationSchema,
+  updateExternalQuotationSchema,
   updateExternalFinancialTransactionSchema,
   insertExternalTermsAndConditionsSchema,
   updateExternalTermsAndConditionsSchema,
@@ -248,10 +251,23 @@ async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: strin
 // Helper function to get user's agency ID
 async function getUserAgencyId(req: any): Promise<string | null> {
   try {
-    // Admin and master users don't have an agency
-    const userRole = req.user?.role || req.session?.adminUser?.role;
+    // Admin and master users dont have an agency
+    const userRole = req.user?.cachedRole || req.user?.role || req.session?.adminUser?.role;
     if (userRole === "master" || userRole === "admin") {
       return null;
+    }
+
+    // Try to use cached agencyId from isAuthenticated middleware first
+    if (req.user?.cachedAgencyId) {
+      return req.user.cachedAgencyId;
+    }
+
+    // Check session cache (with TTL validation - 5 min)
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    const cacheValid = req.session?.cachedUser?.externalAgencyId && req.session.cachedUser.cachedAt && (now - req.session.cachedUser.cachedAt) < CACHE_TTL_MS;
+    if (cacheValid) {
+      return req.session.cachedUser.externalAgencyId;
     }
 
     // Get user ID from authentication
@@ -260,7 +276,7 @@ async function getUserAgencyId(req: any): Promise<string | null> {
       return null;
     }
 
-    // Get the user's external agency ID directly from user record
+    // Fallback: Get the users external agency ID from DB (should rarely happen now)
     const user = await storage.getUser(userId);
     return user?.externalAgencyId || null;
   } catch (error) {
@@ -14766,6 +14782,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.params;
       const { documentType } = req.body; // 'idDocument', 'constitutiveAct', 'propertyDocuments', 'serviceReceipts', 'noDebtProof', etc.
+      console.log("[Owner Upload] Token:", token);
+      console.log("[Owner Upload] documentType:", documentType);
+      console.log("[Owner Upload] Files received:", req.files?.length || 0);
       
       // Validate token exists
       const [rentalFormToken] = await db
@@ -23172,6 +23191,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // External Dashboard Summary - optimized endpoint for dashboard statistics
+  app.get("/api/external-dashboard-summary", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      let agencyId = req.query.agencyId;
+      if (!agencyId) {
+        agencyId = await getUserAgencyId(req);
+        if (!agencyId) {
+          return res.status(400).json({ message: "User is not assigned to any agency" });
+        }
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+      
+      const summary = await storage.getExternalDashboardSummary(agencyId);
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Error fetching dashboard summary:", error);
+      handleGenericError(res, error);
+    }
+  });
   // External Condominiums Routes
   app.get("/api/external-condominiums", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
@@ -23190,54 +23232,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
       if (!hasAccess) return; // Response already sent by helper
       
-      // Detect if pagination is requested (for backward compatibility)
-      // Only check limit/offset to avoid breaking legacy consumers that use search/sortField
-      const usePagination = (limit !== undefined && limit !== '') || (offset !== undefined && offset !== '');
+      // Always use pagination for performance - defaults: limit=50, offset=0
+      const limitNum = limit ? parseInt(limit as string, 10) : 50;
+      const offsetNum = offset ? parseInt(offset as string, 10) : 0;
+      const parsedLimit = Number.isFinite(limitNum) ? Math.min(Math.max(1, limitNum), 100) : 50;
+      const parsedOffset = Number.isFinite(offsetNum) ? Math.max(0, offsetNum) : 0;
       
-      if (usePagination) {
-        // Parse and validate pagination parameters
-        const limitNum = limit ? parseInt(limit as string, 10) : 50;
-        const offsetNum = offset ? parseInt(offset as string, 10) : 0;
-        const parsedLimit = Number.isFinite(limitNum) ? Math.min(Math.max(1, limitNum), 100) : 50;
-        const parsedOffset = Number.isFinite(offsetNum) ? Math.max(0, offsetNum) : 0;
-        
-        // Build filters
-        const filters: any = {};
-        if (isActive !== undefined) filters.isActive = isActive === 'true';
-        if (search) filters.search = search as string;
-        if (sortField) filters.sortField = sortField as string;
-        if (sortOrder && (sortOrder === 'asc' || sortOrder === 'desc')) filters.sortOrder = sortOrder;
-        filters.limit = parsedLimit;
-        filters.offset = parsedOffset;
-        
-        // Execute data fetch and count in parallel
-        const [condominiums, total] = await Promise.all([
-          storage.getExternalCondominiumsByAgency(agencyId, filters),
-          storage.getExternalCondominiumsCountByAgency(agencyId, {
-            isActive: filters.isActive,
-            search: filters.search,
-          }),
-        ]);
-        
-        res.json({
-          data: condominiums,
-          total,
-          limit: parsedLimit,
-          offset: parsedOffset,
-          hasMore: parsedOffset + condominiums.length < total,
-        });
-      } else {
-        // Legacy mode: return simple array (NO pagination - full dataset)
-        // Preserve historical behavior: only isActive and search, NO sortField/sortOrder
-        // Storage will use default alphabetical ordering
-        const filters: any = {};
-        if (isActive !== undefined) filters.isActive = isActive === 'true';
-        if (search) filters.search = search as string;
-        // DO NOT pass sortField/sortOrder/limit/offset - legacy callers expect default behavior
-        
-        const condominiums = await storage.getExternalCondominiumsByAgency(agencyId, filters);
-        res.json(condominiums);
-      }
+      // Build filters
+      const filters: any = {};
+      if (isActive !== undefined) filters.isActive = isActive === 'true';
+      if (search) filters.search = search as string;
+      if (sortField) filters.sortField = sortField as string;
+      if (sortOrder && (sortOrder === 'asc' || sortOrder === 'desc')) filters.sortOrder = sortOrder;
+      filters.limit = parsedLimit;
+      filters.offset = parsedOffset;
+      
+      // Execute data fetch and count in parallel
+      const [condominiums, total] = await Promise.all([
+        storage.getExternalCondominiumsByAgency(agencyId, filters),
+        storage.getExternalCondominiumsCountByAgency(agencyId, {
+          isActive: filters.isActive,
+          search: filters.search,
+        }),
+      ]);
+      
+      res.json({
+        data: condominiums,
+        total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        hasMore: parsedOffset + condominiums.length < total,
+      });
     } catch (error: any) {
       console.error("Error fetching external condominiums:", error);
       handleGenericError(res, error);
@@ -23438,7 +23463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // External Units Routes
   app.get("/api/external-units", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const { condominiumId, isActive } = req.query;
+      const { condominiumId, isActive, search, sortField, sortOrder, limit, offset } = req.query;
       
       // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
       let agencyId = req.query.agencyId;
@@ -23453,11 +23478,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
       if (!hasAccess) return;
       
+      // Always use pagination for performance - defaults: limit=50, offset=0
+      const limitNum = limit ? parseInt(limit as string, 10) : 50;
+      const offsetNum = offset ? parseInt(offset as string, 10) : 0;
+      const parsedLimit = Number.isFinite(limitNum) ? Math.min(Math.max(1, limitNum), 100) : 50;
+      const parsedOffset = Number.isFinite(offsetNum) ? Math.max(0, offsetNum) : 0;
+      
       const filters: any = {};
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       if (condominiumId) filters.condominiumId = condominiumId;
+      if (search) filters.search = search as string;
+      if (sortField) filters.sortField = sortField as string;
+      if (sortOrder && (sortOrder === 'asc' || sortOrder === 'desc')) filters.sortOrder = sortOrder;
+      filters.limit = parsedLimit;
+      filters.offset = parsedOffset;
       
-      const units = await storage.getExternalUnitsByAgency(agencyId, filters);
+      // Execute data fetch and count in parallel
+      const [units, total] = await Promise.all([
+        storage.getExternalUnitsByAgency(agencyId, filters),
+        storage.getExternalUnitsCountByAgency(agencyId, {
+          isActive: filters.isActive,
+          condominiumId: filters.condominiumId,
+          search: filters.search,
+        }),
+      ]);
       
       // Get all active contracts for this agency to determine which units are rented
       const activeContracts = await storage.getExternalRentalContractsByAgency(agencyId);
@@ -23474,7 +23518,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentContractId: activeContractsByUnit.get(unit.id) || null,
       }));
       
-      res.json(unitsWithContractInfo);
+      res.json({
+        data: unitsWithContractInfo,
+        total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        hasMore: parsedOffset + units.length < total,
+      });
     } catch (error: any) {
       console.error("Error fetching external units:", error);
       handleGenericError(res, error);
@@ -23609,6 +23659,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting external unit:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Google Sheets import endpoint for external units
+  app.post("/api/external-agencies/:agencyId/import-units-from-sheets", isAuthenticated, requireRole(['master', 'admin', 'external_agency_admin']), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      const { spreadsheetId, sheetRange, condominiumId } = req.body;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Se requiere el ID de la hoja de cálculo (spreadsheetId)" });
+      }
+
+      if (!condominiumId) {
+        return res.status(400).json({ message: "Se requiere seleccionar un condominio" });
+      }
+
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+
+      // Verify condominium belongs to agency
+      const condominium = await storage.getExternalCondominium(condominiumId);
+      if (!condominium || condominium.agencyId !== agencyId) {
+        return res.status(400).json({ message: "El condominio no pertenece a esta agencia" });
+      }
+
+      // Read data from Google Sheets
+      const range = sheetRange || 'Sheet1!A2:M';
+      const rows = await readUnitsFromSheet(spreadsheetId, range);
+
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "No se encontraron datos en la hoja de cálculo" });
+      }
+
+      const results = {
+        imported: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
+
+      for (const row of rows) {
+        try {
+          if (!row.unitNumber) {
+            results.skipped++;
+            continue;
+          }
+
+          // Check if unit already exists
+          const existingUnits = await storage.getExternalUnitsByAgency(agencyId);
+          const existingUnit = existingUnits.find(u => 
+            u.unitNumber === row.unitNumber && u.condominiumId === condominiumId
+          );
+
+          if (existingUnit) {
+            results.skipped++;
+            continue;
+          }
+
+          // Create new unit
+          await storage.createExternalUnit({
+            agencyId,
+            condominiumId,
+            unitNumber: row.unitNumber,
+            rentPurpose: (row.rentPurpose as 'long_term' | 'vacation' | 'both') || 'long_term',
+            floorNumber: row.floorNumber ? parseInt(row.floorNumber) : undefined,
+            bedrooms: row.bedrooms ? parseInt(row.bedrooms) : undefined,
+            bathrooms: row.bathrooms ? parseFloat(row.bathrooms) : undefined,
+            size: row.size ? parseFloat(row.size) : undefined,
+            rentAmount: row.rentAmount || undefined,
+            depositAmount: row.depositAmount || undefined,
+            notes: row.notes || undefined,
+            isActive: true,
+            createdBy: req.user.id,
+          });
+
+          results.imported++;
+        } catch (err: any) {
+          results.errors.push(`Error en fila ${row.unitNumber}: ${err.message}`);
+        }
+      }
+
+      await createAuditLog(req, "import", "external_units", agencyId, `Imported ${results.imported} units from Google Sheets`);
+
+      res.json({
+        message: `Importación completada: ${results.imported} unidades importadas, ${results.skipped} omitidas`,
+        ...results,
+      });
+    } catch (error: any) {
+      console.error("Error importing units from Google Sheets:", error);
+      if (error.message?.includes('Google Sheet not connected')) {
+        return res.status(400).json({ message: "Google Sheets no está conectado. Por favor, configura la conexión primero." });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Get Google Sheets info (for preview)
+  app.get("/api/external-agencies/:agencyId/sheets-info", isAuthenticated, requireRole(['master', 'admin', 'external_agency_admin']), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      const { spreadsheetId } = req.query;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Se requiere el ID de la hoja de cálculo" });
+      }
+
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+
+      const info = await getSpreadsheetInfo(spreadsheetId as string);
+      res.json(info);
+    } catch (error: any) {
+      console.error("Error getting spreadsheet info:", error);
+      if (error.message?.includes('Google Sheet not connected')) {
+        return res.status(400).json({ message: "Google Sheets no está conectado. Por favor, configura la conexión primero." });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // Preview Google Sheets data before import
+  app.get("/api/external-agencies/:agencyId/preview-sheets-data", isAuthenticated, requireRole(['master', 'admin', 'external_agency_admin']), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      const { spreadsheetId, sheetRange } = req.query;
+
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Se requiere el ID de la hoja de cálculo" });
+      }
+
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
+      if (!hasAccess) return;
+
+      const range = (sheetRange as string) || 'Sheet1!A2:M';
+      const rows = await readUnitsFromSheet(spreadsheetId as string, range);
+
+      res.json({
+        totalRows: rows.length,
+        preview: rows.slice(0, 10), // First 10 rows for preview
+        columns: ['unitNumber', 'condominiumName', 'rentPurpose', 'floorNumber', 'bedrooms', 'bathrooms', 'size', 'rentAmount', 'depositAmount', 'ownerName', 'ownerEmail', 'ownerPhone', 'notes'],
+      });
+    } catch (error: any) {
+      console.error("Error previewing spreadsheet data:", error);
+      if (error.message?.includes('Google Sheet not connected')) {
+        return res.status(400).json({ message: "Google Sheets no está conectado. Por favor, configura la conexión primero." });
+      }
       handleGenericError(res, error);
     }
   });
@@ -24451,6 +24651,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==============================
+  // GET /api/external-sellers - Get sellers for agency (for lead assignment dropdown)
+  app.get("/api/external-sellers", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      // Get all sellers for this agency
+      const sellers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(users)
+      .where(and(
+        eq(users.externalAgencyId, agencyId),
+        eq(users.role, 'external_agency_seller')
+      ))
+      .orderBy(users.firstName);
+      
+      res.json(sellers);
+    } catch (error: any) {
+      console.error("Error fetching external sellers:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // External Leads Routes
   // ==============================
 
@@ -24522,12 +24752,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/external-leads - Create new lead
   app.post("/api/external-leads", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
     try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
+      const userRole = req.user?.role;
+      let agencyId = await getUserAgencyId(req);
+      
+      // Master/admin users can specify agencyId in the body
+      if ((userRole === 'master' || userRole === 'admin') && req.body.agencyId) {
+        agencyId = req.body.agencyId;
       }
       
-      const validatedData = insertExternalLeadSchema.parse(req.body);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access. Master/Admin users must specify agencyId." });
+      }
+      
+      // Transform checkInDate from ISO string to Date before validation
+      const requestData = {
+        ...req.body,
+        checkInDate: req.body.checkInDate ? new Date(req.body.checkInDate) : undefined,
+      };
+      
+      const validatedData = insertExternalLeadSchema.parse(requestData);
       
       // Check for duplicates before creating
       // For broker type, use phoneLast4; for seller type, extract from phone
@@ -25447,6 +25690,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // Helper function to resolve unit context from rental form token
+  async function resolveExternalUnitContext(token: any, agencyId: string) {
+    // Validate token is completed - check appropriate data field based on recipientType
+    if (token.recipientType === 'tenant') {
+      if (!token.isUsed || !token.tenantData) {
+        throw { status: 400, message: "El formulario de inquilino aún no ha sido completado" };
+      }
+    } else if (token.recipientType === 'owner') {
+      if (!token.isUsed || !token.ownerData) {
+        throw { status: 400, message: "El formulario de propietario aún no ha sido completado" };
+      }
+    } else {
+      throw { status: 400, message: "Tipo de formulario inválido" };
+    }
+
+    let unit;
+    
+    // Resolve unit based on token type
+    if (token.externalUnitId) {
+      // Tenant token - direct unit reference
+      unit = await storage.getExternalUnit(token.externalUnitId);
+      if (!unit) {
+        throw { status: 404, message: "Unidad no encontrada" };
+      }
+      if (unit.agencyId !== agencyId) {
+        throw { status: 403, message: "Unauthorized" };
+      }
+    } else if (token.externalUnitOwnerId) {
+      // Owner token - get unit from owner record
+      const owner = await storage.getExternalUnitOwner(token.externalUnitOwnerId);
+      if (!owner) {
+        throw { status: 404, message: "Propietario no encontrado" };
+      }
+      
+      // SECURITY: Validate that owner belongs to the correct agency
+      // First get the unit to check agency
+      unit = await storage.getExternalUnit(owner.unitId);
+      if (!unit) {
+        throw { status: 404, message: "Unidad no encontrada" };
+      }
+      if (unit.agencyId !== agencyId) {
+        throw { status: 403, message: "Unauthorized - agency mismatch" };
+      }
+    } else {
+      throw { status: 400, message: "Este token no es del sistema externo" };
+    }
+
+    // Get condominium info
+    const condo = unit.condominiumId ? await storage.getExternalCondominium(unit.condominiumId) : null;
+    const propertyTitle = `${condo?.name || ''} - Unidad ${unit.unitNumber}`;
+
+    return {
+      unit,
+      condo,
+      propertyTitle,
+      propertyForPDF: {
+        id: unit.id,
+        title: propertyTitle,
+        address: condo?.address || '',
+        city: condo?.city || 'Tulum',
+        state: condo?.state || 'Quintana Roo',
+        country: condo?.country || 'México',
+      }
+    };
+  }
   // GET /api/external/rental-forms/:id/pdf - Generate PDF for rental form
   app.get("/api/external/rental-forms/:id/pdf", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
@@ -25468,46 +25777,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Formulario de renta no encontrado" });
       }
 
-      // Verify token belongs to user's agency
-      if (rentalFormToken.externalUnitId) {
-        const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
-        if (!unit || unit.agencyId !== agencyId) {
-          return res.status(403).json({ message: "Unauthorized" });
-        }
-      } else if (rentalFormToken.externalUnitOwnerId) {
-        // For owner forms, verify via owner's agency
-        const owner = await storage.getExternalUnitOwner(rentalFormToken.externalUnitOwnerId);
-        if (!owner || owner.agencyId !== agencyId) {
-          return res.status(403).json({ message: "Unauthorized" });
-        }
-      } else {
-        return res.status(400).json({ message: "Este token no es del sistema externo" });
-      }
 
-      if (!rentalFormToken.isUsed || !rentalFormToken.tenantData) {
-        return res.status(400).json({ message: "El formulario aún no ha sido completado" });
-      }
+      // Resolve unit context using helper function
+      const { propertyForPDF } = await resolveExternalUnitContext(rentalFormToken, agencyId);
 
       // Get agency info for branding
       const agency = await storage.getExternalAgency(agencyId);
       const agencyName = agency?.name || '';
       const templateStyle = (agency?.pdfTemplateStyle as 'professional' | 'modern' | 'elegant') || 'professional';
       const agencyLogoUrl = agency?.agencyLogoUrl || null;
-
-      // Get unit info
-      const unit = await storage.getExternalUnit(rentalFormToken.externalUnitId);
-      const condo = unit?.condominiumId ? await storage.getExternalCondominium(unit.condominiumId) : null;
-      const propertyTitle = `${condo?.name || ''} - Unidad ${unit.unitNumber}`;
-
-      // Create a property-like object for PDF generation
-      const propertyForPDF = {
-        id: unit.id,
-        title: propertyTitle,
-        address: condo?.address || '',
-        city: condo?.city || 'Tulum',
-        state: condo?.state || 'Quintana Roo',
-        country: condo?.country || 'México',
-      };
 
       // Generate appropriate PDF based on recipient type
       let pdfBuffer;
@@ -25522,8 +25800,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="formulario-${rentalFormToken.recipientType}-${rentalFormToken.id}.pdf"`);
       res.send(pdfBuffer);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating rental form PDF:", error);
+      if (error.status) {
+        return res.status(error.status).json({ message: error.message });
+      }
       res.status(500).json({ message: "Error al generar PDF" });
     }
   });

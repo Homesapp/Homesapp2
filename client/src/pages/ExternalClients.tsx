@@ -449,12 +449,18 @@ export default function ExternalClients() {
     },
     onError: (error: any) => {
       if (error instanceof ApiError && error.status === 409 && error.data?.duplicate) {
+        const { sellerName, timeRemainingText } = error.data.duplicate || {};
         toast({
           variant: "destructive",
-          title: language === "es" ? "Lead Duplicado" : "Duplicate Lead",
-          description: error.data.detail || (language === "es"
-            ? `Ya existe un lead con el mismo nombre y últimos 4 dígitos de teléfono.`
-            : `A lead with the same name and phone last 4 digits already exists.`),
+          title: language === "es" ? "Lead Ya Registrado" : "Lead Already Registered",
+          description: error.data.detail || (sellerName 
+            ? (language === "es"
+                ? `Este lead ya está registrado por ${sellerName}. Podrá ser registrado nuevamente en ${timeRemainingText || 'algún tiempo'}.`
+                : `This lead is already registered by ${sellerName}. Can be registered again in ${timeRemainingText || 'some time'}.`)
+            : (language === "es"
+                ? `Ya existe un lead con el mismo nombre y últimos 4 dígitos de teléfono.`
+                : `A lead with the same name and phone last 4 digits already exists.`)),
+          duration: 8000,
         });
       } else {
         toast({

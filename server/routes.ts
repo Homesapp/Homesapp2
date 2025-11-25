@@ -24772,31 +24772,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertExternalLeadSchema.parse(requestData);
       
-      // Check for duplicates before creating
+      // Check for duplicates before creating (with 3-month expiry logic)
       // For broker type, use phoneLast4; for seller type, extract from phone
       const phoneToCheck = validatedData.registrationType === 'broker' 
         ? validatedData.phoneLast4 
         : validatedData.phone;
         
-      const duplicate = await storage.checkExternalLeadDuplicate(
+      const duplicateResult = await storage.checkExternalLeadDuplicateWithExpiry(
         agencyId,
         validatedData.firstName,
         validatedData.lastName,
         phoneToCheck
       );
       
-      if (duplicate) {
+      // If duplicate found and NOT expired (still within 3-month window), reject
+      if (duplicateResult && !duplicateResult.isExpired) {
+        const { lead: existingLead, daysRemaining, sellerName } = duplicateResult;
+        
+        // Calculate weeks and days remaining
+        const weeksRemaining = Math.floor(daysRemaining / 7);
+        const extraDays = daysRemaining % 7;
+        let timeRemainingText = '';
+        if (weeksRemaining > 0) {
+          timeRemainingText = `${weeksRemaining} semana${weeksRemaining > 1 ? 's' : ''}`;
+          if (extraDays > 0) {
+            timeRemainingText += ` y ${extraDays} día${extraDays > 1 ? 's' : ''}`;
+          }
+        } else {
+          timeRemainingText = `${daysRemaining} día${daysRemaining > 1 ? 's' : ''}`;
+        }
+        
         return res.status(409).json({ 
-          message: "Duplicate lead detected",
-          detail: `A lead with the name ${duplicate.firstName} ${duplicate.lastName} and matching phone number last 4 digits already exists in your agency.`,
+          message: "Lead ya registrado",
+          detail: sellerName 
+            ? `Este lead ya está registrado por ${sellerName}. Podrá ser registrado nuevamente en ${timeRemainingText}.`
+            : `Este lead ya está registrado. Podrá ser registrado nuevamente en ${timeRemainingText}.`,
           duplicate: {
-            id: duplicate.id,
-            firstName: duplicate.firstName,
-            lastName: duplicate.lastName,
-            registrationType: duplicate.registrationType,
-            phoneLast4: duplicate.phoneLast4,
-            phone: duplicate.phone,
-            email: duplicate.email,
+            id: existingLead.id,
+            firstName: existingLead.firstName,
+            lastName: existingLead.lastName,
+            registrationType: existingLead.registrationType,
+            phoneLast4: existingLead.phoneLast4,
+            phone: existingLead.phone,
+            email: existingLead.email,
+            sellerName,
+            daysRemaining,
+            timeRemainingText,
           }
         });
       }
