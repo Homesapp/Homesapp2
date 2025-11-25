@@ -25023,8 +25023,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createAuditLog({
         userId: req.user.id,
         action: "update",
-        resourceType: "external_lead",
-        resourceId: id,
+        entityType: "external_lead",
+        entityId: id,
         details: `Lead reasignado a ${newSellerName || 'nuevo vendedor'}`,
       });
       
