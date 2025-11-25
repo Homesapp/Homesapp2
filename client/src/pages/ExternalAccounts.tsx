@@ -748,16 +748,16 @@ The HomesApp Team`;
                 <DialogTitle className="text-xl">
                   {language === "es" ? "Usuario Creado Exitosamente" : "User Created Successfully"}
                 </DialogTitle>
-                <DialogDescription>
+                <div className="flex items-center gap-2 mt-1">
                   {tempUserName && (
-                    <span className="font-medium text-foreground">{tempUserName}</span>
+                    <span className="text-sm text-muted-foreground">{tempUserName}</span>
                   )}
                   {tempUserRole && (
-                    <Badge variant="outline" className="ml-2">
+                    <Badge variant="outline" className="text-xs">
                       {ROLE_LABELS[language][tempUserRole as keyof typeof ROLE_LABELS['es']] || tempUserRole}
                     </Badge>
                   )}
-                </DialogDescription>
+                </div>
               </div>
             </div>
           </DialogHeader>
