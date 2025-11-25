@@ -390,7 +390,7 @@ import {
   tenantRentalFormTokens,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray } from "drizzle-orm";
+import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL } from "drizzle-orm";
 
 // Custom error class for not-found scenarios
 export class NotFoundError extends Error {
@@ -1241,6 +1241,18 @@ export interface IStorage {
   // External Management System - Maintenance Ticket operations
   getExternalMaintenanceTicket(id: string): Promise<ExternalMaintenanceTicket | undefined>;
   getExternalMaintenanceTicketsByAgency(agencyId: string, filters?: { status?: string; priority?: string }): Promise<ExternalMaintenanceTicket[]>;
+  getExternalMaintenanceTicketsPaginated(agencyId: string, options: {
+    limit: number;
+    offset: number;
+    search?: string;
+    status?: string;
+    priority?: string;
+    category?: string;
+    condominiumId?: string;
+    dateFilter?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ data: ExternalMaintenanceTicket[]; total: number }>;
   getExternalMaintenanceTicketsByProperty(propertyId: string): Promise<ExternalMaintenanceTicket[]>;
   getExternalMaintenanceTicketsByUnit(unitId: string): Promise<ExternalMaintenanceTicket[]>;
   getExternalMaintenanceTicketsByAssignee(assignedTo: string): Promise<ExternalMaintenanceTicket[]>;
@@ -8266,6 +8278,106 @@ export class DatabaseStorage implements IStorage {
       .from(externalMaintenanceTickets)
       .where(and(...conditions))
       .orderBy(desc(externalMaintenanceTickets.createdAt));
+  }
+
+  async getExternalMaintenanceTicketsPaginated(agencyId: string, options: {
+    limit: number;
+    offset: number;
+    search?: string;
+    status?: string;
+    priority?: string;
+    category?: string;
+    condominiumId?: string;
+    dateFilter?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ data: ExternalMaintenanceTicket[]; total: number }> {
+    const { limit, offset, search, status, priority, category, condominiumId, dateFilter, sortField = 'createdAt', sortOrder = 'desc' } = options;
+    
+    // Build base conditions
+    const conditions: SQL[] = [eq(externalMaintenanceTickets.agencyId, agencyId)];
+    
+    if (status && status !== 'all') {
+      conditions.push(eq(externalMaintenanceTickets.status, status as any));
+    }
+    if (priority && priority !== 'all') {
+      conditions.push(eq(externalMaintenanceTickets.priority, priority as any));
+    }
+    if (category && category !== 'all') {
+      conditions.push(eq(externalMaintenanceTickets.category, category as any));
+    }
+    
+    // Filter by condominium (need to get units for that condo first)
+    if (condominiumId && condominiumId !== 'all') {
+      const condoUnits = await db.select({ id: externalUnits.id })
+        .from(externalUnits)
+        .where(eq(externalUnits.condominiumId, condominiumId));
+      const unitIds = condoUnits.map(u => u.id);
+      if (unitIds.length > 0) {
+        conditions.push(inArray(externalMaintenanceTickets.unitId, unitIds));
+      } else {
+        // No units in this condo, return empty
+        return { data: [], total: 0 };
+      }
+    }
+    
+    // Date filter: today means scheduled for today
+    if (dateFilter === 'today') {
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+      conditions.push(
+        and(
+          gte(externalMaintenanceTickets.scheduledAt, startOfDay),
+          lte(externalMaintenanceTickets.scheduledAt, endOfDay)
+        )!
+      );
+    }
+    
+    // Search filter - search in title, description
+    if (search && search.trim()) {
+      const searchLower = `%${search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          ilike(externalMaintenanceTickets.title, searchLower),
+          ilike(externalMaintenanceTickets.description, searchLower)
+        )!
+      );
+    }
+    
+    const whereClause = and(...conditions);
+    
+    // Get total count
+    const [countResult] = await db.select({ count: count() })
+      .from(externalMaintenanceTickets)
+      .where(whereClause);
+    const total = countResult?.count || 0;
+    
+    // Build order by clause
+    const sortFieldMap: Record<string, any> = {
+      'title': externalMaintenanceTickets.title,
+      'category': externalMaintenanceTickets.category,
+      'priority': externalMaintenanceTickets.priority,
+      'status': externalMaintenanceTickets.status,
+      'created': externalMaintenanceTickets.createdAt,
+      'createdAt': externalMaintenanceTickets.createdAt,
+      'updated': externalMaintenanceTickets.updatedAt,
+      'updatedAt': externalMaintenanceTickets.updatedAt,
+      'scheduledAt': externalMaintenanceTickets.scheduledAt,
+    };
+    
+    const orderByField = sortFieldMap[sortField] || externalMaintenanceTickets.createdAt;
+    const orderByClause = sortOrder === 'asc' ? asc(orderByField) : desc(orderByField);
+    
+    // Get paginated data
+    const data = await db.select()
+      .from(externalMaintenanceTickets)
+      .where(whereClause)
+      .orderBy(orderByClause)
+      .limit(limit)
+      .offset(offset);
+    
+    return { data, total };
   }
 
   async getExternalMaintenanceTicketsByProperty(propertyId: string): Promise<ExternalMaintenanceTicket[]> {
