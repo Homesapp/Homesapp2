@@ -210,7 +210,35 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   // Check if user is authenticated via local login (email/password)
   if (req.session && req.session.userId) {
     try {
-      const localUser = await storage.getUser(req.session.userId);
+      // Cache TTL: 5 minutes (300000 ms) - balance between performance and security
+      const CACHE_TTL_MS = 5 * 60 * 1000;
+      const now = Date.now();
+      
+      // Use cached user data if available and not expired, otherwise fetch from DB
+      let localUser = req.session.cachedUser;
+      const cacheValid = localUser 
+        && localUser.id === req.session.userId 
+        && localUser.cachedAt 
+        && (now - localUser.cachedAt) < CACHE_TTL_MS;
+      
+      if (!cacheValid) {
+        const dbUser = await storage.getUser(req.session.userId);
+        if (dbUser) {
+          // Cache user data in session (role, agencyId, etc.) with timestamp
+          req.session.cachedUser = {
+            id: dbUser.id,
+            email: dbUser.email,
+            firstName: dbUser.firstName,
+            lastName: dbUser.lastName,
+            role: dbUser.additionalRole || dbUser.role,
+            externalAgencyId: dbUser.externalAgencyId,
+            cachedAt: now,
+          };
+          localUser = req.session.cachedUser;
+        } else {
+          localUser = null;
+        }
+      }
       if (localUser) {
         // Attach user to request for downstream middleware
         req.user = {
@@ -221,6 +249,9 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
             last_name: localUser.lastName,
           },
           localAuth: true, // Flag to indicate local authentication
+          // Include cached role and agencyId for requireRole middleware
+          cachedRole: req.session.cachedUser?.role,
+          cachedAgencyId: req.session.cachedUser?.externalAgencyId,
         };
         return next();
       }
@@ -274,37 +305,61 @@ export const requireRole = (allowedRoles: string[]): RequestHandler => {
       return next();
     }
 
+    // Try to use cached role from isAuthenticated middleware (local auth)
+    if (req.user?.cachedRole) {
+      if (!allowedRoles.includes(req.user.cachedRole)) {
+        return res.status(403).json({ message: "Forbidden: insufficient permissions" });
+      }
+      return next();
+    }
+
     // Get user ID from either local session or Replit Auth
     let userId: string | undefined;
     
     // Check for local login session
     if (req.session && req.session.userId) {
       userId = req.session.userId;
-      console.log('requireRole: Found local session userId:', userId);
     }
     // Check for Replit Auth
     else if (req.user && (req.user as any).claims) {
       userId = (req.user as any).claims.sub;
-      console.log('requireRole: Found Replit Auth userId:', userId);
-    } else {
-      console.log('requireRole: No userId found. session:', !!req.session, 'session.userId:', req.session?.userId, 'req.user:', !!req.user);
     }
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const dbUser = await storage.getUser(userId);
-
-    if (!dbUser) {
-      console.log('requireRole: User not found in DB:', userId);
-      return res.status(401).json({ message: "Unauthorized: user not found" });
+    // Check if we have cached user data in session (with TTL validation)
+    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    const now = Date.now();
+    let userRole: string | undefined;
+    
+    const cacheValid = req.session?.cachedUser?.id === userId 
+      && req.session.cachedUser.role
+      && req.session.cachedUser.cachedAt
+      && (now - req.session.cachedUser.cachedAt) < CACHE_TTL_MS;
+    
+    if (cacheValid) {
+      userRole = req.session.cachedUser.role;
+    } else {
+      // Fetch from DB if not cached or cache expired
+      const dbUser = await storage.getUser(userId);
+      if (!dbUser) {
+        return res.status(401).json({ message: "Unauthorized: user not found" });
+      }
+      userRole = dbUser.additionalRole || dbUser.role;
+      
+      // Cache for future requests with timestamp
+      req.session.cachedUser = {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        role: userRole,
+        externalAgencyId: dbUser.externalAgencyId,
+        cachedAt: now,
+      };
     }
-
-    // For local auth users, check their role directly
-    // For Replit Auth users, also check their role
-    const userRole = dbUser.additionalRole || dbUser.role;
-    console.log('requireRole: User role:', userRole, 'Allowed roles:', allowedRoles, 'Match:', allowedRoles.includes(userRole));
     
     if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({ message: "Forbidden: insufficient permissions" });

@@ -251,10 +251,23 @@ async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: strin
 // Helper function to get user's agency ID
 async function getUserAgencyId(req: any): Promise<string | null> {
   try {
-    // Admin and master users don't have an agency
-    const userRole = req.user?.role || req.session?.adminUser?.role;
+    // Admin and master users dont have an agency
+    const userRole = req.user?.cachedRole || req.user?.role || req.session?.adminUser?.role;
     if (userRole === "master" || userRole === "admin") {
       return null;
+    }
+
+    // Try to use cached agencyId from isAuthenticated middleware first
+    if (req.user?.cachedAgencyId) {
+      return req.user.cachedAgencyId;
+    }
+
+    // Check session cache (with TTL validation - 5 min)
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    const cacheValid = req.session?.cachedUser?.externalAgencyId && req.session.cachedUser.cachedAt && (now - req.session.cachedUser.cachedAt) < CACHE_TTL_MS;
+    if (cacheValid) {
+      return req.session.cachedUser.externalAgencyId;
     }
 
     // Get user ID from authentication
@@ -263,7 +276,7 @@ async function getUserAgencyId(req: any): Promise<string | null> {
       return null;
     }
 
-    // Get the user's external agency ID directly from user record
+    // Fallback: Get the users external agency ID from DB (should rarely happen now)
     const user = await storage.getUser(userId);
     return user?.externalAgencyId || null;
   } catch (error) {
