@@ -193,14 +193,22 @@ export default function ExternalAccounts() {
       form.reset();
     },
     onError: (error: any) => {
-      const errorMessage = error?.message || "";
+      const errorMessage = (error?.message || "").toLowerCase();
       let description = language === "es" ? "No se pudo crear el usuario" : "Could not create user";
       
-      if (errorMessage.includes("already exists") || errorMessage.includes("ya existe") || errorMessage.includes("ya está registrado")) {
+      // Check for duplicate email first (more specific)
+      if (errorMessage.includes("already exists") || 
+          errorMessage.includes("ya existe") || 
+          errorMessage.includes("ya está registrado") ||
+          errorMessage.includes("ya esta registrado") ||
+          errorMessage.includes("correo electrónico ya") ||
+          errorMessage.includes("correo electronico ya") ||
+          errorMessage.includes("duplicate") ||
+          errorMessage.includes("conflict")) {
         description = language === "es" 
           ? "Ya existe un usuario con este email. Usa otro email o busca al usuario en la lista."
           : "A user with this email already exists. Use a different email or find the user in the list.";
-      } else if (errorMessage.includes("Invalid email") || errorMessage.includes("email")) {
+      } else if (errorMessage.includes("invalid email") || errorMessage.includes("formato") || errorMessage.includes("format")) {
         description = language === "es"
           ? "El formato del email no es valido"
           : "The email format is not valid";
