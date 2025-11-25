@@ -362,20 +362,26 @@ export default function ExternalMaintenance() {
     }
   }, [editingTicket]);
 
-  const handleSubmit = form.handleSubmit((data) => {
-    // scheduledDate is already set via form.setValue in calendar/time onChange
-    // Just validate it exists before submission
-    if (!data.scheduledDate) {
-      form.setError('scheduledDate', {
-        message: language === "es"
-          ? "Por favor selecciona una fecha de programación para que el ticket aparezca en el calendario"
-          : "Please select a scheduled date so the ticket appears in the calendar"
-      });
-      return;
-    }
+  const handleSubmit = form.handleSubmit(
+    (data) => {
+      // scheduledDate is already set via form.setValue in calendar/time onChange
+      // Just validate it exists before submission
+      if (!data.scheduledDate) {
+        form.setError('scheduledDate', {
+          message: language === "es"
+            ? "Por favor selecciona una fecha de programación para que el ticket aparezca en el calendario"
+            : "Please select a scheduled date so the ticket appears in the calendar"
+        });
+        return;
+      }
 
-    createMutation.mutate(data);
-  });
+      createMutation.mutate(data);
+    },
+    (errors) => {
+      // Log validation errors for debugging
+      console.error('Form validation errors:', errors);
+    }
+  );
 
   const createMutation = useMutation({
     mutationFn: async (data: MaintenanceFormData) => {
