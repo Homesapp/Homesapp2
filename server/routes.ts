@@ -22865,7 +22865,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
-      const validatedData = insertExternalMaintenanceTicketSchema.parse(req.body);
+      // Convert scheduledDate from ISO string to Date if present
+      const bodyWithConvertedDate = { ...req.body };
+      if (typeof req.body.scheduledDate === "string") {
+        bodyWithConvertedDate.scheduledDate = new Date(req.body.scheduledDate);
+      }
+      const validatedData = insertExternalMaintenanceTicketSchema.parse(bodyWithConvertedDate);
       const ticket = await storage.createExternalMaintenanceTicket({
         ...validatedData,
         createdBy: req.user.id,
