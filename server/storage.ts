@@ -390,7 +390,7 @@ import {
   tenantRentalFormTokens,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL } from "drizzle-orm";
+import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between } from "drizzle-orm";
 
 // Custom error class for not-found scenarios
 export class NotFoundError extends Error {
@@ -8326,12 +8326,7 @@ export class DatabaseStorage implements IStorage {
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-      conditions.push(
-        and(
-          gte(externalMaintenanceTickets.scheduledAt, startOfDay),
-          lte(externalMaintenanceTickets.scheduledAt, endOfDay)
-        )!
-      );
+      conditions.push(between(externalMaintenanceTickets.scheduledAt, startOfDay, endOfDay));
     }
     
     // Search filter - search in title, description
