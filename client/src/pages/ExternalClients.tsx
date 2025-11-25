@@ -2360,11 +2360,12 @@ export default function ExternalClients() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>{language === "es" ? "Nombre" : "Name"}</TableHead>
-                          <TableHead>{language === "es" ? "Tipo" : "Type"}</TableHead>
-                          <TableHead>{language === "es" ? "Contacto" : "Contact"}</TableHead>
+                          <TableHead>{language === "es" ? "Vendedor" : "Seller"}</TableHead>
+                          <TableHead>{language === "es" ? "Presupuesto" : "Budget"}</TableHead>
+                          <TableHead>{language === "es" ? "Tipo Unidad" : "Unit Type"}</TableHead>
+                          <TableHead>{language === "es" ? "Mascota" : "Pet"}</TableHead>
                           <TableHead>{language === "es" ? "Estado" : "Status"}</TableHead>
-                          <TableHead>{language === "es" ? "Fuente" : "Source"}</TableHead>
-                          <TableHead>{language === "es" ? "Fecha" : "Date"}</TableHead>
+                          <TableHead>{language === "es" ? "Contacto" : "Contact"}</TableHead>
                           <TableHead className="text-right">{language === "es" ? "Acciones" : "Actions"}</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -2375,32 +2376,48 @@ export default function ExternalClients() {
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => handleLeadClick(lead)}
                           >
-                            <TableCell className="font-medium">{`${lead.firstName} ${lead.lastName}`}</TableCell>
                             <TableCell>
-                              <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"}>
-                                {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-1 text-sm">
-                                {lead.registrationType === "broker" ? (
-                                  <div>****{lead.phoneLast4}</div>
-                                ) : (
-                                  <>
-                                    {lead.phone && <div>{lead.phone}</div>}
-                                    {lead.email && <div className="text-muted-foreground">{lead.email}</div>}
-                                  </>
-                                )}
+                              <div className="space-y-0.5">
+                                <div className="font-medium">{`${lead.firstName} ${lead.lastName}`}</div>
+                                <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"} className="text-xs">
+                                  {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                                </Badge>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {lead.sellerName || "-"}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-")}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {lead.desiredUnitType || "-"}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {lead.hasPets ? (
+                                <div className="flex items-center gap-1">
+                                  <PawPrint className="h-3.5 w-3.5 text-amber-600" />
+                                  <span>{lead.hasPets}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">No</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge variant={getLeadStatusVariant(lead.status)}>
                                 {getLeadStatusLabel(lead.status)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-sm">{lead.source || "-"}</TableCell>
-                            <TableCell className="text-sm">
-                              {lead.createdAt ? format(new Date(lead.createdAt), "dd MMM yyyy", { locale: language === "es" ? es : enUS }) : "-"}
+                            <TableCell>
+                              <div className="space-y-0.5 text-sm">
+                                {lead.registrationType === "broker" ? (
+                                  <div className="text-muted-foreground">****{lead.phoneLast4}</div>
+                                ) : (
+                                  <>
+                                    {lead.phone && <div>{lead.phone}</div>}
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
@@ -2443,11 +2460,11 @@ export default function ExternalClients() {
                       className="hover-elevate cursor-pointer"
                       onClick={() => handleLeadClick(lead)}
                     >
-                      <CardHeader>
+                      <CardHeader className="pb-3">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <CardTitle className="text-base">{`${lead.firstName} ${lead.lastName}`}</CardTitle>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                               <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"} className="text-xs">
                                 {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
                               </Badge>
@@ -2486,10 +2503,38 @@ export default function ExternalClients() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div>
+                      <CardContent className="space-y-3 text-sm pt-0">
+                        {/* Key Info Grid */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground">{language === "es" ? "Vendedor:" : "Seller:"}</span>
+                            <span className="font-medium truncate">{lead.sellerName || "-"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground">{language === "es" ? "Presup.:" : "Budget:"}</span>
+                            <span className="font-medium">{lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-")}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground">{language === "es" ? "Tipo:" : "Type:"}</span>
+                            <span className="font-medium truncate">{lead.desiredUnitType || "-"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <PawPrint className={`h-3.5 w-3.5 ${lead.hasPets ? "text-amber-600" : "text-muted-foreground"}`} />
+                            <span className="text-muted-foreground">{language === "es" ? "Mascota:" : "Pet:"}</span>
+                            <span className="font-medium">{lead.hasPets || "No"}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Contact Info */}
+                        <div className="pt-2 border-t space-y-1">
                           {lead.registrationType === "broker" ? (
-                            <div className="text-muted-foreground">****{lead.phoneLast4}</div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              <span>****{lead.phoneLast4}</span>
+                            </div>
                           ) : (
                             <>
                               {lead.phone && (
@@ -2498,21 +2543,13 @@ export default function ExternalClients() {
                                   <span>{lead.phone}</span>
                                 </div>
                               )}
-                              {lead.email && (
-                                <div className="flex items-center gap-2">
-                                  <Mail className="h-3 w-3 text-muted-foreground" />
-                                  <span className="truncate">{lead.email}</span>
-                                </div>
-                              )}
                             </>
                           )}
                         </div>
-                        {lead.source && (
-                          <div className="text-muted-foreground">
-                            {language === "es" ? "Fuente" : "Source"}: {lead.source}
-                          </div>
-                        )}
-                        <div className="text-muted-foreground">
+                        
+                        {/* Date */}
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <CalendarDays className="h-3 w-3" />
                           {lead.createdAt ? format(new Date(lead.createdAt), "dd MMM yyyy", { locale: language === "es" ? es : enUS }) : "-"}
                         </div>
                       </CardContent>

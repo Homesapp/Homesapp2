@@ -5730,6 +5730,10 @@ export const externalLeads = pgTable("external_leads", {
   desiredProperty: varchar("desired_property", { length: 200 }), // Propiedad específica de interés (ej: "Naia naay E302", "Stella D101")
   desiredNeighborhood: varchar("desired_neighborhood", { length: 200 }), // Colonia preferida (ej: "La veleta", "Aldea zama")
   
+  // Propiedad de interés (vinculada a propiedades existentes)
+  interestedCondominiumId: varchar("interested_condominium_id"), // Condominio de interés (ID de externalCondominiums)
+  interestedUnitId: varchar("interested_unit_id"), // Unidad específica de interés (ID de externalUnits)
+  
   // Vendedor (puede ser seleccionado o escrito manualmente)
   sellerId: varchar("seller_id").references(() => users.id), // Vendedor asignado (si es seleccionado)
   sellerName: varchar("seller_name", { length: 200 }), // Nombre del vendedor (si es texto libre)
