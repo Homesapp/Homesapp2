@@ -256,6 +256,33 @@ export default function ExternalClients() {
     staleTime: 5 * 60 * 1000,
   });
   const sellers = sellersData || [];
+
+  // Fetch condominiums for property interest selection in leads
+  const { data: condominiumsData } = useQuery<{ id: string; name: string; neighborhood?: string }[]>({
+    queryKey: ["/api/external-condominiums"],
+    queryFn: async () => {
+      const response = await fetch(`/api/external-condominiums`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch condominiums');
+      return response.json();
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const condominiums = condominiumsData || [];
+
+  // Fetch units for selected condominium (for lead interested property)
+  const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
+  const { data: unitsData } = useQuery<{ id: string; unitNumber: string; type?: string }[]>({
+    queryKey: ["/api/external-condominiums", selectedCondominiumId, "units"],
+    queryFn: async () => {
+      const response = await fetch(`/api/external-condominiums/${selectedCondominiumId}/units`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch units');
+      return response.json();
+    },
+    enabled: !!selectedCondominiumId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const units = unitsData || [];
+
   useEffect(() => {
     const clampedPage = Math.min(leadCurrentPage, totalLeadPages);
     if (clampedPage !== leadCurrentPage) {
@@ -432,6 +459,8 @@ export default function ExternalClients() {
       desiredUnitType: "",
       desiredNeighborhood: "",
       sellerId: undefined,
+      interestedCondominiumId: undefined,
+      interestedUnitId: undefined,
     },
   });
 
@@ -2945,6 +2974,87 @@ export default function ExternalClients() {
                             <SelectItem value="Sí - Otro">{language === "es" ? "Sí - Otro" : "Yes - Other"}</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Property Interest Selectors */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={leadForm.control}
+                    name="interestedCondominiumId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Condominio de Interés" : "Interested Condominium"}
+                        </FormLabel>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            setSelectedCondominiumId(value);
+                            leadForm.setValue("interestedUnitId", undefined);
+                          }} 
+                          value={field.value || ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-create-lead-condominium">
+                              <SelectValue placeholder={language === "es" ? "Seleccionar condominio" : "Select condominium"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {condominiums.map((condo) => (
+                              <SelectItem key={condo.id} value={condo.id}>
+                                {condo.name} {condo.neighborhood ? `(${condo.neighborhood})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs">
+                          {language === "es" ? "Opcional: Seleccione un condominio específico" : "Optional: Select a specific condominium"}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={leadForm.control}
+                    name="interestedUnitId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Unidad Específica" : "Specific Unit"}
+                        </FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ""}
+                          disabled={!selectedCondominiumId || units.length === 0}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-create-lead-unit">
+                              <SelectValue placeholder={
+                                !selectedCondominiumId 
+                                  ? (language === "es" ? "Primero seleccione condominio" : "First select condominium")
+                                  : units.length === 0
+                                    ? (language === "es" ? "Sin unidades disponibles" : "No units available")
+                                    : (language === "es" ? "Seleccionar unidad" : "Select unit")
+                              } />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {units.map((unit) => (
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.unitNumber} {unit.type ? `(${unit.type})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs">
+                          {language === "es" ? "Opcional: Seleccione una unidad específica" : "Optional: Select a specific unit"}
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
