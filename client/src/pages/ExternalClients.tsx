@@ -564,6 +564,55 @@ export default function ExternalClients() {
     },
   });
 
+  // Convert lead to client mutation
+  const convertLeadToClientMutation = useMutation({
+    mutationFn: async (lead: ExternalLead) => {
+      const clientData = {
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email || undefined,
+        phone: lead.phone || undefined,
+        nationality: lead.nationality || undefined,
+        city: lead.city || undefined,
+        address: lead.address || undefined,
+        notes: lead.notes || undefined,
+        status: "active",
+        externalAgencyId: lead.externalAgencyId,
+      };
+      const res = await apiRequest("POST", "/api/external-clients", clientData);
+      const newClient = await res.json();
+      
+      // Update lead status to converted
+      await apiRequest("PATCH", `/api/external-leads/${lead.id}`, { 
+        status: "renta_concretada",
+        notes: `${lead.notes || ""}\n\n[${new Date().toISOString()}] Convertido a cliente ID: ${newClient.id}`.trim()
+      });
+      
+      return newClient;
+    },
+    onSuccess: (newClient) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-clients"] });
+      toast({
+        title: language === "es" ? "Lead convertido" : "Lead converted",
+        description: language === "es" 
+          ? "El lead ha sido convertido a cliente exitosamente."
+          : "Lead has been converted to client successfully.",
+      });
+      setIsLeadDetailOpen(false);
+      setSelectedLead(null);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" 
+          ? "No se pudo convertir el lead a cliente."
+          : "Failed to convert lead to client."),
+      });
+    },
+  });
+
   // Lead import mutation
   const importLeadsMutation = useMutation({
     mutationFn: async (leads: any[]) => {
@@ -2027,7 +2076,7 @@ export default function ExternalClients() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">{language === "es" ? "Estado:" : "Status:"}</span>
-                    <p className="mt-1">{getStatusBadge(selectedClient.status)}</p>
+                    <div className="mt-1">{getStatusBadge(selectedClient.status)}</div>
                   </div>
                   {selectedClient.email && (
                     <div>
@@ -3225,6 +3274,211 @@ export default function ExternalClients() {
                 ? (language === "es" ? "Eliminando..." : "Deleting...")
                 : (language === "es" ? "Eliminar" : "Delete")}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Detail Dialog */}
+      <Dialog open={isLeadDetailOpen} onOpenChange={setIsLeadDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <UserPlus className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-xl">
+                    {selectedLead?.firstName} {selectedLead?.lastName}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={selectedLead?.registrationType === "broker" ? "default" : "secondary"}>
+                      {selectedLead?.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                    </Badge>
+                    <Badge variant={getLeadStatusVariant(selectedLead?.status || "nuevo_lead")}>
+                      {getLeadStatusLabel(selectedLead?.status || "nuevo_lead")}
+                    </Badge>
+                  </div>
+                </div>
+                <DialogDescription className="mt-1">
+                  {language === "es" ? "Información detallada del prospecto" : "Detailed prospect information"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          {selectedLead && (
+            <div className="space-y-6 py-4">
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {language === "es" ? "Información de Contacto" : "Contact Information"}
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">{language === "es" ? "Nombre:" : "Name:"}</span>
+                    <p className="font-medium">{selectedLead.firstName} {selectedLead.lastName}</p>
+                  </div>
+                  {selectedLead.registrationType === "broker" ? (
+                    <div>
+                      <span className="text-muted-foreground">{language === "es" ? "Teléfono:" : "Phone:"}</span>
+                      <p className="font-medium">****{selectedLead.phoneLast4}</p>
+                    </div>
+                  ) : (
+                    <>
+                      {selectedLead.phone && (
+                        <div>
+                          <span className="text-muted-foreground">{language === "es" ? "Teléfono:" : "Phone:"}</span>
+                          <p className="font-medium flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> {selectedLead.phone}
+                          </p>
+                        </div>
+                      )}
+                      {selectedLead.email && (
+                        <div>
+                          <span className="text-muted-foreground">Email:</span>
+                          <p className="font-medium flex items-center gap-1">
+                            <Mail className="h-3 w-3" /> {selectedLead.email}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Location Information */}
+              {(selectedLead.nationality || selectedLead.city || selectedLead.address) && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {language === "es" ? "Ubicación" : "Location"}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedLead.nationality && (
+                      <div>
+                        <span className="text-muted-foreground">{language === "es" ? "Nacionalidad:" : "Nationality:"}</span>
+                        <p className="font-medium">{selectedLead.nationality}</p>
+                      </div>
+                    )}
+                    {selectedLead.city && (
+                      <div>
+                        <span className="text-muted-foreground">{language === "es" ? "Ciudad:" : "City:"}</span>
+                        <p className="font-medium">{selectedLead.city}</p>
+                      </div>
+                    )}
+                    {selectedLead.address && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">{language === "es" ? "Dirección:" : "Address:"}</span>
+                        <p className="font-medium">{selectedLead.address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Source and Date Information */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {language === "es" ? "Origen y Fechas" : "Source & Dates"}
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {selectedLead.source && (
+                    <div>
+                      <span className="text-muted-foreground">{language === "es" ? "Fuente:" : "Source:"}</span>
+                      <p className="font-medium">{selectedLead.source}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">{language === "es" ? "Fecha de Registro:" : "Registration Date:"}</span>
+                    <p className="font-medium">
+                      {selectedLead.createdAt ? format(new Date(selectedLead.createdAt), "dd MMM yyyy HH:mm", { locale: language === "es" ? es : enUS }) : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Update Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  {language === "es" ? "Actualizar Estado" : "Update Status"}
+                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {["nuevo_lead", "cita_coordinada", "interesado", "oferta_enviada", "proceso_renta", "renta_concretada", "perdido", "muerto"].map((status) => (
+                    <Button
+                      key={status}
+                      size="sm"
+                      variant={selectedLead.status === status ? "default" : "outline"}
+                      onClick={() => {
+                        updateLeadStatusMutation.mutate({ leadId: selectedLead.id, status });
+                        setSelectedLead({ ...selectedLead, status });
+                      }}
+                      disabled={updateLeadStatusMutation.isPending}
+                      className="text-xs"
+                    >
+                      {getLeadStatusLabel(status)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  {language === "es" ? "Notas y Seguimiento" : "Notes & Follow-up"}
+                </h3>
+                {selectedLead.notes ? (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <p className="text-sm whitespace-pre-wrap">{selectedLead.notes}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    {language === "es" ? "Sin notas registradas" : "No notes recorded"}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="border-t pt-4 gap-2 flex-wrap sm:flex-nowrap">
+            <Button
+              variant="outline"
+              onClick={() => setIsLeadDetailOpen(false)}
+              data-testid="button-lead-detail-close"
+            >
+              {language === "es" ? "Cerrar" : "Close"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLeadDetailOpen(false);
+                if (selectedLead) {
+                  editLeadForm.reset(selectedLead);
+                  setIsEditLeadDialogOpen(true);
+                }
+              }}
+              data-testid="button-lead-detail-edit"
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              {language === "es" ? "Editar" : "Edit"}
+            </Button>
+            {selectedLead && selectedLead.registrationType === "seller" && selectedLead.status !== "renta_concretada" && (
+              <Button
+                onClick={() => convertLeadToClientMutation.mutate(selectedLead)}
+                disabled={convertLeadToClientMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="button-convert-to-client"
+              >
+                <UserCheck className="h-4 w-4 mr-2" />
+                {convertLeadToClientMutation.isPending 
+                  ? (language === "es" ? "Convirtiendo..." : "Converting...")
+                  : (language === "es" ? "Convertir a Cliente" : "Convert to Client")}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
