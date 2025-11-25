@@ -168,6 +168,8 @@ export default function ExternalClients() {
   const debouncedLeadSearchTerm = useDebounce(leadSearchTerm, 400);
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
   const [leadRegistrationTypeFilter, setLeadRegistrationTypeFilter] = useState<string>("all");
+  const [leadSellerFilter, setLeadSellerFilter] = useState<string>("all");
+  const [isLeadFilterOpen, setIsLeadFilterOpen] = useState(false);
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
   const [leadItemsPerPage, setLeadItemsPerPage] = useState(12);
   const [leadSortField, setLeadSortField] = useState<string>("createdAt");
@@ -211,11 +213,12 @@ export default function ExternalClients() {
   const totalClients = clientsResponse?.total || 0;
 
   const { data: leadsResponse, isLoading: leadsLoading } = useQuery<{ data: ExternalLead[]; total: number; limit: number; offset: number; hasMore: boolean }>({
-    queryKey: ["/api/external-leads", leadStatusFilter, leadRegistrationTypeFilter, debouncedLeadSearchTerm, leadSortField, leadSortOrder, leadCurrentPage, leadItemsPerPage],
+    queryKey: ["/api/external-leads", leadStatusFilter, leadRegistrationTypeFilter, leadSellerFilter, debouncedLeadSearchTerm, leadSortField, leadSortOrder, leadCurrentPage, leadItemsPerPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (leadStatusFilter !== "all") params.append("status", leadStatusFilter);
       if (leadRegistrationTypeFilter !== "all") params.append("registrationType", leadRegistrationTypeFilter);
+      if (leadSellerFilter !== "all") params.append("sellerId", leadSellerFilter);
       if (debouncedLeadSearchTerm.trim()) params.append("search", debouncedLeadSearchTerm.trim());
       if (leadSortField) params.append("sortField", leadSortField);
       if (leadSortOrder) params.append("sortOrder", leadSortOrder);
@@ -2276,75 +2279,177 @@ export default function ExternalClients() {
                   </>
                 )}
 
-                {/* Clear Filters Button */}
-                {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setLeadStatusFilter("all");
-                      setLeadRegistrationTypeFilter("all");
-                    }}
-                    className="flex-shrink-0"
-                    data-testid="button-lead-clear-filters"
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    {language === "es" ? "Limpiar" : "Clear"}
-                  </Button>
-                )}
+                {/* Filter Popover */}
+                <Popover open={isLeadFilterOpen} onOpenChange={setIsLeadFilterOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="flex-shrink-0 relative"
+                      data-testid="button-lead-filter-toggle"
+                    >
+                      <Filter className="h-4 w-4" />
+                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all") && (
+                        <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full" />
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4 space-y-4" align="end">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">
+                        {language === "es" ? "Filtrar por" : "Filter by"}
+                      </h4>
+                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setLeadStatusFilter("all");
+                            setLeadRegistrationTypeFilter("all");
+                            setLeadSellerFilter("all");
+                          }}
+                          className="h-6 px-2 text-xs"
+                          data-testid="button-lead-clear-filters"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          {language === "es" ? "Limpiar" : "Clear"}
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Status Filter */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {language === "es" ? "Estado" : "Status"}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { value: "all", label: { es: "Todos", en: "All" } },
+                          { value: "nuevo_lead", label: { es: "Nuevo", en: "New" } },
+                          { value: "cita_coordinada", label: { es: "Cita", en: "Appt" } },
+                          { value: "interesado", label: { es: "Interesado", en: "Interested" } },
+                          { value: "oferta_enviada", label: { es: "Oferta", en: "Offer" } },
+                          { value: "proceso_renta", label: { es: "Proceso", en: "Process" } },
+                          { value: "renta_concretada", label: { es: "Cerrado", en: "Closed" } },
+                          { value: "perdido", label: { es: "Perdido", en: "Lost" } },
+                          { value: "muerto", label: { es: "Muerto", en: "Dead" } },
+                        ].map((status) => (
+                          <Badge
+                            key={status.value}
+                            variant={leadStatusFilter === status.value ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => setLeadStatusFilter(status.value)}
+                            data-testid={`button-filter-status-${status.value}`}
+                          >
+                            {language === "es" ? status.label.es : status.label.en}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Registration Type Filter */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {language === "es" ? "Tipo" : "Type"}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { value: "all", label: { es: "Todos", en: "All" } },
+                          { value: "broker", label: { es: "Broker", en: "Broker" } },
+                          { value: "seller", label: { es: "Vendedor", en: "Seller" } },
+                        ].map((type) => (
+                          <Badge
+                            key={type.value}
+                            variant={leadRegistrationTypeFilter === type.value ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => setLeadRegistrationTypeFilter(type.value)}
+                            data-testid={`button-filter-type-${type.value}`}
+                          >
+                            {language === "es" ? type.label.es : type.label.en}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Seller Filter */}
+                    {sellers.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {language === "es" ? "Vendedor" : "Seller"}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                          <Badge
+                            variant={leadSellerFilter === "all" ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => setLeadSellerFilter("all")}
+                            data-testid="button-filter-seller-all"
+                          >
+                            {language === "es" ? "Todos" : "All"}
+                          </Badge>
+                          {sellers.map((seller) => (
+                            <Badge
+                              key={seller.id}
+                              variant={leadSellerFilter === seller.id ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => setLeadSellerFilter(seller.id)}
+                              data-testid={`button-filter-seller-${seller.id}`}
+                            >
+                              {`${seller.firstName} ${seller.lastName}`}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
               
-              {/* Quick Status Filter Buttons */}
-              <div className="flex flex-wrap gap-2">
-                <span className="text-sm text-muted-foreground flex items-center mr-2">
-                  {language === "es" ? "Estado:" : "Status:"}
-                </span>
-                {[
-                  { value: "all", label: { es: "Todos", en: "All" } },
-                  { value: "nuevo_lead", label: { es: "Nuevo", en: "New" } },
-                  { value: "cita_coordinada", label: { es: "Cita", en: "Appt" } },
-                  { value: "interesado", label: { es: "Interesado", en: "Interested" } },
-                  { value: "oferta_enviada", label: { es: "Oferta", en: "Offer" } },
-                  { value: "proceso_renta", label: { es: "Proceso", en: "Process" } },
-                  { value: "renta_concretada", label: { es: "Cerrado", en: "Closed" } },
-                  { value: "perdido", label: { es: "Perdido", en: "Lost" } },
-                  { value: "muerto", label: { es: "Muerto", en: "Dead" } },
-                ].map((status) => (
-                  <Button
-                    key={status.value}
-                    variant={leadStatusFilter === status.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setLeadStatusFilter(status.value)}
-                    className="h-7 px-2 text-xs"
-                    data-testid={`button-filter-status-${status.value}`}
-                  >
-                    {language === "es" ? status.label.es : status.label.en}
-                  </Button>
-                ))}
-              </div>
-              
-              {/* Quick Registration Type Filter Buttons */}
-              <div className="flex flex-wrap gap-2">
-                <span className="text-sm text-muted-foreground flex items-center mr-2">
-                  {language === "es" ? "Tipo:" : "Type:"}
-                </span>
-                {[
-                  { value: "all", label: { es: "Todos", en: "All" } },
-                  { value: "broker", label: { es: "Broker", en: "Broker" } },
-                  { value: "seller", label: { es: "Vendedor", en: "Seller" } },
-                ].map((type) => (
-                  <Button
-                    key={type.value}
-                    variant={leadRegistrationTypeFilter === type.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setLeadRegistrationTypeFilter(type.value)}
-                    className="h-7 px-2 text-xs"
-                    data-testid={`button-filter-type-${type.value}`}
-                  >
-                    {language === "es" ? type.label.es : type.label.en}
-                  </Button>
-                ))}
-              </div>
+              {/* Active Filters Display */}
+              {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all") && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-xs text-muted-foreground">
+                    {language === "es" ? "Filtros activos:" : "Active filters:"}
+                  </span>
+                  {leadStatusFilter !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {language === "es" ? "Estado:" : "Status:"} {
+                        [
+                          { value: "nuevo_lead", label: { es: "Nuevo", en: "New" } },
+                          { value: "cita_coordinada", label: { es: "Cita", en: "Appt" } },
+                          { value: "interesado", label: { es: "Interesado", en: "Interested" } },
+                          { value: "oferta_enviada", label: { es: "Oferta", en: "Offer" } },
+                          { value: "proceso_renta", label: { es: "Proceso", en: "Process" } },
+                          { value: "renta_concretada", label: { es: "Cerrado", en: "Closed" } },
+                          { value: "perdido", label: { es: "Perdido", en: "Lost" } },
+                          { value: "muerto", label: { es: "Muerto", en: "Dead" } },
+                        ].find(s => s.value === leadStatusFilter)?.label[language === "es" ? "es" : "en"] || leadStatusFilter
+                      }
+                      <X 
+                        className="h-3 w-3 cursor-pointer" 
+                        onClick={() => setLeadStatusFilter("all")}
+                      />
+                    </Badge>
+                  )}
+                  {leadRegistrationTypeFilter !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {language === "es" ? "Tipo:" : "Type:"} {leadRegistrationTypeFilter === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
+                      <X 
+                        className="h-3 w-3 cursor-pointer" 
+                        onClick={() => setLeadRegistrationTypeFilter("all")}
+                      />
+                    </Badge>
+                  )}
+                  {leadSellerFilter !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {language === "es" ? "Vendedor:" : "Seller:"} {sellers.find(s => s.id === leadSellerFilter)?.firstName || ""}
+                      <X 
+                        className="h-3 w-3 cursor-pointer" 
+                        onClick={() => setLeadSellerFilter("all")}
+                      />
+                    </Badge>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
