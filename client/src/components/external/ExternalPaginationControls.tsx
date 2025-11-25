@@ -28,6 +28,7 @@ export function ExternalPaginationControls({
   };
 
   const handleNextPage = () => {
+    console.log('[Pagination] handleNextPage called', { currentPage, totalPages, nextPage: Math.min(totalPages, currentPage + 1) });
     onPageChange(Math.min(totalPages, currentPage + 1));
   };
 
