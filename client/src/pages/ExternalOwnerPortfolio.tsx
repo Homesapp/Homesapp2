@@ -481,7 +481,7 @@ export default function ExternalOwnerPortfolio() {
     });
 
     return result;
-  }, [owners, units, contracts, transactions]);
+  }, [owners, units, condominiums, contracts, transactions]);
 
   // Filter and sort portfolios
   const filteredPortfolios = useMemo(() => {
