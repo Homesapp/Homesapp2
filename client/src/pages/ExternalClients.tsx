@@ -150,6 +150,7 @@ export default function ExternalClients() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isClientDetailOpen, setIsClientDetailOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ExternalClient | null>(null);
 
   // Lead states
@@ -1211,6 +1212,19 @@ export default function ExternalClients() {
           </Card>
         ) : (
           <div className="space-y-4">
+            {/* Pagination Controls - Above Content */}
+            <ExternalPaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1);
+              }}
+              language={language}
+            />
+
             {viewMode === "cards" ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {paginatedClients.map((client) => (
@@ -1317,7 +1331,15 @@ export default function ExternalClients() {
                 </TableHeader>
                 <TableBody>
                   {paginatedClients.map((client) => (
-                    <TableRow key={client.id} data-testid={`row-client-${client.id}`}>
+                    <TableRow 
+                      key={client.id} 
+                      data-testid={`row-client-${client.id}`}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedClient(client);
+                        setIsClientDetailOpen(true);
+                      }}
+                    >
                       <TableCell className="text-sm">
                         {client.firstName} {client.lastName}
                       </TableCell>
@@ -1349,7 +1371,8 @@ export default function ExternalClients() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 updateMutation.mutate({
                                   id: client.id,
                                   data: { isVerified: true }
@@ -1365,7 +1388,8 @@ export default function ExternalClients() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 updateMutation.mutate({
                                   id: client.id,
                                   data: { status: "inactive" }
@@ -1381,7 +1405,8 @@ export default function ExternalClients() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 updateMutation.mutate({
                                   id: client.id,
                                   data: { status: "active" }
@@ -1395,7 +1420,12 @@ export default function ExternalClients() {
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" data-testid={`button-menu-${client.id}`}>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                data-testid={`button-menu-${client.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -1423,19 +1453,6 @@ export default function ExternalClients() {
             </CardContent>
           </Card>
         )}
-            
-            {/* Pagination Controls - Below Content */}
-            <ExternalPaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={(value) => {
-                setItemsPerPage(value);
-                setCurrentPage(1);
-              }}
-              language={language}
-            />
           </div>
         )}
 
@@ -1960,6 +1977,145 @@ export default function ExternalClients() {
               {deleteMutation.isPending 
                 ? (language === "es" ? "Eliminando..." : "Deleting...")
                 : (language === "es" ? "Eliminar" : "Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Detail Dialog */}
+      <Dialog open={isClientDetailOpen} onOpenChange={setIsClientDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">
+                  {selectedClient?.firstName} {selectedClient?.lastName}
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  {language === "es" ? "Información detallada del cliente" : "Detailed client information"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          {selectedClient && (
+            <div className="space-y-6 py-4">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {language === "es" ? "Datos Personales" : "Personal Information"}
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">{language === "es" ? "Nombre:" : "Name:"}</span>
+                    <p className="font-medium">{selectedClient.firstName} {selectedClient.lastName}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">{language === "es" ? "Estado:" : "Status:"}</span>
+                    <p className="mt-1">{getStatusBadge(selectedClient.status)}</p>
+                  </div>
+                  {selectedClient.email && (
+                    <div>
+                      <span className="text-muted-foreground">Email:</span>
+                      <p className="font-medium flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> {selectedClient.email}
+                      </p>
+                    </div>
+                  )}
+                  {selectedClient.phone && (
+                    <div>
+                      <span className="text-muted-foreground">{language === "es" ? "Teléfono:" : "Phone:"}</span>
+                      <p className="font-medium flex items-center gap-1">
+                        <Phone className="h-3 w-3" /> {selectedClient.phone}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Location Information */}
+              {(selectedClient.nationality || selectedClient.city || selectedClient.address) && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {language === "es" ? "Ubicación" : "Location"}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedClient.nationality && (
+                      <div>
+                        <span className="text-muted-foreground">{language === "es" ? "Nacionalidad:" : "Nationality:"}</span>
+                        <p className="font-medium">{selectedClient.nationality}</p>
+                      </div>
+                    )}
+                    {selectedClient.city && (
+                      <div>
+                        <span className="text-muted-foreground">{language === "es" ? "Ciudad:" : "City:"}</span>
+                        <p className="font-medium">{selectedClient.city}</p>
+                      </div>
+                    )}
+                    {selectedClient.address && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">{language === "es" ? "Dirección:" : "Address:"}</span>
+                        <p className="font-medium">{selectedClient.address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Verification Status */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  {selectedClient.isVerified ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  {language === "es" ? "Verificación" : "Verification"}
+                </h3>
+                <p className="text-sm">
+                  {selectedClient.isVerified 
+                    ? (language === "es" ? "Cliente verificado" : "Verified client")
+                    : (language === "es" ? "Cliente no verificado" : "Unverified client")}
+                </p>
+              </div>
+
+              {/* Notes */}
+              {selectedClient.notes && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    {language === "es" ? "Notas" : "Notes"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedClient.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="border-t pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsClientDetailOpen(false)}
+              data-testid="button-detail-close"
+            >
+              {language === "es" ? "Cerrar" : "Close"}
+            </Button>
+            <Button
+              onClick={() => {
+                setIsClientDetailOpen(false);
+                if (selectedClient) {
+                  handleEdit(selectedClient);
+                }
+              }}
+              data-testid="button-detail-edit"
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              {language === "es" ? "Editar" : "Edit"}
             </Button>
           </DialogFooter>
         </DialogContent>
