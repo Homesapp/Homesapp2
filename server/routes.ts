@@ -23369,6 +23369,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET units for a specific external condominium
+  app.get("/api/external-condominiums/:id/units", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const condominium = await storage.getExternalCondominium(id);
+      
+      if (!condominium) {
+        return res.status(404).json({ message: "Condominium not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, condominium.agencyId);
+      if (!hasAccess) return;
+      
+      // Fetch units for this condominium
+      const units = await storage.getExternalUnitsByCondominium(id);
+      res.json(units.map(u => ({ id: u.id, unitNumber: u.unitNumber, type: u.unitType })));
+    } catch (error: any) {
+      console.error("Error fetching condominium units:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.post("/api/external-condominiums", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       // Get agency ID from authenticated user
