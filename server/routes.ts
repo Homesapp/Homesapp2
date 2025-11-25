@@ -25251,8 +25251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check for duplicate lead with 3-month expiry
       const phoneLast4 = phone.slice(-4);
-      const duplicateCheck = await checkExternalLeadDuplicateWithExpiry(
-        storage, agencyId, firstName, lastName, phoneLast4
+      const duplicateCheck = await storage.checkExternalLeadDuplicateWithExpiry(
+        agencyId, firstName, lastName, phoneLast4
       );
       
       if (duplicateCheck.isDuplicate) {
@@ -25337,8 +25337,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       
       // Check for duplicate lead with 3-month expiry
-      const duplicateCheck = await checkExternalLeadDuplicateWithExpiry(
-        storage, agencyId, firstName, lastName, phoneLast4
+      const duplicateCheck = await storage.checkExternalLeadDuplicateWithExpiry(
+        agencyId, firstName, lastName, phoneLast4
       );
       
       if (duplicateCheck.isDuplicate) {
