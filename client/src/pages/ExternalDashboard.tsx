@@ -46,14 +46,15 @@ export default function ExternalDashboard() {
   });
 
   const { data: todayPaymentsData } = useQuery<{ data: ExternalPayment[]; total: number }>({
-    queryKey: ['/api/external-payments', { dueToday: true, limit: 10 }],
+    queryKey: ['/api/external-payments?dueToday=true&limit=10'],
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: todayTicketsData } = useQuery<ExternalMaintenanceTicket[]>({
-    queryKey: ['/api/external-tickets', { scheduledToday: true }],
+  const { data: todayTicketsResponse } = useQuery<{ data: ExternalMaintenanceTicket[]; total: number }>({
+    queryKey: ['/api/external-tickets?dateFilter=today&page=1&pageSize=50'],
     staleTime: 2 * 60 * 1000,
   });
+  const todayTicketsData = todayTicketsResponse?.data;
 
   const isLoading = summaryLoading;
 

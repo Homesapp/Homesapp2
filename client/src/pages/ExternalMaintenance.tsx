@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TableLoading } from "@/components/ui/table-loading";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -216,6 +217,8 @@ export default function ExternalMaintenance() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>('created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [pageTransition, setPageTransition] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   
   // Photo upload states
   const [ticketPhotos, setTicketPhotos] = useState<ExternalMaintenancePhoto[]>([]);
@@ -236,9 +239,60 @@ export default function ExternalMaintenance() {
     }
   }, [isMobile, prevIsMobile, manualViewModeOverride]);
 
-  const { data: tickets, isLoading: ticketsLoading } = useQuery<ExternalMaintenanceTicket[]>({
-    queryKey: ['/api/external-tickets'],
+  // Debounce search term to avoid excessive server requests
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Reset to page 1 on search change
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, priorityFilter, categoryFilter, condominiumFilter, dateFilter]);
+
+  // Server-side paginated query for tickets
+  type PaginatedResponse = {
+    data: ExternalMaintenanceTicket[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+
+  // Build query params for the URL
+  const ticketsQueryParams = new URLSearchParams();
+  ticketsQueryParams.set('page', String(currentPage));
+  ticketsQueryParams.set('pageSize', String(itemsPerPage));
+  if (debouncedSearch) ticketsQueryParams.set('search', debouncedSearch);
+  if (statusFilter !== 'all') ticketsQueryParams.set('status', statusFilter);
+  if (priorityFilter !== 'all') ticketsQueryParams.set('priority', priorityFilter);
+  if (categoryFilter !== 'all') ticketsQueryParams.set('category', categoryFilter);
+  if (condominiumFilter !== 'all') ticketsQueryParams.set('condominiumId', condominiumFilter);
+  if (dateFilter !== 'all') ticketsQueryParams.set('dateFilter', dateFilter);
+  ticketsQueryParams.set('sortField', sortColumn);
+  ticketsQueryParams.set('sortOrder', sortDirection);
+
+  const ticketsUrl = `/api/external-tickets?${ticketsQueryParams.toString()}`;
+
+  const { data: ticketsResponse, isLoading: ticketsLoading, isFetching } = useQuery<PaginatedResponse>({
+    queryKey: [ticketsUrl],
   });
+
+  const tickets = ticketsResponse?.data || [];
+  const totalItems = ticketsResponse?.total || 0;
+  const serverTotalPages = ticketsResponse?.totalPages || 1;
+
+  // Show page transition state when fetching but already have data
+  useEffect(() => {
+    if (isFetching && ticketsResponse) {
+      setPageTransition(true);
+    } else {
+      setPageTransition(false);
+    }
+  }, [isFetching, ticketsResponse]);
 
   // Lightweight condominiums for dropdowns (only id+name)
   const { data: condominiums } = useQuery<{ id: string; name: string }[]>({
@@ -617,37 +671,13 @@ export default function ExternalMaintenance() {
     }
   }, [showEditDialog, editingTicket]);
 
-  // Filter and search logic
-  const filteredTickets = tickets?.filter(ticket => {
-    const unitInfo = getUnitInfo(ticket.unitId);
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = !searchTerm ||
-      ticket.title.toLowerCase().includes(searchLower) ||
-      ticket.description.toLowerCase().includes(searchLower) ||
-      unitInfo?.unit?.unitNumber?.toLowerCase().includes(searchLower) ||
-      unitInfo?.condo?.name?.toLowerCase().includes(searchLower);
+  // Data comes pre-filtered from server, no client-side filtering needed
+  const filteredTickets = tickets || [];
 
-    const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
-    const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
-    const matchesCondo = condominiumFilter === "all" || unitInfo?.condo?.id === condominiumFilter;
-    
-    // Date filter: today means scheduled for today
-    let matchesDate = true;
-    if (dateFilter === "today" && ticket.scheduledAt) {
-      const ticketDate = new Date(ticket.scheduledAt);
-      const today = new Date();
-      const todayStart = startOfDay(today);
-      const todayEnd = endOfDay(today);
-      matchesDate = isWithinInterval(ticketDate, { start: todayStart, end: todayEnd });
-    }
-
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesCondo && matchesDate;
-  }) || [];
-
-  // Calculate metrics
+  // Calculate metrics from current page data (server handles filtering)
+  // Note: For accurate totals across all pages, consider a separate stats endpoint
   const stats = {
-    total: filteredTickets.length,
+    total: totalItems, // Total matching items from server
     open: filteredTickets.filter(t => t.status === 'open').length,
     inProgress: filteredTickets.filter(t => t.status === 'in_progress').length,
     resolved: filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed').length,
@@ -655,75 +685,19 @@ export default function ExternalMaintenance() {
     estimatedCost: filteredTickets.reduce((sum, t) => sum + parseFloat(t.estimatedCost || '0'), 0),
   };
 
-  // Sorting logic with type normalization
-  const sortedTickets = [...filteredTickets].sort((a, b) => {
-    let aValue: any;
-    let bValue: any;
+  // Data comes pre-sorted from server, no client-side sorting needed
+  const sortedTickets = filteredTickets;
 
-    switch (sortColumn) {
-      case 'title':
-        aValue = a.title.toLowerCase();
-        bValue = b.title.toLowerCase();
-        break;
-      case 'unit':
-        const aUnitInfo = getUnitInfo(a.unitId);
-        const bUnitInfo = getUnitInfo(b.unitId);
-        aValue = (aUnitInfo?.unit?.unitNumber || '').toLowerCase();
-        bValue = (bUnitInfo?.unit?.unitNumber || '').toLowerCase();
-        break;
-      case 'category':
-        aValue = a.category.toLowerCase();
-        bValue = b.category.toLowerCase();
-        break;
-      case 'priority':
-        const priorityOrder = { low: 1, medium: 2, high: 3, urgent: 4 };
-        aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
-        bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
-        break;
-      case 'status':
-        aValue = a.status.toLowerCase();
-        bValue = b.status.toLowerCase();
-        break;
-      case 'assigned':
-        aValue = (getAssignedUserName(a.assignedTo) || '').toLowerCase();
-        bValue = (getAssignedUserName(b.assignedTo) || '').toLowerCase();
-        break;
-      case 'created':
-        aValue = new Date(a.createdAt);
-        bValue = new Date(b.createdAt);
-        break;
-      case 'updated':
-        aValue = a.updatedAt ? new Date(a.updatedAt) : new Date(0);
-        bValue = b.updatedAt ? new Date(b.updatedAt) : new Date(0);
-        break;
-      default:
-        return 0;
-    }
+  // Server-side pagination - data is already paginated
+  const totalPages = serverTotalPages;
+  const paginatedTickets = tickets;
 
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedTickets.length / itemsPerPage));
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTickets = sortedTickets.slice(startIndex, endIndex);
-
-  // Pre-render page clamping using useLayoutEffect
+  // Clamp page when server reports fewer pages than current
   useLayoutEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+    if (currentPage > serverTotalPages && serverTotalPages > 0) {
+      setCurrentPage(serverTotalPages);
     }
-  }, [currentPage, totalPages]);
-
-  // Clamp page when data changes
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
-    }
-  }, [sortedTickets.length, itemsPerPage]);
+  }, [currentPage, serverTotalPages]);
 
   // Handle sort column click
   const handleSort = (column: string) => {
@@ -1291,12 +1265,18 @@ export default function ExternalMaintenance() {
       </Card>
 
       {/* Tickets - Cards or Table */}
-      {ticketsLoading ? (
+      {ticketsLoading && !ticketsResponse ? (
         <div className="space-y-4">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
         </div>
+      ) : pageTransition ? (
+        <Card>
+          <CardContent className="py-8">
+            <TableLoading />
+          </CardContent>
+        </Card>
       ) : sortedTickets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
