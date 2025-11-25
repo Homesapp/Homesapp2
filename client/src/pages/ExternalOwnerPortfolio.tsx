@@ -1,7 +1,6 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +11,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Popover,
@@ -50,42 +48,39 @@ import {
 import {
   User,
   Building2,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
   Home,
   Search,
   Download,
-  Eye,
   Mail,
   Phone,
-  Calendar,
-  ArrowUpDown,
   LayoutGrid,
   Table as TableIcon,
   Plus,
   Edit,
   Filter,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMobile } from "@/hooks/use-mobile";
-import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import type { 
   ExternalUnitOwner, 
-  ExternalUnit, 
-  ExternalCondominium,
   ExternalRentalContract,
   ExternalFinancialTransaction,
-  ExternalPayment,
 } from "@shared/schema";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+
+// Lightweight unit type for this component
+interface LightweightUnit {
+  id: string;
+  unitNumber: string;
+  condominiumId: string;
+  typology?: string | null;
+}
 
 interface OwnerPortfolio {
   owner: ExternalUnitOwner;
-  units: ExternalUnit[];
+  units: LightweightUnit[];
   totalIncome: number;
   totalExpenses: number;
   balance: number;
@@ -181,32 +176,49 @@ export default function ExternalOwnerPortfolio() {
     setPage(1);
   }, [viewMode]);
 
-  // Static/semi-static data: owners list
-  const { data: owners, isLoading: ownersLoading } = useQuery<ExternalUnitOwner[]>({
+  // Static/semi-static data: owners list (primary data source)
+  const { 
+    data: owners, 
+    isLoading: ownersLoading, 
+    isError: ownersError,
+    error: ownersErrorDetails,
+  } = useQuery<ExternalUnitOwner[]>({
     queryKey: ['/api/external-owners'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
+    retry: 2,
   });
 
-  // Lightweight units for dropdowns
-  const { data: units } = useQuery<{ id: string; unitNumber: string; condominiumId: string }[]>({
+  // Lightweight units for dropdowns (optional - UI can work without this)
+  const { 
+    data: units, 
+    isLoading: unitsLoading,
+    isError: unitsError,
+  } = useQuery<LightweightUnit[]>({
     queryKey: ['/api/external-units-for-filters'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
+    retry: 1,
   });
 
-  // Lightweight condominiums for dropdowns (only id+name)
-  const { data: condominiums } = useQuery<{ id: string; name: string }[]>({
+  // Lightweight condominiums for dropdowns (optional - UI can work without this)
+  const { 
+    data: condominiums,
+    isLoading: condominiumsLoading,
+  } = useQuery<{ id: string; name: string }[]>({
     queryKey: ['/api/external-condominiums-for-filters'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
+    retry: 1,
   });
 
-  // Frequently changing data: rental contracts
+  // Frequently changing data: rental contracts (optional for occupancy calc)
   const { data: contracts } = useQuery<ExternalRentalContract[]>({
     queryKey: ['/api/external-rental-contracts'],
+    retry: 1,
   });
 
-  // Frequently changing data: financial transactions
+  // Frequently changing data: financial transactions (optional for financials)
   const { data: transactions } = useQuery<ExternalFinancialTransaction[]>({
     queryKey: ['/api/external-financial-transactions'],
+    retry: 1,
   });
 
   // Owner form
@@ -357,9 +369,13 @@ export default function ExternalOwnerPortfolio() {
 
   // Build owner portfolios
   const portfolios = useMemo(() => {
-    // Only require owners and units - financial data is optional
-    if (!owners || !units) return [];
+    // Only require owners - other data is optional for basic display
+    if (!owners || owners.length === 0) return [];
 
+    // Safe references with empty array defaults
+    const safeUnits = units ?? [];
+    const safeCondominiums = condominiums ?? [];
+    
     // Normalize contracts (unwrap nested structure if present)
     const normalizedContracts = (contracts ?? []).map((c: any) => 
       'contract' in c ? c.contract : c
@@ -380,7 +396,7 @@ export default function ExternalOwnerPortfolio() {
 
     // Build portfolio for each unique owner
     const result: OwnerPortfolio[] = [];
-    ownerGroups.forEach((ownerInstances, key) => {
+    ownerGroups.forEach((ownerInstances, _key) => {
       // Use the most recent owner instance as the primary one
       const primaryOwner = ownerInstances.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -388,7 +404,7 @@ export default function ExternalOwnerPortfolio() {
 
       // Get all unit IDs for this owner
       const ownerUnitIds = ownerInstances.map(o => o.unitId);
-      const ownerUnits = units.filter(u => ownerUnitIds.includes(u.id));
+      const ownerUnits = safeUnits.filter(u => ownerUnitIds.includes(u.id));
 
       // Calculate financials (default to 0 if no transaction data)
       const ownerTransactions = safeTransactions.filter((t: any) => 
@@ -445,7 +461,7 @@ export default function ExternalOwnerPortfolio() {
       // Extract unique typologies, condominiums, and unit numbers
       const typologies = [...new Set(ownerUnits.map(u => u.typology || '-'))];
       const condominiumNames = [...new Set(ownerUnits.map(u => {
-        const condo = condominiums?.find(c => c.id === u.condominiumId);
+        const condo = safeCondominiums.find(c => c.id === u.condominiumId);
         return condo?.name || '-';
       }))];
       const unitNumbers = ownerUnits.map(u => u.unitNumber);
@@ -686,12 +702,12 @@ export default function ExternalOwnerPortfolio() {
         </div>
       </div>
 
-      {/* Metrics */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      {/* Metrics - Always 3 cards in single row */}
+      <div className="grid gap-4 grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.totalOwners}</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium truncate">{t.totalOwners}</CardTitle>
+            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-owners">{totals.totalOwners}</div>
@@ -700,8 +716,8 @@ export default function ExternalOwnerPortfolio() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.totalUnits}</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium truncate">{t.totalUnits}</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-units">{totals.totalUnits}</div>
@@ -710,8 +726,8 @@ export default function ExternalOwnerPortfolio() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.avgOccupancy}</CardTitle>
-            <Home className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium truncate">{t.avgOccupancy}</CardTitle>
+            <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-avg-occupancy">
@@ -911,7 +927,29 @@ export default function ExternalOwnerPortfolio() {
       </Card>
 
       {/* Owners Table */}
-      {ownersLoading ? (
+      {ownersError ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-medium mb-1">
+              {language === 'es' ? 'Error al cargar propietarios' : 'Error loading owners'}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {language === 'es' 
+                ? 'No se pudieron cargar los datos. Por favor, recargue la página.'
+                : 'Could not load data. Please refresh the page.'}
+            </p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/external-owners'] })}
+              data-testid="button-retry-owners"
+            >
+              {language === 'es' ? 'Reintentar' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : ownersLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
