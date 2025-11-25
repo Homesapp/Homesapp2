@@ -1828,7 +1828,7 @@ export default function ExternalCondominiums() {
                 <>
                   <ExternalPaginationControls
                     currentPage={unitsPage}
-                    totalPages={Math.ceil(sortedUnits.length / unitsPerPage)}
+                    totalPages={unitsTotalPages}
                     itemsPerPage={unitsPerPage}
                     onPageChange={setUnitsPage}
                     onItemsPerPageChange={(items) => {
@@ -1932,10 +1932,10 @@ export default function ExternalCondominiums() {
               ) : (
                 <>
                 {/* Units Pagination Controls */}
-                {sortedUnits.length > 0 && (
+                {filteredUnits.length > 0 && (
                   <ExternalPaginationControls
                     currentPage={unitsPage}
-                    totalPages={Math.ceil(sortedUnits.length / unitsPerPage)}
+                    totalPages={unitsTotalPages}
                     itemsPerPage={unitsPerPage}
                     onPageChange={setUnitsPage}
                     onItemsPerPageChange={(items) => {
