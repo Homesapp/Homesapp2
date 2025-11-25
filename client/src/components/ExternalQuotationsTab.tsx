@@ -102,6 +102,7 @@ export default function ExternalQuotations() {
   const agencyId = user?.externalAgencyId;
   const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
   const [usePublicGeneral, setUsePublicGeneral] = useState(false);
+  const [previousClientId, setPreviousClientId] = useState<string>("");
 
   // Fetch quotations
   const { data: quotations = [], isLoading } = useQuery<ExternalQuotation[]>({
@@ -363,11 +364,13 @@ export default function ExternalQuotations() {
     setEditingQuotation(quotation);
     
     // Reset condominium and public general states
-    setUsePublicGeneral(!quotation.clientId);
+    const hasClient = !!quotation.clientId;
+    setUsePublicGeneral(!hasClient);
+    setPreviousClientId(quotation.clientId || "");
     
     // Try to find the unit's condominium to pre-select it
     const unitData = allUnits.find((u: any) => u.id === quotation.unitId);
-    setSelectedCondominiumId(unitData?.condominiumId || "");
+    setSelectedCondominiumId(unitData?.condominiumId || quotation.propertyId || "");
     
     // Parse services from JSON
     const parsedServices = typeof quotation.services === 'string' 
@@ -395,6 +398,7 @@ export default function ExternalQuotations() {
     setEditingQuotation(null);
     setUsePublicGeneral(false);
     setSelectedCondominiumId("");
+    setPreviousClientId("");
     form.reset({
       title: "",
       description: "",
@@ -531,10 +535,15 @@ export default function ExternalQuotations() {
                               variant={usePublicGeneral ? "default" : "outline"}
                               size="sm"
                               onClick={() => {
-                                setUsePublicGeneral(!usePublicGeneral);
                                 if (!usePublicGeneral) {
+                                  // Turning ON public general - save current client
+                                  setPreviousClientId(field.value || "");
                                   field.onChange("");
+                                } else {
+                                  // Turning OFF public general - restore previous client
+                                  field.onChange(previousClientId);
                                 }
+                                setUsePublicGeneral(!usePublicGeneral);
                               }}
                               data-testid="button-public-general"
                             >
@@ -568,31 +577,40 @@ export default function ExternalQuotations() {
                     />
 
                     {/* Condominium selector */}
-                    <FormItem>
-                      <FormLabel>Condominio</FormLabel>
-                      <Select 
-                        onValueChange={(value) => {
-                          setSelectedCondominiumId(value === "none" ? "" : value);
-                          // Clear unit selection when condominium changes
-                          form.setValue("unitId", "");
-                        }} 
-                        value={selectedCondominiumId || "none"}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-condominium">
-                            <SelectValue placeholder="Seleccionar condominio..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Todos los condominios</SelectItem>
-                          {condominiums.map((condo: any) => (
-                            <SelectItem key={condo.id} value={condo.id}>
-                              {condo.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
+                    <FormField
+                      control={form.control}
+                      name="propertyId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Condominio</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              const condoId = value === "none" ? "" : value;
+                              setSelectedCondominiumId(condoId);
+                              field.onChange(condoId);
+                              // Clear unit selection when condominium changes
+                              form.setValue("unitId", "");
+                            }} 
+                            value={selectedCondominiumId || "none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-condominium">
+                                <SelectValue placeholder="Seleccionar condominio..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Todos los condominios</SelectItem>
+                              {condominiums.map((condo: any) => (
+                                <SelectItem key={condo.id} value={condo.id}>
+                                  {condo.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField
                       control={form.control}
