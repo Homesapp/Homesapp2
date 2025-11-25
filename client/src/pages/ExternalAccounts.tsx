@@ -102,7 +102,10 @@ export default function ExternalAccounts() {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [tempEmail, setTempEmail] = useState<string | null>(null);
+  const [tempUserName, setTempUserName] = useState<string | null>(null);
+  const [tempUserRole, setTempUserRole] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   
   // View mode with SSR-safe auto-detection
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -183,14 +186,11 @@ export default function ExternalAccounts() {
       queryClient.invalidateQueries({ queryKey: ['/api/external-agency-users'] });
       setTempPassword(response.tempPassword);
       setTempEmail(response.user.email);
+      setTempUserName(`${response.user.firstName} ${response.user.lastName}`);
+      setTempUserRole(response.user.role);
       setIsCreateDialogOpen(false);
+      setShowWelcomeModal(true);
       form.reset();
-      toast({
-        title: language === "es" ? "✅ Usuario creado" : "✅ User created",
-        description: language === "es" 
-          ? "El usuario ha sido creado exitosamente. Copia las credenciales temporales abajo."
-          : "User has been created successfully. Copy the temporary credentials below.",
-      });
     },
     onError: (error: any) => {
       const errorMessage = error?.message || "";
@@ -202,7 +202,7 @@ export default function ExternalAccounts() {
           : "A user with this email already exists. Use a different email or find the user in the list.";
       } else if (errorMessage.includes("Invalid email") || errorMessage.includes("email")) {
         description = language === "es"
-          ? "El formato del email no es válido"
+          ? "El formato del email no es valido"
           : "The email format is not valid";
       }
       
@@ -303,9 +303,70 @@ export default function ExternalAccounts() {
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
+      toast({
+        title: language === "es" ? "Copiado" : "Copied",
+        description: language === "es" ? "Texto copiado al portapapeles" : "Text copied to clipboard",
+      });
     } catch (err) {
       console.error("Failed to copy:", err);
     }
+  };
+
+  const generateWelcomeMessage = () => {
+    if (!tempEmail || !tempPassword || !tempUserName || !tempUserRole) return "";
+    
+    const roleLabel = ROLE_LABELS[language][tempUserRole as keyof typeof ROLE_LABELS['es']] || tempUserRole;
+    const loginUrl = `${window.location.origin}/external-login`;
+    
+    if (language === "es") {
+      return `Hola ${tempUserName},
+
+Bienvenido/a a HomesApp. Tu cuenta ha sido creada exitosamente.
+
+Tu rol asignado: ${roleLabel}
+
+Credenciales de acceso:
+- Email: ${tempEmail}
+- Contrasena temporal: ${tempPassword}
+
+IMPORTANTE: Esta contrasena es de un solo uso. Deberas cambiarla en tu primer inicio de sesion.
+
+Para acceder al sistema, ingresa al siguiente enlace:
+${loginUrl}
+
+Si tienes alguna pregunta, no dudes en contactarnos.
+
+Saludos,
+El equipo de HomesApp`;
+    } else {
+      return `Hello ${tempUserName},
+
+Welcome to HomesApp! Your account has been created successfully.
+
+Your assigned role: ${roleLabel}
+
+Access credentials:
+- Email: ${tempEmail}
+- Temporary password: ${tempPassword}
+
+IMPORTANT: This password is for single use only. You must change it on your first login.
+
+To access the system, go to the following link:
+${loginUrl}
+
+If you have any questions, feel free to contact us.
+
+Best regards,
+The HomesApp Team`;
+    }
+  };
+
+  const closeWelcomeModal = () => {
+    setShowWelcomeModal(false);
+    setTempPassword(null);
+    setTempEmail(null);
+    setTempUserName(null);
+    setTempUserRole(null);
   };
 
   const getRoleBadgeVariant = (role: string): "default" | "secondary" | "destructive" | "outline" => {
@@ -481,139 +542,175 @@ export default function ExternalAccounts() {
               {language === "es" ? "Crear Usuario" : "Create User"}
             </Button>
           </DialogTrigger>
-          <DialogContent data-testid="dialog-create-user" className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {language === "es" ? "Crear Nuevo Usuario" : "Create New User"}
-              </DialogTitle>
-              <DialogDescription>
-                {language === "es"
-                  ? "Crea un nuevo usuario para tu agencia. Se generará una contraseña temporal."
-                  : "Create a new user for your agency. A temporary password will be generated."}
-              </DialogDescription>
+          <DialogContent data-testid="dialog-create-user" className="max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <UserIcon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg">
+                    {language === "es" ? "Nuevo Usuario" : "New User"}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs mt-0.5">
+                    {language === "es"
+                      ? "Se generara una contrasena temporal automaticamente"
+                      : "A temporary password will be generated automatically"}
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Email" : "Email"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" data-testid="input-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-4">
+                {/* Contact Info Section */}
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    {language === "es" ? "Informacion de Contacto" : "Contact Information"}
+                  </p>
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Nombre" : "First Name"}</FormLabel>
+                        <FormLabel className="text-xs">{language === "es" ? "Correo Electronico" : "Email Address"} *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-firstname" />
+                          <Input 
+                            {...field} 
+                            type="email" 
+                            placeholder="ejemplo@correo.com"
+                            data-testid="input-email" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{language === "es" ? "Nombre" : "First Name"} *</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Juan" data-testid="input-firstname" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{language === "es" ? "Apellido" : "Last Name"} *</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Perez" data-testid="input-lastname" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Apellido" : "Last Name"}</FormLabel>
+                        <FormLabel className="text-xs">{language === "es" ? "Telefono" : "Phone"} ({language === "es" ? "opcional" : "optional"})</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-lastname" />
+                          <Input {...field} placeholder="+52 998 123 4567" data-testid="input-phone" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Teléfono (opcional)" : "Phone (optional)"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-phone" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Rol" : "Role"}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-role">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="external_agency_admin">
-                            {ROLE_LABELS[language].external_agency_admin}
-                          </SelectItem>
-                          <SelectItem value="external_agency_accounting">
-                            {ROLE_LABELS[language].external_agency_accounting}
-                          </SelectItem>
-                          <SelectItem value="external_agency_maintenance">
-                            {ROLE_LABELS[language].external_agency_maintenance}
-                          </SelectItem>
-                          <SelectItem value="external_agency_staff">
-                            {ROLE_LABELS[language].external_agency_staff}
-                          </SelectItem>
-                          <SelectItem value="external_agency_seller">
-                            {ROLE_LABELS[language].external_agency_seller}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {form.watch("role") === "external_agency_maintenance" && (
+
+                {/* Role Section */}
+                <div className="space-y-4 pt-2 border-t">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2 pt-3">
+                    <UserIcon className="h-4 w-4" />
+                    {language === "es" ? "Rol y Permisos" : "Role & Permissions"}
+                  </p>
                   <FormField
                     control={form.control}
-                    name="maintenanceSpecialty"
+                    name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Especialidad" : "Specialty"}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <FormLabel className="text-xs">{language === "es" ? "Rol del Usuario" : "User Role"} *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-specialty">
-                              <SelectValue placeholder={language === "es" ? "Selecciona..." : "Select..."} />
+                            <SelectTrigger data-testid="select-role">
+                              <SelectValue placeholder={language === "es" ? "Selecciona un rol..." : "Select a role..."} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="encargado_mantenimiento">{SPECIALTY_LABELS[language].encargado_mantenimiento}</SelectItem>
-                            <SelectItem value="mantenimiento_general">{SPECIALTY_LABELS[language].mantenimiento_general}</SelectItem>
-                            <SelectItem value="electrico">{SPECIALTY_LABELS[language].electrico}</SelectItem>
-                            <SelectItem value="plomero">{SPECIALTY_LABELS[language].plomero}</SelectItem>
-                            <SelectItem value="refrigeracion">{SPECIALTY_LABELS[language].refrigeracion}</SelectItem>
-                            <SelectItem value="carpintero">{SPECIALTY_LABELS[language].carpintero}</SelectItem>
-                            <SelectItem value="pintor">{SPECIALTY_LABELS[language].pintor}</SelectItem>
-                            <SelectItem value="jardinero">{SPECIALTY_LABELS[language].jardinero}</SelectItem>
-                            <SelectItem value="albanil">{SPECIALTY_LABELS[language].albanil}</SelectItem>
-                            <SelectItem value="limpieza">{SPECIALTY_LABELS[language].limpieza}</SelectItem>
+                            <SelectItem value="external_agency_admin">
+                              {ROLE_LABELS[language].external_agency_admin}
+                            </SelectItem>
+                            <SelectItem value="external_agency_accounting">
+                              {ROLE_LABELS[language].external_agency_accounting}
+                            </SelectItem>
+                            <SelectItem value="external_agency_maintenance">
+                              {ROLE_LABELS[language].external_agency_maintenance}
+                            </SelectItem>
+                            <SelectItem value="external_agency_staff">
+                              {ROLE_LABELS[language].external_agency_staff}
+                            </SelectItem>
+                            <SelectItem value="external_agency_seller">
+                              {ROLE_LABELS[language].external_agency_seller}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-                <DialogFooter>
+                  {form.watch("role") === "external_agency_maintenance" && (
+                    <FormField
+                      control={form.control}
+                      name="maintenanceSpecialty"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{language === "es" ? "Especialidad" : "Specialty"}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-specialty">
+                                <SelectValue placeholder={language === "es" ? "Selecciona especialidad..." : "Select specialty..."} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="encargado_mantenimiento">{SPECIALTY_LABELS[language].encargado_mantenimiento}</SelectItem>
+                              <SelectItem value="mantenimiento_general">{SPECIALTY_LABELS[language].mantenimiento_general}</SelectItem>
+                              <SelectItem value="electrico">{SPECIALTY_LABELS[language].electrico}</SelectItem>
+                              <SelectItem value="plomero">{SPECIALTY_LABELS[language].plomero}</SelectItem>
+                              <SelectItem value="refrigeracion">{SPECIALTY_LABELS[language].refrigeracion}</SelectItem>
+                              <SelectItem value="carpintero">{SPECIALTY_LABELS[language].carpintero}</SelectItem>
+                              <SelectItem value="pintor">{SPECIALTY_LABELS[language].pintor}</SelectItem>
+                              <SelectItem value="jardinero">{SPECIALTY_LABELS[language].jardinero}</SelectItem>
+                              <SelectItem value="albanil">{SPECIALTY_LABELS[language].albanil}</SelectItem>
+                              <SelectItem value="limpieza">{SPECIALTY_LABELS[language].limpieza}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                <DialogFooter className="pt-4 border-t gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    disabled={createMutation.isPending}
+                  >
+                    {language === "es" ? "Cancelar" : "Cancel"}
+                  </Button>
                   <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-user">
                     {createMutation.isPending 
                       ? (language === "es" ? "Creando..." : "Creating...")
@@ -626,74 +723,118 @@ export default function ExternalAccounts() {
         </Dialog>
       </div>
 
-      {/* Temporary password display */}
-      {tempPassword && (
-        <Card className="border-primary bg-primary/5">
-          <CardContent className="py-4 space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="font-semibold text-base">
-                  {language === "es" ? "Credenciales Temporales Generadas" : "Temporary Credentials Generated"}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === "es" 
-                    ? "Copia estas credenciales y compártelas con el usuario. El usuario deberá cambiar la contraseña en el primer inicio de sesión."
-                    : "Copy these credentials and share them with the user. The user must change the password on first login."}
-                </p>
+      {/* Welcome Modal with Credentials */}
+      <Dialog open={showWelcomeModal} onOpenChange={(open) => !open && closeWelcomeModal()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-welcome">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTempPassword(null);
-                  setTempEmail(null);
-                }}
-                data-testid="button-dismiss-password"
-              >
-                {language === "es" ? "Cerrar" : "Dismiss"}
-              </Button>
-            </div>
-            
-            <div className="space-y-3">
-              {tempEmail && (
-                <div>
-                  <p className="text-sm font-medium mb-1">{language === "es" ? "Usuario (Email)" : "Username (Email)"}</p>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-background px-3 py-2 rounded border text-sm font-mono flex-1">
-                      {tempEmail}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(tempEmail, 'temp-email')}
-                      data-testid="button-copy-temp-email"
-                    >
-                      {copiedId === 'temp-email' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
               <div>
-                <p className="text-sm font-medium mb-1">{language === "es" ? "Contraseña Temporal" : "Temporary Password"}</p>
+                <DialogTitle className="text-xl">
+                  {language === "es" ? "Usuario Creado Exitosamente" : "User Created Successfully"}
+                </DialogTitle>
+                <DialogDescription>
+                  {tempUserName && (
+                    <span className="font-medium text-foreground">{tempUserName}</span>
+                  )}
+                  {tempUserRole && (
+                    <Badge variant="outline" className="ml-2">
+                      {ROLE_LABELS[language][tempUserRole as keyof typeof ROLE_LABELS['es']] || tempUserRole}
+                    </Badge>
+                  )}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {/* Quick Copy Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  {language === "es" ? "Email" : "Email"}
+                </p>
                 <div className="flex items-center gap-2">
-                  <code className="bg-background px-3 py-2 rounded border text-sm font-mono flex-1">
-                    {tempPassword}
-                  </code>
+                  <code className="text-sm font-mono flex-1 truncate">{tempEmail}</code>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(tempPassword, 'temp-pass')}
-                    data-testid="button-copy-temp-password"
+                    className="h-7 w-7 p-0 shrink-0"
+                    onClick={() => tempEmail && copyToClipboard(tempEmail, 'email')}
+                    data-testid="button-copy-email"
                   >
-                    {copiedId === 'temp-pass' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedId === 'email' ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <UserIcon className="h-3 w-3" />
+                  {language === "es" ? "Contrasena temporal" : "Temporary password"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono flex-1 truncate">{tempPassword}</code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 shrink-0"
+                    onClick={() => tempPassword && copyToClipboard(tempPassword, 'password')}
+                    data-testid="button-copy-password"
+                  >
+                    {copiedId === 'password' ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            {/* Full Welcome Message */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-muted/50 px-4 py-2 border-b flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  {language === "es" ? "Mensaje de Bienvenida" : "Welcome Message"}
+                </p>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => copyToClipboard(generateWelcomeMessage(), 'welcome-msg')}
+                  data-testid="button-copy-welcome"
+                  className="gap-1.5"
+                >
+                  {copiedId === 'welcome-msg' ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      {language === "es" ? "Copiado" : "Copied"}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      {language === "es" ? "Copiar Todo" : "Copy All"}
+                    </>
+                  )}
+                </Button>
+              </div>
+              <pre className="p-4 text-sm whitespace-pre-wrap font-sans bg-background max-h-[250px] overflow-y-auto">
+                {generateWelcomeMessage()}
+              </pre>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              {language === "es" 
+                ? "Copia el mensaje completo y envíalo al nuevo usuario por WhatsApp o email."
+                : "Copy the complete message and send it to the new user via WhatsApp or email."}
+            </p>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={closeWelcomeModal} data-testid="button-close-welcome">
+              {language === "es" ? "Cerrar" : "Close"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Search, Filters, and View Toggle Card */}
       <Card>
