@@ -8,6 +8,7 @@ import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableLoading } from "@/components/ui/table-loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMobile } from "@/hooks/use-mobile";
@@ -129,7 +130,7 @@ export default function ExternalCondominiums() {
   }, [unitSearchText, selectedCondoFilter, rentalStatusFilter, unitStatusFilter]);
 
   // Backend-paginated condominiums data
-  const { data: condominiumsResponse, isLoading: condosLoading, isError: condosError, error: condosErrorMsg } = useQuery<{
+  const { data: condominiumsResponse, isLoading: condosLoading, isFetching: condosFetching, isError: condosError, error: condosErrorMsg } = useQuery<{
     data: ExternalCondominium[];
     total: number;
     limit: number;
@@ -171,7 +172,7 @@ export default function ExternalCondominiums() {
   });
 
   // Units with full backend pagination - data, filtering, sorting all handled by server
-  const { data: unitsResponse, isLoading: unitsLoading } = useQuery<{ data: ExternalUnit[], total: number }>({
+  const { data: unitsResponse, isLoading: unitsLoading, isFetching: unitsFetching } = useQuery<{ data: ExternalUnit[], total: number }>({
     queryKey: ['/api/external-units', unitsPage, unitsPerPage, debouncedUnitSearchText, selectedCondoFilter, unitStatusFilter, unitsSortColumn, unitsSortDirection],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -1716,7 +1717,13 @@ export default function ExternalCondominiums() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedCondominiums.map((condo) => {
+                    {condosFetching && !condosLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-[300px] p-0">
+                          <TableLoading minHeight="300px" />
+                        </TableCell>
+                      </TableRow>
+                    ) : paginatedCondominiums.map((condo) => {
                       const condoUnits = getUnitsForCondo(condo.id);
                       const activeUnits = condoUnits.filter(u => u.isActive);
                       const rentedUnits = condoUnits.filter(u => hasActiveRental(u.id));
@@ -1997,7 +2004,13 @@ export default function ExternalCondominiums() {
                           </TableRow>
                         </TableHeader>
                   <TableBody>
-                    {paginatedUnits.map((unit) => {
+                    {unitsFetching && !unitsLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-[300px] p-0">
+                          <TableLoading minHeight="300px" />
+                        </TableCell>
+                      </TableRow>
+                    ) : paginatedUnits.map((unit) => {
                       const condo = allCondominiums?.find(c => c.id === unit.condominiumId);
                       const hasRental = hasActiveRental(unit.id);
                       const unitServices = allUnitServices?.[unit.id] || [];

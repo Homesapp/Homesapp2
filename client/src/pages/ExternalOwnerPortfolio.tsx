@@ -38,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TableLoading } from "@/components/ui/table-loading";
 import {
   Select,
   SelectContent,
@@ -184,6 +185,7 @@ export default function ExternalOwnerPortfolio() {
   const { 
     data: owners, 
     isLoading: ownersLoading, 
+    isFetching: ownersFetching,
     isError: ownersError,
     error: ownersErrorDetails,
   } = useQuery<ExternalUnitOwner[]>({
@@ -1154,7 +1156,13 @@ export default function ExternalOwnerPortfolio() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedPortfolios.map(portfolio => (
+                      {ownersFetching && !ownersLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-[300px] p-0">
+                            <TableLoading minHeight="300px" />
+                          </TableCell>
+                        </TableRow>
+                      ) : paginatedPortfolios.map(portfolio => (
                     <TableRow 
                       key={portfolio.owner.id} 
                       data-testid={`row-owner-${portfolio.owner.id}`}
