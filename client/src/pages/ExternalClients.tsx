@@ -269,19 +269,33 @@ export default function ExternalClients() {
   });
   const condominiums = condominiumsData || [];
 
-  // Fetch units for selected condominium (for lead interested property)
-  const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
-  const { data: unitsData } = useQuery<{ id: string; unitNumber: string; type?: string }[]>({
-    queryKey: ["/api/external-condominiums", selectedCondominiumId, "units"],
+  // Fetch units for selected condominium (for lead create form)
+  const [createCondominiumId, setCreateCondominiumId] = useState<string>("");
+  const { data: createUnitsData } = useQuery<{ id: string; unitNumber: string; type?: string }[]>({
+    queryKey: ["/api/external-condominiums", createCondominiumId, "units"],
     queryFn: async () => {
-      const response = await fetch(`/api/external-condominiums/${selectedCondominiumId}/units`, { credentials: 'include' });
+      const response = await fetch(`/api/external-condominiums/${createCondominiumId}/units`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch units');
       return response.json();
     },
-    enabled: !!selectedCondominiumId,
+    enabled: !!createCondominiumId,
     staleTime: 5 * 60 * 1000,
   });
-  const units = unitsData || [];
+  const createUnits = createUnitsData || [];
+
+  // Fetch units for selected condominium (for lead edit form - separate state)
+  const [editCondominiumId, setEditCondominiumId] = useState<string>("");
+  const { data: editUnitsData } = useQuery<{ id: string; unitNumber: string; type?: string }[]>({
+    queryKey: ["/api/external-condominiums", editCondominiumId, "units"],
+    queryFn: async () => {
+      const response = await fetch(`/api/external-condominiums/${editCondominiumId}/units`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch units');
+      return response.json();
+    },
+    enabled: !!editCondominiumId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const editUnits = editUnitsData || [];
 
   useEffect(() => {
     const clampedPage = Math.min(leadCurrentPage, totalLeadPages);
@@ -2375,6 +2389,7 @@ export default function ExternalClients() {
                   onEdit={(lead) => {
                     setSelectedLead(lead);
                     editLeadForm.reset(lead);
+                    setEditCondominiumId(lead.interestedCondominiumId || "");
                     setIsEditLeadDialogOpen(true);
                   }}
                   onDelete={(lead) => {
@@ -2457,6 +2472,7 @@ export default function ExternalClients() {
                                   onClick={() => {
                                     setSelectedLead(lead);
                                     editLeadForm.reset(lead);
+                                    setEditCondominiumId(lead.interestedCondominiumId || "");
                                     setIsEditLeadDialogOpen(true);
                                   }}
                                   data-testid={`button-edit-lead-${lead.id}`}
@@ -2513,6 +2529,7 @@ export default function ExternalClients() {
                               onClick={() => {
                                 setSelectedLead(lead);
                                 editLeadForm.reset(lead);
+                                setEditCondominiumId(lead.interestedCondominiumId || "");
                                 setIsEditLeadDialogOpen(true);
                               }}
                               data-testid={`button-edit-lead-${lead.id}`}
@@ -2994,7 +3011,7 @@ export default function ExternalClients() {
                         <Select 
                           onValueChange={(value) => {
                             field.onChange(value);
-                            setSelectedCondominiumId(value);
+                            setCreateCondominiumId(value);
                             leadForm.setValue("interestedUnitId", undefined);
                           }} 
                           value={field.value || ""}
@@ -3031,21 +3048,21 @@ export default function ExternalClients() {
                         <Select 
                           onValueChange={field.onChange} 
                           value={field.value || ""}
-                          disabled={!selectedCondominiumId || units.length === 0}
+                          disabled={!createCondominiumId || createUnits.length === 0}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-create-lead-unit">
                               <SelectValue placeholder={
-                                !selectedCondominiumId 
+                                !createCondominiumId 
                                   ? (language === "es" ? "Primero seleccione condominio" : "First select condominium")
-                                  : units.length === 0
+                                  : createUnits.length === 0
                                     ? (language === "es" ? "Sin unidades disponibles" : "No units available")
                                     : (language === "es" ? "Seleccionar unidad" : "Select unit")
                               } />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {units.map((unit) => (
+                            {createUnits.map((unit) => (
                               <SelectItem key={unit.id} value={unit.id}>
                                 {unit.unitNumber} {unit.type ? `(${unit.type})` : ""}
                               </SelectItem>
@@ -3457,7 +3474,7 @@ export default function ExternalClients() {
                         <Select 
                           onValueChange={(value) => {
                             field.onChange(value);
-                            setSelectedCondominiumId(value);
+                            setEditCondominiumId(value);
                             editLeadForm.setValue("interestedUnitId", undefined);
                           }} 
                           value={field.value || ""}
@@ -3488,21 +3505,21 @@ export default function ExternalClients() {
                         <Select 
                           onValueChange={field.onChange} 
                           value={field.value || ""}
-                          disabled={!selectedCondominiumId || units.length === 0}
+                          disabled={!editCondominiumId || editUnits.length === 0}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-edit-lead-unit">
                               <SelectValue placeholder={
-                                !selectedCondominiumId 
+                                !editCondominiumId 
                                   ? (language === "es" ? "Primero seleccione condominio" : "First select condominium")
-                                  : units.length === 0
+                                  : editUnits.length === 0
                                     ? (language === "es" ? "Sin unidades disponibles" : "No units available")
                                     : (language === "es" ? "Seleccionar unidad" : "Select unit")
                               } />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {units.map((unit) => (
+                            {editUnits.map((unit) => (
                               <SelectItem key={unit.id} value={unit.id}>
                                 {unit.unitNumber} {unit.type ? `(${unit.type})` : ""}
                               </SelectItem>
@@ -3785,6 +3802,7 @@ export default function ExternalClients() {
                 setIsLeadDetailOpen(false);
                 if (selectedLead) {
                   editLeadForm.reset(selectedLead);
+                  setEditCondominiumId(selectedLead.interestedCondominiumId || "");
                   setIsEditLeadDialogOpen(true);
                 }
               }}
