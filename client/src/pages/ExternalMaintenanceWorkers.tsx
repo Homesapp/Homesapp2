@@ -181,10 +181,11 @@ export default function ExternalMaintenanceWorkers() {
   }, [workers, assignments]);
 
   // Static/semi-static data: condominiums for dropdowns
-  const { data: condominiums } = useQuery<any[]>({
+  const { data: condominiumsResponse } = useQuery<{ data: any[], total: number }>({
     queryKey: ['/api/external-condominiums'],
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
+  const condominiums = condominiumsResponse?.data || [];
 
   // Static/semi-static data: units for dropdowns
   const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({

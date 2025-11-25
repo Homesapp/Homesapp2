@@ -414,7 +414,6 @@ export default function ExternalClients() {
       desiredUnitType: "",
       desiredNeighborhood: "",
       sellerId: undefined,
-      sellerId: undefined,
     },
   });
 
