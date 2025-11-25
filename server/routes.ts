@@ -24780,6 +24780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Transform checkInDate from ISO string to Date before validation
       const requestData = {
+        ...req.body,
         agencyId,
         checkInDate: req.body.checkInDate ? new Date(req.body.checkInDate) : undefined,
       };
