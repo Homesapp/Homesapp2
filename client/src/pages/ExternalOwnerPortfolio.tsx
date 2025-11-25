@@ -63,6 +63,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMobile } from "@/hooks/use-mobile";
+import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import type { 
   ExternalUnitOwner, 
   ExternalRentalContract,

@@ -24884,6 +24884,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Lead Registration Links Endpoints
+
+  // POST /api/external-leads/import - Bulk import leads from CSV/Excel
+  app.post("/api/external-leads/import", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized: User ID not found" });
+      }
+
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User not associated with any agency" });
+      }
+
+      const { leads: importData, registrationType = 'seller' } = req.body;
+      
+      if (!Array.isArray(importData) || importData.length === 0) {
+        return res.status(400).json({ message: "No leads to import" });
+      }
+
+      // Map status from Excel to system status
+      const statusMap: Record<string, string> = {
+        'nuevo': 'nuevo_lead',
+        'en proceso': 'en_proceso',
+        'contactado': 'contactado',
+        'cita agendada': 'cita_agendada',
+        'visita realizada': 'visita_realizada',
+        'negociando': 'negociando',
+        'cerrado': 'cerrado',
+        'lead muerto': 'no_interesado',
+        'perdido': 'no_interesado',
+        '': 'nuevo_lead',
+      };
+
+      const results = {
+        imported: 0,
+        duplicates: 0,
+        errors: [] as Array<{ row: number; name: string; error: string }>,
+      };
+
+      for (let i = 0; i < importData.length; i++) {
+        const row = importData[i];
+        try {
+          // Parse name into firstName and lastName
+          const fullName = (row.nombre || row.name || '').trim();
+          const nameParts = fullName.split(' ');
+          const firstName = nameParts[0] || 'Sin nombre';
+          const lastName = nameParts.slice(1).join(' ') || '-';
+
+          // Clean phone number
+          let phone = (row.telefono || row.phone || '').toString().replace(/[^\d+]/g, '');
+          if (!phone || phone.length < 4) {
+            phone = '0000';
+          }
+
+          // Parse budget
+          let estimatedRentCost: number | null = null;
+          let estimatedRentCostText = (row.presupuesto || row.budget || '').toString();
+          const budgetMatch = estimatedRentCostText.match(/[\d,]+/);
+          if (budgetMatch) {
+            estimatedRentCost = parseInt(budgetMatch[0].replace(/,/g, ''), 10);
+          }
+
+          // Parse bedrooms
+          let bedrooms: number | null = null;
+          let bedroomsText = (row.recamaras || row.bedrooms || '').toString();
+          const bedroomsMatch = bedroomsText.match(/^\d+/);
+          if (bedroomsMatch) {
+            bedrooms = parseInt(bedroomsMatch[0], 10);
+          }
+
+          // Parse original created date
+          let originalCreatedAt: Date | null = null;
+          const dateStr = (row.fecha || row.date || '').toString();
+          if (dateStr) {
+            const datePatterns = [
+              /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
+              /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/,
+              /^(\d{1,2})\/(\d{1,2})$/,
+            ];
+            for (const pattern of datePatterns) {
+              const match = dateStr.match(pattern);
+              if (match) {
+                let day = parseInt(match[1], 10);
+                let month = parseInt(match[2], 10) - 1;
+                let year = match[3] ? (match[3].length === 2 ? 2000 + parseInt(match[3], 10) : parseInt(match[3], 10)) : new Date().getFullYear();
+                originalCreatedAt = new Date(year, month, day);
+                break;
+              }
+            }
+          }
+
+          // Calculate validUntil (3 months from original date or now)
+          const baseDate = originalCreatedAt || new Date();
+          const validUntil = new Date(baseDate);
+          validUntil.setMonth(validUntil.getMonth() + 3);
+
+          // Check for duplicates
+          const normalizedName = fullName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+          const phoneLast4 = phone.slice(-4);
+          
+          const existingLeads = await db.select()
+            .from(externalLeads)
+            .where(and(
+              eq(externalLeads.agencyId, agencyId),
+              gte(externalLeads.validUntil, new Date())
+            ));
+
+          const isDuplicate = existingLeads.some(lead => {
+            const existingNormalizedName = `\${lead.firstName}\${lead.lastName}`.toLowerCase()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+            const existingPhoneLast4 = (lead.phone || lead.phoneLast4 || '').slice(-4);
+            return existingNormalizedName === normalizedName && existingPhoneLast4 === phoneLast4;
+          });
+
+          if (isDuplicate) {
+            results.duplicates++;
+            continue;
+          }
+
+          // Map status
+          const rawStatus = (row.estado || row.status || '').toString().toLowerCase().trim();
+          const status = statusMap[rawStatus] || 'nuevo_lead';
+
+          // Create lead
+          const leadData = {
+            agencyId,
+            registrationType: registrationType as 'broker' | 'seller',
+            firstName,
+            lastName,
+            phone,
+            phoneLast4,
+            email: row.email || null,
+            contractDuration: row.duracion || row.contractDuration || null,
+            checkInDateText: row.mudanza || row.checkInDate || null,
+            hasPets: row.mascotas || row.pets || null,
+            estimatedRentCost,
+            estimatedRentCostText: estimatedRentCostText || null,
+            bedrooms,
+            bedroomsText: bedroomsText || null,
+            desiredUnitType: row.tipo || row.unitType || null,
+            desiredProperty: row.propiedad || row.property || null,
+            desiredNeighborhood: row.zona || row.neighborhood || null,
+            sellerName: row.vendedor || row.seller || null,
+            assistantSellerName: row.vendedorSecundario || row.assistantSeller || null,
+            notes: row.notas || row.notes || null,
+            status: status as any,
+            source: 'import',
+            validUntil,
+            originalCreatedAt,
+            createdBy: userId,
+          };
+
+          await db.insert(externalLeads).values(leadData);
+          results.imported++;
+
+        } catch (rowError: any) {
+          results.errors.push({
+            row: i + 1,
+            name: row.nombre || row.name || 'Unknown',
+            error: rowError.message || 'Unknown error',
+          });
+        }
+      }
+
+      await createAuditLog(req, "create", "external_lead_import", null, 
+        `Imported \${results.imported} leads (\${results.duplicates} duplicates skipped, \${results.errors.length} errors)`);
+
+      res.json({
+        success: true,
+        imported: results.imported,
+        duplicates: results.duplicates,
+        errors: results.errors,
+        total: importData.length,
+      });
+    } catch (error: any) {
+      console.error("Error importing external leads:", error);
+      handleGenericError(res, error);
+    }
+  });
   // POST /api/external-lead-registration-links - Create registration link
   app.post("/api/external-lead-registration-links", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
