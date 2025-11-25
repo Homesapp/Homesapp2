@@ -418,10 +418,15 @@ export default function ExternalClients() {
 
   const createLeadMutation = useMutation({
     mutationFn: async (data: LeadFormData) => {
+      // Convert Date to ISO string for API
+      const processedData = {
+        ...data,
+        checkInDate: data.checkInDate ? new Date(data.checkInDate).toISOString() : undefined,
+      };
       // For master/admin users, include the selected agencyId
       const payload = isMasterOrAdmin && selectedAgencyIdForLead 
-        ? { ...data, agencyId: selectedAgencyIdForLead }
-        : data;
+        ? { ...processedData, agencyId: selectedAgencyIdForLead }
+        : processedData;
       const res = await apiRequest("POST", "/api/external-leads", payload);
       return res.json();
     },

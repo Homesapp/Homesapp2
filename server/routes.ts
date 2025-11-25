@@ -24734,7 +24734,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No agency access. Master/Admin users must specify agencyId." });
       }
       
-      const validatedData = insertExternalLeadSchema.parse(req.body);
+      // Transform checkInDate from ISO string to Date before validation
+      const requestData = {
+        ...req.body,
+        checkInDate: req.body.checkInDate ? new Date(req.body.checkInDate) : undefined,
+      };
+      
+      const validatedData = insertExternalLeadSchema.parse(requestData);
       
       // Check for duplicates before creating
       // For broker type, use phoneLast4; for seller type, extract from phone
