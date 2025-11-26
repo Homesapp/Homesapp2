@@ -22759,6 +22759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (existingPayment.length === 0 && dueDateNormalized >= earliestDate) {
             const [payment] = await db.insert(externalPayments).values({
               id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
               agencyId: schedule.agencyId,
               contractId: schedule.contractId,
               scheduleId: schedule.id,
@@ -29010,6 +29011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           await tx.insert(externalPayments).values({
             id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
             agencyId: unit.agencyId,
             contractId: contract.id,
             scheduleId: schedule.id,
@@ -30712,6 +30714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             last_name: l.lastName,
             email: l.email || '',
             phone: l.phone || '',
+            registration_type: l.registrationType || 'seller',
             lead_type: l.leadType || '',
             status: l.status || '',
             source: l.source || '',
@@ -31034,6 +31037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalCondominiums).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 name: row.name.trim(),
                 description: row.description?.trim() || null,
@@ -31079,6 +31083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalClients).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 firstName,
                 lastName,
@@ -31125,6 +31130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalLeads).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 firstName,
                 lastName,
@@ -31192,6 +31198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalUnits).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 condominiumId,
                 unitNumber,
@@ -31257,6 +31264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalUnitOwners).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 unitId: unit[0].id,
                 ownerName,
                 ownerEmail: row.email?.trim() || null,
@@ -31299,6 +31307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalRentalContracts).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 unitId: unit[0].id,
                 contractType: row.contract_type?.trim() || 'fixed',
@@ -31356,6 +31365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalMaintenanceTickets).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 unitId,
                 title,
@@ -31400,6 +31410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalFinancialTransactions).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 unitId,
                 type: row.type.trim(),
@@ -31460,6 +31471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(externalQuotations).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 agencyId,
                 unitId,
                 title,
@@ -31518,6 +31530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await db.insert(users).values({
                 id: crypto.randomUUID(),
+                registrationType: row.registration_type?.trim() || 'seller',
                 email,
                 password: hashedPassword,
                 firstName: row.first_name?.trim() || null,
