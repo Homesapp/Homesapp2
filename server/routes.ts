@@ -23429,7 +23429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (status === 'closed' && updatedTicket.actualCost && parseFloat(updatedTicket.actualCost) > 0) {
         try {
           // Get owner information from the unit
-          const unitOwners = await storage.getExternalUnitOwners(ticket.unitId);
+          const unitOwners = await storage.getExternalUnitOwnersByUnit(ticket.unitId);
           const primaryOwner = unitOwners.find(o => o.ownershipPercentage && parseFloat(o.ownershipPercentage) > 0) || unitOwners[0];
           
           // Create financial transaction for maintenance expense
@@ -23542,7 +23542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (totalChargeAmount > 0) {
         try {
           // Get owner information from the unit
-          const unitOwners = await storage.getExternalUnitOwners(ticket.unitId);
+          const unitOwners = await storage.getExternalUnitOwnersByUnit(ticket.unitId);
           const primaryOwner = unitOwners.find(o => o.ownershipPercentage && parseFloat(o.ownershipPercentage) > 0) || unitOwners[0];
           
           // Create financial transaction - charge to owner
