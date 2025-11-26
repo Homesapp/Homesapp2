@@ -1695,7 +1695,14 @@ export default function ExternalMaintenance() {
                                       onClick={() => {
                                         if (status === 'closed') {
                                           setClosingTicket(ticket);
-                                          setClosureFinalAmount(ticket.estimatedCost || ticket.quotedTotal || '');
+                                          // If ticket came from quotation, use base cost (without 15%)
+                                          // because the estimatedCost already includes the admin fee
+                                          const hasQuotation = ticket.sourceQuotationId || ticket.quotationId;
+                                          const rawCost = ticket.estimatedCost || ticket.quotedTotal || '0';
+                                          const baseCost = hasQuotation && rawCost ? (parseFloat(rawCost) / 1.15).toFixed(2) : rawCost;
+                                          setClosureFinalAmount(baseCost);
+                                          // Keep admin fee ON so total stays correct
+                                          setClosureApplyAdminFee(true);
                                           setShowClosureDialog(true);
                                         } else if (!updateStatusMutation.isPending) {
                                           updateStatusMutation.mutate({ 

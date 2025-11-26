@@ -23231,11 +23231,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const ticket = await storage.getExternalMaintenanceTicket(id);
       
-      if (!ticket) {
+      // Fetch enriched ticket with joined data in a single query
+      const enrichedResult = await db.execute(sql`
+        SELECT 
+          t.*,
+          u.unit_number as "unitNumber",
+          c.name as "condominiumName",
+          COALESCE(NULLIF(TRIM(COALESCE(assigned_user.first_name, '') || ' ' || COALESCE(assigned_user.last_name, '')), ''), assigned_user.email) as "assignedToName",
+          COALESCE(NULLIF(TRIM(COALESCE(created_user.first_name, '') || ' ' || COALESCE(created_user.last_name, '')), ''), created_user.email) as "createdByName",
+          q.id as "sourceQuotationId",
+          CASE WHEN t.source_quotation_id IS NOT NULL THEN true ELSE false END as "feeApplied",
+          0.15 as "feeRate"
+        FROM external_maintenance_tickets t
+        LEFT JOIN external_units u ON t.unit_id = u.id
+        LEFT JOIN external_condominiums c ON u.condominium_id = c.id
+        LEFT JOIN users assigned_user ON t.assigned_to = assigned_user.id
+        LEFT JOIN users created_user ON t.created_by = created_user.id
+        LEFT JOIN external_quotations q ON t.source_quotation_id = q.id
+        WHERE t.id = ${id}
+      `);
+      
+      if (!enrichedResult.rows || enrichedResult.rows.length === 0) {
         return res.status(404).json({ message: "Ticket not found" });
       }
+      
+      const row = enrichedResult.rows[0] as any;
+      
+      // Convert snake_case to camelCase and compute base cost
+      const ticket = {
+        id: row.id,
+        unitId: row.unit_id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        priority: row.priority,
+        status: row.status,
+        reportedBy: row.reported_by,
+        assignedTo: row.assigned_to,
+        scheduledDate: row.scheduled_date,
+        resolvedDate: row.resolved_date,
+        estimatedCost: row.estimated_cost,
+        actualCost: row.actual_cost,
+        notes: row.notes,
+        createdBy: row.created_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        agencyId: row.agency_id,
+        sourceQuotationId: row.source_quotation_id,
+        closureNotes: row.closure_notes,
+        closureDate: row.closure_date,
+        closedBy: row.closed_by,
+        accountingTransactionId: row.accounting_transaction_id,
+        // Enriched fields
+        unitNumber: row.unitNumber,
+        condominiumName: row.condominiumName,
+        assignedToName: row.assignedToName,
+        createdByName: row.createdByName,
+        feeApplied: row.feeApplied,
+        feeRate: parseFloat(row.feeRate),
+        // Computed base cost (if fee was applied via quotation, divide by 1.15 to get original)
+        baseCost: row.feeApplied && row.estimated_cost 
+          ? (parseFloat(row.estimated_cost) / 1.15).toFixed(2) 
+          : row.estimated_cost,
+      };
       
       res.json(ticket);
     } catch (error: any) {
@@ -23243,7 +23302,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       handleGenericError(res, error);
     }
   });
-
   app.post("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const validatedData = insertExternalMaintenanceTicketSchema.parse(req.body);
