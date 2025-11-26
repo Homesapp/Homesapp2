@@ -31069,20 +31069,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ticketData = {
         title: quotation.title,
-        description: quotation.description || '',
-        type: 'corrective' as const,
+        description: quotation.description || quotation.title,
+        category: 'general' as const,
         priority: 'medium' as const,
         status: 'open' as const,
         agencyId,
-        clientId: quotation.clientId || null,
         propertyId: quotation.propertyId || null,
         unitId: quotation.unitId || null,
         estimatedCost: quotation.total,
-        actualCost: null,
-        currency: quotation.currency,
-        notes: `Creado desde cotización: ${quotation.quotationNumber}\n\nServicios:\n${servicesDescription}\n\nNotas: ${quotation.notes || 'N/A'}`,
+        quotedTotal: quotation.total,
+        quotedAdminFee: quotation.adminFee,
+        quotedServices: services,
+        quotationId: quotation.id,
+        notes: `Creado desde cotización: ${quotation.quotationNumber}\n\nServicios:\n${servicesDescription}\n\n${(quotation as any).solutionDescription ? `Solución propuesta:\n${(quotation as any).solutionDescription}\n\n` : ''}Notas: ${quotation.notes || 'N/A'}`,
         createdBy: req.user.id,
-        sourceQuotationId: quotation.id,
       };
 
       const ticket = await storage.createExternalMaintenanceTicket(ticketData);
