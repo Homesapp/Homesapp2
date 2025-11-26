@@ -228,19 +228,20 @@ import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
   try {
+    // Get user ID from authentication first
+    const userId = req.user?.claims?.sub || req.user?.id;
+    
     // Admin and master users can access all agencies
     let userRole = req.user?.role || req.session?.adminUser?.role;
-      // Get role from database if not in session
-      if (!userRole && userId) {
-        const dbUser = await storage.getUser(userId);
-        userRole = dbUser?.role;
-      }
+    // Get role from database if not in session
+    if (!userRole && userId) {
+      const dbUser = await storage.getUser(userId);
+      userRole = dbUser?.role;
+    }
     if (userRole === "master" || userRole === "admin") {
       return true;
     }
 
-    // Get user ID from authentication
-    const userId = req.user?.claims?.sub || req.user?.id;
     if (!userId) {
       res.status(401).json({ message: "Unauthorized: User ID not found" });
       return false;
