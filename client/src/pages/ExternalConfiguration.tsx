@@ -920,6 +920,7 @@ export default function ExternalConfiguration() {
       { id: 'maintenance', label: language === 'es' ? 'Mantenimiento' : 'Maintenance', icon: Settings, canImport: true },
       { id: 'transactions', label: language === 'es' ? 'Transacciones' : 'Transactions', icon: FileText, canImport: true },
       { id: 'quotations', label: language === 'es' ? 'Cotizaciones' : 'Quotations', icon: FileText, canImport: true },
+      { id: 'accounts', label: language === 'es' ? 'Cuentas' : 'Accounts', icon: Users, canImport: true },
     ];
 
     const exportMutation = useMutation({
@@ -971,6 +972,7 @@ export default function ExternalConfiguration() {
         queryClient.invalidateQueries({ queryKey: ['/api/external-tickets'] });
         queryClient.invalidateQueries({ queryKey: ['/api/external/accounting/transactions'] });
         queryClient.invalidateQueries({ queryKey: ['/api/external-quotations'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/external-agency-users'] });
         toast({
           title: language === 'es' ? 'Importación completada' : 'Import complete',
           description: data.message,

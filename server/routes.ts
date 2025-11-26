@@ -30601,7 +30601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             bedrooms: externalUnits.bedrooms,
             bathrooms: externalUnits.bathrooms,
             area: externalUnits.area,
-            baseRentPrice: externalUnits.baseRentPrice,
+            city: externalUnits.city,
             isActive: externalUnits.isActive,
             createdAt: externalUnits.createdAt,
           })
@@ -30615,12 +30615,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             condominium_id: u.condominiumId || '',
             condominium_name: u.condominiumName || '',
             zone: u.zone || '',
+            city: u.city || '',
             typology: u.typology || '',
             property_type: u.propertyType || '',
             bedrooms: u.bedrooms || 0,
             bathrooms: u.bathrooms || 0,
             area: u.area || 0,
-            base_rent_price: u.baseRentPrice || 0,
             is_active: u.isActive ? 'true' : 'false',
             created_at: u.createdAt?.toISOString() || '',
           }));
@@ -30633,11 +30633,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unitId: externalUnitOwners.unitId,
             unitNumber: externalUnits.unitNumber,
             ownerName: externalUnitOwners.ownerName,
-            email: externalUnitOwners.email,
-            phone: externalUnitOwners.phone,
-            nationality: externalUnitOwners.nationality,
-            ownership: externalUnitOwners.ownershipPercentage,
-            isPrimary: externalUnitOwners.isPrimaryContact,
+            ownerEmail: externalUnitOwners.ownerEmail,
+            ownerPhone: externalUnitOwners.ownerPhone,
+            ownershipPercentage: externalUnitOwners.ownershipPercentage,
+            isActive: externalUnitOwners.isActive,
+            notes: externalUnitOwners.notes,
             createdAt: externalUnitOwners.createdAt,
           })
           .from(externalUnitOwners)
@@ -30649,11 +30649,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unit_id: o.unitId || '',
             unit_number: o.unitNumber || '',
             owner_name: o.ownerName,
-            email: o.email || '',
-            phone: o.phone || '',
-            nationality: o.nationality || '',
-            ownership_percentage: o.ownership || 100,
-            is_primary: o.isPrimary ? 'true' : 'false',
+            email: o.ownerEmail || '',
+            phone: o.ownerPhone || '',
+            ownership_percentage: o.ownershipPercentage || '100.00',
+            is_active: o.isActive ? 'true' : 'false',
+            notes: o.notes || '',
             created_at: o.createdAt?.toISOString() || '',
           }));
           filename = 'owners.csv';
@@ -30827,6 +30827,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
             created_at: q.createdAt?.toISOString() || '',
           }));
           filename = 'quotations.csv';
+          break;
+          
+        case 'accounts':
+          const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"];
+          const agencyUsers = await db
+            .select({
+              id: users.id,
+              email: users.email,
+              firstName: users.firstName,
+              lastName: users.lastName,
+              phone: users.phone,
+              role: users.role,
+              status: users.status,
+              maintenanceSpecialty: users.maintenanceSpecialty,
+              isSuspended: users.isSuspended,
+              createdAt: users.createdAt,
+            })
+            .from(users)
+            .where(and(
+              inArray(users.role, externalRoles),
+              eq(users.externalAgencyId, agencyId)
+            ));
+          
+          data = agencyUsers.map(u => ({
+            id: u.id,
+            email: u.email || '',
+            first_name: u.firstName || '',
+            last_name: u.lastName || '',
+            phone: u.phone || '',
+            role: u.role || '',
+            status: u.status || 'active',
+            maintenance_specialty: u.maintenanceSpecialty || '',
+            is_suspended: u.isSuspended ? 'true' : 'false',
+            created_at: u.createdAt?.toISOString() || '',
+          }));
+          filename = 'accounts.csv';
           break;
           
         default:
@@ -31099,23 +31135,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'owners':
           for (const row of rows) {
             try {
-              if (!row.first_name?.trim() || !row.last_name?.trim()) {
+              if (!row.owner_name?.trim() || !row.unit_number?.trim()) {
                 skipped++;
                 continue;
               }
               
-              const firstName = row.first_name.trim();
-              const lastName = row.last_name.trim();
+              const ownerName = row.owner_name.trim();
+              const unitNumber = row.unit_number.trim();
               
-              // Check for duplicates by name + email/phone
-              const existingConditions: any[] = [
-                eq(externalOwners.agencyId, agencyId),
-                sql`LOWER(${externalOwners.firstName}) = LOWER(${firstName})`,
-                sql`LOWER(${externalOwners.lastName}) = LOWER(${lastName})`
-              ];
+              // Find unit by number
+              const unit = await db.select().from(externalUnits)
+                .where(and(
+                  eq(externalUnits.agencyId, agencyId),
+                  sql`LOWER(${externalUnits.unitNumber}) = LOWER(${unitNumber})`
+                ))
+                .limit(1);
               
-              const existing = await db.select().from(externalOwners)
-                .where(and(...existingConditions))
+              if (unit.length === 0) {
+                errors.push(`Unit "${unitNumber}" not found for owner "${ownerName}"`);
+                skipped++;
+                continue;
+              }
+              
+              // Check for duplicates by owner name + unit
+              const existing = await db.select().from(externalUnitOwners)
+                .where(and(
+                  eq(externalUnitOwners.unitId, unit[0].id),
+                  sql`LOWER(${externalUnitOwners.ownerName}) = LOWER(${ownerName})`
+                ))
                 .limit(1);
               
               if (existing.length > 0) {
@@ -31123,23 +31170,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 continue;
               }
               
-              await db.insert(externalOwners).values({
+              await db.insert(externalUnitOwners).values({
                 id: crypto.randomUUID(),
-                agencyId,
-                firstName,
-                lastName,
-                email: row.email?.trim() || null,
-                phone: row.phone?.trim() || null,
-                address: row.address?.trim() || null,
-                nationality: row.nationality?.trim() || null,
-                notes: row.notes?.trim() || null,
+                unitId: unit[0].id,
+                ownerName,
+                ownerEmail: row.email?.trim() || null,
+                ownerPhone: row.phone?.trim() || null,
+                ownershipPercentage: row.ownership_percentage?.trim() || "100.00",
                 isActive: row.is_active !== 'false',
+                notes: row.notes?.trim() || null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
               });
               imported++;
             } catch (e: any) {
-              errors.push(`Row "${row.first_name} ${row.last_name}": ${e.message}`);
+              errors.push(`Row "${row.owner_name}": ${e.message}`);
             }
           }
           break;
@@ -31348,6 +31393,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
               imported++;
             } catch (e: any) {
               errors.push(`Row "${row.title}": ${e.message}`);
+            }
+          }
+          break;
+          
+        case 'accounts':
+          const bcrypt = (await import('bcryptjs')).default;
+          for (const row of rows) {
+            try {
+              if (!row.email?.trim()) {
+                skipped++;
+                continue;
+              }
+              
+              const email = row.email.trim().toLowerCase();
+              
+              // Check if user already exists
+              const existingUser = await db.select().from(users)
+                .where(eq(users.email, email))
+                .limit(1);
+              
+              if (existingUser.length > 0) {
+                skipped++;
+                continue;
+              }
+              
+              // Validate role
+              const validRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"];
+              const role = row.role?.trim() || 'external_agency_staff';
+              if (!validRoles.includes(role)) {
+                errors.push(`Invalid role "${role}" for user "${email}"`);
+                skipped++;
+                continue;
+              }
+              
+              // Generate random password
+              const tempPassword = crypto.randomBytes(8).toString('hex');
+              const hashedPassword = await bcrypt.hash(tempPassword, 10);
+              
+              await db.insert(users).values({
+                id: crypto.randomUUID(),
+                email,
+                password: hashedPassword,
+                firstName: row.first_name?.trim() || null,
+                lastName: row.last_name?.trim() || null,
+                phone: row.phone?.trim() || null,
+                role,
+                status: row.status?.trim() || 'active',
+                maintenanceSpecialty: row.maintenance_specialty?.trim() || null,
+                externalAgencyId: agencyId,
+                isActive: true,
+                isSuspended: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+              imported++;
+            } catch (e: any) {
+              errors.push(`Row "${row.email}": ${e.message}`);
             }
           }
           break;
