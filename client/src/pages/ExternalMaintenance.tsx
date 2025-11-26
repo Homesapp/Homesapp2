@@ -1594,7 +1594,12 @@ export default function ExternalMaintenance() {
                     const priorityConfig = priorityColors[ticket.priority] || priorityColors.medium;
 
                     return (
-                      <TableRow key={ticket.id} data-testid={`row-ticket-${ticket.id}`} className="hover-elevate">
+                      <TableRow 
+                        key={ticket.id} 
+                        data-testid={`row-ticket-${ticket.id}`} 
+                        className="hover-elevate cursor-pointer"
+                        onClick={() => window.location.href = `/external/maintenance/${ticket.id}`}
+                      >
                         <TableCell className="px-3 py-3">
                           <span className="truncate max-w-xs">{ticket.title}</span>
                         </TableCell>
@@ -1627,12 +1632,13 @@ export default function ExternalMaintenance() {
                               : (language === 'es' ? 'Sin actualizar' : 'Not updated')}
                           </span>
                         </TableCell>
-                        <TableCell className="px-3 py-3 text-right">
+                        <TableCell className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1 justify-end">
                             <Button 
                               size="icon" 
                               variant="ghost"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setEditingTicket(ticket);
                                 setShowEditDialog(true);
                               }}

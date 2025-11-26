@@ -430,10 +430,7 @@ export default function ExternalAccounting() {
         ...data,
         condominiumId: selectedCondominiumId || undefined,
       };
-      return await apiRequest('/api/external/accounting/transactions', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      return await apiRequest('POST', '/api/external/accounting/transactions', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/accounting/transactions'] });
@@ -458,10 +455,7 @@ export default function ExternalAccounting() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TransactionFormData> }) => {
-      return await apiRequest(`/api/external/accounting/transactions/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('PATCH', `/api/external/accounting/transactions/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/accounting/transactions'] });
@@ -486,10 +480,7 @@ export default function ExternalAccounting() {
 
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/external/accounting/transactions/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: 'cancelled' }),
-      });
+      return await apiRequest('PATCH', `/api/external/accounting/transactions/${id}`, { status: 'cancelled' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/external/accounting/transactions'] });
