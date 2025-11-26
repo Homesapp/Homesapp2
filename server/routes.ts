@@ -152,6 +152,7 @@ import {
   insertExternalClientDocumentSchema,
   insertExternalClientIncidentSchema,
   updateExternalClientIncidentSchema,
+  externalClients,
   externalLeads,
   externalLeadShowings,
   insertExternalLeadSchema,
