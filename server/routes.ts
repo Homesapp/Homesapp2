@@ -25765,7 +25765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (agency.length > 0) {
           requestData.sellerName = agency[0].name;
         }
-        requestData.sellerId = undefined; // Clear invalid sellerId
+        delete requestData.sellerId; // Clear invalid sellerId
       }
       
       const validatedData = insertExternalLeadSchema.parse(requestData);
