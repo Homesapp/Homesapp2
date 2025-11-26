@@ -3810,6 +3810,173 @@ export default function ExternalClients() {
                 </div>
               </div>
 
+              {/* Property Preferences Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  {language === "es" ? "Preferencias de Propiedad" : "Property Preferences"}
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={editLeadForm.control}
+                    name="estimatedRentCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Presupuesto (MXN)" : "Budget (MXN)"}
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number"
+                            value={field.value || ""} 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            placeholder="25000"
+                            data-testid="input-edit-lead-budget" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editLeadForm.control}
+                    name="desiredUnitType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Tipo de Propiedad" : "Property Type"}
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-lead-unittype">
+                              <SelectValue placeholder={language === "es" ? "Seleccionar" : "Select"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Departamento">{language === "es" ? "Departamento" : "Apartment"}</SelectItem>
+                            <SelectItem value="Casa">{language === "es" ? "Casa" : "House"}</SelectItem>
+                            <SelectItem value="Estudio">{language === "es" ? "Estudio" : "Studio"}</SelectItem>
+                            <SelectItem value="PH">PH / Penthouse</SelectItem>
+                            <SelectItem value="Villa">Villa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={editLeadForm.control}
+                    name="desiredNeighborhood"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Zona / Colonia Preferida" : "Preferred Area"}
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-lead-neighborhood">
+                              <SelectValue placeholder={language === "es" ? "Seleccione zona" : "Select area"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Aldea Zama">Aldea Zama</SelectItem>
+                            <SelectItem value="Centro">Centro</SelectItem>
+                            <SelectItem value="La Veleta">La Veleta</SelectItem>
+                            <SelectItem value="Region 15">Region 15</SelectItem>
+                            <SelectItem value="Region 8">Region 8</SelectItem>
+                            <SelectItem value="Holistika">Holistika</SelectItem>
+                            <SelectItem value="Selva Zama">Selva Zama</SelectItem>
+                            <SelectItem value="Otro">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editLeadForm.control}
+                    name="contractDuration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Duración del Contrato" : "Contract Duration"}
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-lead-duration">
+                              <SelectValue placeholder={language === "es" ? "Seleccionar" : "Select"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="6 meses">6 {language === "es" ? "meses" : "months"}</SelectItem>
+                            <SelectItem value="1 año">1 {language === "es" ? "año" : "year"}</SelectItem>
+                            <SelectItem value="2 años">2 {language === "es" ? "años" : "years"}</SelectItem>
+                            <SelectItem value="3+ años">3+ {language === "es" ? "años" : "years"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={editLeadForm.control}
+                    name="checkInDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "Fecha de Mudanza" : "Move-in Date"}
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""} 
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                            data-testid="input-edit-lead-checkin"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editLeadForm.control}
+                    name="hasPets"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <PawPrint className="h-3.5 w-3.5 text-muted-foreground" />
+                          {language === "es" ? "¿Tiene Mascotas?" : "Has Pets?"}
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-lead-pets">
+                              <SelectValue placeholder={language === "es" ? "Seleccionar" : "Select"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="No">No</SelectItem>
+                            <SelectItem value="Sí - Perro">{language === "es" ? "Sí - Perro" : "Yes - Dog"}</SelectItem>
+                            <SelectItem value="Sí - Gato">{language === "es" ? "Sí - Gato" : "Yes - Cat"}</SelectItem>
+                            <SelectItem value="Sí - Otro">{language === "es" ? "Sí - Otro" : "Yes - Other"}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
               {/* Notes Section */}
               <div className="space-y-4 pt-4 border-t">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
