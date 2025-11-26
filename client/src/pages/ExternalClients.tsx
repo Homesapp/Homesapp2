@@ -308,6 +308,20 @@ export default function ExternalClients() {
   });
   const editUnits = editUnitsData || [];
 
+  // Fetch configurable zones
+  const { data: zonesConfig = [] } = useQuery<Array<{id: string; name: string; isActive: boolean; sortOrder: number}>>({
+    queryKey: ['/api/external/config/zones'],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+  const activeZones = zonesConfig.filter(z => z.isActive);
+
+  // Fetch configurable property types  
+  const { data: propertyTypesConfig = [] } = useQuery<Array<{id: string; name: string; isActive: boolean; sortOrder: number}>>({
+    queryKey: ['/api/external/config/property-types'],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+  const activePropertyTypes = propertyTypesConfig.filter(pt => pt.isActive);
+
   useEffect(() => {
     const clampedPage = Math.min(leadCurrentPage, totalLeadPages);
     if (clampedPage !== leadCurrentPage) {
@@ -3152,11 +3166,19 @@ export default function ExternalClients() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Departamento">{language === "es" ? "Departamento" : "Apartment"}</SelectItem>
-                            <SelectItem value="Casa">{language === "es" ? "Casa" : "House"}</SelectItem>
-                            <SelectItem value="Estudio">{language === "es" ? "Estudio" : "Studio"}</SelectItem>
-                            <SelectItem value="PH">PH / Penthouse</SelectItem>
-                            <SelectItem value="Villa">Villa</SelectItem>
+                            {activePropertyTypes.length > 0 ? (
+                              activePropertyTypes.map((pt) => (
+                                <SelectItem key={pt.id} value={pt.name}>{pt.name}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="Departamento">{language === "es" ? "Departamento" : "Apartment"}</SelectItem>
+                                <SelectItem value="Casa">{language === "es" ? "Casa" : "House"}</SelectItem>
+                                <SelectItem value="Estudio">{language === "es" ? "Estudio" : "Studio"}</SelectItem>
+                                <SelectItem value="PH">PH / Penthouse</SelectItem>
+                                <SelectItem value="Villa">Villa</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -3182,14 +3204,18 @@ export default function ExternalClients() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Aldea Zama">Aldea Zama</SelectItem>
-                            <SelectItem value="Centro">Centro</SelectItem>
-                            <SelectItem value="La Veleta">La Veleta</SelectItem>
-                            <SelectItem value="Region 15">Region 15</SelectItem>
-                            <SelectItem value="Region 8">Region 8</SelectItem>
-                            <SelectItem value="Holistika">Holistika</SelectItem>
-                            <SelectItem value="Selva Zama">Selva Zama</SelectItem>
-                            <SelectItem value="Otro">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                            {activeZones.length > 0 ? (
+                              activeZones.map((zone) => (
+                                <SelectItem key={zone.id} value={zone.name}>{zone.name}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="Aldea Zama">Aldea Zama</SelectItem>
+                                <SelectItem value="La Veleta">La Veleta</SelectItem>
+                                <SelectItem value="Centro">Centro</SelectItem>
+                                <SelectItem value="Otro">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -3856,11 +3882,19 @@ export default function ExternalClients() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Departamento">{language === "es" ? "Departamento" : "Apartment"}</SelectItem>
-                            <SelectItem value="Casa">{language === "es" ? "Casa" : "House"}</SelectItem>
-                            <SelectItem value="Estudio">{language === "es" ? "Estudio" : "Studio"}</SelectItem>
-                            <SelectItem value="PH">PH / Penthouse</SelectItem>
-                            <SelectItem value="Villa">Villa</SelectItem>
+                            {activePropertyTypes.length > 0 ? (
+                              activePropertyTypes.map((pt) => (
+                                <SelectItem key={pt.id} value={pt.name}>{pt.name}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="Departamento">{language === "es" ? "Departamento" : "Apartment"}</SelectItem>
+                                <SelectItem value="Casa">{language === "es" ? "Casa" : "House"}</SelectItem>
+                                <SelectItem value="Estudio">{language === "es" ? "Estudio" : "Studio"}</SelectItem>
+                                <SelectItem value="PH">PH / Penthouse</SelectItem>
+                                <SelectItem value="Villa">Villa</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -3885,14 +3919,18 @@ export default function ExternalClients() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Aldea Zama">Aldea Zama</SelectItem>
-                            <SelectItem value="Centro">Centro</SelectItem>
-                            <SelectItem value="La Veleta">La Veleta</SelectItem>
-                            <SelectItem value="Region 15">Region 15</SelectItem>
-                            <SelectItem value="Region 8">Region 8</SelectItem>
-                            <SelectItem value="Holistika">Holistika</SelectItem>
-                            <SelectItem value="Selva Zama">Selva Zama</SelectItem>
-                            <SelectItem value="Otro">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                            {activeZones.length > 0 ? (
+                              activeZones.map((zone) => (
+                                <SelectItem key={zone.id} value={zone.name}>{zone.name}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="Aldea Zama">Aldea Zama</SelectItem>
+                                <SelectItem value="La Veleta">La Veleta</SelectItem>
+                                <SelectItem value="Centro">Centro</SelectItem>
+                                <SelectItem value="Otro">{language === "es" ? "Otro" : "Other"}</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
