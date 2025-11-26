@@ -23178,10 +23178,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { year, month, period } = req.query; // period: 1 (1-15) or 2 (16-end)
       const agencyId = await getUserAgencyId(req);
       
-      if (!agencyId) {
-        return res.status(400).json({ message: "No agency associated with user" });
-      }
-      
       const now = new Date();
       const targetYear = year ? parseInt(year as string) : now.getFullYear();
       const targetMonth = month ? parseInt(month as string) : now.getMonth() + 1; // 1-based
@@ -23198,21 +23194,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = new Date(targetYear, targetMonth - 1, endDay);
       endDate.setHours(23, 59, 59, 999);
       
-      // Query tickets for this agency within the biweekly period
-      const result = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total,
-          COUNT(*) FILTER (WHERE status = 'open') as open_count,
-          COUNT(*) FILTER (WHERE status IN ('resolved', 'closed')) as resolved_count,
-          COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') THEN CAST(NULLIF(actual_cost, '') AS DECIMAL) ELSE 0 END), 0) as actual_cost_sum
-        FROM external_maintenance_tickets
-        WHERE agency_id = ${agencyId}
-      `);
+      // Query tickets for this agency within the biweekly period using reference date
+      // Reference date: for closed/resolved tickets use updated_at, otherwise use created_at
+      let result;
+      if (agencyId) {
+        result = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE status IN ('open', 'in_progress')) as open_count,
+            COUNT(*) FILTER (WHERE status IN ('resolved', 'closed')) as resolved_count,
+            COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') AND actual_cost IS NOT NULL AND TRIM(actual_cost) != '' AND actual_cost ~ '^[0-9.]+$' THEN CAST(actual_cost AS DECIMAL) ELSE 0 END), 0) as actual_cost_sum
+          FROM external_maintenance_tickets
+          WHERE agency_id = ${agencyId}
+            AND COALESCE(closed_at, updated_at, created_at) >= ${startDate.toISOString()}::timestamp
+            AND COALESCE(closed_at, updated_at, created_at) <= ${endDate.toISOString()}::timestamp
+        `);
+      } else {
+        // Admin/master users see all agencies
+        result = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE status IN ('open', 'in_progress')) as open_count,
+            COUNT(*) FILTER (WHERE status IN ('resolved', 'closed')) as resolved_count,
+            COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') AND actual_cost IS NOT NULL AND TRIM(actual_cost) != '' AND actual_cost ~ '^[0-9.]+$' THEN CAST(actual_cost AS DECIMAL) ELSE 0 END), 0) as actual_cost_sum
+          FROM external_maintenance_tickets
+          WHERE COALESCE(updated_at, created_at) >= ${startDate.toISOString()}::timestamp
+            AND COALESCE(closed_at, updated_at, created_at) <= ${endDate.toISOString()}::timestamp
+        `);
+      }
       
       const row = result.rows[0] as any;
       const actualCost = parseFloat(row.actual_cost_sum || '0');
       const commission = actualCost * 0.15;
       const totalCharge = actualCost + commission;
+      
+      // Get month name in Spanish
+      const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      const monthName = monthNames[targetMonth - 1];
       
       res.json({
         period: {
@@ -23222,8 +23240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           label: targetPeriod === 1 
-            ? `1ra Quincena ${new Date(targetYear, targetMonth - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`
-            : `2da Quincena ${new Date(targetYear, targetMonth - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`
+            ? `1ra Quincena ${monthName} ${targetYear}`
+            : `2da Quincena ${monthName} ${targetYear}`
         },
         stats: {
           total: parseInt(row.total || '0'),

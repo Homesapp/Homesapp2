@@ -262,6 +262,40 @@ export default function ExternalMaintenance() {
   const [closureApplyAdminFee, setClosureApplyAdminFee] = useState(true);
   const [closureAfterPhotos, setClosureAfterPhotos] = useState<string[]>([]);
   
+  // Biweekly period navigation states
+  const now = new Date();
+  const [periodYear, setPeriodYear] = useState(now.getFullYear());
+  const [periodMonth, setPeriodMonth] = useState(now.getMonth() + 1); // 1-based
+  const [periodIndex, setPeriodIndex] = useState(now.getDate() <= 15 ? 1 : 2);
+  
+  // Navigate to previous biweekly period
+  const goToPreviousPeriod = () => {
+    if (periodIndex === 2) {
+      setPeriodIndex(1);
+    } else {
+      // Move to previous month, second period
+      const newMonth = periodMonth === 1 ? 12 : periodMonth - 1;
+      const newYear = periodMonth === 1 ? periodYear - 1 : periodYear;
+      setPeriodMonth(newMonth);
+      setPeriodYear(newYear);
+      setPeriodIndex(2);
+    }
+  };
+  
+  // Navigate to next biweekly period
+  const goToNextPeriod = () => {
+    if (periodIndex === 1) {
+      setPeriodIndex(2);
+    } else {
+      // Move to next month, first period
+      const newMonth = periodMonth === 12 ? 1 : periodMonth + 1;
+      const newYear = periodMonth === 12 ? periodYear + 1 : periodYear;
+      setPeriodMonth(newMonth);
+      setPeriodYear(newYear);
+      setPeriodIndex(1);
+    }
+  };
+  
   // Auto-switch view mode on genuine breakpoint transitions
   useEffect(() => {
     if (isMobile !== prevIsMobile) {
@@ -367,8 +401,10 @@ export default function ExternalMaintenance() {
     };
   };
 
+  const biweeklyStatsUrl = `/api/external-tickets/stats/biweekly?year=${periodYear}&month=${periodMonth}&period=${periodIndex}`;
   const { data: biweeklyStats } = useQuery<BiweeklyStatsResponse>({
-    queryKey: ['/api/external-tickets/stats/biweekly'],
+    queryKey: ['/api/external-tickets/stats/biweekly', periodYear, periodMonth, periodIndex],
+    queryFn: () => fetch(biweeklyStatsUrl, { credentials: 'include' }).then(res => res.json()),
   });
 
   const maintenanceWorkers = agencyUsers?.filter(u => 
@@ -1003,13 +1039,31 @@ export default function ExternalMaintenance() {
             </Button>
           </div>
 
-      {/* Biweekly Period Indicator */}
-      {biweeklyStats?.period && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      {/* Biweekly Period Navigation */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={goToPreviousPeriod}
+          data-testid="button-prev-period"
+        >
+          <ChevronDown className="h-4 w-4 rotate-90" />
+        </Button>
+        <div className="flex items-center gap-2 text-sm px-3 py-1 bg-muted rounded-md">
           <CalendarIcon className="h-4 w-4" />
-          <span className="font-medium">{biweeklyStats.period.label}</span>
+          <span className="font-medium">
+            {biweeklyStats?.period?.label || `${periodIndex === 1 ? '1ra' : '2da'} Quincena`}
+          </span>
         </div>
-      )}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={goToNextPeriod}
+          data-testid="button-next-period"
+        >
+          <ChevronDown className="h-4 w-4 -rotate-90" />
+        </Button>
+      </div>
 
       {/* Metrics - Biweekly Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
@@ -1564,12 +1618,24 @@ export default function ExternalMaintenance() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort('title')}
+                          onClick={() => handleSort('status')}
                           className="hover-elevate -ml-3 h-8"
-                          data-testid="sort-title"
+                          data-testid="sort-status"
                         >
-                          {t.ticketTitle}
-                          {renderSortIcon('title')}
+                          {t.status}
+                          {renderSortIcon('status')}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="h-10 px-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSort('priority')}
+                          className="hover-elevate -ml-3 h-8"
+                          data-testid="sort-priority"
+                        >
+                          {t.priority}
+                          {renderSortIcon('priority')}
                         </Button>
                       </TableHead>
                       <TableHead className="h-10 px-3">
@@ -1600,37 +1666,22 @@ export default function ExternalMaintenance() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort('priority')}
+                          onClick={() => handleSort('title')}
                           className="hover-elevate -ml-3 h-8"
-                          data-testid="sort-priority"
+                          data-testid="sort-title"
                         >
-                          {t.priority}
-                          {renderSortIcon('priority')}
+                          {t.ticketTitle}
+                          {renderSortIcon('title')}
                         </Button>
                       </TableHead>
-                      <TableHead className="h-10 px-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSort('status')}
-                          className="hover-elevate -ml-3 h-8"
-                          data-testid="sort-status"
-                        >
-                          {t.status}
-                          {renderSortIcon('status')}
-                        </Button>
+                      <TableHead className="h-10 px-3 text-right">
+                        {language === 'es' ? 'Costo Real' : 'Actual Cost'}
                       </TableHead>
-                      <TableHead className="h-10 px-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSort('assigned')}
-                          className="hover-elevate -ml-3 h-8"
-                          data-testid="sort-assigned"
-                        >
-                          {t.assigned}
-                          {renderSortIcon('assigned')}
-                        </Button>
+                      <TableHead className="h-10 px-3 text-right">
+                        {language === 'es' ? 'Comisión' : 'Commission'}
+                      </TableHead>
+                      <TableHead className="h-10 px-3 text-right">
+                        {language === 'es' ? 'Total' : 'Total'}
                       </TableHead>
                       <TableHead className="h-10 px-3">
                         <Button
@@ -1643,15 +1694,6 @@ export default function ExternalMaintenance() {
                           {language === 'es' ? 'Última Act.' : 'Last Update'}
                           {renderSortIcon('updated')}
                         </Button>
-                      </TableHead>
-                      <TableHead className="h-10 px-3 text-right">
-                        {language === 'es' ? 'Costo Real' : 'Actual Cost'}
-                      </TableHead>
-                      <TableHead className="h-10 px-3 text-right">
-                        {language === 'es' ? 'Comisión' : 'Commission'}
-                      </TableHead>
-                      <TableHead className="h-10 px-3 text-right">
-                        {language === 'es' ? 'Total' : 'Total'}
                       </TableHead>
                       <TableHead className="h-10 px-3 text-right">{t.actions}</TableHead>
                     </TableRow>
@@ -1671,7 +1713,14 @@ export default function ExternalMaintenance() {
                         onClick={() => setLocation(`/external/maintenance/${ticket.id}`)}
                       >
                         <TableCell className="px-3 py-3">
-                          <span className="truncate max-w-xs">{ticket.title}</span>
+                          <Badge className={statusConfig.bg} data-testid={`badge-status-${ticket.id}`}>
+                            {statusConfig.label[language]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-3 py-3">
+                          <Badge className={priorityConfig.bg} data-testid={`badge-priority-${ticket.id}`}>
+                            {priorityConfig.label[language]}
+                          </Badge>
                         </TableCell>
                         <TableCell className="px-3 py-3">
                           <div className="flex flex-col">
@@ -1683,24 +1732,7 @@ export default function ExternalMaintenance() {
                           <span>{categoryLabels[ticket.category]?.[language] || ticket.category}</span>
                         </TableCell>
                         <TableCell className="px-3 py-3">
-                          <Badge className={priorityConfig.bg} data-testid={`badge-priority-${ticket.id}`}>
-                            {priorityConfig.label[language]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-3 py-3">
-                          <Badge className={statusConfig.bg} data-testid={`badge-status-${ticket.id}`}>
-                            {statusConfig.label[language]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-3 py-3">
-                          <span>{assignedName || '-'}</span>
-                        </TableCell>
-                        <TableCell className="px-3 py-3">
-                          <span className="text-muted-foreground">
-                            {ticket.updatedAt 
-                              ? format(new Date(ticket.updatedAt), 'dd MMM yyyy HH:mm', { locale: language === 'es' ? es : undefined })
-                              : (language === 'es' ? 'Sin actualizar' : 'Not updated')}
-                          </span>
+                          <span className="truncate max-w-xs">{ticket.title}</span>
                         </TableCell>
                         <TableCell className="px-3 py-3 text-right">
                           {ticket.actualCost ? formatCurrency(parseFloat(ticket.actualCost)) : '-'}
@@ -1710,6 +1742,13 @@ export default function ExternalMaintenance() {
                         </TableCell>
                         <TableCell className="px-3 py-3 text-right font-medium">
                           {ticket.actualCost ? formatCurrency(parseFloat(ticket.actualCost) * 1.15) : '-'}
+                        </TableCell>
+                        <TableCell className="px-3 py-3">
+                          <span className="text-muted-foreground">
+                            {ticket.updatedAt 
+                              ? format(new Date(ticket.updatedAt), 'dd MMM yyyy HH:mm', { locale: language === 'es' ? es : undefined })
+                              : (language === 'es' ? 'Sin actualizar' : 'Not updated')}
+                          </span>
                         </TableCell>
                         <TableCell className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1 justify-end">
