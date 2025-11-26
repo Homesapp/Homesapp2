@@ -587,6 +587,23 @@ export default function ExternalMaintenance() {
     },
   });
 
+  // Prefetch ticket detail data on hover for faster navigation
+  const prefetchTicketDetail = (ticketId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ['/api/external-tickets', ticketId],
+      staleTime: 30000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ['/api/external-tickets', ticketId, 'updates'],
+      staleTime: 30000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ['/api/external-tickets', ticketId, 'photos'],
+      staleTime: 30000,
+    });
+  };
+
+
   const updateTicketMutation = useMutation({
     mutationFn: async ({ ticketId, data }: { ticketId: string; data: EditMaintenanceFormData }) => {
       // Convert string values to proper types for backend
@@ -1445,7 +1462,7 @@ export default function ExternalMaintenance() {
                   const priorityConfig = priorityColors[ticket.priority] || priorityColors.medium;
 
                   return (
-                    <Link key={ticket.id} href={`/external/maintenance/${ticket.id}`}>
+                    <Link key={ticket.id} href={`/external/maintenance/${ticket.id}`} onMouseEnter={() => prefetchTicketDetail(ticket.id)}>
                       <Card 
                         className="hover-elevate cursor-pointer h-full"
                         data-testid={`card-ticket-${ticket.id}`}
@@ -1721,7 +1738,7 @@ export default function ExternalMaintenance() {
                                   ))}
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            <Link href={`/external/maintenance/${ticket.id}`}>
+                            <Link href={`/external/maintenance/${ticket.id}`} onMouseEnter={() => prefetchTicketDetail(ticket.id)}>
                               <Button size="icon" variant="ghost" data-testid={`button-view-${ticket.id}`}>
                                 <Eye className="h-4 w-4" />
                               </Button>
