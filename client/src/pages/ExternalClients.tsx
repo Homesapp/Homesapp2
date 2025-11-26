@@ -3254,23 +3254,44 @@ export default function ExternalClients() {
                   <FormField
                     control={leadForm.control}
                     name="checkInDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                          {language === "es" ? "Fecha de Entrada Deseada" : "Desired Move-in Date"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""} 
-                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                            data-testid="input-create-lead-checkin"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const formatDateForInput = (date: Date | string | null | undefined): string => {
+                        if (!date) return "";
+                        const d = new Date(date);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      };
+                      
+                      const handleDateChange = (dateString: string) => {
+                        if (!dateString) {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const [year, month, day] = dateString.split('-').map(Number);
+                        const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                        field.onChange(newDate);
+                      };
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                            {language === "es" ? "Fecha de Entrada Deseada" : "Desired Move-in Date"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              value={formatDateForInput(field.value)} 
+                              onChange={(e) => handleDateChange(e.target.value)}
+                              data-testid="input-create-lead-checkin"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                   <FormField
                     control={leadForm.control}
@@ -3968,23 +3989,44 @@ export default function ExternalClients() {
                   <FormField
                     control={editLeadForm.control}
                     name="checkInDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                          {language === "es" ? "Fecha de Mudanza" : "Move-in Date"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""} 
-                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                            data-testid="input-edit-lead-checkin"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const formatDateForInput = (date: Date | string | null | undefined): string => {
+                        if (!date) return "";
+                        const d = new Date(date);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      };
+                      
+                      const handleDateChange = (dateString: string) => {
+                        if (!dateString) {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const [year, month, day] = dateString.split('-').map(Number);
+                        const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                        field.onChange(newDate);
+                      };
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                            {language === "es" ? "Fecha de Mudanza" : "Move-in Date"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              value={formatDateForInput(field.value)} 
+                              onChange={(e) => handleDateChange(e.target.value)}
+                              data-testid="input-edit-lead-checkin"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                   <FormField
                     control={editLeadForm.control}
