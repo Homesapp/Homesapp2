@@ -23172,6 +23172,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Maintenance Tickets Routes
+  // External Maintenance Tickets Statistics by Biweekly Period
+  app.get("/api/external-tickets/stats/biweekly", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { year, month, period } = req.query; // period: 1 (1-15) or 2 (16-end)
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency associated with user" });
+      }
+      
+      const now = new Date();
+      const targetYear = year ? parseInt(year as string) : now.getFullYear();
+      const targetMonth = month ? parseInt(month as string) : now.getMonth() + 1; // 1-based
+      const targetPeriod = period ? parseInt(period as string) : (now.getDate() <= 15 ? 1 : 2);
+      
+      // Calculate date range for the biweekly period
+      const startDay = targetPeriod === 1 ? 1 : 16;
+      const lastDayOfMonth = new Date(targetYear, targetMonth, 0).getDate();
+      const endDay = targetPeriod === 1 ? 15 : lastDayOfMonth;
+      
+      const startDate = new Date(targetYear, targetMonth - 1, startDay);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(targetYear, targetMonth - 1, endDay);
+      endDate.setHours(23, 59, 59, 999);
+      
+      // Query tickets for this agency within the biweekly period
+      const result = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'open') as open_count,
+          COUNT(*) FILTER (WHERE status IN ('resolved', 'closed')) as resolved_count,
+          COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') THEN CAST(actual_cost AS DECIMAL) ELSE 0 END), 0) as actual_cost_sum
+        FROM external_maintenance_tickets
+        WHERE agency_id = ${agencyId}
+          AND created_at >= ${startDate.toISOString()}
+          AND created_at <= ${endDate.toISOString()}
+      `);
+      
+      const row = result.rows[0] as any;
+      const actualCost = parseFloat(row.actual_cost_sum || '0');
+      const commission = actualCost * 0.15;
+      const totalCharge = actualCost + commission;
+      
+      res.json({
+        period: {
+          year: targetYear,
+          month: targetMonth,
+          biweekly: targetPeriod,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          label: targetPeriod === 1 
+            ? `1ra Quincena ${new Date(targetYear, targetMonth - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`
+            : `2da Quincena ${new Date(targetYear, targetMonth - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`
+        },
+        stats: {
+          total: parseInt(row.total || '0'),
+          open: parseInt(row.open_count || '0'),
+          resolved: parseInt(row.resolved_count || '0'),
+          actualCost: actualCost,
+          commission: commission,
+          totalCharge: totalCharge
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching biweekly stats:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.get("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { propertyId, assignedTo, status, priority, category, condominiumId, dateFilter, search, sortField, sortOrder, page, pageSize } = req.query;

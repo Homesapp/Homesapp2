@@ -347,6 +347,30 @@ export default function ExternalMaintenance() {
     queryKey: ['/api/external-worker-assignments'],
   });
 
+  // Biweekly stats query
+  type BiweeklyStatsResponse = {
+    period: {
+      year: number;
+      month: number;
+      biweekly: number;
+      startDate: string;
+      endDate: string;
+      label: string;
+    };
+    stats: {
+      total: number;
+      open: number;
+      resolved: number;
+      actualCost: number;
+      commission: number;
+      totalCharge: number;
+    };
+  };
+
+  const { data: biweeklyStats } = useQuery<BiweeklyStatsResponse>({
+    queryKey: ['/api/external-tickets/stats/biweekly'],
+  });
+
   const maintenanceWorkers = agencyUsers?.filter(u => 
     u.role === 'external_agency_maintenance' && u.maintenanceSpecialty
   ) || [];
@@ -862,11 +886,11 @@ export default function ExternalMaintenance() {
     subtitle: 'Gestiona tickets de mantenimiento y servicios',
     newTicket: 'Nuevo Ticket',
     totalJobs: 'Total Trabajos',
-    open: 'Abiertos',
-    inProgress: 'En Progreso',
+    open: 'Total Abiertos',
     resolved: 'Resueltos',
-    estimatedCost: 'Costo Estimado',
     actualCost: 'Costo Real',
+    commissions: 'Comisiones (15%)',
+    totalCharge: 'Total a Cobrar',
     search: 'Buscar por título, descripción o unidad...',
     filters: 'Filtros',
     today: 'HOY',
@@ -902,11 +926,11 @@ export default function ExternalMaintenance() {
     subtitle: 'Manage maintenance tickets and services',
     newTicket: 'New Ticket',
     totalJobs: 'Total Jobs',
-    open: 'Open',
-    inProgress: 'In Progress',
+    open: 'Total Open',
     resolved: 'Resolved',
-    estimatedCost: 'Estimated Cost',
     actualCost: 'Actual Cost',
+    commissions: 'Commissions (15%)',
+    totalCharge: 'Total Charge',
     search: 'Search by title, description or unit...',
     filters: 'Filters',
     today: 'TODAY',
@@ -979,7 +1003,15 @@ export default function ExternalMaintenance() {
             </Button>
           </div>
 
-      {/* Metrics */}
+      {/* Biweekly Period Indicator */}
+      {biweeklyStats?.period && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarIcon className="h-4 w-4" />
+          <span className="font-medium">{biweeklyStats.period.label}</span>
+        </div>
+      )}
+
+      {/* Metrics - Biweekly Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -987,7 +1019,7 @@ export default function ExternalMaintenance() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total">{stats.total}</div>
+            <div className="text-2xl font-bold" data-testid="text-total">{biweeklyStats?.stats?.total || 0}</div>
           </CardContent>
         </Card>
 
@@ -997,17 +1029,7 @@ export default function ExternalMaintenance() {
             <AlertTriangle className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600" data-testid="text-open">{stats.open}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.inProgress}</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600" data-testid="text-in-progress">{stats.inProgress}</div>
+            <div className="text-2xl font-bold text-amber-600" data-testid="text-open">{biweeklyStats?.stats?.open || 0}</div>
           </CardContent>
         </Card>
 
@@ -1017,27 +1039,37 @@ export default function ExternalMaintenance() {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="text-resolved">{stats.resolved}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.estimatedCost}</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold" data-testid="text-estimated-cost">{formatCurrency(stats.estimatedCost)}</div>
+            <div className="text-2xl font-bold text-green-600" data-testid="text-resolved">{biweeklyStats?.stats?.resolved || 0}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t.actualCost}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold" data-testid="text-actual-cost">{formatCurrency(stats.totalCost)}</div>
+            <div className="text-lg font-bold" data-testid="text-actual-cost">{formatCurrency(biweeklyStats?.stats?.actualCost || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.commissions}</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-blue-600" data-testid="text-commissions">{formatCurrency(biweeklyStats?.stats?.commission || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.totalCharge}</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-green-600" data-testid="text-total-charge">{formatCurrency(biweeklyStats?.stats?.totalCharge || 0)}</div>
           </CardContent>
         </Card>
       </div>
