@@ -5758,6 +5758,18 @@ export const externalMaintenanceTickets = pgTable("external_maintenance_tickets"
   closedAt: timestamp("closed_at"), // Fecha de cierre
   photos: text("photos").array().default(sql`ARRAY[]::text[]`), // URLs de fotos (deprecated - usar externalMaintenancePhotos)
   notes: text("notes"),
+  
+  // Closure report fields - Campos del reporte de cierre
+  closureWorkNotes: text("closure_work_notes"), // Notas detalladas del trabajo realizado
+  invoiceDate: timestamp("invoice_date"), // Fecha en la que se debe cobrar
+  finalChargeAmount: decimal("final_charge_amount", { precision: 12, scale: 2 }), // Monto del trabajo a cobrar
+  applyAdminFee: boolean("apply_admin_fee").default(true), // Si aplicar el 15% de costo administrativo
+  adminFeeAmount: decimal("admin_fee_amount", { precision: 12, scale: 2 }), // Monto del fee administrativo (15%)
+  totalChargeAmount: decimal("total_charge_amount", { precision: 12, scale: 2 }), // Total a cobrar (finalChargeAmount + adminFeeAmount)
+  afterWorkPhotos: text("after_work_photos").array().default(sql`ARRAY[]::text[]`), // Fotos del después del trabajo
+  accountingTransactionId: varchar("accounting_transaction_id"), // ID de la transacción contable generada
+  accountingSyncStatus: varchar("accounting_sync_status", { length: 50 }).default("pending"), // pending, synced, error
+  
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

@@ -49,6 +49,9 @@ import {
 } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Wrench,
@@ -240,6 +243,15 @@ export default function ExternalMaintenance() {
   const [selectedPhotoPhase, setSelectedPhotoPhase] = useState<"before" | "during" | "after" | "other">("before");
   const [editingPhotoPhase, setEditingPhotoPhase] = useState<{ photoId: string; currentPhase: string } | null>(null);
   const [showPhotoPhaseDialog, setShowPhotoPhaseDialog] = useState(false);
+  
+  // Closure report states
+  const [showClosureDialog, setShowClosureDialog] = useState(false);
+  const [closingTicket, setClosingTicket] = useState<ExternalMaintenanceTicket | null>(null);
+  const [closureWorkNotes, setClosureWorkNotes] = useState("");
+  const [closureInvoiceDate, setClosureInvoiceDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [closureFinalAmount, setClosureFinalAmount] = useState("");
+  const [closureApplyAdminFee, setClosureApplyAdminFee] = useState(true);
+  const [closureAfterPhotos, setClosureAfterPhotos] = useState<string[]>([]);
   
   // Auto-switch view mode on genuine breakpoint transitions
   useEffect(() => {
@@ -481,6 +493,70 @@ export default function ExternalMaintenance() {
       } else if (error?.statusText) {
         errorMessage = error.statusText;
       }
+      
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for closing ticket with full report
+  const closeWithReportMutation = useMutation({
+    mutationFn: async ({ 
+      ticketId, 
+      closureWorkNotes, 
+      invoiceDate, 
+      finalChargeAmount, 
+      applyAdminFee, 
+      afterWorkPhotos 
+    }: { 
+      ticketId: string; 
+      closureWorkNotes: string;
+      invoiceDate: string;
+      finalChargeAmount: string;
+      applyAdminFee: boolean;
+      afterWorkPhotos: string[];
+    }) => {
+      return await apiRequest('POST', `/api/external-tickets/${ticketId}/close-with-report`, {
+        closureWorkNotes,
+        invoiceDate,
+        finalChargeAmount,
+        applyAdminFee,
+        afterWorkPhotos,
+        completionNotes: closureWorkNotes
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && (
+            key.startsWith('/api/external-tickets') || 
+            key.startsWith('/api/external/accounting')
+          );
+        }
+      });
+      setShowClosureDialog(false);
+      setClosingTicket(null);
+      setClosureWorkNotes("");
+      setClosureFinalAmount("");
+      setClosureApplyAdminFee(true);
+      setClosureAfterPhotos([]);
+      
+      const message = data?.transactionId 
+        ? (language === "es" ? "Ticket cerrado y enviado a contabilidad" : "Ticket closed and sent to accounting")
+        : (language === "es" ? "Ticket cerrado exitosamente" : "Ticket closed successfully");
+      
+      toast({
+        title: language === "es" ? "Ticket cerrado" : "Ticket closed",
+        description: message,
+      });
+    },
+    onError: (error: any) => {
+      let errorMessage = language === "es" ? "No se pudo cerrar el ticket" : "Failed to close ticket";
+      if (error?.message) errorMessage = error.message;
       
       toast({
         title: language === "es" ? "Error" : "Error",
@@ -1583,17 +1659,23 @@ export default function ExternalMaintenance() {
                                     <DropdownMenuItem
                                       key={status}
                                       onClick={() => {
-                                        if (!updateStatusMutation.isPending) {
+                                        if (status === 'closed') {
+                                          setClosingTicket(ticket);
+                                          setClosureFinalAmount(ticket.estimatedCost || ticket.quotedTotal || '');
+                                          setShowClosureDialog(true);
+                                        } else if (!updateStatusMutation.isPending) {
                                           updateStatusMutation.mutate({ 
                                             ticketId: ticket.id, 
                                             status 
                                           });
                                         }
                                       }}
-                                      disabled={updateStatusMutation.isPending}
+                                      disabled={updateStatusMutation.isPending || closeWithReportMutation.isPending}
                                       data-testid={`menu-status-${status}-${ticket.id}`}
                                     >
-                                      {config.label[language]}
+                                      {status === 'closed' 
+                                        ? (language === 'es' ? 'Cerrar con Reporte' : 'Close with Report')
+                                        : config.label[language]}
                                     </DropdownMenuItem>
                                   ))}
                               </DropdownMenuContent>
@@ -2204,6 +2286,157 @@ export default function ExternalMaintenance() {
           <ExternalMaintenanceWorkers initialTab="assignments" hideHeader />
         </TabsContent>
       </Tabs>
+
+      {/* Closure Report Dialog - Outside of Tabs for proper rendering */}
+      <Dialog open={showClosureDialog} onOpenChange={(open) => {
+        setShowClosureDialog(open);
+        if (!open) {
+          setClosingTicket(null);
+          setClosureWorkNotes("");
+          setClosureFinalAmount("");
+          setClosureApplyAdminFee(true);
+          setClosureAfterPhotos([]);
+        }
+      }}>
+        <DialogContent className="max-w-lg" data-testid="dialog-closure-report">
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'es' ? 'Reporte de Cierre de Trabajo' : 'Work Closure Report'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'es' 
+                ? 'Complete el reporte de cierre para cerrar el ticket y generar el cobro' 
+                : 'Complete the closure report to close the ticket and generate the charge'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Work Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="closure-notes">
+                {language === 'es' ? 'Notas del Trabajo Realizado' : 'Work Notes'}
+              </Label>
+              <Textarea
+                id="closure-notes"
+                placeholder={language === 'es' ? 'Describa el trabajo realizado...' : 'Describe the work done...'}
+                value={closureWorkNotes}
+                onChange={(e) => setClosureWorkNotes(e.target.value)}
+                rows={3}
+                data-testid="input-closure-notes"
+              />
+            </div>
+
+            {/* Invoice Date */}
+            <div className="space-y-2">
+              <Label htmlFor="invoice-date">
+                {language === 'es' ? 'Fecha de Cobro' : 'Invoice Date'}
+              </Label>
+              <Input
+                id="invoice-date"
+                type="date"
+                value={closureInvoiceDate}
+                onChange={(e) => setClosureInvoiceDate(e.target.value)}
+                data-testid="input-invoice-date"
+              />
+            </div>
+
+            {/* Amount to Charge */}
+            <div className="space-y-2">
+              <Label htmlFor="final-amount">
+                {language === 'es' ? 'Monto del Trabajo' : 'Work Amount'}
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="final-amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={closureFinalAmount}
+                  onChange={(e) => setClosureFinalAmount(e.target.value)}
+                  className="pl-7"
+                  data-testid="input-final-amount"
+                />
+              </div>
+            </div>
+
+            {/* Apply Admin Fee Toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="apply-admin-fee" className="cursor-pointer">
+                  {language === 'es' ? 'Aplicar Cargo Administrativo (15%)' : 'Apply Admin Fee (15%)'}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {closureApplyAdminFee && closureFinalAmount
+                    ? `+ $${(parseFloat(closureFinalAmount || '0') * 0.15).toFixed(2)} MXN`
+                    : language === 'es' ? 'Sin cargo adicional' : 'No additional charge'}
+                </p>
+              </div>
+              <Switch
+                id="apply-admin-fee"
+                checked={closureApplyAdminFee}
+                onCheckedChange={setClosureApplyAdminFee}
+                data-testid="switch-apply-admin-fee"
+              />
+            </div>
+
+            {/* Total Summary */}
+            {closureFinalAmount && parseFloat(closureFinalAmount) > 0 && (
+              <div className="rounded-lg bg-muted p-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>{language === 'es' ? 'Monto del trabajo:' : 'Work amount:'}</span>
+                  <span>${parseFloat(closureFinalAmount).toFixed(2)} MXN</span>
+                </div>
+                {closureApplyAdminFee && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{language === 'es' ? 'Cargo administrativo (15%):' : 'Admin fee (15%):'}</span>
+                    <span>+ ${(parseFloat(closureFinalAmount) * 0.15).toFixed(2)} MXN</span>
+                  </div>
+                )}
+                <Separator className="my-2" />
+                <div className="flex justify-between font-semibold">
+                  <span>{language === 'es' ? 'Total a cobrar:' : 'Total to charge:'}</span>
+                  <span>
+                    ${(parseFloat(closureFinalAmount) * (closureApplyAdminFee ? 1.15 : 1)).toFixed(2)} MXN
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowClosureDialog(false)}
+              data-testid="button-cancel-closure"
+            >
+              {language === 'es' ? 'Cancelar' : 'Cancel'}
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => {
+                if (closingTicket) {
+                  closeWithReportMutation.mutate({
+                    ticketId: closingTicket.id,
+                    closureWorkNotes,
+                    invoiceDate: closureInvoiceDate,
+                    finalChargeAmount: closureFinalAmount || '0',
+                    applyAdminFee: closureApplyAdminFee,
+                    afterWorkPhotos: closureAfterPhotos
+                  });
+                }
+              }}
+              disabled={closeWithReportMutation.isPending}
+              data-testid="button-submit-closure"
+            >
+              {closeWithReportMutation.isPending 
+                ? (language === 'es' ? 'Cerrando...' : 'Closing...') 
+                : (language === 'es' ? 'Cerrar y Enviar a Contabilidad' : 'Close & Send to Accounting')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

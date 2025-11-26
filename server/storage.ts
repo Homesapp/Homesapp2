@@ -8454,7 +8454,7 @@ export class DatabaseStorage implements IStorage {
   
   // Helper: Check if user can modify/close maintenance tickets
   canModifyMaintenanceTicket(userRole: string): boolean {
-    const privilegedRoles = ['master', 'admin', 'admin_jr'];
+    const privilegedRoles = ['master', 'admin', 'admin_jr', 'external_agency_admin', 'external_agency_maintenance'];
     return privilegedRoles.includes(userRole);
   }
 

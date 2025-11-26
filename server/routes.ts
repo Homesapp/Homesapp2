@@ -23349,6 +23349,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/external-tickets/:id/close-with-report - Close ticket with full closure report
+  app.post("/api/external-tickets/:id/close-with-report", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { 
+        closureWorkNotes,
+        invoiceDate,
+        finalChargeAmount,
+        applyAdminFee = true,
+        afterWorkPhotos = [],
+        completionNotes
+      } = req.body;
+      
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const userRole = req.user?.role || req.session?.adminUser?.role;
+      
+      // Verify ticket exists
+      const ticket = await storage.getExternalMaintenanceTicket(id);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Get unit for agency verification
+      const unit = await storage.getExternalUnit(ticket.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      // Only admin and maintenance managers can close tickets
+      if (!storage.canModifyMaintenanceTicket(userRole)) {
+        return res.status(403).json({ 
+          message: "Only administrators and maintenance managers can close tickets" 
+        });
+      }
+      
+      // Calculate administrative fee (15%)
+      const chargeAmount = parseFloat(finalChargeAmount || '0');
+      const adminFeeAmount = applyAdminFee ? (chargeAmount * 0.15) : 0;
+      const totalChargeAmount = chargeAmount + adminFeeAmount;
+      
+      // Prepare closure data
+      const closureData: any = {
+        status: 'closed',
+        closedBy: userId,
+        closedAt: new Date(),
+        resolvedDate: new Date(),
+        closureWorkNotes: closureWorkNotes || completionNotes,
+        completionNotes: completionNotes,
+        invoiceDate: invoiceDate ? new Date(invoiceDate) : new Date(),
+        finalChargeAmount: chargeAmount.toFixed(2),
+        applyAdminFee: applyAdminFee,
+        adminFeeAmount: adminFeeAmount.toFixed(2),
+        totalChargeAmount: totalChargeAmount.toFixed(2),
+        afterWorkPhotos: afterWorkPhotos,
+        actualCost: chargeAmount.toFixed(2),
+        accountingSyncStatus: 'pending'
+      };
+      
+      // Update ticket with closure data
+      const updatedTicket = await storage.updateExternalMaintenanceTicket(id, closureData);
+      
+      // Create financial transaction for the charge
+      let transactionId = null;
+      if (totalChargeAmount > 0) {
+        try {
+          // Get owner information from the unit
+          const unitOwners = await storage.getExternalUnitOwners(ticket.unitId);
+          const primaryOwner = unitOwners.find(o => o.ownershipPercentage && parseFloat(o.ownershipPercentage) > 0) || unitOwners[0];
+          
+          // Create financial transaction - charge to owner
+          const transaction = await storage.createExternalFinancialTransaction({
+            agencyId: unit.agencyId,
+            direction: 'inflow',
+            category: 'maintenance_charge',
+            status: 'pending',
+            grossAmount: totalChargeAmount.toFixed(2),
+            fees: adminFeeAmount.toFixed(2),
+            netAmount: chargeAmount.toFixed(2),
+            currency: 'MXN',
+            dueDate: invoiceDate ? new Date(invoiceDate) : new Date(),
+            payerRole: 'owner',
+            payeeRole: 'agency',
+            ownerId: primaryOwner?.id || null,
+            contractId: updatedTicket.contractId || null,
+            unitId: updatedTicket.unitId,
+            maintenanceTicketId: updatedTicket.id,
+            description: `Cargo por mantenimiento: ${updatedTicket.title}`,
+            notes: closureWorkNotes || completionNotes || undefined,
+          });
+          
+          transactionId = transaction.id;
+          
+          // Update ticket with transaction reference
+          await storage.updateExternalMaintenanceTicket(id, {
+            accountingTransactionId: transaction.id,
+            accountingSyncStatus: 'synced'
+          });
+          
+          console.log(`Created accounting transaction ${transaction.id} for ticket closure ${id} - Total: ${totalChargeAmount}`);
+        } catch (finError) {
+          console.error('Failed to create financial transaction for ticket closure:', finError);
+          await storage.updateExternalMaintenanceTicket(id, {
+            accountingSyncStatus: 'error'
+          });
+        }
+      }
+      
+      await createAuditLog(req, "update", "external_ticket", id, `Closed ticket with report - Charge: ${totalChargeAmount} MXN`);
+      
+      // Get updated ticket with all changes
+      const finalTicket = await storage.getExternalMaintenanceTicket(id);
+      res.json({ 
+        ticket: finalTicket,
+        transactionId,
+        message: transactionId ? 'Ticket closed and sent to accounting' : 'Ticket closed'
+      });
+    } catch (error: any) {
+      console.error("Error closing ticket with report:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+
   app.patch("/api/external-tickets/:id/assign", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
