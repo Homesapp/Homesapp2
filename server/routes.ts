@@ -24005,7 +24005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadId: externalLeadShowings.leadId,
         scheduledAt: externalLeadShowings.scheduledAt,
         outcome: externalLeadShowings.outcome,
-        feedback: externalLeadShowings.feedback,
+        leadFeedback: externalLeadShowings.leadFeedback,
         createdAt: externalLeadShowings.createdAt,
       })
         .from(externalLeadShowings)

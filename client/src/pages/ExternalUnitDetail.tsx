@@ -1286,9 +1286,9 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                               </Badge>
                             )}
                           </div>
-                          {showing.feedback && (
+                          {showing.leadFeedback && (
                             <p className="text-xs text-muted-foreground mt-1" data-testid={`text-showing-feedback-${showing.id}`}>
-                              {showing.feedback}
+                              {showing.leadFeedback}
                             </p>
                           )}
                         </div>
