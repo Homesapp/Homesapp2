@@ -335,9 +335,7 @@ export default function ExternalQuotations() {
 
   const convertToTicketMutation = useMutation({
     mutationFn: async (quotationId: string) => {
-      const response = await apiRequest(`/api/external/quotations/${quotationId}/convert-to-ticket`, {
-        method: 'POST',
-      });
+      const response = await apiRequest("POST", `/api/external/quotations/${quotationId}/convert-to-ticket`);
       return response;
     },
     onSuccess: () => {
