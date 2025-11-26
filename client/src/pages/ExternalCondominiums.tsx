@@ -285,6 +285,7 @@ export default function ExternalCondominiums() {
     defaultValues: {
       name: "",
       address: "",
+      zone: "",
       description: "",
       totalUnits: undefined,
     },
@@ -446,6 +447,7 @@ export default function ExternalCondominiums() {
     condoForm.reset({
       name: "",
       address: "",
+      zone: "",
       description: "",
       totalUnits: undefined,
     });
@@ -467,6 +469,7 @@ export default function ExternalCondominiums() {
     condoForm.reset({
       name: "",
       address: "",
+      zone: "",
       description: "",
       totalUnits: undefined,
     });
@@ -478,6 +481,7 @@ export default function ExternalCondominiums() {
     condoForm.reset({
       name: condo.name,
       address: condo.address || "",
+      zone: condo.zone || "",
       description: condo.description || "",
       totalUnits: condo.totalUnits || undefined,
     });
@@ -2427,6 +2431,34 @@ export default function ExternalCondominiums() {
                   
                   <FormField
                     control={condoForm.control}
+                    name="zone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{language === "es" ? "Zona / Colonia" : "Zone / Neighborhood"}</FormLabel>
+                        <Select 
+                          value={field.value || ""} 
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-unified-condo-zone">
+                              <SelectValue placeholder={language === "es" ? "Selecciona una zona" : "Select a zone"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {zones?.filter(z => z.isActive).map((zone) => (
+                              <SelectItem key={zone.id} value={zone.name}>
+                                {zone.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={condoForm.control}
                     name="description"
                     render={({ field }) => (
                       <FormItem>
@@ -2771,6 +2803,34 @@ export default function ExternalCondominiums() {
                         data-testid="input-condo-address" 
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={condoForm.control}
+                name="zone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{language === "es" ? "Zona / Colonia" : "Zone / Neighborhood"}</FormLabel>
+                    <Select 
+                      value={field.value || ""} 
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-condo-zone">
+                          <SelectValue placeholder={language === "es" ? "Selecciona una zona" : "Select a zone"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {zones?.filter(z => z.isActive).map((zone) => (
+                          <SelectItem key={zone.id} value={zone.name}>
+                            {zone.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
