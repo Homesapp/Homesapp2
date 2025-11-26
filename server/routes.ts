@@ -32142,7 +32142,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticket = await storage.createExternalMaintenanceTicket(ticketData);
 
       await storage.updateExternalQuotation(id, agencyId, { 
-        convertedTicketId: ticket.id 
+        convertedTicketId: ticket.id,
+        status: 'converted_to_ticket' 
       });
 
       await createAuditLog(req, "create", "external_maintenance_ticket", ticket.id, `Converted from quotation ${quotation.quotationNumber}`);
