@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Settings, FileText, CheckCircle, XCircle, Plus, Edit, Trash2, Building2, Plug, Calendar, Bot, FileSpreadsheet, Upload, Download, Eye, MapPin, Home, List } from "lucide-react";
+import { Settings, FileText, CheckCircle, XCircle, Plus, Edit, Trash2, Building2, Plug, Calendar, Bot, FileSpreadsheet, Upload, Download, Eye, MapPin, Home, List, Users } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -904,6 +904,257 @@ export default function ExternalConfiguration() {
     );
   };
 
+  // CSV Data Manager Component
+  const CSVDataManager = ({ agencyId, language, toast }: { agencyId?: string, language: string, toast: any }) => {
+    const [importSection, setImportSection] = useState<string | null>(null);
+    const [importData, setImportData] = useState<string>("");
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+
+    const dataSections = [
+      { id: 'condominiums', label: language === 'es' ? 'Condominios' : 'Condominiums', icon: Building2, canImport: true },
+      { id: 'units', label: language === 'es' ? 'Unidades' : 'Units', icon: Home, canImport: false },
+      { id: 'owners', label: language === 'es' ? 'Propietarios' : 'Owners', icon: Users, canImport: false },
+      { id: 'clients', label: language === 'es' ? 'Clientes' : 'Clients', icon: Users, canImport: true },
+      { id: 'leads', label: language === 'es' ? 'Leads' : 'Leads', icon: Users, canImport: true },
+      { id: 'contracts', label: language === 'es' ? 'Contratos' : 'Contracts', icon: FileText, canImport: false },
+      { id: 'maintenance', label: language === 'es' ? 'Mantenimiento' : 'Maintenance', icon: Settings, canImport: false },
+      { id: 'transactions', label: language === 'es' ? 'Transacciones' : 'Transactions', icon: FileText, canImport: false },
+      { id: 'quotations', label: language === 'es' ? 'Cotizaciones' : 'Quotations', icon: FileText, canImport: false },
+    ];
+
+    const exportMutation = useMutation({
+      mutationFn: async (section: string) => {
+        const response = await fetch(`/api/external/data/export/${section}`, {
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Export failed');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${section}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        return section;
+      },
+      onSuccess: (section) => {
+        toast({
+          title: language === 'es' ? 'Exportación completada' : 'Export complete',
+          description: language === 'es' ? `Los datos de ${section} han sido exportados.` : `${section} data has been exported.`,
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Error',
+          description: error.message || (language === 'es' ? 'Error al exportar' : 'Export failed'),
+          variant: 'destructive',
+        });
+      },
+    });
+
+    const importMutation = useMutation({
+      mutationFn: async ({ section, csvData }: { section: string, csvData: string }) => {
+        return apiRequest('POST', `/api/external/data/import/${section}`, { csvData });
+      },
+      onSuccess: (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/external-condominiums'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/external-clients'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/external/leads'] });
+        toast({
+          title: language === 'es' ? 'Importación completada' : 'Import complete',
+          description: data.message,
+        });
+        setIsImportDialogOpen(false);
+        setImportData("");
+        setImportSection(null);
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Error',
+          description: error.message || (language === 'es' ? 'Error al importar' : 'Import failed'),
+          variant: 'destructive',
+        });
+      },
+    });
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setImportData(event.target?.result as string);
+        };
+        reader.readAsText(file);
+      }
+    };
+
+    const openImportDialog = (section: string) => {
+      setImportSection(section);
+      setImportData("");
+      setIsImportDialogOpen(true);
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            {language === 'es' ? 'Gestión de Datos CSV' : 'CSV Data Management'}
+          </CardTitle>
+          <CardDescription>
+            {language === 'es' 
+              ? 'Exporta e importa datos en formato CSV para cada sección del sistema.'
+              : 'Export and import data in CSV format for each system section.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {dataSections.map((section) => {
+              const IconComponent = section.icon;
+              return (
+                <Card key={section.id} className="p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    <h4 className="font-medium">{section.label}</h4>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => exportMutation.mutate(section.id)}
+                      disabled={exportMutation.isPending}
+                      data-testid={`button-export-${section.id}`}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      {language === 'es' ? 'Exportar' : 'Export'}
+                    </Button>
+                    {section.canImport && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openImportDialog(section.id)}
+                        data-testid={`button-import-${section.id}`}
+                      >
+                        <Upload className="h-4 w-4 mr-1" />
+                        {language === 'es' ? 'Importar' : 'Import'}
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 p-4 bg-muted rounded-lg">
+            <h4 className="font-medium mb-2">
+              {language === 'es' ? 'Notas sobre la importación:' : 'Import notes:'}
+            </h4>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>{language === 'es' ? 'Los registros duplicados (mismo nombre) serán omitidos' : 'Duplicate records (same name) will be skipped'}</li>
+              <li>{language === 'es' ? 'El archivo debe tener encabezados en la primera fila' : 'The file must have headers in the first row'}</li>
+              <li>{language === 'es' ? 'Usa el botón de exportar para ver el formato esperado' : 'Use the export button to see the expected format'}</li>
+            </ul>
+          </div>
+        </CardContent>
+
+        <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {language === 'es' 
+                  ? `Importar ${dataSections.find(s => s.id === importSection)?.label || ''}`
+                  : `Import ${dataSections.find(s => s.id === importSection)?.label || ''}`}
+              </DialogTitle>
+              <DialogDescription>
+                {language === 'es'
+                  ? 'Sube un archivo CSV o pega los datos directamente.'
+                  : 'Upload a CSV file or paste the data directly.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label>{language === 'es' ? 'Subir archivo CSV' : 'Upload CSV file'}</Label>
+                <Input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="mt-2"
+                  data-testid="input-import-file"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    {language === 'es' ? 'o pega los datos' : 'or paste data'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <Label>{language === 'es' ? 'Datos CSV' : 'CSV Data'}</Label>
+                <Textarea
+                  value={importData}
+                  onChange={(e) => setImportData(e.target.value)}
+                  placeholder={language === 'es' ? 'Pega aquí los datos CSV...' : 'Paste CSV data here...'}
+                  className="mt-2 min-h-[200px] font-mono text-sm"
+                  data-testid="textarea-import-data"
+                />
+              </div>
+
+              {importData && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'es' 
+                      ? `${importData.split('\n').length - 1} registros detectados (excluyendo encabezado)`
+                      : `${importData.split('\n').length - 1} records detected (excluding header)`}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsImportDialogOpen(false)}
+                data-testid="button-cancel-import"
+              >
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </Button>
+              <Button
+                onClick={() => importSection && importMutation.mutate({ section: importSection, csvData: importData })}
+                disabled={importMutation.isPending || !importData.trim()}
+                data-testid="button-confirm-csv-import"
+              >
+                {importMutation.isPending ? (
+                  language === 'es' ? 'Importando...' : 'Importing...'
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {language === 'es' ? 'Importar' : 'Import'}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </Card>
+    );
+  };
+
   const ConfigurableCatalogSection = ({ 
     type, 
     language, 
@@ -1687,6 +1938,12 @@ export default function ExternalConfiguration() {
 
               <GoogleSheetsImport 
                 agencyId={agency?.id} 
+                language={language}
+                toast={toast}
+              />
+
+              <CSVDataManager
+                agencyId={agency?.id}
                 language={language}
                 toast={toast}
               />

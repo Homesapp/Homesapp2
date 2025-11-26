@@ -30555,6 +30555,497 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
 
+
+  // ============================================================================
+  // EXTERNAL MANAGEMENT SYSTEM - CSV EXPORT/IMPORT ROUTES
+  // ============================================================================
+
+  // GET /api/external/data/export/:section - Export data as CSV
+  app.get("/api/external/data/export/:section", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      let data: any[] = [];
+      let filename = '';
+      
+      switch (section) {
+        case 'condominiums':
+          const condos = await db.select().from(externalCondominiums).where(eq(externalCondominiums.agencyId, agencyId));
+          data = condos.map(c => ({
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            address: c.address || '',
+            zone: c.zone || '',
+            total_units: c.totalUnits || 0,
+            is_active: c.isActive ? 'true' : 'false',
+            created_at: c.createdAt?.toISOString() || '',
+          }));
+          filename = 'condominiums.csv';
+          break;
+          
+        case 'units':
+          const units = await db.select({
+            id: externalUnits.id,
+            unitNumber: externalUnits.unitNumber,
+            condominiumId: externalUnits.condominiumId,
+            condominiumName: externalCondominiums.name,
+            zone: externalUnits.zone,
+            typology: externalUnits.typology,
+            propertyType: externalUnits.propertyType,
+            bedrooms: externalUnits.bedrooms,
+            bathrooms: externalUnits.bathrooms,
+            area: externalUnits.area,
+            baseRentPrice: externalUnits.baseRentPrice,
+            isActive: externalUnits.isActive,
+            createdAt: externalUnits.createdAt,
+          })
+          .from(externalUnits)
+          .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+          .where(eq(externalUnits.agencyId, agencyId));
+          
+          data = units.map(u => ({
+            id: u.id,
+            unit_number: u.unitNumber,
+            condominium_id: u.condominiumId || '',
+            condominium_name: u.condominiumName || '',
+            zone: u.zone || '',
+            typology: u.typology || '',
+            property_type: u.propertyType || '',
+            bedrooms: u.bedrooms || 0,
+            bathrooms: u.bathrooms || 0,
+            area: u.area || 0,
+            base_rent_price: u.baseRentPrice || 0,
+            is_active: u.isActive ? 'true' : 'false',
+            created_at: u.createdAt?.toISOString() || '',
+          }));
+          filename = 'units.csv';
+          break;
+          
+        case 'owners':
+          const owners = await db.select({
+            id: externalUnitOwners.id,
+            unitId: externalUnitOwners.unitId,
+            unitNumber: externalUnits.unitNumber,
+            ownerName: externalUnitOwners.ownerName,
+            email: externalUnitOwners.email,
+            phone: externalUnitOwners.phone,
+            nationality: externalUnitOwners.nationality,
+            ownership: externalUnitOwners.ownershipPercentage,
+            isPrimary: externalUnitOwners.isPrimaryContact,
+            createdAt: externalUnitOwners.createdAt,
+          })
+          .from(externalUnitOwners)
+          .leftJoin(externalUnits, eq(externalUnitOwners.unitId, externalUnits.id))
+          .where(eq(externalUnits.agencyId, agencyId));
+          
+          data = owners.map(o => ({
+            id: o.id,
+            unit_id: o.unitId || '',
+            unit_number: o.unitNumber || '',
+            owner_name: o.ownerName,
+            email: o.email || '',
+            phone: o.phone || '',
+            nationality: o.nationality || '',
+            ownership_percentage: o.ownership || 100,
+            is_primary: o.isPrimary ? 'true' : 'false',
+            created_at: o.createdAt?.toISOString() || '',
+          }));
+          filename = 'owners.csv';
+          break;
+          
+        case 'clients':
+          const clients = await db.select().from(externalClients).where(eq(externalClients.agencyId, agencyId));
+          data = clients.map(c => ({
+            id: c.id,
+            first_name: c.firstName,
+            last_name: c.lastName,
+            email: c.email || '',
+            phone: c.phone || '',
+            nationality: c.nationality || '',
+            client_type: c.clientType || '',
+            status: c.status || 'active',
+            notes: c.notes || '',
+            created_at: c.createdAt?.toISOString() || '',
+          }));
+          filename = 'clients.csv';
+          break;
+          
+        case 'leads':
+          const leads = await db.select().from(externalLeads).where(eq(externalLeads.agencyId, agencyId));
+          data = leads.map(l => ({
+            id: l.id,
+            first_name: l.firstName,
+            last_name: l.lastName,
+            email: l.email || '',
+            phone: l.phone || '',
+            lead_type: l.leadType || '',
+            status: l.status || '',
+            source: l.source || '',
+            assigned_to: l.assignedTo || '',
+            property_interest: l.propertyInterest || '',
+            budget_min: l.budgetMin || '',
+            budget_max: l.budgetMax || '',
+            notes: l.notes || '',
+            created_at: l.createdAt?.toISOString() || '',
+          }));
+          filename = 'leads.csv';
+          break;
+          
+        case 'contracts':
+          const contracts = await db.select({
+            id: externalRentalContracts.id,
+            unitId: externalRentalContracts.unitId,
+            unitNumber: externalUnits.unitNumber,
+            contractType: externalRentalContracts.contractType,
+            status: externalRentalContracts.status,
+            startDate: externalRentalContracts.startDate,
+            endDate: externalRentalContracts.endDate,
+            rentAmount: externalRentalContracts.rentAmount,
+            currency: externalRentalContracts.currency,
+            createdAt: externalRentalContracts.createdAt,
+          })
+          .from(externalRentalContracts)
+          .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
+          .where(eq(externalRentalContracts.agencyId, agencyId));
+          
+          data = contracts.map(c => ({
+            id: c.id,
+            unit_id: c.unitId || '',
+            unit_number: c.unitNumber || '',
+            contract_type: c.contractType || '',
+            status: c.status || '',
+            start_date: c.startDate?.toISOString().split('T')[0] || '',
+            end_date: c.endDate?.toISOString().split('T')[0] || '',
+            rent_amount: c.rentAmount || 0,
+            currency: c.currency || 'USD',
+            created_at: c.createdAt?.toISOString() || '',
+          }));
+          filename = 'contracts.csv';
+          break;
+          
+        case 'maintenance':
+          const tickets = await db.select({
+            id: externalMaintenanceTickets.id,
+            unitId: externalMaintenanceTickets.unitId,
+            unitNumber: externalUnits.unitNumber,
+            title: externalMaintenanceTickets.title,
+            description: externalMaintenanceTickets.description,
+            category: externalMaintenanceTickets.category,
+            priority: externalMaintenanceTickets.priority,
+            status: externalMaintenanceTickets.status,
+            createdAt: externalMaintenanceTickets.createdAt,
+            resolvedAt: externalMaintenanceTickets.resolvedAt,
+          })
+          .from(externalMaintenanceTickets)
+          .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
+          .where(eq(externalMaintenanceTickets.agencyId, agencyId));
+          
+          data = tickets.map(t => ({
+            id: t.id,
+            unit_id: t.unitId || '',
+            unit_number: t.unitNumber || '',
+            title: t.title,
+            description: t.description || '',
+            category: t.category || '',
+            priority: t.priority || '',
+            status: t.status || '',
+            created_at: t.createdAt?.toISOString() || '',
+            resolved_at: t.resolvedAt?.toISOString() || '',
+          }));
+          filename = 'maintenance_tickets.csv';
+          break;
+          
+        case 'transactions':
+          const transactions = await db.select({
+            id: externalFinancialTransactions.id,
+            unitId: externalFinancialTransactions.unitId,
+            unitNumber: externalUnits.unitNumber,
+            type: externalFinancialTransactions.type,
+            category: externalFinancialTransactions.category,
+            amount: externalFinancialTransactions.amount,
+            currency: externalFinancialTransactions.currency,
+            status: externalFinancialTransactions.status,
+            description: externalFinancialTransactions.description,
+            date: externalFinancialTransactions.transactionDate,
+            createdAt: externalFinancialTransactions.createdAt,
+          })
+          .from(externalFinancialTransactions)
+          .leftJoin(externalUnits, eq(externalFinancialTransactions.unitId, externalUnits.id))
+          .where(eq(externalFinancialTransactions.agencyId, agencyId));
+          
+          data = transactions.map(t => ({
+            id: t.id,
+            unit_id: t.unitId || '',
+            unit_number: t.unitNumber || '',
+            type: t.type || '',
+            category: t.category || '',
+            amount: t.amount || 0,
+            currency: t.currency || 'USD',
+            status: t.status || '',
+            description: t.description || '',
+            transaction_date: t.date?.toISOString().split('T')[0] || '',
+            created_at: t.createdAt?.toISOString() || '',
+          }));
+          filename = 'transactions.csv';
+          break;
+          
+        case 'quotations':
+          const quotations = await db.select({
+            id: externalQuotations.id,
+            unitId: externalQuotations.unitId,
+            unitNumber: externalUnits.unitNumber,
+            clientName: externalQuotations.clientName,
+            clientEmail: externalQuotations.clientEmail,
+            status: externalQuotations.status,
+            totalAmount: externalQuotations.totalAmount,
+            adminFee: externalQuotations.adminFee,
+            currency: externalQuotations.currency,
+            validUntil: externalQuotations.validUntil,
+            createdAt: externalQuotations.createdAt,
+          })
+          .from(externalQuotations)
+          .leftJoin(externalUnits, eq(externalQuotations.unitId, externalUnits.id))
+          .where(eq(externalQuotations.agencyId, agencyId));
+          
+          data = quotations.map(q => ({
+            id: q.id,
+            unit_id: q.unitId || '',
+            unit_number: q.unitNumber || '',
+            client_name: q.clientName || '',
+            client_email: q.clientEmail || '',
+            status: q.status || '',
+            total_amount: q.totalAmount || 0,
+            admin_fee: q.adminFee || 0,
+            currency: q.currency || 'USD',
+            valid_until: q.validUntil?.toISOString().split('T')[0] || '',
+            created_at: q.createdAt?.toISOString() || '',
+          }));
+          filename = 'quotations.csv';
+          break;
+          
+        default:
+          return res.status(400).json({ message: `Unknown section: ${section}` });
+      }
+
+      if (data.length === 0) {
+        return res.status(200).json({ message: 'No data to export', csv: '', filename });
+      }
+
+      // Generate CSV using papaparse
+      const csv = Papa.unparse(data, {
+        header: true,
+        quotes: true,
+      });
+
+      await createAuditLog(req, "export", `external_${section}`, agencyId, `Exported ${data.length} ${section} records to CSV`);
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(csv);
+    } catch (error: any) {
+      console.error(`Error exporting ${req.params.section}:`, error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external/data/import/:section - Import data from CSV
+  app.post("/api/external/data/import/:section", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      const { csvData } = req.body;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+      
+      if (!csvData || typeof csvData !== 'string') {
+        return res.status(400).json({ message: "CSV data is required" });
+      }
+
+      // Parse CSV
+      const parseResult = Papa.parse(csvData, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (h: string) => h.trim().toLowerCase().replace(/\s+/g, '_'),
+      });
+
+      if (parseResult.errors.length > 0) {
+        return res.status(400).json({ 
+          message: "CSV parsing errors", 
+          errors: parseResult.errors.slice(0, 5) 
+        });
+      }
+
+      const rows = parseResult.data as any[];
+      let imported = 0;
+      let skipped = 0;
+      let errors: string[] = [];
+
+      switch (section) {
+        case 'condominiums':
+          for (const row of rows) {
+            try {
+              if (!row.name?.trim()) {
+                skipped++;
+                continue;
+              }
+              
+              // Check if exists by name
+              const existing = await db.select().from(externalCondominiums)
+                .where(and(
+                  eq(externalCondominiums.agencyId, agencyId),
+                  sql`LOWER(${externalCondominiums.name}) = LOWER(${row.name.trim()})`
+                ))
+                .limit(1);
+              
+              if (existing.length > 0) {
+                skipped++;
+                continue;
+              }
+              
+              await db.insert(externalCondominiums).values({
+                id: crypto.randomUUID(),
+                agencyId,
+                name: row.name.trim(),
+                description: row.description?.trim() || null,
+                address: row.address?.trim() || null,
+                zone: row.zone?.trim() || null,
+                totalUnits: parseInt(row.total_units) || 0,
+                isActive: row.is_active !== 'false',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+              imported++;
+            } catch (e: any) {
+              errors.push(`Row "${row.name}": ${e.message}`);
+            }
+          }
+          break;
+          
+        case 'clients':
+          for (const row of rows) {
+            try {
+              if (!row.first_name?.trim() || !row.last_name?.trim()) {
+                skipped++;
+                continue;
+              }
+              
+              // Check for duplicates by name + phone/email
+              const existingConditions: any[] = [eq(externalClients.agencyId, agencyId)];
+              
+              const firstName = row.first_name.trim();
+              const lastName = row.last_name.trim();
+              
+              existingConditions.push(sql`LOWER(${externalClients.firstName}) = LOWER(${firstName})`);
+              existingConditions.push(sql`LOWER(${externalClients.lastName}) = LOWER(${lastName})`);
+              
+              const existing = await db.select().from(externalClients)
+                .where(and(...existingConditions))
+                .limit(1);
+              
+              if (existing.length > 0) {
+                skipped++;
+                continue;
+              }
+              
+              await db.insert(externalClients).values({
+                id: crypto.randomUUID(),
+                agencyId,
+                firstName,
+                lastName,
+                email: row.email?.trim() || null,
+                phone: row.phone?.trim() || null,
+                nationality: row.nationality?.trim() || null,
+                clientType: row.client_type?.trim() || 'tenant',
+                status: row.status?.trim() || 'active',
+                notes: row.notes?.trim() || null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+              imported++;
+            } catch (e: any) {
+              errors.push(`Row "${row.first_name} ${row.last_name}": ${e.message}`);
+            }
+          }
+          break;
+          
+        case 'leads':
+          for (const row of rows) {
+            try {
+              if (!row.first_name?.trim() || !row.last_name?.trim()) {
+                skipped++;
+                continue;
+              }
+              
+              const firstName = row.first_name.trim();
+              const lastName = row.last_name.trim();
+              
+              // Check for duplicates
+              const existing = await db.select().from(externalLeads)
+                .where(and(
+                  eq(externalLeads.agencyId, agencyId),
+                  sql`LOWER(${externalLeads.firstName}) = LOWER(${firstName})`,
+                  sql`LOWER(${externalLeads.lastName}) = LOWER(${lastName})`
+                ))
+                .limit(1);
+              
+              if (existing.length > 0) {
+                skipped++;
+                continue;
+              }
+              
+              await db.insert(externalLeads).values({
+                id: crypto.randomUUID(),
+                agencyId,
+                firstName,
+                lastName,
+                email: row.email?.trim() || null,
+                phone: row.phone?.trim() || null,
+                leadType: row.lead_type?.trim() || 'buyer',
+                status: row.status?.trim() || 'new',
+                source: row.source?.trim() || 'csv_import',
+                assignedTo: row.assigned_to?.trim() || null,
+                propertyInterest: row.property_interest?.trim() || null,
+                budgetMin: row.budget_min ? parseFloat(row.budget_min) : null,
+                budgetMax: row.budget_max ? parseFloat(row.budget_max) : null,
+                notes: row.notes?.trim() || null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+              imported++;
+            } catch (e: any) {
+              errors.push(`Row "${row.first_name} ${row.last_name}": ${e.message}`);
+            }
+          }
+          break;
+          
+        default:
+          return res.status(400).json({ 
+            message: `Import not supported for section: ${section}. Currently supported: condominiums, clients, leads` 
+          });
+      }
+
+      await createAuditLog(req, "import", `external_${section}`, agencyId, 
+        `Imported ${imported} ${section} records from CSV (${skipped} skipped, ${errors.length} errors)`);
+
+      res.json({
+        success: true,
+        imported,
+        skipped,
+        errors: errors.slice(0, 10),
+        message: `Imported ${imported} records, skipped ${skipped} duplicates${errors.length > 0 ? `, ${errors.length} errors` : ''}`,
+      });
+    } catch (error: any) {
+      console.error(`Error importing ${req.params.section}:`, error);
+      handleGenericError(res, error);
+    }
+  });
   // ============================================================================
   // EXTERNAL MANAGEMENT SYSTEM - CONFIGURABLE ZONES ROUTES
   // ============================================================================
