@@ -74,7 +74,7 @@ const quotationFormSchema = z.object({
   notes: z.string().optional(),
   terms: z.string().optional(),
   currency: z.string().default("MXN"),
-  status: z.enum(["draft", "sent", "accepted", "rejected", "cancelled"]).default("draft"),
+  status: z.enum(["draft", "sent", "approved", "rejected", "converted_to_ticket"]).default("draft"),
 });
 
 type QuotationFormData = z.infer<typeof quotationFormSchema>;
@@ -1101,7 +1101,7 @@ export default function ExternalQuotations() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "accepted" })}
+                              onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "approved" })}
                               data-testid={`button-accept-${quotation.id}`}
                             >
                               <Check className="h-4 w-4 text-green-500" />
@@ -1134,7 +1134,7 @@ export default function ExternalQuotations() {
                         >
                           <Download className={`h-4 w-4 ${downloadPdfMutation.isPending ? 'animate-pulse' : ''}`} />
                         </Button>
-                        {quotation.status === "accepted" && !quotation.convertedTicketId && (
+                        {quotation.status === "approved" && !quotation.convertedTicketId && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1234,7 +1234,7 @@ export default function ExternalQuotations() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "accepted" })}
+                              onClick={() => updateStatusMutation.mutate({ id: quotation.id, status: "approved" })}
                               data-testid={`button-accept-${quotation.id}`}
                             >
                               <Check className="h-3 w-3 mr-1 text-green-500" />
@@ -1270,7 +1270,7 @@ export default function ExternalQuotations() {
                           <Download className={`h-3 w-3 mr-1 ${downloadPdfMutation.isPending ? 'animate-pulse' : ''}`} />
                           {downloadPdfMutation.isPending ? 'Generando...' : 'PDF'}
                         </Button>
-                        {quotation.status === "accepted" && !quotation.convertedTicketId && (
+                        {quotation.status === "approved" && !quotation.convertedTicketId && (
                           <Button
                             variant="outline"
                             size="sm"

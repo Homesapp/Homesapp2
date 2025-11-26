@@ -24623,7 +24623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           uo.updated_at as "updatedAt",
           u.unit_number as "unitNumber",
           u.condominium_id as "condominiumId",
-          u.unit_type as "typology",
+          u.typology as "typology",
           c.name as "condominiumName"
         FROM external_unit_owners uo
         INNER JOIN external_units u ON uo.unit_id = u.id
