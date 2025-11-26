@@ -1189,7 +1189,8 @@ export default function ExternalCalendar() {
                             event.type === 'payment' && "border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/10",
                             event.type === 'service' && "border-yellow-200 dark:border-yellow-900 bg-yellow-50/30 dark:bg-yellow-950/10",
                             event.type === 'ticket' && "border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-950/10",
-                            event.type === 'contract' && "border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-950/10"
+                            event.type === 'contract' && "border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-950/10",
+                            event.type === 'accounting' && "border-pink-200 dark:border-pink-900 bg-pink-50/30 dark:bg-pink-950/10"
                           )}>
                             <CollapsibleTrigger asChild>
                               <div
@@ -1204,6 +1205,8 @@ export default function ExternalCalendar() {
                                       <div className="h-2 w-2 rounded-full bg-yellow-500" />
                                     ) : event.type === 'ticket' ? (
                                       <div className="h-2 w-2 rounded-full bg-green-500" />
+                                    ) : event.type === 'accounting' ? (
+                                      <div className="h-2 w-2 rounded-full bg-pink-500" />
                                     ) : (
                                       <div className="h-2 w-2 rounded-full bg-purple-500" />
                                     )}
@@ -1361,7 +1364,7 @@ export default function ExternalCalendar() {
                                             <div>
                                               <p className="font-medium">{language === "es" ? "Trabajador" : "Worker"}</p>
                                               <p className="text-muted-foreground">
-                                                {assignedUser.name}{assignedUser.maintenanceSpecialty ? ` (${assignedUser.maintenanceSpecialty})` : ''}
+                                                {assignedUser.firstName || ''} {assignedUser.lastName || ''}{assignedUser.maintenanceSpecialty ? ` (${assignedUser.maintenanceSpecialty})` : ''}
                                               </p>
                                             </div>
                                           </div>
@@ -1434,6 +1437,104 @@ export default function ExternalCalendar() {
                                             </div>
                                           </div>
                                         )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {event.type === 'accounting' && (() => {
+                                  const transaction = event.data as any;
+                                  const grossAmount = transaction.grossAmount ? parseFloat(transaction.grossAmount) : 0;
+                                  const fees = transaction.fees ? parseFloat(transaction.fees) : 0;
+                                  const netAmount = transaction.netAmount ? parseFloat(transaction.netAmount) : 0;
+
+                                  const translateCategory = (cat: string) => {
+                                    if (language !== "es") return cat;
+                                    const categoryMap: Record<string, string> = {
+                                      'maintenance_charge': 'Cargo Mantenimiento',
+                                      'rent_income': 'Ingreso Renta',
+                                      'service_electricity': 'Electricidad',
+                                      'service_water': 'Agua',
+                                      'service_internet': 'Internet',
+                                      'hoa_fee': 'Cuota HOA',
+                                    };
+                                    return categoryMap[cat] || cat;
+                                  };
+
+                                  return (
+                                    <div className="space-y-2 text-sm">
+                                      <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <Badge variant={transaction.status === 'paid' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
+                                          {translateStatus(transaction.status)}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-xs">
+                                          {transaction.direction === 'income' 
+                                            ? (language === "es" ? "Ingreso" : "Income")
+                                            : (language === "es" ? "Gasto" : "Expense")}
+                                        </Badge>
+                                      </div>
+                                      {transaction.description && (
+                                        <p className="text-xs text-muted-foreground">{transaction.description}</p>
+                                      )}
+                                      <div className="space-y-1.5 text-xs">
+                                        {event.condominium && event.unitNumber && (
+                                          <div className="flex items-start gap-2">
+                                            <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="font-medium">{language === "es" ? "Ubicación" : "Location"}</p>
+                                              <p className="text-muted-foreground break-words">
+                                                {event.condominium} - {event.unitNumber}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="flex items-start gap-2">
+                                          <DollarSign className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                          <div>
+                                            <p className="font-medium">{language === "es" ? "Monto Bruto" : "Gross Amount"}</p>
+                                            <p className="text-muted-foreground">
+                                              {transaction.currency || 'MXN'} ${grossAmount.toLocaleString()}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {fees > 0 && (
+                                          <div className="flex items-start gap-2">
+                                            <DollarSign className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                            <div>
+                                              <p className="font-medium">{language === "es" ? "Cargo Admin (15%)" : "Admin Fee (15%)"}</p>
+                                              <p className="text-muted-foreground">
+                                                {transaction.currency || 'MXN'} ${fees.toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="flex items-start gap-2">
+                                          <DollarSign className="h-3.5 w-3.5 mt-0.5 text-pink-600 flex-shrink-0" />
+                                          <div>
+                                            <p className="font-medium">{language === "es" ? "Monto Neto" : "Net Amount"}</p>
+                                            <p className="font-bold text-pink-600">
+                                              {transaction.currency || 'MXN'} ${netAmount.toLocaleString()}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {transaction.dueDate && (
+                                          <div className="flex items-start gap-2">
+                                            <CalIcon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                            <div>
+                                              <p className="font-medium">{language === "es" ? "Fecha Vencimiento" : "Due Date"}</p>
+                                              <p className="text-muted-foreground">
+                                                {format(new Date(transaction.dueDate), "PPP", { locale: language === "es" ? es : enUS })}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="flex items-start gap-2">
+                                          <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                          <div>
+                                            <p className="font-medium">{language === "es" ? "Categoría" : "Category"}</p>
+                                            <p className="text-muted-foreground">{translateCategory(transaction.category)}</p>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   );
