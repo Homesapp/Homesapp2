@@ -2721,7 +2721,7 @@ export default function ExternalClients() {
                               </div>
                             </TableCell>
                             <TableCell className="text-sm">
-                              {lead.sellerName || "-"}
+                              {lead.sellerName || (lead.sellerId && sellers.find(s => s.id === lead.sellerId)?.firstName ? `${sellers.find(s => s.id === lead.sellerId)?.firstName} ${sellers.find(s => s.id === lead.sellerId)?.lastName || ""}`.trim() : "-")}
                             </TableCell>
                             <TableCell className="text-sm">
                               {lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-")}
@@ -2847,7 +2847,7 @@ export default function ExternalClients() {
                           <div className="flex items-center gap-1.5">
                             <User className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-muted-foreground">{language === "es" ? "Vendedor:" : "Seller:"}</span>
-                            <span className="font-medium truncate">{lead.sellerName || "-"}</span>
+                            <span className="font-medium truncate">{lead.sellerName || (lead.sellerId && sellers.find(s => s.id === lead.sellerId)?.firstName ? `${sellers.find(s => s.id === lead.sellerId)?.firstName} ${sellers.find(s => s.id === lead.sellerId)?.lastName || ""}`.trim() : "-")}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
