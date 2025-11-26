@@ -82,6 +82,7 @@ import {
   Upload,
   Image as ImageIcon,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,17 +112,22 @@ const maintenanceFormSchema = z.object({
   status: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
   scheduledDate: z.string().optional(), // ISO string, converted to Date on submit
   assignedTo: z.string().optional(),
+  reportedBy: z.string().optional(), // Who reported the issue
+  estimatedCost: z.string().optional(), // Estimated cost for the repair
   notes: z.string().optional(),
 });
 
 type MaintenanceFormData = z.infer<typeof maintenanceFormSchema>;
 
-// Edit-specific schema - only editable fields
+// Edit-specific schema - expanded editable fields
 const editMaintenanceTicketSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
   category: z.enum(["plumbing", "electrical", "appliances", "hvac", "general", "emergency", "other"]),
   priority: z.enum(["low", "medium", "high", "urgent"]),
+  reportedBy: z.string().optional(),
+  estimatedCost: z.string().optional(),
+  actualCost: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -353,6 +359,8 @@ export default function ExternalMaintenance() {
       status: "open",
       scheduledDate: scheduleToISOString(getDefaultSchedule()),
       assignedTo: undefined,
+      reportedBy: "",
+      estimatedCost: "",
       notes: "",
     },
   });
@@ -364,6 +372,9 @@ export default function ExternalMaintenance() {
       description: "",
       category: "other",
       priority: "medium",
+      reportedBy: "",
+      estimatedCost: "",
+      actualCost: "",
       notes: "",
     },
   });
@@ -383,6 +394,9 @@ export default function ExternalMaintenance() {
         description: editingTicket.description,
         category: editingTicket.category,
         priority: editingTicket.priority,
+        reportedBy: editingTicket.reportedBy || "",
+        estimatedCost: editingTicket.estimatedCost || "",
+        actualCost: editingTicket.actualCost || "",
         notes: editingTicket.notes || "",
       });
     }
@@ -450,6 +464,8 @@ export default function ExternalMaintenance() {
         status: "open",
         scheduledDate: scheduleToISOString(defaultSchedule),
         assignedTo: undefined,
+        reportedBy: "",
+        estimatedCost: "",
         notes: "",
       });
       toast({
@@ -1930,6 +1946,54 @@ export default function ExternalMaintenance() {
                 </div>
               </div>
 
+              {/* Additional Information Section */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="reportedBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {language === "es" ? "Reportado por" : "Reported by"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder={language === "es" ? "Nombre de quien reporta" : "Name of reporter"}
+                          data-testid="input-reported-by" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="estimatedCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {language === "es" ? "Costo Estimado (MXN)" : "Estimated Cost (MXN)"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={field.value || ""} 
+                          placeholder="0.00"
+                          data-testid="input-estimated-cost" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
                 name="notes"
@@ -2060,6 +2124,78 @@ export default function ExternalMaintenance() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Costs and Reporter Section */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={editForm.control}
+                  name="reportedBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {language === "es" ? "Reportado por" : "Reported by"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder={language === "es" ? "Nombre de quien reporta" : "Name of reporter"}
+                          data-testid="input-edit-reported-by" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="estimatedCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {language === "es" ? "Costo Estimado" : "Estimated Cost"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={field.value || ""} 
+                          placeholder="0.00"
+                          data-testid="input-edit-estimated-cost" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="actualCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {language === "es" ? "Costo Real" : "Actual Cost"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={field.value || ""} 
+                          placeholder="0.00"
+                          data-testid="input-edit-actual-cost" 
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -2317,6 +2453,32 @@ export default function ExternalMaintenance() {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* Source Quotation Info - show if ticket originated from quotation */}
+            {closingTicket?.quotationId && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300">
+                  <FileText className="h-4 w-4" />
+                  {language === 'es' ? 'Originado de Cotización' : 'From Quotation'}
+                </div>
+                {(closingTicket.quotedTotal || closingTicket.quotedAdminFee) && (
+                  <div className="text-sm space-y-1">
+                    {closingTicket.quotedTotal && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{language === 'es' ? 'Total cotizado:' : 'Quoted total:'}</span>
+                        <span className="font-medium">${parseFloat(closingTicket.quotedTotal).toFixed(2)} MXN</span>
+                      </div>
+                    )}
+                    {closingTicket.quotedAdminFee && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{language === 'es' ? 'Fee administrativo:' : 'Admin fee:'}</span>
+                        <span>${parseFloat(closingTicket.quotedAdminFee).toFixed(2)} MXN</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Work Notes */}
             <div className="space-y-2">
               <Label htmlFor="closure-notes">
