@@ -19,14 +19,26 @@ import type { ExternalPayment, ExternalMaintenanceTicket, SelectUser, ExternalRe
 import { TodayView } from "./external-calendar/TodayView";
 import { AgendaView } from "./external-calendar/AgendaView";
 
+type FinancialTransaction = {
+  id: string;
+  category: string;
+  direction: string;
+  status: string;
+  grossAmount: string;
+  dueDate: string;
+  description: string;
+  unitId: string | null;
+  maintenanceTicketId: string | null;
+};
+
 type EventData = {
-  type: 'payment' | 'ticket' | 'contract' | 'service';
+  type: 'payment' | 'ticket' | 'contract' | 'service' | 'accounting';
   title: string;
   time: string;
   status: string;
   priority?: string;
   serviceType?: string;
-  data: ExternalPayment | ExternalMaintenanceTicket | ExternalRentalContract | ExternalPaymentSchedule;
+  data: ExternalPayment | ExternalMaintenanceTicket | ExternalRentalContract | ExternalPaymentSchedule | FinancialTransaction;
   condominium: string;
   unitNumber: string;
   tenantName?: string;
@@ -41,6 +53,7 @@ export default function ExternalCalendar() {
   const [showTickets, setShowTickets] = useState(true);
   const [showContracts, setShowContracts] = useState(true);
   const [showCheckOut, setShowCheckOut] = useState(true);
+  const [showAccounting, setShowAccounting] = useState(true);
   const [viewMode, setViewMode] = useState<"calendar" | "today" | "agenda" | "option1" | "option2" | "option3">("calendar");
   const [eventPage, setEventPage] = useState(0);
   const { language } = useLanguage();
@@ -110,6 +123,17 @@ export default function ExternalCalendar() {
   const { data: users = [] } = useQuery<SelectUser[]>({
     queryKey: ["/api/external-agency-users"],
   });
+
+  // Fetch financial transactions for accounting events
+  const { data: financialTransactionsResponse } = useQuery<{ data: FinancialTransaction[], total: number }>({
+    queryKey: ["/api/external/accounting/transactions"],
+    queryFn: async () => {
+      const response = await fetch('/api/external/accounting/transactions?limit=500', { credentials: 'include' });
+      if (!response.ok) return { data: [], total: 0 };
+      return response.json();
+    },
+  });
+  const financialTransactions = financialTransactionsResponse?.data || [];
 
   // Normalize rental contracts (handle both nested and flat structures)
   // Preserve unit and condominium metadata when present
@@ -646,8 +670,39 @@ export default function ExternalCalendar() {
         };
       }) : [];
 
-    return [...allPayments, ...allServicePayments, ...allServices, ...allTickets, ...allContracts];
-  }, [filteredPayments, filteredServices, filteredTickets, filteredContracts, language, units, normalizedContracts, showPayments, showServices, showTickets, showContracts]);
+    // Financial transactions (maintenance charges, rent income, etc.)
+    const allAccounting = showAccounting && units.length > 0 ? financialTransactions
+      .filter((t) => t.dueDate)
+      .map((t) => {
+        const { condominium, unitNumber } = t.unitId ? getCondominiumInfo(t.unitId) : { condominium: '', unitNumber: '' };
+        const categoryLabel = language === "es"
+          ? (t.category === 'maintenance_charge' ? 'Cargo Mantenimiento' :
+             t.category === 'rent_income' ? 'Ingreso Renta' :
+             t.category === 'service_electricity' ? 'Electricidad' :
+             t.category === 'service_water' ? 'Agua' :
+             t.category === 'service_internet' ? 'Internet' :
+             t.category === 'hoa_fee' ? 'Cuota HOA' :
+             t.category)
+          : t.category;
+        const directionLabel = t.direction === 'inflow' 
+          ? (language === "es" ? 'Ingreso' : 'Income')
+          : (language === "es" ? 'Gasto' : 'Expense');
+        
+        return {
+          type: 'accounting' as const,
+          title: condominium && unitNumber 
+            ? `${condominium} - ${unitNumber} - ${categoryLabel}`
+            : `${categoryLabel} - ${t.description || ''}`,
+          time: '',
+          status: t.status,
+          data: t,
+          condominium,
+          unitNumber,
+        };
+      }) : [];
+
+    return [...allPayments, ...allServicePayments, ...allServices, ...allTickets, ...allContracts, ...allAccounting];
+  }, [filteredPayments, filteredServices, filteredTickets, filteredContracts, financialTransactions, language, units, normalizedContracts, showPayments, showServices, showTickets, showContracts, showAccounting]);
 
   // Get event modifiers for calendar highlighting
   const datesWithPayments = useMemo(() => {
@@ -671,15 +726,22 @@ export default function ExternalCalendar() {
       .map((item: any) => new Date(item.contract.startDate));
   }, [filteredContracts, showContracts]);
 
+  const datesWithAccounting = useMemo(() => {
+    if (!showAccounting) return [];
+    return financialTransactions
+      .filter((t) => t.dueDate)
+      .map((t) => new Date(t.dueDate));
+  }, [financialTransactions, showAccounting]);
+
   // Get events by date for indicators
   const eventsByDate = useMemo(() => {
-    const dateMap = new Map<string, { payments: number; services: number; tickets: number; contracts: number }>();
+    const dateMap = new Map<string, { payments: number; services: number; tickets: number; contracts: number; accounting: number }>();
     
     if (showPayments) {
       filteredPayments.forEach((p) => {
         if (!p.dueDate || p.serviceType !== 'rent') return;
         const dateKey = format(new Date(p.dueDate), 'yyyy-MM-dd');
-        const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0 };
+        const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0, accounting: 0 };
         dateMap.set(dateKey, { ...current, payments: current.payments + 1 });
       });
     }
@@ -689,7 +751,7 @@ export default function ExternalCalendar() {
       filteredPayments.forEach((p) => {
         if (!p.dueDate || p.serviceType === 'rent') return;
         const dateKey = format(new Date(p.dueDate), 'yyyy-MM-dd');
-        const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0 };
+        const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0, accounting: 0 };
         dateMap.set(dateKey, { ...current, services: current.services + 1 });
       });
       
@@ -697,7 +759,7 @@ export default function ExternalCalendar() {
       filteredServices.forEach((s: ExternalPaymentSchedule) => {
         if (s.dueDate) {
           const dateKey = format(new Date(s.dueDate), 'yyyy-MM-dd');
-          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0 };
+          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0, accounting: 0 };
           dateMap.set(dateKey, { ...current, services: current.services + 1 });
         }
       });
@@ -707,7 +769,7 @@ export default function ExternalCalendar() {
       filteredTickets.forEach((t) => {
         if (t.scheduledDate) {
           const dateKey = format(new Date(t.scheduledDate), 'yyyy-MM-dd');
-          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0 };
+          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0, accounting: 0 };
           dateMap.set(dateKey, { ...current, tickets: current.tickets + 1 });
         }
       });
@@ -717,14 +779,24 @@ export default function ExternalCalendar() {
       filteredContracts.forEach((item: any) => {
         if (item.contract.startDate) {
           const dateKey = format(new Date(item.contract.startDate), 'yyyy-MM-dd');
-          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0 };
+          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0, accounting: 0 };
           dateMap.set(dateKey, { ...current, contracts: current.contracts + 1 });
         }
       });
     }
     
+    if (showAccounting) {
+      financialTransactions.forEach((t) => {
+        if (t.dueDate) {
+          const dateKey = format(new Date(t.dueDate), 'yyyy-MM-dd');
+          const current = dateMap.get(dateKey) || { payments: 0, services: 0, tickets: 0, contracts: 0, accounting: 0 };
+          dateMap.set(dateKey, { ...current, accounting: current.accounting + 1 });
+        }
+      });
+    }
+    
     return dateMap;
-  }, [filteredPayments, filteredServices, filteredTickets, filteredContracts, showPayments, showServices, showTickets, showContracts]);
+  }, [filteredPayments, filteredServices, filteredTickets, filteredContracts, financialTransactions, showPayments, showServices, showTickets, showContracts, showAccounting]);
 
   return (
     <div className="space-y-4">
@@ -814,6 +886,19 @@ export default function ExternalCalendar() {
             </div>
             <div className="flex items-center gap-1.5">
               <Checkbox
+                id="filter-accounting"
+                checked={showAccounting}
+                onCheckedChange={setShowAccounting}
+                data-testid="checkbox-filter-accounting"
+                className="h-4 w-4"
+              />
+              <Label htmlFor="filter-accounting" className="flex items-center gap-1.5 cursor-pointer">
+                <div className="h-2 w-2 rounded-full bg-pink-500" />
+                <span className="text-xs">{language === "es" ? "Contab." : "Acct."}</span>
+              </Label>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Checkbox
                 id="filter-checkout"
                 checked={showCheckOut}
                 onCheckedChange={setShowCheckOut}
@@ -883,6 +968,7 @@ export default function ExternalCalendar() {
                     hasPayments: datesWithPayments,
                     hasTickets: datesWithTickets,
                     hasContracts: datesWithContracts,
+                    hasAccounting: datesWithAccounting,
                   }}
                   components={{
                     DayContent: ({ date }) => {
@@ -944,6 +1030,17 @@ export default function ExternalCalendar() {
                                     backgroundColor: 'rgb(168, 85, 247)'
                                   }}
                                   data-testid="indicator-contract" 
+                                />
+                              )}
+                              {events.accounting > 0 && (
+                                <div 
+                                  style={{
+                                    width: '4px',
+                                    height: '4px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'rgb(236, 72, 153)'
+                                  }}
+                                  data-testid="indicator-accounting" 
                                 />
                               )}
                             </div>
