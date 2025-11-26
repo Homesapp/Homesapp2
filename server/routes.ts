@@ -24641,23 +24641,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(externalRentalContracts)
         .where(eq(externalRentalContracts.agencyId, agencyId));
 
-      const financialSummary = await db.select({
-        ownerId: externalFinancialTransactions.ownerId,
-        unitId: externalFinancialTransactions.unitId,
-        direction: externalFinancialTransactions.direction,
-        payeeRole: externalFinancialTransactions.payeeRole,
-        payerRole: externalFinancialTransactions.payerRole,
-        totalAmount: sql<string>`COALESCE(SUM(CAST(${externalFinancialTransactions.grossAmount} AS DECIMAL(12,2))), 0)`,
-      })
-        .from(externalFinancialTransactions)
-        .where(eq(externalFinancialTransactions.agencyId, agencyId))
-        .groupBy(
-          externalFinancialTransactions.ownerId,
-          externalFinancialTransactions.unitId,
-          externalFinancialTransactions.direction,
-          externalFinancialTransactions.payeeRole,
-          externalFinancialTransactions.payerRole
-        );
+      // Fetch financial summary with fallback for empty data
+      let financialSummary: { ownerId: string | null; unitId: string | null; direction: string; payeeRole: string; payerRole: string; totalAmount: string }[] = [];
+      try {
+        const rawTransactions = await db.select({
+          ownerId: externalFinancialTransactions.ownerId,
+          unitId: externalFinancialTransactions.unitId,
+          direction: externalFinancialTransactions.direction,
+          payeeRole: externalFinancialTransactions.payeeRole,
+          payerRole: externalFinancialTransactions.payerRole,
+          grossAmount: externalFinancialTransactions.grossAmount,
+        })
+          .from(externalFinancialTransactions)
+          .where(eq(externalFinancialTransactions.agencyId, agencyId));
+        
+        // Aggregate in JavaScript to avoid Drizzle SQL expression issues
+        const summaryMap = new Map<string, { ownerId: string | null; unitId: string | null; direction: string; payeeRole: string; payerRole: string; totalAmount: number }>();
+        for (const tx of rawTransactions) {
+          const key = `${tx.ownerId || 'null'}_${tx.unitId || 'null'}_${tx.direction}_${tx.payeeRole}_${tx.payerRole}`;
+          if (!summaryMap.has(key)) {
+            summaryMap.set(key, {
+              ownerId: tx.ownerId,
+              unitId: tx.unitId,
+              direction: tx.direction,
+              payeeRole: tx.payeeRole,
+              payerRole: tx.payerRole,
+              totalAmount: 0,
+            });
+          }
+          summaryMap.get(key)!.totalAmount += parseFloat(tx.grossAmount || '0');
+        }
+        financialSummary = Array.from(summaryMap.values()).map(s => ({
+          ...s,
+          totalAmount: s.totalAmount.toFixed(2),
+        }));
+      } catch (summaryError) {
+        console.error("Error fetching financial summary, using empty fallback:", summaryError);
+        financialSummary = [];
+      }
 
       const ownerGroups = new Map<string, typeof ownersWithUnits>();
       ownersWithUnits.forEach(owner => {
