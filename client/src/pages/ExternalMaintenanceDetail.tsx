@@ -404,8 +404,8 @@ export default function ExternalMaintenanceDetail() {
   const unitInfo = getUnitInfo(ticket.unitId);
   const statusConfig = statusColors[ticket.status] || statusColors.open;
   const priorityConfig = priorityColors[ticket.priority] || priorityColors.medium;
-  const assignedName = getUserName(ticket.assignedTo);
-  const createdByName = getUserName(ticket.createdBy);
+  const assignedName = ticket.assignedToName || getUserName(ticket.assignedTo, 'assigned');
+  const createdByName = ticket.createdByName || getUserName(ticket.createdBy, 'created');
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -427,7 +427,15 @@ export default function ExternalMaintenanceDetail() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {canModifyTicket && (
+            <Link href={`/external/maintenance?edit=${ticket.id}`}>
+              <Button variant="outline" size="sm" data-testid="button-edit-ticket">
+                <Edit className="h-4 w-4 mr-2" />
+                {t.edit}
+              </Button>
+            </Link>
+          )}
           <Badge className={priorityConfig.bg} data-testid="badge-priority">
             {priorityConfig.label[language]}
           </Badge>
@@ -541,6 +549,20 @@ export default function ExternalMaintenanceDetail() {
               <Separator />
 
               <div className="grid gap-4 md:grid-cols-2">
+                {/* Costo Real = Base cost without 15% admin fee */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">{t.actualCost}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="text-lg font-bold">
+                      {formatCurrency(ticket.baseCost || (ticket.feeApplied && ticket.estimatedCost ? parseFloat(ticket.estimatedCost) / 1.15 : ticket.estimatedCost))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Costo Estimado = Total with 15% admin fee */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-muted-foreground">{t.estimatedCost}</p>
@@ -549,6 +571,7 @@ export default function ExternalMaintenanceDetail() {
                         size="sm"
                         variant="ghost"
                         onClick={() => {
+                          setNeedsFilterData(true);
                           setEditingCost('estimated');
                           setCostValue(ticket.estimatedCost || "");
                         }}
@@ -559,31 +582,8 @@ export default function ExternalMaintenanceDetail() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-lg font-bold">{formatCurrency(ticket.estimatedCost)}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-muted-foreground">{t.actualCost}</p>
-                    {canModifyTicket && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingCost('actual');
-                          setCostValue(ticket.actualCost || "");
-                        }}
-                        data-testid="button-edit-actual-cost"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="text-lg font-bold text-green-600">{formatCurrency(ticket.actualCost)}</span>
+                    <span className="text-lg font-bold text-green-600">{formatCurrency(ticket.estimatedCost)}</span>
                   </div>
                 </div>
               </div>
