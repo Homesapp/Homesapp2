@@ -8,9 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Settings, FileText, CheckCircle, XCircle, Plus, Edit, Trash2, Building2, Plug, Calendar, Bot, FileSpreadsheet, Upload, Download, Eye } from "lucide-react";
+import { Settings, FileText, CheckCircle, XCircle, Plus, Edit, Trash2, Building2, Plug, Calendar, Bot, FileSpreadsheet, Upload, Download, Eye, MapPin, Home, List } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -52,7 +63,7 @@ type TermsFormData = z.infer<typeof termsFormSchema>;
 export default function ExternalConfiguration() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"tenant" | "owner" | "designs" | "integrations" | "data">("tenant");
+  const [activeTab, setActiveTab] = useState<"tenant" | "owner" | "designs" | "integrations" | "data" | "catalogs">("tenant");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerms, setEditingTerms] = useState<any>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
@@ -893,6 +904,373 @@ export default function ExternalConfiguration() {
     );
   };
 
+  const ConfigurableCatalogSection = ({ 
+    type, 
+    language, 
+    toast 
+  }: { 
+    type: 'zones' | 'property-types', 
+    language: string, 
+    toast: any 
+  }) => {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<any>(null);
+    const [formData, setFormData] = useState({ name: '', sortOrder: 0 });
+
+    const apiEndpoint = type === 'zones' 
+      ? '/api/external/config/zones' 
+      : '/api/external/config/property-types';
+
+    const title = type === 'zones'
+      ? (language === 'es' ? 'Zonas / Colonias' : 'Zones / Neighborhoods')
+      : (language === 'es' ? 'Tipos de Propiedad' : 'Property Types');
+
+    const description = type === 'zones'
+      ? (language === 'es' ? 'Gestiona las zonas o colonias disponibles para las propiedades' : 'Manage available zones or neighborhoods for properties')
+      : (language === 'es' ? 'Gestiona los tipos de propiedades disponibles' : 'Manage available property types');
+
+    const { data: items, isLoading } = useQuery({
+      queryKey: [apiEndpoint],
+    });
+
+    const createMutation = useMutation({
+      mutationFn: async (data: { name: string, sortOrder: number }) => {
+        return apiRequest('POST', apiEndpoint, data);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
+        toast({
+          title: language === 'es' ? 'Creado exitosamente' : 'Created successfully',
+          description: language === 'es' ? 'El elemento ha sido creado' : 'Item has been created',
+        });
+        handleCloseDialog();
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Error',
+          description: error.message || (language === 'es' ? 'Error al crear' : 'Failed to create'),
+          variant: 'destructive',
+        });
+      },
+    });
+
+    const updateMutation = useMutation({
+      mutationFn: async ({ id, data }: { id: string, data: { name?: string, sortOrder?: number, isActive?: boolean } }) => {
+        return apiRequest('PATCH', `${apiEndpoint}/${id}`, data);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
+        toast({
+          title: language === 'es' ? 'Actualizado exitosamente' : 'Updated successfully',
+          description: language === 'es' ? 'El elemento ha sido actualizado' : 'Item has been updated',
+        });
+        handleCloseDialog();
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Error',
+          description: error.message || (language === 'es' ? 'Error al actualizar' : 'Failed to update'),
+          variant: 'destructive',
+        });
+      },
+    });
+
+    const deleteMutation = useMutation({
+      mutationFn: async (id: string) => {
+        return apiRequest('DELETE', `${apiEndpoint}/${id}`);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
+        toast({
+          title: language === 'es' ? 'Eliminado exitosamente' : 'Deleted successfully',
+          description: language === 'es' ? 'El elemento ha sido eliminado' : 'Item has been deleted',
+        });
+        setDeleteDialogOpen(false);
+        setItemToDelete(null);
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Error',
+          description: error.message || (language === 'es' ? 'Error al eliminar' : 'Failed to delete'),
+          variant: 'destructive',
+        });
+      },
+    });
+
+    const handleOpenDialog = (item?: any) => {
+      if (item) {
+        setEditingItem(item);
+        setFormData({ name: item.name, sortOrder: item.sortOrder || 0 });
+      } else {
+        setEditingItem(null);
+        setFormData({ name: '', sortOrder: 0 });
+      }
+      setIsDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+      setIsDialogOpen(false);
+      setEditingItem(null);
+      setFormData({ name: '', sortOrder: 0 });
+    };
+
+    const handleSubmit = () => {
+      if (!formData.name.trim()) {
+        toast({
+          title: 'Error',
+          description: language === 'es' ? 'El nombre es requerido' : 'Name is required',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (editingItem) {
+        updateMutation.mutate({ id: editingItem.id, data: formData });
+      } else {
+        createMutation.mutate(formData);
+      }
+    };
+
+    const handleToggleActive = (item: any) => {
+      updateMutation.mutate({ id: item.id, data: { isActive: !item.isActive } });
+    };
+
+    const handleDeleteClick = (item: any) => {
+      setItemToDelete(item);
+      setDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+      if (itemToDelete) {
+        deleteMutation.mutate(itemToDelete.id);
+      }
+    };
+
+    const sortedItems = useMemo(() => {
+      if (!items) return [];
+      return [...items].sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    }, [items]);
+
+    const Icon = type === 'zones' ? MapPin : Home;
+
+    return (
+      <Card data-testid={`card-catalog-${type}`}>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon className="h-5 w-5" />
+              <div>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
+              </div>
+            </div>
+            <Button 
+              onClick={() => handleOpenDialog()}
+              data-testid={`button-add-${type}`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {language === 'es' ? 'Agregar' : 'Add'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {language === 'es' ? 'Cargando...' : 'Loading...'}
+            </div>
+          ) : sortedItems.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+              <List className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>{language === 'es' ? 'No hay elementos configurados' : 'No items configured'}</p>
+              <p className="text-sm mt-1">
+                {language === 'es' ? 'Haz clic en "Agregar" para crear uno nuevo' : 'Click "Add" to create a new one'}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left font-medium">
+                      {language === 'es' ? 'Nombre' : 'Name'}
+                    </th>
+                    <th className="p-3 text-left font-medium w-24">
+                      {language === 'es' ? 'Orden' : 'Order'}
+                    </th>
+                    <th className="p-3 text-left font-medium w-24">
+                      {language === 'es' ? 'Estado' : 'Status'}
+                    </th>
+                    <th className="p-3 text-right font-medium w-32">
+                      {language === 'es' ? 'Acciones' : 'Actions'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedItems.map((item: any) => (
+                    <tr key={item.id} className="border-b" data-testid={`row-${type}-${item.id}`}>
+                      <td className="p-3">{item.name}</td>
+                      <td className="p-3 text-muted-foreground">{item.sortOrder || 0}</td>
+                      <td className="p-3">
+                        <Badge 
+                          variant={item.isActive ? 'default' : 'secondary'}
+                          className="cursor-pointer"
+                          onClick={() => handleToggleActive(item)}
+                          data-testid={`badge-status-${type}-${item.id}`}
+                        >
+                          {item.isActive 
+                            ? (language === 'es' ? 'Activo' : 'Active')
+                            : (language === 'es' ? 'Inactivo' : 'Inactive')}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenDialog(item)}
+                            data-testid={`button-edit-${type}-${item.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(item)}
+                            data-testid={`button-delete-${type}-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingItem 
+                  ? (language === 'es' ? 'Editar' : 'Edit')
+                  : (language === 'es' ? 'Agregar' : 'Add')} {title}
+              </DialogTitle>
+              <DialogDescription>
+                {editingItem
+                  ? (language === 'es' ? 'Modifica los datos del elemento' : 'Modify item data')
+                  : (language === 'es' ? 'Ingresa los datos del nuevo elemento' : 'Enter new item data')}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor={`name-${type}`}>
+                  {language === 'es' ? 'Nombre' : 'Name'} *
+                </Label>
+                <Input
+                  id={`name-${type}`}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder={language === 'es' ? 'Ingresa el nombre' : 'Enter name'}
+                  data-testid={`input-name-${type}`}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`sortOrder-${type}`}>
+                  {language === 'es' ? 'Orden' : 'Order'}
+                </Label>
+                <Input
+                  id={`sortOrder-${type}`}
+                  type="number"
+                  value={formData.sortOrder}
+                  onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                  data-testid={`input-sortOrder-${type}`}
+                />
+                <p className="text-sm text-muted-foreground">
+                  {language === 'es' 
+                    ? 'Los elementos se ordenan de menor a mayor' 
+                    : 'Items are sorted from lowest to highest'}
+                </p>
+              </div>
+
+              {editingItem && (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <Label htmlFor={`isActive-${type}`}>
+                    {language === 'es' ? 'Estado activo' : 'Active status'}
+                  </Label>
+                  <Switch
+                    id={`isActive-${type}`}
+                    checked={editingItem.isActive}
+                    onCheckedChange={(checked) => {
+                      setEditingItem({ ...editingItem, isActive: checked });
+                      updateMutation.mutate({ id: editingItem.id, data: { isActive: checked } });
+                    }}
+                    data-testid={`switch-isActive-${type}`}
+                  />
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleCloseDialog}
+                data-testid={`button-cancel-${type}`}
+              >
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                data-testid={`button-submit-${type}`}
+              >
+                {(createMutation.isPending || updateMutation.isPending)
+                  ? (language === 'es' ? 'Guardando...' : 'Saving...')
+                  : (language === 'es' ? 'Guardar' : 'Save')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {language === 'es' ? '¿Estás seguro?' : 'Are you sure?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {language === 'es' 
+                  ? `Esta acción eliminará "${itemToDelete?.name}" permanentemente. Esta acción no se puede deshacer.`
+                  : `This action will permanently delete "${itemToDelete?.name}". This action cannot be undone.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid={`button-cancel-delete-${type}`}>
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid={`button-confirm-delete-${type}`}
+              >
+                {deleteMutation.isPending 
+                  ? (language === 'es' ? 'Eliminando...' : 'Deleting...')
+                  : (language === 'es' ? 'Eliminar' : 'Delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Card>
+    );
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-6xl" data-testid="page-external-configuration">
       <div className="flex items-center justify-between mb-6">
@@ -913,12 +1291,16 @@ export default function ExternalConfiguration() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full max-w-4xl grid-cols-5">
+        <TabsList className="grid w-full max-w-5xl grid-cols-6">
           <TabsTrigger value="tenant" data-testid="tab-tenant-terms">
             {t("configuration.tenantTerms")}
           </TabsTrigger>
           <TabsTrigger value="owner" data-testid="tab-owner-terms">
             {t("configuration.ownerTerms")}
+          </TabsTrigger>
+          <TabsTrigger value="catalogs" data-testid="tab-catalogs">
+            <List className="h-4 w-4 mr-2" />
+            {language === "es" ? "Catálogos" : "Catalogs"}
           </TabsTrigger>
           <TabsTrigger value="designs" data-testid="tab-pdf-designs">
             {language === "es" ? "Diseños de PDF" : "PDF Designs"}
@@ -955,6 +1337,21 @@ export default function ExternalConfiguration() {
           ) : (
             renderTermsList(ownerTerms, "owner")
           )}
+        </TabsContent>
+
+        <TabsContent value="catalogs" className="mt-6">
+          <div className="space-y-6">
+            <ConfigurableCatalogSection 
+              type="zones" 
+              language={language} 
+              toast={toast} 
+            />
+            <ConfigurableCatalogSection 
+              type="property-types" 
+              language={language} 
+              toast={toast} 
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="designs" className="mt-6">

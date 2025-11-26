@@ -216,6 +216,10 @@ import {
   externalPaymentSchedules,
   externalMaintenanceTickets,
   externalFinancialTransactions,
+  externalAgencyZones,
+  insertExternalAgencyZoneSchema,
+  externalAgencyPropertyTypes,
+  insertExternalAgencyPropertyTypeSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
@@ -30386,10 +30390,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // EXTERNAL MANAGEMENT SYSTEM - QUOTATIONS ROUTES
+
+  // ============================================================================
+  // EXTERNAL MANAGEMENT SYSTEM - CONFIGURABLE ZONES ROUTES
   // ============================================================================
 
-  // GET /api/external/quotations - List all quotations for agency
+  // GET /api/external/config/zones - List all zones for agency
+  app.get("/api/external/config/zones", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const zones = await db.select()
+        .from(externalAgencyZones)
+        .where(eq(externalAgencyZones.agencyId, agencyId))
+        .orderBy(asc(externalAgencyZones.sortOrder), asc(externalAgencyZones.name));
+
+      res.json(zones);
+    } catch (error: any) {
+      console.error("Error listing zones:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external/config/zones - Create new zone
+  app.post("/api/external/config/zones", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const validated = insertExternalAgencyZoneSchema.parse({
+        ...req.body,
+        agencyId,
+      });
+
+      const [zone] = await db.insert(externalAgencyZones)
+        .values(validated)
+        .returning();
+
+      await createAuditLog(req, "create", "external_agency_zone", zone.id, `Created zone: ${zone.name}`);
+      res.status(201).json(zone);
+    } catch (error: any) {
+      console.error("Error creating zone:", error);
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "A zone with this name already exists for your agency" });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/config/zones/:id - Update zone
+  app.patch("/api/external/config/zones/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const [existing] = await db.select()
+        .from(externalAgencyZones)
+        .where(and(eq(externalAgencyZones.id, id), eq(externalAgencyZones.agencyId, agencyId)));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Zone not found" });
+      }
+
+      const { name, isActive, sortOrder } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (isActive !== undefined) updates.isActive = isActive;
+      if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+      const [updated] = await db.update(externalAgencyZones)
+        .set(updates)
+        .where(eq(externalAgencyZones.id, id))
+        .returning();
+
+      await createAuditLog(req, "update", "external_agency_zone", id, `Updated zone: ${updated.name}`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating zone:", error);
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "A zone with this name already exists for your agency" });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external/config/zones/:id - Delete zone
+  app.delete("/api/external/config/zones/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const [existing] = await db.select()
+        .from(externalAgencyZones)
+        .where(and(eq(externalAgencyZones.id, id), eq(externalAgencyZones.agencyId, agencyId)));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Zone not found" });
+      }
+
+      await db.delete(externalAgencyZones).where(eq(externalAgencyZones.id, id));
+
+      await createAuditLog(req, "delete", "external_agency_zone", id, `Deleted zone: ${existing.name}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting zone:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // ============================================================================
+  // EXTERNAL MANAGEMENT SYSTEM - CONFIGURABLE PROPERTY TYPES ROUTES
+  // ============================================================================
+
+  // GET /api/external/config/property-types - List all property types for agency
+  app.get("/api/external/config/property-types", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const propertyTypes = await db.select()
+        .from(externalAgencyPropertyTypes)
+        .where(eq(externalAgencyPropertyTypes.agencyId, agencyId))
+        .orderBy(asc(externalAgencyPropertyTypes.sortOrder), asc(externalAgencyPropertyTypes.name));
+
+      res.json(propertyTypes);
+    } catch (error: any) {
+      console.error("Error listing property types:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external/config/property-types - Create new property type
+  app.post("/api/external/config/property-types", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const validated = insertExternalAgencyPropertyTypeSchema.parse({
+        ...req.body,
+        agencyId,
+      });
+
+      const [propertyType] = await db.insert(externalAgencyPropertyTypes)
+        .values(validated)
+        .returning();
+
+      await createAuditLog(req, "create", "external_agency_property_type", propertyType.id, `Created property type: ${propertyType.name}`);
+      res.status(201).json(propertyType);
+    } catch (error: any) {
+      console.error("Error creating property type:", error);
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "A property type with this name already exists for your agency" });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/config/property-types/:id - Update property type
+  app.patch("/api/external/config/property-types/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const [existing] = await db.select()
+        .from(externalAgencyPropertyTypes)
+        .where(and(eq(externalAgencyPropertyTypes.id, id), eq(externalAgencyPropertyTypes.agencyId, agencyId)));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Property type not found" });
+      }
+
+      const { name, isActive, sortOrder } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (isActive !== undefined) updates.isActive = isActive;
+      if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+      const [updated] = await db.update(externalAgencyPropertyTypes)
+        .set(updates)
+        .where(eq(externalAgencyPropertyTypes.id, id))
+        .returning();
+
+      await createAuditLog(req, "update", "external_agency_property_type", id, `Updated property type: ${updated.name}`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating property type:", error);
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "A property type with this name already exists for your agency" });
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external/config/property-types/:id - Delete property type
+  app.delete("/api/external/config/property-types/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "Agency ID not found" });
+      }
+
+      const [existing] = await db.select()
+        .from(externalAgencyPropertyTypes)
+        .where(and(eq(externalAgencyPropertyTypes.id, id), eq(externalAgencyPropertyTypes.agencyId, agencyId)));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Property type not found" });
+      }
+
+      await db.delete(externalAgencyPropertyTypes).where(eq(externalAgencyPropertyTypes.id, id));
+
+      await createAuditLog(req, "delete", "external_agency_property_type", id, `Deleted property type: ${existing.name}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting property type:", error);
+      handleGenericError(res, error);
+    }
+  });
+  // EXTERNAL MANAGEMENT SYSTEM - QUOTATIONS ROUTES
+
+  // ============================================================================
   app.get("/api/external/quotations", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);

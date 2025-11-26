@@ -68,6 +68,15 @@ interface AvailableCondominium {
   address: string | null;
 }
 
+interface ConfigItem {
+  id: string;
+  name: string;
+  agencyId: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
 interface UnitOverviewResponse {
   unit: ExternalUnit;
   condominium: ExternalCondominium | null;
@@ -173,6 +182,29 @@ export default function ExternalUnitDetail() {
     queryKey: [`/api/external-unit-access-controls/by-unit/${id}`],
     enabled: !!id,
   });
+
+  const { data: zonesConfig } = useQuery<ConfigItem[]>({
+    queryKey: ['/api/external/config/zones'],
+    queryFn: async () => {
+      const res = await fetch('/api/external/config/zones', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch zones');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: propertyTypesConfig } = useQuery<ConfigItem[]>({
+    queryKey: ['/api/external/config/property-types'],
+    queryFn: async () => {
+      const res = await fetch('/api/external/config/property-types', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch property types');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const activeZones = zonesConfig?.filter(z => z.isActive) || [];
+  const activePropertyTypes = propertyTypesConfig?.filter(pt => pt.isActive) || [];
 
   const activeContract = rentalHistory?.find(c => c.status === 'active');
 
@@ -1367,9 +1399,34 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{language === "es" ? "Zona / Colonia" : "Zone / Neighborhood"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Ej: La Veleta" : "E.g.: La Veleta"} data-testid="input-edit-zone" />
-                      </FormControl>
+                      {activeZones.length > 0 ? (
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-zone">
+                              <SelectValue placeholder={language === "es" ? "Seleccionar zona..." : "Select zone..."} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">{language === "es" ? "Sin zona" : "No zone"}</SelectItem>
+                            {activeZones.map(zone => (
+                              <SelectItem key={zone.id} value={zone.name}>
+                                {zone.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Ej: La Veleta" : "E.g.: La Veleta"} data-testid="input-edit-zone" />
+                        </FormControl>
+                      )}
+                      {activeZones.length === 0 && (
+                        <FormDescription>
+                          {language === "es" 
+                            ? "Puedes agregar zonas predefinidas en Configuración" 
+                            : "You can add predefined zones in Configuration"}
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1396,9 +1453,34 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{language === "es" ? "Tipo de Propiedad" : "Property Type"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Ej: Departamento" : "E.g.: Apartment"} data-testid="input-edit-property-type" />
-                      </FormControl>
+                      {activePropertyTypes.length > 0 ? (
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-property-type">
+                              <SelectValue placeholder={language === "es" ? "Seleccionar tipo..." : "Select type..."} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">{language === "es" ? "Sin tipo" : "No type"}</SelectItem>
+                            {activePropertyTypes.map(pt => (
+                              <SelectItem key={pt.id} value={pt.name}>
+                                {pt.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} placeholder={language === "es" ? "Ej: Departamento" : "E.g.: Apartment"} data-testid="input-edit-property-type" />
+                        </FormControl>
+                      )}
+                      {activePropertyTypes.length === 0 && (
+                        <FormDescription>
+                          {language === "es" 
+                            ? "Puedes agregar tipos de propiedad en Configuración" 
+                            : "You can add property types in Configuration"}
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

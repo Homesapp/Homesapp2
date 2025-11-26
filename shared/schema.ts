@@ -6620,8 +6620,8 @@ export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
 }).extend({
   typology: z.enum(["estudio", "estudio_plus", "1_recamara", "2_recamaras", "3_recamaras", "loft_mini", "loft_normal", "loft_plus"]).optional(),
   floor: z.enum(["planta_baja", "primer_piso", "segundo_piso", "tercer_piso", "penthouse"]).optional(),
-  bathrooms: z.union([z.string(), z.number()]).transform(val => val === undefined ? undefined : String(val)).optional(),
-  area: z.union([z.string(), z.number()]).transform(val => val === undefined ? undefined : String(val)).optional(),
+  bathrooms: z.union([z.string(), z.number(), z.null()]).transform(val => (val === undefined || val === null || val === '') ? undefined : String(val)).optional().nullable(),
+  area: z.union([z.string(), z.number(), z.null()]).transform(val => (val === undefined || val === null || val === '') ? undefined : String(val)).optional().nullable(),
 });
 
 export const updateExternalUnitSchema = insertExternalUnitSchema.partial();
@@ -7129,3 +7129,41 @@ export const externalClientsRelations = relations(externalClients, ({ one }) => 
     references: [users.id],
   }),
 }));
+
+// Agency-configurable zones (colonias)
+export const externalAgencyZones = pgTable("external_agency_zones", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_agency_zones_agency").on(table.agencyId),
+  unique("unique_zone_name_per_agency").on(table.agencyId, table.name),
+]);
+
+export const insertExternalAgencyZoneSchema = createInsertSchema(externalAgencyZones).omit({
+  id: true, createdAt: true,
+});
+export type InsertExternalAgencyZone = z.infer<typeof insertExternalAgencyZoneSchema>;
+export type ExternalAgencyZone = typeof externalAgencyZones.$inferSelect;
+
+// Agency-configurable property types/typologies
+export const externalAgencyPropertyTypes = pgTable("external_agency_property_types", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_agency_property_types_agency").on(table.agencyId),
+  unique("unique_property_type_name_per_agency").on(table.agencyId, table.name),
+]);
+
+export const insertExternalAgencyPropertyTypeSchema = createInsertSchema(externalAgencyPropertyTypes).omit({
+  id: true, createdAt: true,
+});
+export type InsertExternalAgencyPropertyType = z.infer<typeof insertExternalAgencyPropertyTypeSchema>;
+export type ExternalAgencyPropertyType = typeof externalAgencyPropertyTypes.$inferSelect;
