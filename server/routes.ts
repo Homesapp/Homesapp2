@@ -25753,6 +25753,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         checkInDate: req.body.checkInDate ? new Date(req.body.checkInDate) : undefined,
       };
       
+      // Handle agency as seller - agency IDs start with 'agency_'
+      // When agency is selected, store agency name in sellerName and clear sellerId
+      if (requestData.sellerId && requestData.sellerId.startsWith('agency_')) {
+        const realAgencyId = requestData.sellerId.replace('agency_', '');
+        const agency = await db.select({ name: externalAgencies.name })
+          .from(externalAgencies)
+          .where(eq(externalAgencies.id, realAgencyId))
+          .limit(1);
+        
+        if (agency.length > 0) {
+          requestData.sellerName = agency[0].name;
+        }
+        requestData.sellerId = undefined; // Clear invalid sellerId
+      }
+      
       const validatedData = insertExternalLeadSchema.parse(requestData);
       
       // Check for duplicates before creating (with 3-month expiry logic)
