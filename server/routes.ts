@@ -23240,15 +23240,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           c.name as "condominiumName",
           COALESCE(NULLIF(TRIM(COALESCE(assigned_user.first_name, '') || ' ' || COALESCE(assigned_user.last_name, '')), ''), assigned_user.email) as "assignedToName",
           COALESCE(NULLIF(TRIM(COALESCE(created_user.first_name, '') || ' ' || COALESCE(created_user.last_name, '')), ''), created_user.email) as "createdByName",
-          q.id as "sourceQuotationId",
-          CASE WHEN t.source_quotation_id IS NOT NULL THEN true ELSE false END as "feeApplied",
+          CASE WHEN t.quotation_id IS NOT NULL THEN true ELSE false END as "feeApplied",
           0.15 as "feeRate"
         FROM external_maintenance_tickets t
         LEFT JOIN external_units u ON t.unit_id = u.id
         LEFT JOIN external_condominiums c ON u.condominium_id = c.id
         LEFT JOIN users assigned_user ON t.assigned_to = assigned_user.id
         LEFT JOIN users created_user ON t.created_by = created_user.id
-        LEFT JOIN external_quotations q ON t.source_quotation_id = q.id
         WHERE t.id = ${id}
       `);
       
@@ -23278,11 +23276,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         agencyId: row.agency_id,
-        sourceQuotationId: row.source_quotation_id,
-        closureNotes: row.closure_notes,
-        closureDate: row.closure_date,
-        closedBy: row.closed_by,
+        quotationId: row.quotation_id,
+        quotedTotal: row.quoted_total,
+        quotedAdminFee: row.quoted_admin_fee,
+        quotedServices: row.quoted_services,
+        closureWorkNotes: row.closure_work_notes,
+        invoiceDate: row.invoice_date,
+        finalChargeAmount: row.final_charge_amount,
+        applyAdminFee: row.apply_admin_fee,
+        adminFeeAmount: row.admin_fee_amount,
+        totalChargeAmount: row.total_charge_amount,
+        afterWorkPhotos: row.after_work_photos,
         accountingTransactionId: row.accounting_transaction_id,
+        accountingSyncStatus: row.accounting_sync_status,
         // Enriched fields
         unitNumber: row.unitNumber,
         condominiumName: row.condominiumName,
@@ -23290,6 +23296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdByName: row.createdByName,
         feeApplied: row.feeApplied,
         feeRate: parseFloat(row.feeRate),
+        sourceQuotationId: row.quotation_id,
         // Computed base cost (if fee was applied via quotation, divide by 1.15 to get original)
         baseCost: row.feeApplied && row.estimated_cost 
           ? (parseFloat(row.estimated_cost) / 1.15).toFixed(2) 
