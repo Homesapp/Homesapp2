@@ -21789,6 +21789,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (client && client.status === 'active' && !client.convertedBackToLeadId) {
             const agencyId = existingContract.agencyId;
             
+            // Get agency name for seller assignment
+            const agencyResult = await db.select({
+              name: externalAgencies.name,
+            })
+            .from(externalAgencies)
+            .where(eq(externalAgencies.id, agencyId))
+            .limit(1);
+            
+            const agencyName = agencyResult[0]?.name || 'Agencia';
+            
             // Create new lead from client data
             const leadData = {
               agencyId,
@@ -21801,6 +21811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               source: 'reconversion_cliente_rental_ended',
               notes: `Reconvertido automáticamente al finalizar renta. Contrato: ${id}. Cliente original ID: ${client.id}`,
               bedroomsText: client.bedroomsPreference?.toString() || undefined,
+              sellerName: agencyName, // Assign agency as the seller
               createdBy: req.user.id,
             };
 
@@ -25038,6 +25049,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Este cliente ya fue reconvertido a lead" });
       }
 
+      // Get agency name for seller assignment
+      const agencyResult = await db.select({
+        name: externalAgencies.name,
+      })
+      .from(externalAgencies)
+      .where(eq(externalAgencies.id, agencyId))
+      .limit(1);
+      
+      const agencyName = agencyResult[0]?.name || 'Agencia';
+
       // Create new lead from client data
       const leadData = {
         agencyId,
@@ -25050,6 +25071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: `reconversion_cliente_${reason || 'manual'}`,
         notes: `Reconvertido desde cliente: ${client.firstName} ${client.lastName}. Razón: ${reason || 'manual'}. Cliente original ID: ${client.id}`,
         bedroomsText: client.bedroomsPreference?.toString() || undefined,
+        sellerName: agencyName, // Assign agency as the seller
         createdBy: req.user.id,
       };
 
