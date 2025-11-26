@@ -2932,15 +2932,31 @@ export default function ExternalAccounting() {
           
           {paymentTransaction && (
             <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
-                    {language === 'es' ? 'Monto' : 'Amount'}:
+                    {language === 'es' ? 'Pago Final' : 'Final Payment'}:
                   </span>
-                  <span className="font-bold text-lg">
-                    {formatCurrency(parseFloat(paymentTransaction.netAmount || '0'))}
+                  <span className="font-bold text-lg text-green-600">
+                    {formatCurrency(parseFloat(paymentTransaction.grossAmount || paymentTransaction.netAmount || '0'))}
                   </span>
                 </div>
+                {paymentTransaction.fees && parseFloat(paymentTransaction.fees) > 0 && (
+                  <>
+                    <Separator />
+                    <div className="text-xs space-y-1">
+                      <div className="flex justify-between items-center text-muted-foreground">
+                        <span>{language === 'es' ? 'Monto base' : 'Base amount'}:</span>
+                        <span>{formatCurrency(parseFloat(paymentTransaction.netAmount || '0'))}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-muted-foreground">
+                        <span>{language === 'es' ? 'Cargo administrativo (15%)' : 'Admin fee (15%)'}:</span>
+                        <span>{formatCurrency(parseFloat(paymentTransaction.fees || '0'))}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <Separator />
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
                     {language === 'es' ? 'Categoría' : 'Category'}:
