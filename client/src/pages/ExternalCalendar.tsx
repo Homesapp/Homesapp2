@@ -69,9 +69,10 @@ export default function ExternalCalendar() {
   });
 
   // Fetch maintenance tickets
-  const { data: tickets = [] } = useQuery<ExternalMaintenanceTicket[]>({
+  const { data: ticketsResponse } = useQuery<{ data: ExternalMaintenanceTicket[], total: number }>({
     queryKey: ["/api/external-tickets"],
   });
+  const tickets = ticketsResponse?.data || [];
 
   // Fetch units for ticket details
   const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({

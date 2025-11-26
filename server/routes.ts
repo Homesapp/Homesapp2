@@ -25674,7 +25674,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
       if (!hasAccess) return;
       
-      const validatedData = updateExternalLeadSchema.parse(req.body);
+      // Transform date strings to Date objects before validation
+      const bodyWithDates = { ...req.body };
+      if (bodyWithDates.checkInDate && typeof bodyWithDates.checkInDate === 'string') {
+        bodyWithDates.checkInDate = new Date(bodyWithDates.checkInDate);
+      }
+      if (bodyWithDates.checkOutDate && typeof bodyWithDates.checkOutDate === 'string') {
+        bodyWithDates.checkOutDate = new Date(bodyWithDates.checkOutDate);
+      }
+      
+      const validatedData = updateExternalLeadSchema.parse(bodyWithDates);
       // Track status change for history
       const oldStatus = existing.status;
       const newStatus = validatedData.status;
