@@ -322,6 +322,25 @@ export default function ExternalAccounting() {
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
 
+  // Maintenance tickets for linking (only closed/resolved tickets)
+  const { data: maintenanceTickets } = useQuery<{ id: string; title: string; status: string; unitId: string }[]>({
+    queryKey: ['/api/external-tickets-for-accounting'],
+    queryFn: async () => {
+      const response = await fetch('/api/external-tickets?status=closed&status=resolved&limit=100', {
+        credentials: 'include',
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.data || []).map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        unitId: t.unitId,
+      }));
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   // Filter units by selected condominium for the create form
   const filteredUnitsForForm = useMemo(() => {
     if (!units || !selectedCondominiumId) return [];
@@ -2353,6 +2372,46 @@ export default function ExternalAccounting() {
                     )}
                   />
                 </div>
+
+                {/* Maintenance Ticket Selector - only show when category is maintenance_charge */}
+                {createForm.watch('category') === 'maintenance_charge' && (
+                  <FormField
+                    control={createForm.control}
+                    name="maintenanceTicketId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {language === 'es' ? 'Ticket de Mantenimiento (Opcional)' : 'Maintenance Ticket (Optional)'}
+                        </FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="input-create-maintenance-ticket">
+                              <SelectValue 
+                                placeholder={language === 'es' ? 'Vincular a un ticket...' : 'Link to a ticket...'} 
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">
+                              {language === 'es' ? '-- Sin vincular --' : '-- No link --'}
+                            </SelectItem>
+                            {maintenanceTickets?.map(ticket => (
+                              <SelectItem key={ticket.id} value={ticket.id}>
+                                {ticket.title} ({ticket.status === 'closed' 
+                                  ? (language === 'es' ? 'Cerrado' : 'Closed')
+                                  : (language === 'es' ? 'Resuelto' : 'Resolved')})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
               <Separator />

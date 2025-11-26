@@ -434,10 +434,13 @@ export default function ExternalMaintenance() {
       }
 
       // Convert scheduledDate from ISO string to Date for backend
+      // Convert string cost values to numbers or undefined
       const payload = {
         ...data,
         agencyId: selectedUnit.agencyId,
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : undefined,
+        estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
+        reportedBy: data.reportedBy?.trim() || undefined,
       };
 
       return await apiRequest('POST', '/api/external-tickets', payload);
@@ -584,7 +587,14 @@ export default function ExternalMaintenance() {
 
   const updateTicketMutation = useMutation({
     mutationFn: async ({ ticketId, data }: { ticketId: string; data: EditMaintenanceFormData }) => {
-      return await apiRequest('PATCH', `/api/external-tickets/${ticketId}`, data);
+      // Convert string values to proper types for backend
+      const payload = {
+        ...data,
+        reportedBy: data.reportedBy?.trim() || undefined,
+        estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
+        actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
+      };
+      return await apiRequest('PATCH', `/api/external-tickets/${ticketId}`, payload);
     },
     onSuccess: () => {
       // Invalidate all queries that start with /api/external-tickets
