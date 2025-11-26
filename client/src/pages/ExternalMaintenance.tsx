@@ -1644,6 +1644,15 @@ export default function ExternalMaintenance() {
                           {renderSortIcon('updated')}
                         </Button>
                       </TableHead>
+                      <TableHead className="h-10 px-3 text-right">
+                        {language === 'es' ? 'Costo Real' : 'Actual Cost'}
+                      </TableHead>
+                      <TableHead className="h-10 px-3 text-right">
+                        {language === 'es' ? 'Comisión' : 'Commission'}
+                      </TableHead>
+                      <TableHead className="h-10 px-3 text-right">
+                        {language === 'es' ? 'Total' : 'Total'}
+                      </TableHead>
                       <TableHead className="h-10 px-3 text-right">{t.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1692,6 +1701,15 @@ export default function ExternalMaintenance() {
                               ? format(new Date(ticket.updatedAt), 'dd MMM yyyy HH:mm', { locale: language === 'es' ? es : undefined })
                               : (language === 'es' ? 'Sin actualizar' : 'Not updated')}
                           </span>
+                        </TableCell>
+                        <TableCell className="px-3 py-3 text-right">
+                          {ticket.actualCost ? formatCurrency(parseFloat(ticket.actualCost)) : '-'}
+                        </TableCell>
+                        <TableCell className="px-3 py-3 text-right">
+                          {ticket.actualCost ? formatCurrency(parseFloat(ticket.actualCost) * 0.15) : '-'}
+                        </TableCell>
+                        <TableCell className="px-3 py-3 text-right font-medium">
+                          {ticket.actualCost ? formatCurrency(parseFloat(ticket.actualCost) * 1.15) : '-'}
                         </TableCell>
                         <TableCell className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1 justify-end">

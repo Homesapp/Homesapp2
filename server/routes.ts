@@ -23204,11 +23204,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE status = 'open') as open_count,
           COUNT(*) FILTER (WHERE status IN ('resolved', 'closed')) as resolved_count,
-          COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') THEN CAST(actual_cost AS DECIMAL) ELSE 0 END), 0) as actual_cost_sum
+          COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') THEN CAST(NULLIF(actual_cost, '') AS DECIMAL) ELSE 0 END), 0) as actual_cost_sum
         FROM external_maintenance_tickets
         WHERE agency_id = ${agencyId}
-          AND created_at >= ${startDate.toISOString()}
-          AND created_at <= ${endDate.toISOString()}
       `);
       
       const row = result.rows[0] as any;
