@@ -3283,6 +3283,8 @@ export default function ExternalClients() {
                           <FormControl>
                             <Input 
                               type="date" 
+                              min={new Date().toISOString().split('T')[0]}
+                              max={new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]}
                               value={formatDateForInput(field.value)} 
                               onChange={(e) => handleDateChange(e.target.value)}
                               data-testid="input-create-lead-checkin"
@@ -4018,6 +4020,8 @@ export default function ExternalClients() {
                           <FormControl>
                             <Input 
                               type="date" 
+                              min={new Date().toISOString().split('T')[0]}
+                              max={new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]}
                               value={formatDateForInput(field.value)} 
                               onChange={(e) => handleDateChange(e.target.value)}
                               data-testid="input-edit-lead-checkin"

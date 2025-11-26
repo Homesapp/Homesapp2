@@ -23825,7 +23825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch units for this condominium
       const units = await storage.getExternalUnitsByCondominium(id);
-      res.json(units.map(u => ({ id: u.id, unitNumber: u.unitNumber, type: u.unitType })));
+      console.log(`[Units for Condo] Fetched ${units.length} units for condominium ${id}`);
+      res.json(units.map(u => ({ id: u.id, unitNumber: u.unitNumber, type: u.typology || u.propertyType })));
     } catch (error: any) {
       console.error("Error fetching condominium units:", error);
       handleGenericError(res, error);
