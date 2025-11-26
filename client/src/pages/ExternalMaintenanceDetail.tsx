@@ -546,46 +546,130 @@ export default function ExternalMaintenanceDetail() {
                 </>
               )}
 
+              {/* Services Section - if ticket has quotedServices */}
+              {ticket.quotedServices && Array.isArray(ticket.quotedServices) && ticket.quotedServices.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-3">
+                      {language === 'es' ? 'Servicios Cotizados' : 'Quoted Services'}
+                    </p>
+                    <div className="rounded-lg border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-2 px-3 font-medium">
+                              {language === 'es' ? 'Concepto' : 'Description'}
+                            </th>
+                            <th className="text-center py-2 px-3 font-medium w-20">
+                              {language === 'es' ? 'Cant.' : 'Qty'}
+                            </th>
+                            <th className="text-right py-2 px-3 font-medium w-28">
+                              {language === 'es' ? 'Precio Unit.' : 'Unit Price'}
+                            </th>
+                            <th className="text-right py-2 px-3 font-medium w-28">
+                              {language === 'es' ? 'Subtotal' : 'Subtotal'}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(ticket.quotedServices as any[]).map((service: any, idx: number) => (
+                            <tr key={idx} className="border-b last:border-0">
+                              <td className="py-2 px-3">{service.description || service.name}</td>
+                              <td className="py-2 px-3 text-center">{service.quantity || 1}</td>
+                              <td className="py-2 px-3 text-right">{formatCurrency(service.unitPrice || service.price)}</td>
+                              <td className="py-2 px-3 text-right font-medium">
+                                {formatCurrency((service.quantity || 1) * (service.unitPrice || service.price || 0))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <Separator />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Costo Real = Base cost without 15% admin fee */}
-                <div className="space-y-1">
+              {/* Financial Summary - Professional Cost Breakdown */}
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {language === 'es' ? 'Resumen Financiero' : 'Financial Summary'}
+                </p>
+                
+                <div className="rounded-lg border p-4 space-y-3">
+                  {/* Costo del Trabajo (Base) */}
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-muted-foreground">{t.actualCost}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-lg font-bold">
-                      {formatCurrency(ticket.baseCost || (ticket.feeApplied && ticket.estimatedCost ? parseFloat(ticket.estimatedCost) / 1.15 : ticket.estimatedCost))}
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        {language === 'es' ? 'Costo del Trabajo' : 'Labor Cost'}
+                      </span>
+                    </div>
+                    <span className="font-medium">
+                      {formatCurrency(ticket.actualCost || ticket.finalChargeAmount || (ticket.estimatedCost ? parseFloat(ticket.estimatedCost) / 1.15 : null))}
                     </span>
+                  </div>
+                  
+                  {/* Comisión Administrativa (15%) */}
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">
+                        {language === 'es' ? 'Comisión Administrativa (15%)' : 'Admin Fee (15%)'}
+                      </span>
+                    </div>
+                    <span className="font-medium">
+                      {(() => {
+                        const baseCost = parseFloat(ticket.actualCost || ticket.finalChargeAmount || '0') || (ticket.estimatedCost ? parseFloat(ticket.estimatedCost) / 1.15 : 0);
+                        return formatCurrency(baseCost * 0.15);
+                      })()}
+                    </span>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Total a Cobrar */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-green-600">
+                        {language === 'es' ? 'Total a Cobrar' : 'Total Charge'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-green-600">
+                        {formatCurrency(ticket.totalChargeAmount || ticket.estimatedCost || (parseFloat(ticket.actualCost || '0') * 1.15))}
+                      </span>
+                      {canModifyTicket && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => {
+                            setNeedsFilterData(true);
+                            setEditingCost('estimated');
+                            setCostValue(ticket.estimatedCost || "");
+                          }}
+                          data-testid="button-edit-estimated-cost"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Costo Estimado = Total with 15% admin fee */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-muted-foreground">{t.estimatedCost}</p>
-                    {canModifyTicket && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setNeedsFilterData(true);
-                          setEditingCost('estimated');
-                          setCostValue(ticket.estimatedCost || "");
-                        }}
-                        data-testid="button-edit-estimated-cost"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    )}
+                {/* Solution proposed */}
+                {ticket.completionNotes && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {language === 'es' ? 'Solución propuesta:' : 'Proposed solution:'}
+                    </p>
+                    <p className="text-sm">{ticket.completionNotes}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="text-lg font-bold text-green-600">{formatCurrency(ticket.estimatedCost)}</span>
-                  </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

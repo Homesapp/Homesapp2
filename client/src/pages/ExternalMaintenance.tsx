@@ -2381,6 +2381,37 @@ export default function ExternalMaintenance() {
                     )}
                   />
                 </div>
+
+                {/* Cost Summary with Admin Fee */}
+                {(editForm.watch("actualCost") || editForm.watch("estimatedCost")) && (
+                  <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {language === 'es' ? 'Costo Base:' : 'Base Cost:'}
+                      </span>
+                      <span className="font-medium">
+                        ${parseFloat(editForm.watch("actualCost") || editForm.watch("estimatedCost") || "0").toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {language === 'es' ? 'Comisión Administrativa (15%):' : 'Admin Fee (15%):'}
+                      </span>
+                      <span className="font-medium">
+                        ${(parseFloat(editForm.watch("actualCost") || editForm.watch("estimatedCost") || "0") * 0.15).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-green-600">
+                        {language === 'es' ? 'Total a Cobrar:' : 'Total Charge:'}
+                      </span>
+                      <span className="font-bold text-lg text-green-600">
+                        ${(parseFloat(editForm.watch("actualCost") || editForm.watch("estimatedCost") || "0") * 1.15).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Section: Notas Adicionales */}
