@@ -18477,6 +18477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {
         beneficiaryId: beneficiaryId as string,
         category: category as string,
+        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
         status: status as string,
         propertyId: propertyId as string,
         payoutBatchId: payoutBatchId as string,
@@ -18643,6 +18644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactions = await storage.getIncomeTransactions({
         beneficiaryId: userId,
         category: category as string,
+        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
         status: status as string,
         fromDate: fromDate ? new Date(fromDate as string) : undefined,
         toDate: toDate ? new Date(toDate as string) : undefined,
@@ -18706,6 +18708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         beneficiaryId: beneficiaryId as string,
         propertyId: propertyId as string,
         category: category as string,
+        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
         status: status as string,
         fromDate: fromDate ? new Date(fromDate as string) : undefined,
         toDate: toDate ? new Date(toDate as string) : undefined,
@@ -23175,7 +23178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // External Maintenance Tickets Statistics by Biweekly Period
   app.get("/api/external-tickets/stats/biweekly", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const { year, month, period } = req.query; // period: 1 (1-15) or 2 (16-end)
+      const { year, month, period, category, excludeCategories } = req.query; // period: 1 (1-15) or 2 (16-end)
       const agencyId = await getUserAgencyId(req);
       
       const now = new Date();
@@ -23266,7 +23269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const { propertyId, assignedTo, status, priority, category, condominiumId, dateFilter, search, sortField, sortOrder, page, pageSize } = req.query;
+      const { propertyId, assignedTo, status, priority, category, excludeCategories, condominiumId, dateFilter, search, sortField, sortOrder, page, pageSize } = req.query;
       
       if (propertyId) {
         const tickets = await storage.getExternalMaintenanceTicketsByProperty(propertyId);
@@ -23299,6 +23302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: status as string,
         priority: priority as string,
         category: category as string,
+        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
         condominiumId: condominiumId as string,
         dateFilter: dateFilter as string,
         sortField: sortField as string || 'createdAt',
@@ -23423,6 +23427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.claims?.sub || req.user?.id;
       let userRole = req.user?.role || req.session?.adminUser?.role;
       // Get role from database if not in session
       if (!userRole && userId) {

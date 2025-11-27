@@ -227,6 +227,7 @@ export default function ExternalMaintenance() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [activeServiceTab, setActiveServiceTab] = useState<"maintenance" | "cleaning">("maintenance");
   const [condominiumFilter, setCondominiumFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [formCondominiumId, setFormCondominiumId] = useState<string>("");
@@ -340,6 +341,12 @@ export default function ExternalMaintenance() {
   if (statusFilter !== 'all') ticketsQueryParams.set('status', statusFilter);
   if (priorityFilter !== 'all') ticketsQueryParams.set('priority', priorityFilter);
   if (categoryFilter !== 'all') ticketsQueryParams.set('category', categoryFilter);
+  // Filter by active service tab
+  if (activeServiceTab === "cleaning") {
+    ticketsQueryParams.set('category', 'cleaning');
+  } else if (activeServiceTab === "maintenance" && categoryFilter === 'all') {
+    ticketsQueryParams.set('excludeCategories', 'cleaning');
+  }
   if (condominiumFilter !== 'all') ticketsQueryParams.set('condominiumId', condominiumFilter);
   if (dateFilter !== 'all') ticketsQueryParams.set('dateFilter', dateFilter);
   ticketsQueryParams.set('sortField', sortColumn);
@@ -1012,29 +1019,28 @@ export default function ExternalMaintenance() {
           <p className="text-muted-foreground mt-1">{t.subtitle}</p>
         </div>
       </div>
-
-      {/* Tabs for Tickets, Quotations, Workers and Assignments */}
-      <Tabs defaultValue="tickets" className="w-full">
+      {/* Tabs for Maintenance, Cleaning, Quotations and Assignments */}
+      <Tabs defaultValue="maintenance" className="w-full" onValueChange={(value) => { if (value === "maintenance" || value === "cleaning") setActiveServiceTab(value); }}>
         <TabsList className="grid grid-cols-4">
-          <TabsTrigger value="tickets" data-testid="tab-tickets">
-            {language === 'es' ? 'Tickets' : 'Tickets'}
+          <TabsTrigger value="maintenance" data-testid="tab-maintenance">
+            {language === 'es' ? 'Mantenimientos' : 'Maintenance'}
+          </TabsTrigger>
+          <TabsTrigger value="cleaning" data-testid="tab-cleaning">
+            {language === 'es' ? 'Limpieza' : 'Cleaning'}
           </TabsTrigger>
           <TabsTrigger value="quotations" data-testid="tab-quotations">
             {language === 'es' ? 'Cotizaciones' : 'Quotations'}
-          </TabsTrigger>
-          <TabsTrigger value="workers" data-testid="tab-workers">
-            {language === 'es' ? 'Trabajadores' : 'Workers'}
           </TabsTrigger>
           <TabsTrigger value="assignments" data-testid="tab-assignments">
             {language === 'es' ? 'Asignaciones' : 'Assignments'}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="tickets" className="space-y-6 mt-6">
+        <TabsContent value="maintenance" className="space-y-6 mt-6">
           {/* Tickets Header with Action */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold">{language === 'es' ? 'Tickets' : 'Tickets'}</h2>
+              <h2 className="text-xl font-semibold">{language === 'es' ? 'Mantenimientos' : 'Maintenance'}</h2>
               <p className="text-sm text-muted-foreground">{t.subtitle}</p>
             </div>
             <Button onClick={() => setShowDialog(true)} data-testid="button-new-ticket">
@@ -2653,13 +2659,255 @@ export default function ExternalMaintenance() {
       </Dialog>
         </TabsContent>
 
+        <TabsContent value="cleaning" className="space-y-6 mt-6">
+          {/* Cleaning Header with Action */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">{language === 'es' ? 'Limpieza' : 'Cleaning'}</h2>
+              <p className="text-sm text-muted-foreground">{language === 'es' ? 'Gestiona trabajos del personal de limpieza' : 'Manage cleaning staff jobs'}</p>
+            </div>
+            <Button onClick={() => setShowDialog(true)} data-testid="button-new-cleaning-ticket">
+              <Plus className="mr-2 h-4 w-4" />
+              {t.newTicket}
+            </Button>
+          </div>
+
+          {/* Biweekly Period Navigation - Same as Maintenance */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToPreviousPeriod}
+              data-testid="button-prev-period-cleaning"
+            >
+              <ChevronDown className="h-4 w-4 rotate-90" />
+            </Button>
+            <div className="flex items-center gap-2 text-sm px-3 py-1 bg-muted rounded-md">
+              <CalendarIcon className="h-4 w-4" />
+              <span className="font-medium">
+                {biweeklyStats?.period?.label || `${periodIndex === 1 ? '1ra' : '2da'} Quincena`}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToNextPeriod}
+              data-testid="button-next-period-cleaning"
+            >
+              <ChevronDown className="h-4 w-4 -rotate-90" />
+            </Button>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t.totalJobs}</CardTitle>
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="text-cleaning-total">{totalItems || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t.open}</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600" data-testid="text-cleaning-open">
+                  {tickets.filter((t: any) => t.status === 'open' || t.status === 'in_progress').length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t.resolved}</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600" data-testid="text-cleaning-resolved">
+                  {tickets.filter((t: any) => t.status === 'resolved' || t.status === 'closed').length}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t.searchPlaceholder}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-search-cleaning"
+                />
+              </div>
+              
+              <Button
+                variant={dateFilter === 'today' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDateFilter(dateFilter === 'today' ? 'all' : 'today')}
+                data-testid="button-today-cleaning"
+              >
+                {language === 'es' ? 'HOY' : 'TODAY'}
+              </Button>
+
+              <div className="flex gap-1">
+                <Button
+                  variant={viewMode === 'cards' ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => { setViewMode('cards'); setManualViewModeOverride(true); }}
+                  data-testid="button-view-cards-cleaning"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => { setViewMode('table'); setManualViewModeOverride(true); }}
+                  data-testid="button-view-table-cleaning"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Tickets Table/Cards */}
+          {ticketsLoading ? (
+            <TableLoading />
+          ) : tickets.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Wrench className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">
+                {language === 'es' ? 'No hay tickets de limpieza' : 'No cleaning tickets'}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {language === 'es' 
+                  ? 'Crea el primer ticket de limpieza para comenzar' 
+                  : 'Create the first cleaning ticket to get started'}
+              </p>
+              <Button onClick={() => setShowDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t.newTicket}
+              </Button>
+            </Card>
+          ) : viewMode === 'table' ? (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{language === 'es' ? 'Estado' : 'Status'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Prioridad' : 'Priority'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Unidad' : 'Unit'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Título' : 'Title'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Costo Real' : 'Actual Cost'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Total' : 'Total'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Última Act.' : 'Last Update'}</TableHead>
+                    <TableHead>{language === 'es' ? 'Acciones' : 'Actions'}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tickets.map((ticket: any) => (
+                    <TableRow key={ticket.id}>
+                      <TableCell>
+                        <Badge variant={ticket.status === 'open' ? 'destructive' : ticket.status === 'closed' ? 'default' : 'secondary'}>
+                          {ticket.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={ticket.priority === 'urgent' ? 'destructive' : 'outline'}>
+                          {ticket.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{ticket.unit?.name || '-'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{ticket.title}</TableCell>
+                      <TableCell>${parseFloat(ticket.actualCost || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell>${parseFloat(ticket.totalChargeAmount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell>{ticket.updatedAt ? format(new Date(ticket.updatedAt), 'dd MMM yyyy HH:mm', { locale: es }) : '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleEditTicket(ticket)}
+                            data-testid={`button-edit-cleaning-${ticket.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleViewTicket(ticket)}
+                            data-testid={`button-view-cleaning-${ticket.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {tickets.map((ticket: any) => (
+                <Card key={ticket.id} className="hover-elevate cursor-pointer" onClick={() => handleViewTicket(ticket)}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant={ticket.status === 'open' ? 'destructive' : ticket.status === 'closed' ? 'default' : 'secondary'}>
+                        {ticket.status}
+                      </Badge>
+                      <Badge variant={ticket.priority === 'urgent' ? 'destructive' : 'outline'}>
+                        {ticket.priority}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base mt-2 line-clamp-1">{ticket.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Home className="h-4 w-4" />
+                        <span>{ticket.unit?.name || '-'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{language === 'es' ? 'Total:' : 'Total:'}</span>
+                        <span className="font-medium">${parseFloat(ticket.totalChargeAmount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {tickets.length > 0 && (
+            <ExternalPaginationControls
+              currentPage={currentPage}
+              totalPages={serverTotalPages}
+              itemsPerPage={itemsPerPage}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1);
+              }}
+            />
+          )}
+        </TabsContent>
+
         <TabsContent value="quotations" className="mt-6">
           <ExternalQuotationsTab />
         </TabsContent>
 
-        <TabsContent value="workers" className="mt-6">
-          <ExternalMaintenanceWorkers initialTab="workers" hideHeader />
-        </TabsContent>
 
         <TabsContent value="assignments" className="mt-6">
           <ExternalMaintenanceWorkers initialTab="assignments" hideHeader />

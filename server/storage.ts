@@ -917,6 +917,7 @@ export interface IStorage {
   getIncomeTransactions(filters?: { 
     beneficiaryId?: string;
     category?: string;
+    excludeCategories?: string[];
     status?: string;
     propertyId?: string;
     payoutBatchId?: string;
@@ -931,6 +932,7 @@ export interface IStorage {
     beneficiaryId?: string;
     propertyId?: string;
     category?: string;
+    excludeCategories?: string[];
     status?: string;
     fromDate?: Date;
     toDate?: Date;
@@ -1286,6 +1288,7 @@ export interface IStorage {
     status?: string | string[];
     priority?: string;
     category?: string;
+    excludeCategories?: string[];
     condominiumId?: string;
     dateFilter?: string;
     sortField?: string;
@@ -1451,6 +1454,7 @@ export interface IStorage {
     filters?: {
       direction?: string;
       category?: string;
+    excludeCategories?: string[];
       status?: string;
       ownerId?: string;
       contractId?: string;
@@ -1470,6 +1474,7 @@ export interface IStorage {
     filters?: {
       direction?: string;
       category?: string;
+    excludeCategories?: string[];
       status?: string;
       ownerId?: string;
       contractId?: string;
@@ -5835,6 +5840,7 @@ export class DatabaseStorage implements IStorage {
   async getIncomeTransactions(filters?: { 
     beneficiaryId?: string;
     category?: string;
+    excludeCategories?: string[];
     status?: string;
     propertyId?: string;
     payoutBatchId?: string;
@@ -5954,6 +5960,7 @@ export class DatabaseStorage implements IStorage {
     beneficiaryId?: string;
     propertyId?: string;
     category?: string;
+    excludeCategories?: string[];
     status?: string;
     fromDate?: Date;
     toDate?: Date;
@@ -8488,12 +8495,13 @@ export class DatabaseStorage implements IStorage {
     status?: string | string[];
     priority?: string;
     category?: string;
+    excludeCategories?: string[];
     condominiumId?: string;
     dateFilter?: string;
     sortField?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ data: ExternalMaintenanceTicket[]; total: number }> {
-    const { limit, offset, search, status, priority, category, condominiumId, dateFilter, sortField = 'createdAt', sortOrder = 'desc' } = options;
+    const { limit, offset, search, status, priority, category, excludeCategories, condominiumId, dateFilter, sortField = 'createdAt', sortOrder = 'desc' } = options;
     
     // Build base conditions
     const conditions: SQL[] = [eq(externalMaintenanceTickets.agencyId, agencyId)];
@@ -8511,8 +8519,10 @@ export class DatabaseStorage implements IStorage {
     if (category && category !== 'all') {
       conditions.push(eq(externalMaintenanceTickets.category, category as any));
     }
+    if (excludeCategories && excludeCategories.length > 0) {
+      conditions.push(not(inArray(externalMaintenanceTickets.category, excludeCategories as any[])));
+    }
     
-    // Filter by condominium (need to get units for that condo first)
     if (condominiumId && condominiumId !== 'all') {
       const condoUnits = await db.select({ id: externalUnits.id })
         .from(externalUnits)
@@ -10352,6 +10362,7 @@ export class DatabaseStorage implements IStorage {
     filters?: {
       direction?: string;
       category?: string;
+    excludeCategories?: string[];
       status?: string;
       ownerId?: string;
       contractId?: string;
@@ -10461,6 +10472,7 @@ export class DatabaseStorage implements IStorage {
     filters?: {
       direction?: string;
       category?: string;
+    excludeCategories?: string[];
       status?: string;
       ownerId?: string;
       contractId?: string;
