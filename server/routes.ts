@@ -24999,6 +24999,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete (updateData as any).agencyId;
       delete (updateData as any).createdBy;
       
+      // Check if publishToMain is being set to true and create publication request
+      const wasPublishingToMain = existing.publishToMain === true;
+      // Check both validated data and raw request body to ensure we capture the toggle
+      const wantsToPublishToMain = validatedData.publishToMain === true || 
+                                   (validatedData.publishToMain === undefined && req.body.publishToMain === true);
+      
+      if (wantsToPublishToMain && !wasPublishingToMain) {
+        // Check if there's already a pending request for this unit
+        const [existingPending] = await db.select()
+          .from(externalPublicationRequests)
+          .where(and(
+            eq(externalPublicationRequests.unitId, id),
+            eq(externalPublicationRequests.status, 'pending')
+          ));
+        
+        if (!existingPending) {
+          // Create a new publication request
+          const userId = req.user?.claims?.sub || req.user?.id;
+          await db.insert(externalPublicationRequests)
+            .values({
+              unitId: id,
+              agencyId: existing.agencyId,
+              requestedBy: userId,
+              status: 'pending',
+            });
+          
+          // Set the publishStatus to pending
+          updateData.publishStatus = 'pending';
+        }
+      }
+      
       const unit = await storage.updateExternalUnit(id, updateData);
       
       await createAuditLog(req, "update", "external_unit", id, "Updated external unit");
