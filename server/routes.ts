@@ -28326,6 +28326,344 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // EXTERNAL ACCOUNTING - NEW PAYROLL AND COMMISSIONS ENDPOINTS
+  // ============================================================================
+
+  // Helper function to calculate biweekly date range for accounting
+  function getAccountingBiweeklyDateRange(year: number, month: number, period: number): { startDate: Date; endDate: Date } {
+    if (period === 1) {
+      const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
+      const endDate = new Date(year, month - 1, 15, 23, 59, 59, 999);
+      return { startDate, endDate };
+    } else {
+      const startDate = new Date(year, month - 1, 16, 0, 0, 0, 0);
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = new Date(year, month - 1, lastDay, 23, 59, 59, 999);
+      return { startDate, endDate };
+    }
+  }
+
+  // GET /api/external/accounting/payroll/maintenance - Get maintenance payroll for biweekly period
+  app.get("/api/external/accounting/payroll/maintenance", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { year, month, period } = req.query;
+      const yearNum = parseInt(year as string) || new Date().getFullYear();
+      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
+      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
+      
+      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
+      
+      // Get all closed/resolved tickets for the period - excluding cleaning category
+      const allTickets = await db.select({
+        ticket: externalMaintenanceTickets,
+        unit: externalUnits,
+        condominium: externalCondominiums,
+        worker: users,
+      })
+        .from(externalMaintenanceTickets)
+        .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .leftJoin(users, eq(externalMaintenanceTickets.assignedTo, users.id))
+        .where(and(
+          eq(externalMaintenanceTickets.agencyId, agencyId),
+          inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
+          ne(externalMaintenanceTickets.category, 'cleaning'),
+          gte(externalMaintenanceTickets.closedAt, startDate),
+          lte(externalMaintenanceTickets.closedAt, endDate)
+        ))
+        .orderBy(desc(externalMaintenanceTickets.closedAt));
+      
+      // Calculate totals - using finalChargeAmount (without admin fee)
+      const payrollItems = allTickets.map(item => ({
+        ticketId: item.ticket.id,
+        ticketNumber: item.ticket.ticketNumber,
+        title: item.ticket.title,
+        category: item.ticket.category,
+        closedAt: item.ticket.closedAt,
+        unitNumber: item.unit?.unitNumber,
+        condominiumName: item.condominium?.name,
+        workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() : 'Sin asignar',
+        workerEmail: item.worker?.email,
+        netPayment: item.ticket.finalChargeAmount || '0', // Net amount to worker (without admin fee)
+        adminFee: item.ticket.adminFeeAmount || '0',
+        totalCharged: item.ticket.totalChargeAmount || '0',
+      }));
+
+      const totalNetPayment = payrollItems.reduce((sum, item) => sum + parseFloat(item.netPayment), 0);
+      const totalAdminFees = payrollItems.reduce((sum, item) => sum + parseFloat(item.adminFee), 0);
+
+      res.json({
+        period: { year: yearNum, month: monthNum, biweekly: periodNum },
+        startDate,
+        endDate,
+        items: payrollItems,
+        totals: {
+          count: payrollItems.length,
+          netPayment: totalNetPayment.toFixed(2),
+          adminFees: totalAdminFees.toFixed(2),
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching maintenance payroll:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/accounting/payroll/cleaning - Get cleaning payroll for biweekly period
+  app.get("/api/external/accounting/payroll/cleaning", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { year, month, period } = req.query;
+      const yearNum = parseInt(year as string) || new Date().getFullYear();
+      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
+      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
+      
+      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
+      
+      // Get all closed/resolved tickets for the period - only cleaning category
+      const allTickets = await db.select({
+        ticket: externalMaintenanceTickets,
+        unit: externalUnits,
+        condominium: externalCondominiums,
+        worker: users,
+      })
+        .from(externalMaintenanceTickets)
+        .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .leftJoin(users, eq(externalMaintenanceTickets.assignedTo, users.id))
+        .where(and(
+          eq(externalMaintenanceTickets.agencyId, agencyId),
+          inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
+          eq(externalMaintenanceTickets.category, 'cleaning'),
+          gte(externalMaintenanceTickets.closedAt, startDate),
+          lte(externalMaintenanceTickets.closedAt, endDate)
+        ))
+        .orderBy(desc(externalMaintenanceTickets.closedAt));
+      
+      // Calculate totals - using finalChargeAmount (without admin fee)
+      const payrollItems = allTickets.map(item => ({
+        ticketId: item.ticket.id,
+        ticketNumber: item.ticket.ticketNumber,
+        title: item.ticket.title,
+        category: item.ticket.category,
+        closedAt: item.ticket.closedAt,
+        unitNumber: item.unit?.unitNumber,
+        condominiumName: item.condominium?.name,
+        workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() : 'Sin asignar',
+        workerEmail: item.worker?.email,
+        netPayment: item.ticket.finalChargeAmount || '0',
+        adminFee: item.ticket.adminFeeAmount || '0',
+        totalCharged: item.ticket.totalChargeAmount || '0',
+      }));
+
+      const totalNetPayment = payrollItems.reduce((sum, item) => sum + parseFloat(item.netPayment), 0);
+      const totalAdminFees = payrollItems.reduce((sum, item) => sum + parseFloat(item.adminFee), 0);
+
+      res.json({
+        period: { year: yearNum, month: monthNum, biweekly: periodNum },
+        startDate,
+        endDate,
+        items: payrollItems,
+        totals: {
+          count: payrollItems.length,
+          netPayment: totalNetPayment.toFixed(2),
+          adminFees: totalAdminFees.toFixed(2),
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching cleaning payroll:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/accounting/commissions - Get all commissions for biweekly period
+  app.get("/api/external/accounting/commissions", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { year, month, period } = req.query;
+      const yearNum = parseInt(year as string) || new Date().getFullYear();
+      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
+      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
+      
+      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
+      
+      // Get service commissions from closed tickets (admin fees)
+      const serviceTickets = await db.select({
+        ticket: externalMaintenanceTickets,
+        unit: externalUnits,
+        condominium: externalCondominiums,
+      })
+        .from(externalMaintenanceTickets)
+        .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .where(and(
+          eq(externalMaintenanceTickets.agencyId, agencyId),
+          inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
+          gte(externalMaintenanceTickets.closedAt, startDate),
+          lte(externalMaintenanceTickets.closedAt, endDate)
+        ))
+        .orderBy(desc(externalMaintenanceTickets.closedAt));
+
+      // Get rental commissions from contracts signed in the period
+      const rentalContracts = await db.select({
+        contract: externalRentalContracts,
+        unit: externalUnits,
+        condominium: externalCondominiums,
+      })
+        .from(externalRentalContracts)
+        .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .where(and(
+          eq(externalRentalContracts.agencyId, agencyId),
+          eq(externalRentalContracts.status, 'active'),
+          gte(externalRentalContracts.startDate, startDate),
+          lte(externalRentalContracts.startDate, endDate)
+        ))
+        .orderBy(desc(externalRentalContracts.startDate));
+
+      // Build commission items
+      const serviceCommissions = serviceTickets.map(item => ({
+        type: 'service',
+        id: item.ticket.id,
+        reference: item.ticket.ticketNumber,
+        description: item.ticket.title,
+        category: item.ticket.category === 'cleaning' ? 'Limpieza' : 'Mantenimiento',
+        date: item.ticket.closedAt,
+        unitNumber: item.unit?.unitNumber,
+        condominiumName: item.condominium?.name,
+        baseAmount: item.ticket.finalChargeAmount || '0',
+        commissionAmount: item.ticket.adminFeeAmount || '0',
+      }));
+
+      const rentalCommissions = rentalContracts.map(item => ({
+        type: 'rental',
+        id: item.contract.id,
+        reference: `RENT-${item.contract.id.slice(0, 8)}`,
+        description: `Comisión por renta - ${item.unit?.unitNumber || 'Unidad'}`,
+        category: 'Renta',
+        date: item.contract.startDate,
+        unitNumber: item.unit?.unitNumber,
+        condominiumName: item.condominium?.name,
+        baseAmount: item.contract.monthlyRent || '0',
+        commissionAmount: item.contract.commissionAmount || '0',
+      }));
+
+      const allCommissions = [...serviceCommissions, ...rentalCommissions]
+        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+      const totalServiceCommissions = serviceCommissions.reduce((sum, item) => sum + parseFloat(item.commissionAmount), 0);
+      const totalRentalCommissions = rentalCommissions.reduce((sum, item) => sum + parseFloat(item.commissionAmount), 0);
+
+      res.json({
+        period: { year: yearNum, month: monthNum, biweekly: periodNum },
+        startDate,
+        endDate,
+        items: allCommissions,
+        totals: {
+          serviceCount: serviceCommissions.length,
+          rentalCount: rentalCommissions.length,
+          serviceCommissions: totalServiceCommissions.toFixed(2),
+          rentalCommissions: totalRentalCommissions.toFixed(2),
+          totalCommissions: (totalServiceCommissions + totalRentalCommissions).toFixed(2),
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching commissions:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/accounting/seller-payouts - Get seller payouts for biweekly period
+  app.get("/api/external/accounting/seller-payouts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { year, month, period } = req.query;
+      const yearNum = parseInt(year as string) || new Date().getFullYear();
+      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
+      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
+      
+      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
+      
+      // Get leads that converted to clients with rental contracts in this period
+      const leadsWithRentals = await db.select({
+        lead: externalLeads,
+        contract: externalRentalContracts,
+        unit: externalUnits,
+        condominium: externalCondominiums,
+        seller: users,
+      })
+        .from(externalLeads)
+        .innerJoin(externalClients, eq(externalLeads.convertedToClientId, externalClients.id))
+        .innerJoin(externalRentalContracts, eq(externalClients.id, externalRentalContracts.tenantClientId))
+        .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .leftJoin(users, eq(externalLeads.sellerId, users.id))
+        .where(and(
+          eq(externalLeads.agencyId, agencyId),
+          eq(externalRentalContracts.status, 'active'),
+          isNotNull(externalLeads.sellerId),
+          gte(externalRentalContracts.startDate, startDate),
+          lte(externalRentalContracts.startDate, endDate)
+        ))
+        .orderBy(desc(externalRentalContracts.startDate));
+
+      // Calculate seller commissions (typically a percentage of the rental commission)
+      const sellerPayouts = leadsWithRentals.map(item => {
+        const rentalCommission = parseFloat(item.contract.commissionAmount || '0');
+        const sellerCommission = rentalCommission * 0.5; // 50% to seller by default
+        
+        return {
+          leadId: item.lead.id,
+          contractId: item.contract.id,
+          leadName: item.lead.fullName,
+          leadEmail: item.lead.email,
+          sellerName: item.seller ? `${item.seller.firstName || ''} ${item.seller.lastName || ''}`.trim() : 'Sin vendedor',
+          sellerEmail: item.seller?.email,
+          unitNumber: item.unit?.unitNumber,
+          condominiumName: item.condominium?.name,
+          contractStartDate: item.contract.startDate,
+          monthlyRent: item.contract.monthlyRent,
+          rentalCommission: rentalCommission.toFixed(2),
+          sellerPayout: sellerCommission.toFixed(2),
+        };
+      });
+
+      const totalPayouts = sellerPayouts.reduce((sum, item) => sum + parseFloat(item.sellerPayout), 0);
+
+      res.json({
+        period: { year: yearNum, month: monthNum, biweekly: periodNum },
+        startDate,
+        endDate,
+        items: sellerPayouts,
+        totals: {
+          count: sellerPayouts.length,
+          totalPayouts: totalPayouts.toFixed(2),
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching seller payouts:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // ============================================================================
   // EXTERNAL MANAGEMENT SYSTEM - TERMS AND CONDITIONS ROUTES
   // ============================================================================
 
