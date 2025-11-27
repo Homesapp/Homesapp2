@@ -1151,6 +1151,9 @@ export const properties = pgTable("properties", {
   referredByLastName: text("referred_by_last_name"), // Apellidos del referido
   referredByPhone: varchar("referred_by_phone", { length: 20 }), // Teléfono WhatsApp del referido
   referredByEmail: varchar("referred_by_email", { length: 255 }), // Email del referido (opcional)
+  // Link to external unit (if synced from external system)
+  externalUnitId: varchar("external_unit_id"), // ID de la unidad externa (si fue sincronizada)
+  externalAgencyId: varchar("external_agency_id"), // ID de la agencia externa origen
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -1169,6 +1172,7 @@ export const properties = pgTable("properties", {
   index("idx_properties_active_status").on(table.active, table.status),
   index("idx_properties_active_published").on(table.active, table.published),
   index("idx_properties_published_featured").on(table.published, table.featured, table.rating),
+  index("idx_properties_external_unit").on(table.externalUnitId),
 ]);
 
 // Schema for property access information
@@ -6714,6 +6718,57 @@ export type ExternalUnitWithCondominium = ExternalUnit & {
     name: string;
     address: string;
   } | null;
+};
+
+// ============================================================================
+// EXTERNAL PUBLICATION REQUESTS
+// Solicitudes de publicación de unidades externas en el sitio principal
+// ============================================================================
+
+export const externalPublicationRequestStatusEnum = pgEnum("external_publication_request_status", [
+  "pending",    // Pendiente de revisión
+  "approved",   // Aprobada para publicación
+  "rejected",   // Rechazada
+  "withdrawn",  // Retirada por la agencia
+]);
+
+export const externalPublicationRequests = pgTable("external_publication_requests", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  requestedBy: varchar("requested_by").references(() => users.id), // Usuario que solicitó
+  reviewedBy: varchar("reviewed_by").references(() => users.id), // Admin que revisó
+  status: externalPublicationRequestStatusEnum("status").notNull().default("pending"),
+  adminFeedback: text("admin_feedback"), // Comentarios del admin
+  linkedPropertyId: varchar("linked_property_id").references(() => properties.id), // Property creada al aprobar
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ext_pub_requests_unit").on(table.unitId),
+  index("idx_ext_pub_requests_agency").on(table.agencyId),
+  index("idx_ext_pub_requests_status").on(table.status),
+  unique("unique_pending_request_per_unit").on(table.unitId, table.status),
+]);
+
+export const insertExternalPublicationRequestSchema = createInsertSchema(externalPublicationRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  requestedAt: true,
+});
+
+export type InsertExternalPublicationRequest = z.infer<typeof insertExternalPublicationRequestSchema>;
+export type ExternalPublicationRequest = typeof externalPublicationRequests.$inferSelect;
+
+// Extended type with unit and agency data for admin review
+export type ExternalPublicationRequestWithDetails = ExternalPublicationRequest & {
+  unit: ExternalUnit & {
+    condominium: { id: string; name: string; address: string } | null;
+  };
+  agency: { id: string; name: string };
+  requestedByUser?: { id: string; email: string; firstName?: string; lastName?: string } | null;
 };
 
 // Helper to convert strings to numbers, handling empty strings as undefined
