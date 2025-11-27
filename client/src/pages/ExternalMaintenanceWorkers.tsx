@@ -861,20 +861,25 @@ export default function ExternalMaintenanceWorkers({
 
                   {/* Right Panel: Summary */}
                   <div className="space-y-4">
-                    <Card className="sticky top-0">
-                      <CardHeader className="pb-3">
+                    <Card className="sticky top-0 max-h-[450px] flex flex-col">
+                      <CardHeader className="pb-3 flex-shrink-0">
                         <CardTitle className="text-sm font-semibold flex items-center gap-2">
                           <Building2 className="h-4 w-4" />
                           {language === "es" ? "Resumen de Asignación" : "Assignment Summary"}
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="space-y-4 overflow-y-auto flex-1">
                         {/* Selected Condominiums */}
                         {form.watch("condominiumIds")?.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase">
-                              {language === "es" ? "Condominios" : "Condominiums"}
-                            </p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase">
+                                {language === "es" ? "Condominios" : "Condominiums"}
+                              </p>
+                              <Badge variant="secondary" className="text-xs">
+                                {form.watch("condominiumIds")?.length}
+                              </Badge>
+                            </div>
                             <div className="space-y-2">
                               {form.watch("condominiumIds")?.map((condoId: string) => {
                                 const condo = condominiums?.find(c => c.id === condoId);
