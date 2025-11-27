@@ -905,7 +905,7 @@ export default function ExternalCondominiums() {
         <TabsList className="grid w-full sm:max-w-md grid-cols-2 mb-4">
           <TabsTrigger value="condominiums" data-testid="tab-condominiums">
             <Building2 className="mr-2 h-4 w-4" />
-            {language === "es" ? "Propiedades" : "Properties"}
+            {language === "es" ? "Condominios" : "Condominiums"}
           </TabsTrigger>
           <TabsTrigger value="units" data-testid="tab-units">
             <Home className="mr-2 h-4 w-4" />
