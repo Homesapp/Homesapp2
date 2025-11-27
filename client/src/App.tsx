@@ -161,6 +161,10 @@ import ExternalContracts from "@/pages/ExternalContracts";
 import ExternalAgencyUsers from "@/pages/ExternalAgencyUsers";
 import AdminExternalAgencies from "@/pages/AdminExternalAgencies";
 import AdminExternalPublicationRequests from "@/pages/AdminExternalPublicationRequests";
+import PortalLogin from "@/pages/PortalLogin";
+import TenantPortal from "@/pages/TenantPortal";
+import OwnerPortal from "@/pages/OwnerPortal";
+import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -243,6 +247,27 @@ function AuthenticatedApp() {
         <Route path="/leads/:token" component={PublicLeadRegistration} />
         <Route path="/submit-property/:token" component={PublicPropertySubmission} />
         <Route path="/property-submission-success" component={PropertySubmissionSuccess} />
+        <Route path="/portal">
+          {() => (
+            <PortalAuthProvider>
+              <PortalLogin />
+            </PortalAuthProvider>
+          )}
+        </Route>
+        <Route path="/portal/tenant">
+          {() => (
+            <PortalAuthProvider>
+              <TenantPortal />
+            </PortalAuthProvider>
+          )}
+        </Route>
+        <Route path="/portal/owner">
+          {() => (
+            <PortalAuthProvider>
+              <OwnerPortal />
+            </PortalAuthProvider>
+          )}
+        </Route>
         <Route path="/" component={PublicDashboard} />
         <Route component={PublicDashboard} />
       </Switch>
