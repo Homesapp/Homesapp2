@@ -207,7 +207,7 @@ import {
   externalFinancialTransactions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull, gte, lte } from "drizzle-orm";
+import { eq, and, or, inArray, desc, asc, sql, ne, isNull, isNotNull, gte, lte } from "drizzle-orm";
 
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
@@ -28381,7 +28381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(users, eq(externalMaintenanceTickets.assignedTo, users.id))
         .where(and(
           eq(externalMaintenanceTickets.agencyId, agencyId),
-          inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
+          or(eq(externalMaintenanceTickets.status, 'closed'), eq(externalMaintenanceTickets.status, 'resolved')),
           ne(externalMaintenanceTickets.category, 'cleaning')
         ))
         .orderBy(desc(externalMaintenanceTickets.closedAt));
@@ -28460,7 +28460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(users, eq(externalMaintenanceTickets.assignedTo, users.id))
         .where(and(
           eq(externalMaintenanceTickets.agencyId, agencyId),
-          inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
+          or(eq(externalMaintenanceTickets.status, 'closed'), eq(externalMaintenanceTickets.status, 'resolved')),
           eq(externalMaintenanceTickets.category, 'cleaning')
         ))
         .orderBy(desc(externalMaintenanceTickets.closedAt));
@@ -28537,7 +28537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
         .where(and(
           eq(externalMaintenanceTickets.agencyId, agencyId),
-          inArray(externalMaintenanceTickets.status, ['closed', 'resolved'])
+          or(eq(externalMaintenanceTickets.status, 'closed'), eq(externalMaintenanceTickets.status, 'resolved'))
         ))
         .orderBy(desc(externalMaintenanceTickets.closedAt));
 
