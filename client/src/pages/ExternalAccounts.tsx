@@ -13,7 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck, Shield, Users, Save, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck, Shield, Users, Save, X, Loader2, Briefcase, Calculator, Wrench, ShoppingBag, Bell, Scale } from "lucide-react";
 import { useState, useLayoutEffect, useEffect, useMemo, useCallback } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { z } from "zod";
@@ -70,6 +70,34 @@ const ROLE_LABELS = {
     external_agency_concierge: "Concierge",
     external_agency_lawyer: "Lawyer",
   },
+};
+
+const ROLE_DESCRIPTIONS = {
+  es: {
+    external_agency_admin: "Administrador con acceso a configuraciones",
+    external_agency_accounting: "Gestiona finanzas y pagos",
+    external_agency_maintenance: "Atiende tickets de mantenimiento",
+    external_agency_seller: "Gestiona ventas y clientes",
+    external_agency_concierge: "Atencion al huesped y servicios",
+    external_agency_lawyer: "Contratos y asuntos legales",
+  },
+  en: {
+    external_agency_admin: "Administrator with config access",
+    external_agency_accounting: "Manages finances and payments",
+    external_agency_maintenance: "Handles maintenance tickets",
+    external_agency_seller: "Manages sales and clients",
+    external_agency_concierge: "Guest services and attention",
+    external_agency_lawyer: "Contracts and legal matters",
+  },
+};
+
+const ROLE_ICONS: Record<string, typeof Briefcase> = {
+  external_agency_admin: Briefcase,
+  external_agency_accounting: Calculator,
+  external_agency_maintenance: Wrench,
+  external_agency_seller: ShoppingBag,
+  external_agency_concierge: Bell,
+  external_agency_lawyer: Scale,
 };
 
 const SPECIALTY_LABELS = {
@@ -492,7 +520,7 @@ export default function ExternalAccounts() {
       firstName: "",
       lastName: "",
       phone: "",
-      role: "external_agency_staff",
+      role: undefined as any,
     },
   });
 
@@ -502,7 +530,7 @@ export default function ExternalAccounts() {
       firstName: "",
       lastName: "",
       phone: "",
-      role: "external_agency_staff",
+      role: undefined as any,
     },
   });
 
@@ -1050,39 +1078,51 @@ The HomesApp Team`;
                 {/* Role Section */}
                 <div className="space-y-4 pt-2 border-t">
                   <p className="text-sm font-medium text-muted-foreground flex items-center gap-2 pt-3">
-                    <UserIcon className="h-4 w-4" />
+                    <Shield className="h-4 w-4" />
                     {language === "es" ? "Rol y Permisos" : "Role & Permissions"}
                   </p>
                   <FormField
                     control={form.control}
                     name="role"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="space-y-3">
                         <FormLabel className="text-xs">{language === "es" ? "Rol del Usuario" : "User Role"} *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-role">
-                              <SelectValue placeholder={language === "es" ? "Selecciona un rol..." : "Select a role..."} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="external_agency_admin">
-                              {ROLE_LABELS[language].external_agency_admin}
-                            </SelectItem>
-                            <SelectItem value="external_agency_accounting">
-                              {ROLE_LABELS[language].external_agency_accounting}
-                            </SelectItem>
-                            <SelectItem value="external_agency_maintenance">
-                              {ROLE_LABELS[language].external_agency_maintenance}
-                            </SelectItem>
-                            <SelectItem value="external_agency_staff">
-                              {ROLE_LABELS[language].external_agency_staff}
-                            </SelectItem>
-                            <SelectItem value="external_agency_seller">
-                              {ROLE_LABELS[language].external_agency_seller}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <input type="hidden" {...field} />
+                        </FormControl>
+                        <div className="grid grid-cols-2 gap-2" data-testid="select-role">
+                            {(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"] as const).map((role) => {
+                              const RoleIcon = ROLE_ICONS[role];
+                              const isSelected = field.value === role;
+                              return (
+                                <button
+                                  key={role}
+                                  type="button"
+                                  onClick={() => field.onChange(role)}
+                                  data-testid={`role-option-${role}`}
+                                  className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                                    isSelected 
+                                      ? "border-primary bg-primary/5 ring-1 ring-primary" 
+                                      : "border-border hover-elevate"
+                                  }`}
+                                >
+                                  <div className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 ${
+                                    isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
+                                  }`}>
+                                    <RoleIcon className="h-4 w-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className={`text-sm font-medium truncate ${isSelected ? "text-primary" : ""}`}>
+                                      {ROLE_LABELS[language][role]}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                      {ROLE_DESCRIPTIONS[language][role]}
+                                    </p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1297,8 +1337,9 @@ The HomesApp Team`;
                         <SelectItem value="external_agency_admin">{ROLE_LABELS[language].external_agency_admin}</SelectItem>
                         <SelectItem value="external_agency_accounting">{ROLE_LABELS[language].external_agency_accounting}</SelectItem>
                         <SelectItem value="external_agency_maintenance">{ROLE_LABELS[language].external_agency_maintenance}</SelectItem>
-                        <SelectItem value="external_agency_staff">{ROLE_LABELS[language].external_agency_staff}</SelectItem>
                         <SelectItem value="external_agency_seller">{ROLE_LABELS[language].external_agency_seller}</SelectItem>
+                        <SelectItem value="external_agency_concierge">{ROLE_LABELS[language].external_agency_concierge}</SelectItem>
+                        <SelectItem value="external_agency_lawyer">{ROLE_LABELS[language].external_agency_lawyer}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1731,11 +1772,14 @@ The HomesApp Team`;
                         <SelectItem value="external_agency_maintenance">
                           {ROLE_LABELS[language].external_agency_maintenance}
                         </SelectItem>
-                        <SelectItem value="external_agency_staff">
-                          {ROLE_LABELS[language].external_agency_staff}
-                        </SelectItem>
                         <SelectItem value="external_agency_seller">
                           {ROLE_LABELS[language].external_agency_seller}
+                        </SelectItem>
+                        <SelectItem value="external_agency_concierge">
+                          {ROLE_LABELS[language].external_agency_concierge}
+                        </SelectItem>
+                        <SelectItem value="external_agency_lawyer">
+                          {ROLE_LABELS[language].external_agency_lawyer}
                         </SelectItem>
                       </SelectContent>
                     </Select>
