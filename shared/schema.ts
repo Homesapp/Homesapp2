@@ -57,6 +57,8 @@ export const userRoleEnum = pgEnum("user_role", [
   "external_agency_maintenance",
   "external_agency_staff",
   "external_agency_seller",
+  "external_agency_concierge", // Conserje de agencia externa - recibe citas
+  "external_agency_lawyer", // Abogado de agencia externa - elabora contratos
   "tenant", // Inquilino con acceso al portal
 ]);
 
@@ -5074,6 +5076,7 @@ export const EXTERNAL_PERMISSION_SECTIONS = [
   "accounts",
   "quotations",
   "accesses",
+  "appointments", // Citas y tours de propiedades
 ] as const;
 
 export type ExternalPermissionSection = typeof EXTERNAL_PERMISSION_SECTIONS[number];
@@ -5121,6 +5124,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<ExternalPermissionS
     accounts: ["view", "create", "edit", "delete", "manage_permissions"],
     quotations: ["view", "create", "edit", "delete", "generate_pdf", "share"],
     accesses: ["view", "create", "edit", "delete", "send_codes"],
+    appointments: ["view", "create", "edit", "delete", "cancel", "assign", "reassign"],
   },
   external_agency_accounting: {
     dashboard: ["view"],
@@ -5139,6 +5143,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<ExternalPermissionS
     accounts: ["view"],
     quotations: ["view", "create", "edit", "generate_pdf", "share"],
     accesses: ["view"],
+    appointments: ["view"],
   },
   external_agency_maintenance: {
     dashboard: ["view"],
@@ -5157,6 +5162,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<ExternalPermissionS
     accounts: ["view"],
     quotations: ["view", "create", "edit", "generate_pdf"],
     accesses: ["view", "create", "edit", "send_codes"],
+    appointments: ["view"],
   },
   external_agency_staff: {
     dashboard: ["view"],
@@ -5175,6 +5181,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<ExternalPermissionS
     accounts: ["view"],
     quotations: ["view", "generate_pdf"],
     accesses: ["view"],
+    appointments: ["view", "create", "edit"],
   },
   external_agency_seller: {
     dashboard: ["view"],
@@ -5193,6 +5200,45 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<ExternalPermissionS
     accounts: [],
     quotations: ["view"],
     accesses: ["view"],
+    appointments: ["view", "create", "edit", "cancel"],
+  },
+  external_agency_concierge: {
+    dashboard: ["view"],
+    condominiums: ["view"],
+    units: ["view"],
+    owners: ["view"],
+    clients: ["view"],
+    leads: ["view"],
+    rentals: ["view"],
+    payments: [],
+    maintenance: ["view", "create"],
+    workers: ["view"],
+    calendar: ["view"],
+    accounting: [],
+    configuration: [],
+    accounts: [],
+    quotations: [],
+    accesses: ["view", "send_codes"],
+    appointments: ["view", "edit"], // Can view and update appointment status/reports
+  },
+  external_agency_lawyer: {
+    dashboard: ["view"],
+    condominiums: ["view"],
+    units: ["view"],
+    owners: ["view"],
+    clients: ["view"],
+    leads: ["view"],
+    rentals: ["view", "create", "edit", "generate_pdf"], // Can create and manage contracts
+    payments: ["view"],
+    maintenance: [],
+    workers: [],
+    calendar: ["view"],
+    accounting: [],
+    configuration: [],
+    accounts: [],
+    quotations: ["view", "generate_pdf"],
+    accesses: ["view"],
+    appointments: ["view"], // Can view appointments
   },
 };
 
@@ -5215,6 +5261,7 @@ export const PERMISSION_SECTION_LABELS = {
     accounts: "Cuentas de Usuario",
     quotations: "Cotizaciones",
     accesses: "Control de Accesos",
+    appointments: "Citas",
   },
   en: {
     dashboard: "Dashboard",
@@ -5233,6 +5280,7 @@ export const PERMISSION_SECTION_LABELS = {
     accounts: "User Accounts",
     quotations: "Quotations",
     accesses: "Access Control",
+    appointments: "Appointments",
   },
 };
 
@@ -5325,6 +5373,122 @@ export const insertExternalUserPermissionSchema = createInsertSchema(externalUse
 
 export type InsertExternalUserPermission = z.infer<typeof insertExternalUserPermissionSchema>;
 export type ExternalUserPermission = typeof externalUserPermissions.$inferSelect;
+
+// External Appointment Status Enum
+export const externalAppointmentStatusEnum = pgEnum("external_appointment_status", [
+  "pending",
+  "confirmed", 
+  "completed",
+  "cancelled",
+  "no_show",
+]);
+
+// External Appointments - Citas para agencias externas
+export const externalAppointments = pgTable("external_appointments", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Unit link (for individual appointments) - tours use externalAppointmentUnits
+  unitId: varchar("unit_id").references(() => externalUnits.id, { onDelete: "set null" }),
+  
+  // Appointment type and mode
+  type: appointmentTypeEnum("type").notNull().default("in-person"), // in-person or video
+  mode: appointmentModeEnum("mode").notNull().default("individual"), // individual (1hr) or tour (30min each)
+  tourGroupId: varchar("tour_group_id"), // Groups tour stops together
+  
+  // Scheduling
+  date: timestamp("date").notNull(), // Start time of appointment
+  durationMinutes: integer("duration_minutes").notNull().default(60), // 60 for individual, 30 per unit for tours
+  
+  // Status
+  status: externalAppointmentStatusEnum("status").notNull().default("pending"),
+  
+  // Assignment
+  salespersonId: varchar("salesperson_id").references(() => users.id, { onDelete: "set null" }), // Vendedor asignado
+  conciergeId: varchar("concierge_id").references(() => users.id, { onDelete: "set null" }), // Conserje asignado
+  
+  // Client/Lead information
+  clientId: varchar("client_id").references(() => externalClients.id, { onDelete: "set null" }), // Linked to existing client
+  leadId: varchar("lead_id").references(() => externalLeads.id, { onDelete: "set null" }), // Linked to existing lead
+  // Snapshot fields for leads not in system
+  clientName: varchar("client_name", { length: 255 }),
+  clientEmail: varchar("client_email", { length: 255 }),
+  clientPhone: varchar("client_phone", { length: 50 }),
+  
+  // Google Calendar integration
+  googleEventId: text("google_event_id"), // ID del evento en Google Calendar
+  meetLink: text("meet_link"), // Link para videollamadas
+  
+  // Notes and reports
+  notes: text("notes"), // Notas de la cita
+  conciergeReport: text("concierge_report"), // Reporte del conserje después de la cita
+  accessIssues: text("access_issues"), // Problemas de acceso reportados
+  clientFeedback: text("client_feedback"), // Feedback del cliente
+  
+  // Tracking
+  createdBy: varchar("created_by").references(() => users.id),
+  confirmedAt: timestamp("confirmed_at"),
+  completedAt: timestamp("completed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  cancellationReason: text("cancellation_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_appointments_agency").on(table.agencyId),
+  index("idx_external_appointments_date").on(table.date),
+  index("idx_external_appointments_status").on(table.status),
+  index("idx_external_appointments_salesperson").on(table.salespersonId),
+  index("idx_external_appointments_concierge").on(table.conciergeId),
+  index("idx_external_appointments_tour_group").on(table.tourGroupId),
+  index("idx_external_appointments_agency_date_status").on(table.agencyId, table.date, table.status),
+]);
+
+export const insertExternalAppointmentSchema = createInsertSchema(externalAppointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalAppointment = z.infer<typeof insertExternalAppointmentSchema>;
+export type ExternalAppointment = typeof externalAppointments.$inferSelect;
+
+// External Appointment Units - Tour stops (for tours with multiple units)
+export const externalAppointmentUnits = pgTable("external_appointment_units", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  appointmentId: varchar("appointment_id").notNull().references(() => externalAppointments.id, { onDelete: "cascade" }),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }),
+  
+  // Sequence in tour (1, 2, 3 - max 3)
+  sequence: integer("sequence").notNull().default(1),
+  
+  // Timing offset from appointment start (0, 30, 60 minutes)
+  offsetMinutes: integer("offset_minutes").notNull().default(0),
+  durationMinutes: integer("duration_minutes").notNull().default(30),
+  
+  // Per-unit status and notes
+  status: externalAppointmentStatusEnum("status").notNull().default("pending"),
+  visitNotes: text("visit_notes"), // Notas específicas de esta visita
+  clientInterest: varchar("client_interest", { length: 50 }), // interested, not_interested, considering
+  
+  // Google Calendar (separate event for each tour stop if needed)
+  googleEventId: text("google_event_id"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_appointment_units_appointment").on(table.appointmentId),
+  index("idx_external_appointment_units_unit").on(table.unitId),
+  index("idx_external_appointment_units_sequence").on(table.appointmentId, table.sequence),
+]);
+
+export const insertExternalAppointmentUnitSchema = createInsertSchema(externalAppointmentUnits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalAppointmentUnit = z.infer<typeof insertExternalAppointmentUnitSchema>;
+export type ExternalAppointmentUnit = typeof externalAppointmentUnits.$inferSelect;
 
 // External Properties - Propiedades gestionadas externamente
 export const externalProperties = pgTable("external_properties", {
@@ -7157,6 +7321,8 @@ export const externalUnitsRelations = relations(externalUnits, ({ one, many }) =
   }),
   owners: many(externalUnitOwners),
   rentalContracts: many(externalRentalContracts),
+  appointments: many(externalAppointments),
+  appointmentUnits: many(externalAppointmentUnits),
 }));
 
 export const externalUnitOwnersRelations = relations(externalUnitOwners, ({ one }) => ({
@@ -7307,3 +7473,50 @@ export const insertExternalAgencyPropertyTypeSchema = createInsertSchema(externa
 });
 export type InsertExternalAgencyPropertyType = z.infer<typeof insertExternalAgencyPropertyTypeSchema>;
 export type ExternalAgencyPropertyType = typeof externalAgencyPropertyTypes.$inferSelect;
+
+// External Appointments Relations
+export const externalAppointmentsRelations = relations(externalAppointments, ({ one, many }) => ({
+  agency: one(externalAgencies, {
+    fields: [externalAppointments.agencyId],
+    references: [externalAgencies.id],
+  }),
+  unit: one(externalUnits, {
+    fields: [externalAppointments.unitId],
+    references: [externalUnits.id],
+  }),
+  salesperson: one(users, {
+    fields: [externalAppointments.salespersonId],
+    references: [users.id],
+    relationName: "salesperson",
+  }),
+  concierge: one(users, {
+    fields: [externalAppointments.conciergeId],
+    references: [users.id],
+    relationName: "concierge",
+  }),
+  client: one(externalClients, {
+    fields: [externalAppointments.clientId],
+    references: [externalClients.id],
+  }),
+  lead: one(externalLeads, {
+    fields: [externalAppointments.leadId],
+    references: [externalLeads.id],
+  }),
+  createdByUser: one(users, {
+    fields: [externalAppointments.createdBy],
+    references: [users.id],
+    relationName: "createdBy",
+  }),
+  tourUnits: many(externalAppointmentUnits),
+}));
+
+export const externalAppointmentUnitsRelations = relations(externalAppointmentUnits, ({ one }) => ({
+  appointment: one(externalAppointments, {
+    fields: [externalAppointmentUnits.appointmentId],
+    references: [externalAppointments.id],
+  }),
+  unit: one(externalUnits, {
+    fields: [externalAppointmentUnits.unitId],
+    references: [externalUnits.id],
+  }),
+}));

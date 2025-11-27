@@ -410,6 +410,12 @@ import {
   externalUserPermissions,
   type ExternalUserPermission,
   type InsertExternalUserPermission,
+  externalAppointments,
+  type ExternalAppointment,
+  type InsertExternalAppointment,
+  externalAppointmentUnits,
+  type ExternalAppointmentUnit,
+  type InsertExternalAppointmentUnit,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray } from "drizzle-orm";
@@ -1222,6 +1228,54 @@ export interface IStorage {
   bulkUpsertExternalUserPermissions(permissions: InsertExternalUserPermission[]): Promise<ExternalUserPermission[]>;
   deleteExternalUserPermission(agencyId: string, userId: string, section: string, action: string): Promise<void>;
   deleteAllExternalUserPermissions(agencyId: string, userId: string): Promise<void>;
+
+  // External Appointments operations
+  getExternalAppointment(id: string): Promise<ExternalAppointment | undefined>;
+  getExternalAppointmentByAgency(id: string, agencyId: string): Promise<ExternalAppointment | undefined>;
+  getExternalAppointmentsByAgency(agencyId: string, filters?: {
+    status?: string | string[];
+    salespersonId?: string;
+    conciergeId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    mode?: string;
+  }): Promise<ExternalAppointment[]>;
+  getExternalAppointmentsPaginated(agencyId: string, options: {
+    limit: number;
+    offset: number;
+    status?: string | string[];
+    salespersonId?: string;
+    conciergeId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    mode?: string;
+    search?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ data: ExternalAppointment[]; total: number }>;
+  getExternalAppointmentsByUnit(unitId: string, agencyId: string): Promise<ExternalAppointment[]>;
+  getExternalAppointmentsBySalesperson(salespersonId: string, agencyId: string): Promise<ExternalAppointment[]>;
+  getExternalAppointmentsByConcierge(conciergeId: string, agencyId: string): Promise<ExternalAppointment[]>;
+  getExternalAppointmentsByTourGroup(tourGroupId: string): Promise<ExternalAppointment[]>;
+  createExternalAppointment(appointment: InsertExternalAppointment): Promise<ExternalAppointment>;
+  updateExternalAppointment(id: string, updates: Partial<InsertExternalAppointment>): Promise<ExternalAppointment>;
+  updateExternalAppointmentStatus(id: string, status: string, additionalData?: {
+    confirmedAt?: Date;
+    completedAt?: Date;
+    cancelledAt?: Date;
+    cancellationReason?: string;
+  }): Promise<ExternalAppointment>;
+  assignExternalAppointmentConcierge(id: string, conciergeId: string): Promise<ExternalAppointment>;
+  deleteExternalAppointment(id: string): Promise<void>;
+
+  // External Appointment Units (Tour stops) operations
+  getExternalAppointmentUnit(id: string): Promise<ExternalAppointmentUnit | undefined>;
+  getExternalAppointmentUnitsByAppointment(appointmentId: string): Promise<ExternalAppointmentUnit[]>;
+  createExternalAppointmentUnit(unit: InsertExternalAppointmentUnit): Promise<ExternalAppointmentUnit>;
+  createExternalAppointmentUnits(units: InsertExternalAppointmentUnit[]): Promise<ExternalAppointmentUnit[]>;
+  updateExternalAppointmentUnit(id: string, updates: Partial<InsertExternalAppointmentUnit>): Promise<ExternalAppointmentUnit>;
+  deleteExternalAppointmentUnit(id: string): Promise<void>;
+  deleteExternalAppointmentUnitsByAppointment(appointmentId: string): Promise<void>;
 
   // External Management System - Property operations
   getExternalProperty(id: string): Promise<ExternalProperty | undefined>;
@@ -7900,6 +7954,269 @@ export class DatabaseStorage implements IStorage {
         eq(externalUserPermissions.agencyId, agencyId),
         eq(externalUserPermissions.userId, userId)
       ));
+  }
+
+  // External Appointments operations
+  async getExternalAppointment(id: string): Promise<ExternalAppointment | undefined> {
+    const [appointment] = await db.select()
+      .from(externalAppointments)
+      .where(eq(externalAppointments.id, id))
+      .limit(1);
+    return appointment;
+  }
+
+  async getExternalAppointmentByAgency(id: string, agencyId: string): Promise<ExternalAppointment | undefined> {
+    const [appointment] = await db.select()
+      .from(externalAppointments)
+      .where(and(
+        eq(externalAppointments.id, id),
+        eq(externalAppointments.agencyId, agencyId)
+      ))
+      .limit(1);
+    return appointment;
+  }
+
+  async getExternalAppointmentsByAgency(agencyId: string, filters?: {
+    status?: string | string[];
+    salespersonId?: string;
+    conciergeId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    mode?: string;
+  }): Promise<ExternalAppointment[]> {
+    const conditions: SQL[] = [eq(externalAppointments.agencyId, agencyId)];
+
+    if (filters?.status) {
+      if (Array.isArray(filters.status)) {
+        conditions.push(inArray(externalAppointments.status, filters.status as any));
+      } else {
+        conditions.push(eq(externalAppointments.status, filters.status as any));
+      }
+    }
+    if (filters?.salespersonId) {
+      conditions.push(eq(externalAppointments.salespersonId, filters.salespersonId));
+    }
+    if (filters?.conciergeId) {
+      conditions.push(eq(externalAppointments.conciergeId, filters.conciergeId));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(externalAppointments.date, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(externalAppointments.date, filters.endDate));
+    }
+    if (filters?.mode) {
+      conditions.push(eq(externalAppointments.mode, filters.mode as any));
+    }
+
+    return await db.select()
+      .from(externalAppointments)
+      .where(and(...conditions))
+      .orderBy(desc(externalAppointments.date));
+  }
+
+  async getExternalAppointmentsPaginated(agencyId: string, options: {
+    limit: number;
+    offset: number;
+    status?: string | string[];
+    salespersonId?: string;
+    conciergeId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    mode?: string;
+    search?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ data: ExternalAppointment[]; total: number }> {
+    const conditions: SQL[] = [eq(externalAppointments.agencyId, agencyId)];
+
+    if (options.status) {
+      if (Array.isArray(options.status)) {
+        conditions.push(inArray(externalAppointments.status, options.status as any));
+      } else {
+        conditions.push(eq(externalAppointments.status, options.status as any));
+      }
+    }
+    if (options.salespersonId) {
+      conditions.push(eq(externalAppointments.salespersonId, options.salespersonId));
+    }
+    if (options.conciergeId) {
+      conditions.push(eq(externalAppointments.conciergeId, options.conciergeId));
+    }
+    if (options.startDate) {
+      conditions.push(gte(externalAppointments.date, options.startDate));
+    }
+    if (options.endDate) {
+      conditions.push(lte(externalAppointments.date, options.endDate));
+    }
+    if (options.mode) {
+      conditions.push(eq(externalAppointments.mode, options.mode as any));
+    }
+    if (options.search) {
+      conditions.push(
+        or(
+          ilike(externalAppointments.clientName, `%${options.search}%`),
+          ilike(externalAppointments.clientEmail, `%${options.search}%`),
+          ilike(externalAppointments.clientPhone, `%${options.search}%`),
+          ilike(externalAppointments.notes, `%${options.search}%`)
+        ) as SQL
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    const [{ total }] = await db.select({ total: count() })
+      .from(externalAppointments)
+      .where(whereClause);
+
+    let orderBy = desc(externalAppointments.date);
+    if (options.sortField) {
+      const field = (externalAppointments as any)[options.sortField];
+      if (field) {
+        orderBy = options.sortOrder === 'asc' ? asc(field) : desc(field);
+      }
+    }
+
+    const data = await db.select()
+      .from(externalAppointments)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(options.limit)
+      .offset(options.offset);
+
+    return { data, total };
+  }
+
+  async getExternalAppointmentsByUnit(unitId: string, agencyId: string): Promise<ExternalAppointment[]> {
+    return await db.select()
+      .from(externalAppointments)
+      .where(and(
+        eq(externalAppointments.unitId, unitId),
+        eq(externalAppointments.agencyId, agencyId)
+      ))
+      .orderBy(desc(externalAppointments.date));
+  }
+
+  async getExternalAppointmentsBySalesperson(salespersonId: string, agencyId: string): Promise<ExternalAppointment[]> {
+    return await db.select()
+      .from(externalAppointments)
+      .where(and(
+        eq(externalAppointments.salespersonId, salespersonId),
+        eq(externalAppointments.agencyId, agencyId)
+      ))
+      .orderBy(desc(externalAppointments.date));
+  }
+
+  async getExternalAppointmentsByConcierge(conciergeId: string, agencyId: string): Promise<ExternalAppointment[]> {
+    return await db.select()
+      .from(externalAppointments)
+      .where(and(
+        eq(externalAppointments.conciergeId, conciergeId),
+        eq(externalAppointments.agencyId, agencyId)
+      ))
+      .orderBy(desc(externalAppointments.date));
+  }
+
+  async getExternalAppointmentsByTourGroup(tourGroupId: string): Promise<ExternalAppointment[]> {
+    return await db.select()
+      .from(externalAppointments)
+      .where(eq(externalAppointments.tourGroupId, tourGroupId))
+      .orderBy(asc(externalAppointments.date));
+  }
+
+  async createExternalAppointment(appointment: InsertExternalAppointment): Promise<ExternalAppointment> {
+    const [result] = await db.insert(externalAppointments)
+      .values(appointment)
+      .returning();
+    return result;
+  }
+
+  async updateExternalAppointment(id: string, updates: Partial<InsertExternalAppointment>): Promise<ExternalAppointment> {
+    const [result] = await db.update(externalAppointments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalAppointments.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateExternalAppointmentStatus(id: string, status: string, additionalData?: {
+    confirmedAt?: Date;
+    completedAt?: Date;
+    cancelledAt?: Date;
+    cancellationReason?: string;
+  }): Promise<ExternalAppointment> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (additionalData?.confirmedAt) updateData.confirmedAt = additionalData.confirmedAt;
+    if (additionalData?.completedAt) updateData.completedAt = additionalData.completedAt;
+    if (additionalData?.cancelledAt) updateData.cancelledAt = additionalData.cancelledAt;
+    if (additionalData?.cancellationReason) updateData.cancellationReason = additionalData.cancellationReason;
+
+    const [result] = await db.update(externalAppointments)
+      .set(updateData)
+      .where(eq(externalAppointments.id, id))
+      .returning();
+    return result;
+  }
+
+  async assignExternalAppointmentConcierge(id: string, conciergeId: string): Promise<ExternalAppointment> {
+    const [result] = await db.update(externalAppointments)
+      .set({ conciergeId, updatedAt: new Date() })
+      .where(eq(externalAppointments.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalAppointment(id: string): Promise<void> {
+    await db.delete(externalAppointments)
+      .where(eq(externalAppointments.id, id));
+  }
+
+  // External Appointment Units (Tour stops) operations
+  async getExternalAppointmentUnit(id: string): Promise<ExternalAppointmentUnit | undefined> {
+    const [unit] = await db.select()
+      .from(externalAppointmentUnits)
+      .where(eq(externalAppointmentUnits.id, id))
+      .limit(1);
+    return unit;
+  }
+
+  async getExternalAppointmentUnitsByAppointment(appointmentId: string): Promise<ExternalAppointmentUnit[]> {
+    return await db.select()
+      .from(externalAppointmentUnits)
+      .where(eq(externalAppointmentUnits.appointmentId, appointmentId))
+      .orderBy(asc(externalAppointmentUnits.sequence));
+  }
+
+  async createExternalAppointmentUnit(unit: InsertExternalAppointmentUnit): Promise<ExternalAppointmentUnit> {
+    const [result] = await db.insert(externalAppointmentUnits)
+      .values(unit)
+      .returning();
+    return result;
+  }
+
+  async createExternalAppointmentUnits(units: InsertExternalAppointmentUnit[]): Promise<ExternalAppointmentUnit[]> {
+    if (units.length === 0) return [];
+    return await db.insert(externalAppointmentUnits)
+      .values(units)
+      .returning();
+  }
+
+  async updateExternalAppointmentUnit(id: string, updates: Partial<InsertExternalAppointmentUnit>): Promise<ExternalAppointmentUnit> {
+    const [result] = await db.update(externalAppointmentUnits)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalAppointmentUnits.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalAppointmentUnit(id: string): Promise<void> {
+    await db.delete(externalAppointmentUnits)
+      .where(eq(externalAppointmentUnits.id, id));
+  }
+
+  async deleteExternalAppointmentUnitsByAppointment(appointmentId: string): Promise<void> {
+    await db.delete(externalAppointmentUnits)
+      .where(eq(externalAppointmentUnits.appointmentId, appointmentId));
   }
 
   // External Management System - Property operations

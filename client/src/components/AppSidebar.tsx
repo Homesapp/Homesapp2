@@ -75,7 +75,7 @@ import {
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "cliente" | "abogado" | "contador" | "agente_servicios_especiales" | "hoa_manager" | "external_agency_admin" | "external_agency_accounting" | "external_agency_maintenance" | "external_agency_staff";
+export type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "cliente" | "abogado" | "contador" | "agente_servicios_especiales" | "hoa_manager" | "external_agency_admin" | "external_agency_accounting" | "external_agency_maintenance" | "external_agency_staff" | "external_agency_concierge" | "external_agency_lawyer";
 
 export type AppSidebarProps = {
   userRole: UserRole | undefined;
@@ -100,6 +100,8 @@ const roleLabels: Record<UserRole, string> = {
   external_agency_accounting: "Contabilidad Externa",
   external_agency_maintenance: "Mantenimiento Externo",
   external_agency_staff: "Staff Agencia Externa",
+  external_agency_concierge: "Conserje Externo",
+  external_agency_lawyer: "Abogado Externo",
 };
 
 export function AppSidebar({ userRole, userId }: AppSidebarProps) {
@@ -292,19 +294,18 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
   ];
 
   const externalManagementGroup = [
-    { titleKey: "sidebar.externalDashboard", url: "/external/dashboard", icon: Home, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"] },
+    { titleKey: "sidebar.externalDashboard", url: "/external/dashboard", icon: Home, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalAccounts", url: "/external/accounts", icon: Users, roles: ["master", "admin", "external_agency_admin"] },
     { titleKey: "sidebar.externalAccesses", url: "/external/accesses", icon: Key, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance", "external_agency_staff"] },
     { titleKey: "sidebar.externalCondominiums", url: "/external/condominiums", icon: Building2, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance", "external_agency_staff"] },
-    { titleKey: "sidebar.externalContracts", url: "/external/contracts", icon: ScrollText, roles: ["master", "admin", "external_agency_admin", "external_agency_staff"] },
+    { titleKey: "sidebar.externalContracts", url: "/external/contracts", icon: ScrollText, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalRentals", url: "/external/rentals", icon: FileText, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalAccounting", url: "/external/accounting", icon: DollarSign, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalMaintenance", url: "/external/maintenance", icon: Wrench, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
-    { titleKey: "sidebar.externalCalendar", url: "/external/calendar", icon: Calendar, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance"] },
+    { titleKey: "sidebar.externalCalendar", url: "/external/calendar", icon: Calendar, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_concierge"] },
+    { titleKey: "sidebar.externalAppointments", url: "/external-appointments", icon: CalendarCheck, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalOwners", url: "/external/owners/portfolio", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
-    // Workers section moved inside Maintenance as tabs - keeping route in App.tsx for backward compatibility
-    // { titleKey: "sidebar.externalMaintenanceWorkers", url: "/external/maintenance-workers", icon: HardHat, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance"] },
-    { titleKey: "sidebar.externalClients", url: "/external/clients", icon: UserCircle2, roles: ["master", "admin", "external_agency_admin", "external_agency_staff"] },
+    { titleKey: "sidebar.externalClients", url: "/external/clients", icon: UserCircle2, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge"] },
   ];
 
   const serviceItems = [
@@ -322,7 +323,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
 
   // Check if user is ONLY an external agency user (not admin/master)
   const isExternalAgencyUser = userRole && 
-    ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"].includes(userRole);
+    ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"].includes(userRole);
 
   const filteredMain = userRole 
     ? (isExternalAgencyUser 

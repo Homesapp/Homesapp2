@@ -224,6 +224,10 @@ import {
   insertExternalAgencyPropertyTypeSchema,
   externalPublicationRequests,
   insertExternalPublicationRequestSchema,
+  externalAppointments,
+  externalAppointmentUnits,
+  insertExternalAppointmentSchema,
+  insertExternalAppointmentUnitSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, not, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
@@ -21015,7 +21019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // EXTERNAL_MAINTENANCE_ROLES: Property, contract, and maintenance operations
   const EXTERNAL_MAINTENANCE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_maintenance"];
   // EXTERNAL_ALL_ROLES: Read-only access for all external agency users
-  const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
+  const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"];
 
   // ==============================
   // EXTERNAL PUBLICATION REQUESTS
@@ -22121,7 +22125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==============================
 
   // GET /api/external/users - Get all users for the authenticated user's agency
-  app.get("/api/external/users", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+  app.get("/api/external/users", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) {
@@ -22244,6 +22248,345 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Properties Routes
+
+  // ==================== External Appointments Routes ====================
+  // Roles for appointment management
+  const EXTERNAL_APPOINTMENT_VIEW_ROLES = ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"];
+  const EXTERNAL_APPOINTMENT_MANAGE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge"];
+
+  // GET /api/external-appointments - Get all appointments for agency
+  app.get("/api/external-appointments", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_VIEW_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      const { status, salespersonId, conciergeId, startDate, endDate, mode, page, limit, search } = req.query;
+
+      // Parse filters
+      const filters: any = {};
+      if (status) filters.status = status.includes(',') ? status.split(',') : status;
+      if (salespersonId) filters.salespersonId = salespersonId;
+      if (conciergeId) filters.conciergeId = conciergeId;
+      if (startDate) filters.startDate = new Date(startDate);
+      if (endDate) filters.endDate = new Date(endDate);
+      if (mode) filters.mode = mode;
+
+      // If pagination requested
+      if (page && limit) {
+        const result = await storage.getExternalAppointmentsPaginated(agencyId, {
+          limit: parseInt(limit),
+          offset: (parseInt(page) - 1) * parseInt(limit),
+          ...filters,
+          search: search || undefined,
+        });
+        return res.json(result);
+      }
+
+      const appointments = await storage.getExternalAppointmentsByAgency(agencyId, filters);
+      res.json(appointments);
+    } catch (error: any) {
+      console.error("Error fetching external appointments:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-appointments/:id - Get single appointment
+  app.get("/api/external-appointments/:id", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_VIEW_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      // Use agency-scoped query to prevent enumeration
+      const appointment = await storage.getExternalAppointmentByAgency(id, agencyId);
+      
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Get tour stops if this is a tour
+      let tourStops: any[] = [];
+      if (appointment.mode === 'tour') {
+        tourStops = await storage.getExternalAppointmentUnitsByAppointment(id);
+      }
+
+      res.json({ ...appointment, tourStops });
+    } catch (error: any) {
+      console.error("Error fetching external appointment:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-appointments/unit/:unitId - Get appointments for a specific unit
+  app.get("/api/external-appointments/unit/:unitId", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_VIEW_ROLES), async (req: any, res) => {
+    try {
+      const { unitId } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      // Verify the unit belongs to the requester's agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit || unit.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Unit not found or not accessible" });
+      }
+
+      const appointments = await storage.getExternalAppointmentsByUnit(unitId, agencyId);
+      res.json(appointments);
+    } catch (error: any) {
+      console.error("Error fetching unit appointments:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-appointments - Create appointment
+  app.post("/api/external-appointments", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_MANAGE_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const { tourStops, ...appointmentData } = req.body;
+
+      // Validate appointment data
+      const validatedData = insertExternalAppointmentSchema.parse({
+        ...appointmentData,
+        agencyId,
+        createdBy: userId,
+      });
+
+      // For tours, validate max 3 properties rule
+      if (validatedData.mode === 'tour' && tourStops && tourStops.length > 3) {
+        return res.status(400).json({ message: "Tours can have a maximum of 3 properties" });
+      }
+
+      // Calculate end time based on mode
+      const startDate = new Date(validatedData.date);
+      let endDate: Date;
+      
+      if (validatedData.mode === 'individual') {
+        // Individual appointments are 1 hour
+        endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      } else {
+        // Tours: 30 minutes per property
+        const propertyCount = tourStops?.length || 1;
+        endDate = new Date(startDate.getTime() + propertyCount * 30 * 60 * 1000);
+      }
+
+      // Generate tour group ID if this is a tour
+      const tourGroupId = validatedData.mode === 'tour' ? crypto.randomUUID() : null;
+
+      const appointment = await storage.createExternalAppointment({
+        ...validatedData,
+        endTime: endDate,
+        tourGroupId,
+      });
+
+      // Create tour stops if this is a tour
+      if (validatedData.mode === 'tour' && tourStops && tourStops.length > 0) {
+        const stopsData = tourStops.map((stop: any, index: number) => ({
+          appointmentId: appointment.id,
+          unitId: stop.unitId,
+          sequence: index + 1,
+          scheduledTime: new Date(startDate.getTime() + index * 30 * 60 * 1000),
+          notes: stop.notes || null,
+        }));
+
+        await storage.createExternalAppointmentUnits(stopsData);
+      }
+
+      await createAuditLog(req, "create", "external_appointment", appointment.id, 
+        `Created ${validatedData.mode} appointment for ${validatedData.clientName}`);
+
+      res.status(201).json(appointment);
+    } catch (error: any) {
+      console.error("Error creating external appointment:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-appointments/:id - Update appointment
+  app.patch("/api/external-appointments/:id", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_MANAGE_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      // Use agency-scoped query to prevent enumeration
+      const appointment = await storage.getExternalAppointmentByAgency(id, agencyId);
+      
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      const { tourStops, ...updateData } = req.body;
+
+      // Validate tour stops if provided (max 3)
+      if (tourStops && tourStops.length > 3) {
+        return res.status(400).json({ message: "Tours can have a maximum of 3 properties" });
+      }
+
+      const updated = await storage.updateExternalAppointment(id, updateData);
+
+      // Update tour stops if provided
+      if (tourStops) {
+        await storage.deleteExternalAppointmentUnitsByAppointment(id);
+        if (tourStops.length > 0) {
+          const startDate = new Date(updated.date);
+          const stopsData = tourStops.map((stop: any, index: number) => ({
+            appointmentId: id,
+            unitId: stop.unitId,
+            sequence: index + 1,
+            scheduledTime: new Date(startDate.getTime() + index * 30 * 60 * 1000),
+            notes: stop.notes || null,
+          }));
+          await storage.createExternalAppointmentUnits(stopsData);
+        }
+      }
+
+      await createAuditLog(req, "update", "external_appointment", id, "Updated appointment details");
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating external appointment:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-appointments/:id/status - Update appointment status
+  app.patch("/api/external-appointments/:id/status", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_MANAGE_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, cancellationReason } = req.body;
+
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      // Use agency-scoped query to prevent enumeration
+      const appointment = await storage.getExternalAppointmentByAgency(id, agencyId);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Validate status transitions
+      const validTransitions: Record<string, string[]> = {
+        pending: ['confirmed', 'cancelled'],
+        confirmed: ['completed', 'cancelled'],
+        completed: [],
+        cancelled: [],
+      };
+      
+      const currentStatus = appointment.status;
+      const allowedNextStatuses = validTransitions[currentStatus] || [];
+      if (!allowedNextStatuses.includes(status)) {
+        return res.status(400).json({ 
+          message: 'Invalid status transition',
+          allowedTransitions: allowedNextStatuses 
+        });
+      }
+
+      const additionalData: any = {};
+      if (status === 'confirmed') additionalData.confirmedAt = new Date();
+      if (status === 'completed') additionalData.completedAt = new Date();
+      if (status === 'cancelled') {
+        additionalData.cancelledAt = new Date();
+        if (cancellationReason) additionalData.cancellationReason = cancellationReason;
+      }
+
+      const updated = await storage.updateExternalAppointmentStatus(id, status, additionalData);
+
+      await createAuditLog(req, "update", "external_appointment", id, `Changed status to ${status}`);
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating appointment status:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-appointments/:id/assign-concierge - Assign concierge
+  app.patch("/api/external-appointments/:id/assign-concierge", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { conciergeId } = req.body;
+
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      // Use agency-scoped query to prevent enumeration
+      const appointment = await storage.getExternalAppointmentByAgency(id, agencyId);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      const updated = await storage.assignExternalAppointmentConcierge(id, conciergeId);
+
+      await createAuditLog(req, "update", "external_appointment", id, `Assigned concierge ${conciergeId}`);
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error assigning concierge:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external-appointments/:id - Delete appointment
+  app.delete("/api/external-appointments/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      // Use agency-scoped query to prevent enumeration
+      const appointment = await storage.getExternalAppointmentByAgency(id, agencyId);
+      
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Delete tour stops first
+      await storage.deleteExternalAppointmentUnitsByAppointment(id);
+      await storage.deleteExternalAppointment(id);
+
+      await createAuditLog(req, "delete", "external_appointment", id, "Deleted appointment");
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting external appointment:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-appointments/:id/tour-stops - Get tour stops for appointment
+  app.get("/api/external-appointments/:id/tour-stops", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_VIEW_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const stops = await storage.getExternalAppointmentUnitsByAppointment(id);
+      res.json(stops);
+    } catch (error: any) {
+      console.error("Error fetching tour stops:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.get("/api/external-properties", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { agencyId, status } = req.query;
