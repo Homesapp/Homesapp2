@@ -68,7 +68,14 @@ import {
   Lock,
   Car,
   UserCheck,
-  Info
+  Info,
+  MessageCircle,
+  Bed,
+  DollarSign,
+  PawPrint,
+  CalendarCheck,
+  Target,
+  ExternalLink
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -86,6 +93,7 @@ type ExternalAppointment = {
   agencyId: string;
   unitId: string | null;
   clientId: string | null;
+  leadId: string | null;
   salespersonId: string | null;
   conciergeId: string | null;
   mode: "individual" | "tour";
@@ -105,6 +113,19 @@ type ExternalAppointment = {
   createdAt: string;
   updatedAt: string;
   tourStops?: TourStop[];
+};
+
+type LeadPreferences = {
+  checkInDate: string | null;
+  checkInDateText: string | null;
+  hasPets: string | null;
+  estimatedRentCost: number | null;
+  estimatedRentCostText: string | null;
+  bedrooms: number | null;
+  bedroomsText: string | null;
+  desiredUnitType: string | null;
+  desiredProperty: string | null;
+  desiredNeighborhood: string | null;
 };
 
 type TourStop = {
@@ -325,6 +346,40 @@ export default function ExternalAppointments() {
       return results;
     },
     enabled: selectedUnitIds.length > 0 && !!selectedAppointment,
+  });
+  
+  // Fetch lead preferences for display in detail dialog
+  const selectedLeadId = selectedAppointment?.leadId || null;
+  const { data: selectedLeadPreferences } = useQuery<LeadPreferences | null>({
+    queryKey: ["/api/external-leads", selectedLeadId, "preferences"],
+    queryFn: async () => {
+      if (!selectedLeadId) return null;
+      try {
+        const response = await fetch(`/api/external-leads/${selectedLeadId}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const lead = await response.json();
+          return {
+            checkInDate: lead.checkInDate || null,
+            checkInDateText: lead.checkInDateText || null,
+            hasPets: lead.hasPets || null,
+            estimatedRentCost: lead.estimatedRentCost ? Number(lead.estimatedRentCost) : null,
+            estimatedRentCostText: lead.estimatedRentCostText || null,
+            bedrooms: lead.bedrooms || null,
+            bedroomsText: lead.bedroomsText || null,
+            desiredUnitType: lead.desiredUnitType || null,
+            desiredProperty: lead.desiredProperty || null,
+            desiredNeighborhood: lead.desiredNeighborhood || null,
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error("Error fetching lead preferences:", error);
+        return null;
+      }
+    },
+    enabled: !!selectedLeadId,
   });
 
   const salespersons = useMemo(() => {
@@ -1604,19 +1659,40 @@ export default function ExternalAppointments() {
                       <User className="h-4 w-4" />
                       {language === "es" ? "Información del Cliente" : "Client Information"}
                     </h4>
-                    <div className="space-y-2">
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                       {selectedAppointment.clientEmail && (
                         <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <Mail className="h-4 w-4 text-blue-500" />
                           <span>{selectedAppointment.clientEmail}</span>
                         </div>
                       )}
-                      {selectedAppointment.clientPhone && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span>{selectedAppointment.clientPhone}</span>
+                      {selectedAppointment.clientPhone && (() => {
+                        const rawPhone = selectedAppointment.clientPhone;
+                        const cleanPhone = rawPhone.replace(/\D/g, '');
+                        const isValidPhone = cleanPhone.length >= 10;
+                        return (
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-green-500" />
+                            <span>{rawPhone}</span>
+                          </div>
+                          {isValidPhone && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 gap-1.5 text-green-600 border-green-200 hover:bg-green-50"
+                              onClick={() => {
+                                window.open(`https://wa.me/${cleanPhone}`, '_blank');
+                              }}
+                              data-testid="button-whatsapp"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              WhatsApp
+                            </Button>
+                          )}
                         </div>
-                      )}
+                        );
+                      })()}
                       {!selectedAppointment.clientEmail && !selectedAppointment.clientPhone && (
                         <p className="text-sm text-muted-foreground italic">
                           {language === "es" ? "Sin información de contacto" : "No contact information"}
@@ -1624,6 +1700,91 @@ export default function ExternalAppointments() {
                       )}
                     </div>
                   </div>
+
+                  {/* Client Preferences / What they're looking for */}
+                  {selectedLeadPreferences && (() => {
+                    const hasPreferences = 
+                      selectedLeadPreferences.bedrooms || 
+                      selectedLeadPreferences.bedroomsText ||
+                      selectedLeadPreferences.checkInDate || 
+                      selectedLeadPreferences.checkInDateText ||
+                      selectedLeadPreferences.desiredUnitType ||
+                      selectedLeadPreferences.estimatedRentCost || 
+                      selectedLeadPreferences.estimatedRentCostText ||
+                      selectedLeadPreferences.hasPets ||
+                      selectedLeadPreferences.desiredNeighborhood ||
+                      selectedLeadPreferences.desiredProperty;
+                    
+                    if (!hasPreferences) return null;
+                    
+                    return (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4" />
+                        {language === "es" ? "¿Qué Busca?" : "What They're Looking For"}
+                      </h4>
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                        {(selectedLeadPreferences.bedrooms || selectedLeadPreferences.bedroomsText) && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Bed className="h-4 w-4 text-indigo-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Recámaras:" : "Bedrooms:"}</span>
+                            <span className="font-medium">
+                              {selectedLeadPreferences.bedroomsText || selectedLeadPreferences.bedrooms}
+                            </span>
+                          </div>
+                        )}
+                        {(selectedLeadPreferences.checkInDate || selectedLeadPreferences.checkInDateText) && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <CalendarCheck className="h-4 w-4 text-blue-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Fecha entrada:" : "Move-in:"}</span>
+                            <span className="font-medium">
+                              {selectedLeadPreferences.checkInDateText || 
+                               (selectedLeadPreferences.checkInDate ? format(new Date(selectedLeadPreferences.checkInDate), "PPP", { locale }) : null)}
+                            </span>
+                          </div>
+                        )}
+                        {selectedLeadPreferences.desiredUnitType && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Home className="h-4 w-4 text-amber-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Tipo:" : "Type:"}</span>
+                            <span className="font-medium">{selectedLeadPreferences.desiredUnitType}</span>
+                          </div>
+                        )}
+                        {(selectedLeadPreferences.estimatedRentCost || selectedLeadPreferences.estimatedRentCostText) && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <DollarSign className="h-4 w-4 text-green-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Presupuesto:" : "Budget:"}</span>
+                            <span className="font-medium">
+                              {selectedLeadPreferences.estimatedRentCostText || 
+                               (selectedLeadPreferences.estimatedRentCost ? `$${selectedLeadPreferences.estimatedRentCost.toLocaleString()}` : null)}
+                            </span>
+                          </div>
+                        )}
+                        {selectedLeadPreferences.hasPets && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <PawPrint className="h-4 w-4 text-orange-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Mascotas:" : "Pets:"}</span>
+                            <span className="font-medium">{selectedLeadPreferences.hasPets}</span>
+                          </div>
+                        )}
+                        {selectedLeadPreferences.desiredNeighborhood && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4 text-red-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Zona:" : "Zone:"}</span>
+                            <span className="font-medium">{selectedLeadPreferences.desiredNeighborhood}</span>
+                          </div>
+                        )}
+                        {selectedLeadPreferences.desiredProperty && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Building2 className="h-4 w-4 text-purple-500" />
+                            <span className="text-muted-foreground">{language === "es" ? "Propiedad interés:" : "Property interest:"}</span>
+                            <span className="font-medium">{selectedLeadPreferences.desiredProperty}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })()}
 
                   {selectedAppointment.notes && (
                     <div>
