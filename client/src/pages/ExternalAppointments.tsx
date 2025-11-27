@@ -274,8 +274,9 @@ export default function ExternalAppointments() {
     return selectedAppointment.unitId ? [selectedAppointment.unitId] : [];
   }, [selectedAppointment]);
 
+  const selectedUnitIdsKey = selectedUnitIds.join(",");
   const { data: selectedUnitAccessControls = {} } = useQuery<Record<string, UnitAccessControl[]>>({
-    queryKey: ["/api/external-unit-access-controls/batch", selectedUnitIds],
+    queryKey: ["/api/external-unit-access-controls/batch", selectedUnitIdsKey],
     queryFn: async () => {
       if (selectedUnitIds.length === 0) return {};
       const results: Record<string, UnitAccessControl[]> = {};
@@ -285,7 +286,8 @@ export default function ExternalAppointments() {
             credentials: 'include'
           });
           if (response.ok) {
-            results[unitId] = await response.json();
+            const data = await response.json();
+            results[unitId] = Array.isArray(data) ? data : [];
           }
         } catch (error) {
           console.error(`Error fetching access controls for unit ${unitId}:`, error);
