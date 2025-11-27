@@ -225,6 +225,10 @@ export default function ExternalAppointments() {
   const { data: condominiumsData } = useQuery<{ data: ExternalCondominium[]; total: number }>({
     queryKey: ["/api/external-condominiums"],
   });
+  
+  const { data: allCondominiums = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/external-condominiums-for-filters"],
+  });
   const condominiums = condominiumsData?.data ?? [];
 
   const { data: clientsData } = useQuery<{ data: ExternalClient[]; total: number }>({
@@ -254,18 +258,18 @@ export default function ExternalAppointments() {
   }, [units, formData.condominiumId]);
 
   const filteredCondominiums = useMemo(() => {
-    if (!condoSearchTerm) return condominiums;
-    return condominiums.filter(c => 
+    if (!condoSearchTerm) return allCondominiums;
+    return allCondominiums.filter(c => 
       c.name.toLowerCase().includes(condoSearchTerm.toLowerCase())
     );
-  }, [condominiums, condoSearchTerm]);
+  }, [allCondominiums, condoSearchTerm]);
 
   const filteredTourCondominiums = useMemo(() => {
-    if (!tourCondoSearchTerm) return condominiums;
-    return condominiums.filter(c => 
+    if (!tourCondoSearchTerm) return allCondominiums;
+    return allCondominiums.filter(c => 
       c.name.toLowerCase().includes(tourCondoSearchTerm.toLowerCase())
     );
-  }, [condominiums, tourCondoSearchTerm]);
+  }, [allCondominiums, tourCondoSearchTerm]);
 
   const getUnitsForCondominium = (condominiumId: string) => {
     return units.filter(u => u.condominiumId === condominiumId);
@@ -1169,7 +1173,7 @@ export default function ExternalAppointments() {
                           data-testid="select-condominium"
                         >
                           {formData.condominiumId 
-                            ? condominiums.find(c => c.id === formData.condominiumId)?.name 
+                            ? allCondominiums.find(c => c.id === formData.condominiumId)?.name 
                             : (language === "es" ? "Buscar condominio..." : "Search condominium...")}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -1285,7 +1289,7 @@ export default function ExternalAppointments() {
                             >
                               <span className="truncate">
                                 {stop.condominiumId 
-                                  ? condominiums.find(c => c.id === stop.condominiumId)?.name 
+                                  ? allCondominiums.find(c => c.id === stop.condominiumId)?.name 
                                   : (language === "es" ? "Condominio" : "Condo")}
                               </span>
                               <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
