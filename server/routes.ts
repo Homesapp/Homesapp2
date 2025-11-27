@@ -221,6 +221,8 @@ import {
   insertExternalAgencyZoneSchema,
   externalAgencyPropertyTypes,
   insertExternalAgencyPropertyTypeSchema,
+  externalPublicationRequests,
+  insertExternalPublicationRequestSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, not, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
@@ -21013,6 +21015,303 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const EXTERNAL_MAINTENANCE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_maintenance"];
   // EXTERNAL_ALL_ROLES: Read-only access for all external agency users
   const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
+
+  // ==============================
+  // EXTERNAL PUBLICATION REQUESTS
+  // ==============================
+
+  // GET /api/external-publication-requests - Admin: Get all publication requests
+  app.get("/api/external-publication-requests", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      
+      let query = db.select({
+        id: externalPublicationRequests.id,
+        unitId: externalPublicationRequests.unitId,
+        agencyId: externalPublicationRequests.agencyId,
+        requestedBy: externalPublicationRequests.requestedBy,
+        reviewedBy: externalPublicationRequests.reviewedBy,
+        status: externalPublicationRequests.status,
+        adminFeedback: externalPublicationRequests.adminFeedback,
+        linkedPropertyId: externalPublicationRequests.linkedPropertyId,
+        requestedAt: externalPublicationRequests.requestedAt,
+        reviewedAt: externalPublicationRequests.reviewedAt,
+        createdAt: externalPublicationRequests.createdAt,
+        updatedAt: externalPublicationRequests.updatedAt,
+        unitNumber: externalUnits.unitNumber,
+        unitTitle: externalUnits.title,
+        unitDescription: externalUnits.description,
+        unitPrice: externalUnits.price,
+        unitCurrency: externalUnits.currency,
+        unitBedrooms: externalUnits.bedrooms,
+        unitBathrooms: externalUnits.bathrooms,
+        unitArea: externalUnits.area,
+        unitPrimaryImages: externalUnits.primaryImages,
+        unitAmenities: externalUnits.amenities,
+        unitAddress: externalUnits.address,
+        unitZone: externalUnits.zone,
+        unitPropertyType: externalUnits.propertyType,
+        condominiumId: externalUnits.condominiumId,
+        agencyName: externalAgencies.name,
+      })
+      .from(externalPublicationRequests)
+      .leftJoin(externalUnits, eq(externalPublicationRequests.unitId, externalUnits.id))
+      .leftJoin(externalAgencies, eq(externalPublicationRequests.agencyId, externalAgencies.id))
+      .orderBy(desc(externalPublicationRequests.requestedAt));
+
+      if (status && status !== 'all') {
+        query = query.where(eq(externalPublicationRequests.status, status as any));
+      }
+
+      const requests = await query;
+
+      // Get condominium names
+      const condoIds = [...new Set(requests.filter(r => r.condominiumId).map(r => r.condominiumId!))];
+      let condoMap: Record<string, string> = {};
+      if (condoIds.length > 0) {
+        const condos = await db.select({ id: externalCondominiums.id, name: externalCondominiums.name })
+          .from(externalCondominiums)
+          .where(inArray(externalCondominiums.id, condoIds));
+        condoMap = Object.fromEntries(condos.map(c => [c.id, c.name]));
+      }
+
+      const enrichedRequests = requests.map(r => ({
+        ...r,
+        condominiumName: r.condominiumId ? condoMap[r.condominiumId] : null,
+      }));
+
+      res.json(enrichedRequests);
+    } catch (error) {
+      console.error("Error fetching publication requests:", error);
+      res.status(500).json({ message: "Failed to fetch publication requests" });
+    }
+  });
+
+  // GET /api/external-publication-requests/:id - Admin: Get single request with full details
+  app.get("/api/external-publication-requests/:id", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const [request] = await db.select()
+        .from(externalPublicationRequests)
+        .where(eq(externalPublicationRequests.id, id));
+
+      if (!request) {
+        return res.status(404).json({ message: "Publication request not found" });
+      }
+
+      // Get full unit details
+      const unit = await storage.getExternalUnit(request.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+
+      // Get condominium if exists
+      let condominium = null;
+      if (unit.condominiumId) {
+        condominium = await storage.getExternalCondominium(unit.condominiumId);
+      }
+
+      // Get agency
+      const agency = await storage.getExternalAgency(request.agencyId);
+
+      res.json({
+        ...request,
+        unit: {
+          ...unit,
+          condominium,
+        },
+        agency,
+      });
+    } catch (error) {
+      console.error("Error fetching publication request:", error);
+      res.status(500).json({ message: "Failed to fetch publication request" });
+    }
+  });
+
+  // POST /api/external-publication-requests - External: Create publication request
+  app.post("/api/external-publication-requests", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      const { unitId } = req.body;
+      
+      // Verify unit belongs to agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit || unit.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Access denied to this unit" });
+      }
+
+      // Check if there's already a pending request for this unit
+      const [existingPending] = await db.select()
+        .from(externalPublicationRequests)
+        .where(and(
+          eq(externalPublicationRequests.unitId, unitId),
+          eq(externalPublicationRequests.status, 'pending')
+        ));
+
+      if (existingPending) {
+        return res.status(400).json({ message: "A pending request already exists for this unit" });
+      }
+
+      // Create the request
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const [request] = await db.insert(externalPublicationRequests)
+        .values({
+          unitId,
+          agencyId,
+          requestedBy: userId,
+          status: 'pending',
+        })
+        .returning();
+
+      // Update unit publishToMain flag
+      await storage.updateExternalUnit(unitId, { publishToMain: true, publishStatus: 'pending' });
+
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating publication request:", error);
+      res.status(500).json({ message: "Failed to create publication request" });
+    }
+  });
+
+  // PATCH /api/external-publication-requests/:id/review - Admin: Approve or reject request
+  app.patch("/api/external-publication-requests/:id/review", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { decision, feedback } = req.body;
+      const userId = req.user?.claims?.sub || req.user?.id || req.session?.adminUser?.id;
+
+      if (!['approved', 'rejected'].includes(decision)) {
+        return res.status(400).json({ message: "Invalid decision. Must be 'approved' or 'rejected'" });
+      }
+
+      const [request] = await db.select()
+        .from(externalPublicationRequests)
+        .where(eq(externalPublicationRequests.id, id));
+
+      if (!request) {
+        return res.status(404).json({ message: "Publication request not found" });
+      }
+
+      if (request.status !== 'pending') {
+        return res.status(400).json({ message: "Request has already been reviewed" });
+      }
+
+      // Update the request
+      const [updatedRequest] = await db.update(externalPublicationRequests)
+        .set({
+          status: decision,
+          reviewedBy: userId,
+          reviewedAt: new Date(),
+          adminFeedback: feedback || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(externalPublicationRequests.id, id))
+        .returning();
+
+      // Update unit publish status
+      const newPublishStatus = decision === 'approved' ? 'approved' : 'rejected';
+      await storage.updateExternalUnit(request.unitId, { 
+        publishStatus: newPublishStatus,
+        publishedAt: decision === 'approved' ? new Date() : null,
+      });
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error reviewing publication request:", error);
+      res.status(500).json({ message: "Failed to review publication request" });
+    }
+  });
+
+  // DELETE /api/external-publication-requests/:id - External: Withdraw publication request
+  app.delete("/api/external-publication-requests/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      const [request] = await db.select()
+        .from(externalPublicationRequests)
+        .where(eq(externalPublicationRequests.id, id));
+
+      if (!request) {
+        return res.status(404).json({ message: "Publication request not found" });
+      }
+
+      if (request.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (request.status !== 'pending') {
+        return res.status(400).json({ message: "Can only withdraw pending requests" });
+      }
+
+      // Update to withdrawn status
+      await db.update(externalPublicationRequests)
+        .set({ status: 'withdrawn', updatedAt: new Date() })
+        .where(eq(externalPublicationRequests.id, id));
+
+      // Update unit
+      await storage.updateExternalUnit(request.unitId, { publishToMain: false, publishStatus: 'draft' });
+
+      res.json({ message: "Request withdrawn successfully" });
+    } catch (error) {
+      console.error("Error withdrawing publication request:", error);
+      res.status(500).json({ message: "Failed to withdraw request" });
+    }
+  });
+
+  // GET /api/external-publication-requests/by-unit/:unitId - Get request for a specific unit
+  app.get("/api/external-publication-requests/by-unit/:unitId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { unitId } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+
+      // Verify unit belongs to agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit || unit.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const requests = await db.select()
+        .from(externalPublicationRequests)
+        .where(eq(externalPublicationRequests.unitId, unitId))
+        .orderBy(desc(externalPublicationRequests.requestedAt));
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching unit publication requests:", error);
+      res.status(500).json({ message: "Failed to fetch publication requests" });
+    }
+  });
+
+  // GET /api/external-publication-requests/stats - Admin: Get publication request statistics
+  app.get("/api/external-publication-requests/stats", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const [stats] = await db.select({
+        total: sql<number>`count(*)`,
+        pending: sql<number>`count(*) filter (where status = 'pending')`,
+        approved: sql<number>`count(*) filter (where status = 'approved')`,
+        rejected: sql<number>`count(*) filter (where status = 'rejected')`,
+        withdrawn: sql<number>`count(*) filter (where status = 'withdrawn')`,
+      }).from(externalPublicationRequests);
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching publication stats:", error);
+      res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
 
   // External Agencies Routes
   app.get("/api/external-agencies", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
