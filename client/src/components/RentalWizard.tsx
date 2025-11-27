@@ -138,16 +138,17 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     return condominiums.filter(c => c.name.toLowerCase().includes(searchLower));
   }, [condominiums, condominiumSearch]);
 
-  const { data: unitsResponse, isLoading: unitsLoading } = useQuery<{ data: UnitWithDetails[], total: number }>({
-    queryKey: ["/api/external-units", "for-rental-wizard"],
+  // Load units for the selected condominium (uses endpoint that returns ALL units without pagination limit)
+  const { data: availableUnits, isLoading: unitsLoading } = useQuery<UnitWithDetails[]>({
+    queryKey: ["/api/external-units/by-condominium", selectedCondominiumId],
     queryFn: async () => {
-      const response = await fetch("/api/external-units?limit=1000", { credentials: "include" });
+      const response = await fetch(`/api/external-units/by-condominium/${selectedCondominiumId}`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch units");
       return response.json();
     },
+    enabled: !!selectedCondominiumId, // Only fetch when a condominium is selected
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
-  const availableUnits = unitsResponse?.data;
 
   const { data: clientsResponse, isLoading: clientsLoading } = useQuery<PaginatedResponse<ExternalClient>>({
     queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection
@@ -388,10 +389,10 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
   };
 
   const selectedUnit = availableUnits?.find(u => u.id === selectedUnitId);
+  // Filter units: only show active units without an existing contract
   const filteredUnits = availableUnits?.filter(u => 
     u.status === 'active' && 
-    !u.currentContractId &&
-    (!selectedCondominiumId || u.condominiumId === selectedCondominiumId)
+    !u.currentContractId
   ) || [];
 
   const steps = [
