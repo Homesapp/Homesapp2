@@ -1251,10 +1251,9 @@ export default function ExternalAccounting() {
   // Mark as paid mutation
   const markAsPaidMutation = useMutation({
     mutationFn: async ({ id, paidDate, notes }: { id: string; paidDate: string; notes?: string }) => {
-      return apiRequest(`/api/external/accounting/transactions/${id}`, {
+      return apiRequest(`/api/external/accounting/transactions/${id}/mark-paid`, {
         method: 'PATCH',
         body: JSON.stringify({ 
-          status: 'posted',
           paidDate: new Date(paidDate).toISOString(),
           notes
         }),

@@ -676,16 +676,36 @@ export default function ExternalMaintenanceWorkers({
                 <div className="grid md:grid-cols-[2fr,1fr] gap-6">
                   {/* Left Panel: Selection */}
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-base font-semibold flex items-center gap-2 mb-2">
-                        <Building2 className="h-4 w-4" />
-                        {language === "es" ? "Condominios y Unidades" : "Condominiums and Units"}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {language === "es" 
-                          ? "Selecciona los condominios o unidades específicas para asignar"
-                          : "Select condominiums or specific units to assign"}
-                      </p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-base font-semibold flex items-center gap-2 mb-2">
+                          <Building2 className="h-4 w-4" />
+                          {language === "es" ? "Condominios y Unidades" : "Condominiums and Units"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {language === "es" 
+                            ? "Selecciona los condominios o unidades específicas para asignar"
+                            : "Select condominiums or specific units to assign"}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const allCondoIds = condominiums?.map(c => c.id) || [];
+                          form.setValue("condominiumIds", allCondoIds);
+                          const allUnitsMap: Record<string, boolean> = {};
+                          allCondoIds.forEach(id => {
+                            allUnitsMap[id] = true;
+                          });
+                          form.setValue("allUnitsPerCondo", allUnitsMap);
+                          form.setValue("unitIds", []);
+                        }}
+                        data-testid="button-assign-all-condos"
+                      >
+                        {language === "es" ? "Asignar todos" : "Assign all"}
+                      </Button>
                     </div>
 
                     <ScrollArea className="h-[400px] border rounded-md">
