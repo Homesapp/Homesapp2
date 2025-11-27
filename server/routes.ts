@@ -23730,7 +23730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contractId: updatedTicket.contractId || null,
             unitId: updatedTicket.unitId,
             maintenanceTicketId: updatedTicket.id,
-            description: `Cargo por mantenimiento: ${updatedTicket.title}`,
+            description: updatedTicket.title,
             notes: closureWorkNotes || completionNotes || undefined,
           });
           
