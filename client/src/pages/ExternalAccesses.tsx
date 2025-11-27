@@ -159,12 +159,24 @@ export default function ExternalAccesses() {
           : "Access code has been created successfully",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      let errorMessage = language === "es"
+        ? "No se pudo crear el código de acceso"
+        : "Could not create access code";
+      
+      if (error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
+        errorMessage = language === "es"
+          ? "No tienes permiso para crear accesos en esta unidad"
+          : "You don't have permission to create accesses for this unit";
+      } else if (error?.message?.includes("404") || error?.message?.includes("not found")) {
+        errorMessage = language === "es"
+          ? "La unidad seleccionada no fue encontrada"
+          : "The selected unit was not found";
+      }
+      
       toast({
         title: language === "es" ? "Error" : "Error",
-        description: language === "es"
-          ? "No se pudo crear el código de acceso"
-          : "Could not create access code",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -385,10 +397,11 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
 
   // Page clamping for table (useLayoutEffect for flicker-free UI)
   useLayoutEffect(() => {
-    if (tablePage > tableTotalPages && tableTotalPages > 0) {
-      setTablePage(tableTotalPages);
+    const maxPage = Math.max(1, tableTotalPages);
+    if (tablePage > maxPage) {
+      setTablePage(maxPage);
     }
-  }, [tablePage, tableTotalPages, sortedAccesses.length, itemsPerPage]);
+  }, [tablePage, tableTotalPages]);
 
   // Group accesses by unit for cards view
   const groupedAccesses = useMemo(() => {
@@ -423,10 +436,11 @@ ${access.description ? `${language === "es" ? "Descripción" : "Description"}: $
 
   // Page clamping for cards (useLayoutEffect for flicker-free UI)
   useLayoutEffect(() => {
-    if (cardsPage > cardsTotalPages && cardsTotalPages > 0) {
-      setCardsPage(cardsTotalPages);
+    const maxPage = Math.max(1, cardsTotalPages);
+    if (cardsPage > maxPage) {
+      setCardsPage(maxPage);
     }
-  }, [cardsPage, cardsTotalPages, groupedAccesses.length, itemsPerPage]);
+  }, [cardsPage, cardsTotalPages]);
 
   // Handle sort column click
   const handleSort = (column: string) => {
