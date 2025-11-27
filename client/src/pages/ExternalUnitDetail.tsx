@@ -33,7 +33,7 @@ import type {
   InsertExternalRentalContract
 } from "@shared/schema";
 import { insertExternalUnitOwnerSchema, insertExternalUnitAccessControlSchema, insertExternalRentalContractSchema } from "@shared/schema";
-import { formatTypology, formatFloor, typologyOptions, floorOptions } from "@/lib/unitHelpers";
+import { formatFloor, floorOptions } from "@/lib/unitHelpers";
 
 type OwnerFormData = z.infer<typeof insertExternalUnitOwnerSchema>;
 type AccessControlFormData = z.infer<typeof insertExternalUnitAccessControlSchema>;
@@ -92,7 +92,6 @@ const unitEditSchema = z.object({
   zone: z.string().nullable(),
   city: z.string().nullable(),
   propertyType: z.string().nullable(),
-  typology: z.enum(["estudio", "estudio_plus", "1_recamara", "2_recamaras", "3_recamaras", "loft_mini", "loft_normal", "loft_plus"]).nullable(),
   floor: z.enum(["planta_baja", "primer_piso", "segundo_piso", "tercer_piso", "penthouse"]).nullable(),
   bedrooms: z.union([z.string(), z.number()]).transform(val => val === "" ? null : Number(val)).nullable(),
   bathrooms: z.union([z.string(), z.number()]).transform(val => val === "" ? null : String(val)).nullable(),
@@ -217,7 +216,6 @@ export default function ExternalUnitDetail() {
       zone: null,
       city: null,
       propertyType: null,
-      typology: null,
       floor: null,
       bedrooms: null,
       bathrooms: null,
@@ -468,7 +466,6 @@ export default function ExternalUnitDetail() {
       zone: unit.zone ?? null,
       city: unit.city ?? null,
       propertyType: unit.propertyType ?? null,
-      typology: unit.typology as any ?? null,
       floor: unit.floor as any ?? null,
       bedrooms: unit.bedrooms ?? null,
       bathrooms: unit.bathrooms ?? null,
@@ -850,24 +847,14 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
               </div>
             )}
             
-            <div className="grid grid-cols-2 gap-4">
-              {unit.typology && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    {language === "es" ? "Tipología" : "Typology"}
-                  </Label>
-                  <p className="text-sm font-medium mt-1" data-testid="text-typology">{formatTypology(unit.typology, language)}</p>
-                </div>
-              )}
-              {unit.floor && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    {language === "es" ? "Piso" : "Floor"}
-                  </Label>
-                  <p className="text-sm font-medium mt-1" data-testid="text-floor">{formatFloor(unit.floor, language)}</p>
-                </div>
-              )}
-            </div>
+            {unit.floor && (
+              <div>
+                <Label className="text-xs text-muted-foreground">
+                  {language === "es" ? "Piso" : "Floor"}
+                </Label>
+                <p className="text-sm font-medium mt-1" data-testid="text-floor">{formatFloor(unit.floor, language)}</p>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-4">
               {unit.bedrooms != null && unit.bedrooms > 0 && (
@@ -1484,31 +1471,6 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
                             : "You can add property types in Configuration"}
                         </FormDescription>
                       )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={unitEditForm.control}
-                  name="typology"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{language === "es" ? "Tipología" : "Typology"}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-edit-typology">
-                            <SelectValue placeholder={language === "es" ? "Seleccionar..." : "Select..."} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">{language === "es" ? "Sin tipología" : "No typology"}</SelectItem>
-                          {typologyOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {language === "es" ? opt.labelEs : opt.labelEn}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

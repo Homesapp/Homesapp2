@@ -78,7 +78,7 @@ interface LightweightUnit {
   id: string;
   unitNumber: string;
   condominiumId: string;
-  typology?: string | null;
+  propertyType?: string | null;
 }
 
 interface OwnerPortfolio {
@@ -104,32 +104,6 @@ const ownerFormSchema = z.object({
 
 type OwnerFormValues = z.infer<typeof ownerFormSchema>;
 
-// Helper function to format and translate typology names
-function formatTypology(typology: string, lang: 'es' | 'en'): string {
-  if (!typology || typology === '-') return '-';
-  
-  // Format: replace underscores with spaces and capitalize first letter of each word
-  const formatted = typology
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-  
-  // Translate to English if needed
-  if (lang === 'en') {
-    const translations: Record<string, string> = {
-      'Estudio': 'Studio',
-      '1 Recamara': '1 Bedroom',
-      '2 Recamaras': '2 Bedrooms',
-      '3 Recamaras': '3 Bedrooms',
-      '4 Recamaras': '4 Bedrooms',
-      'Penthouse': 'Penthouse',
-      'Loft': 'Loft',
-    };
-    return translations[formatted] || formatted;
-  }
-  
-  return formatted;
-}
 
 export default function ExternalOwnerPortfolio() {
   const { language } = useLanguage();
@@ -938,12 +912,12 @@ export default function ExternalOwnerPortfolio() {
                                 {/* Typologies */}
                                 <div className="space-y-1">
                                   <span className="text-xs text-muted-foreground">
-                                    {language === 'es' ? 'Tipologías' : 'Typologies'}
+                                    {language === 'es' ? 'Tipos de Propiedad' : 'Property Types'}
                                   </span>
                                   <div className="flex flex-wrap gap-1">
                                     {portfolio.typologies.map((typ, idx) => (
                                       <Badge key={idx} variant="outline" className="text-xs">
-                                        {formatTypology(typ, language)}
+                                        {typ || '-'}
                                       </Badge>
                                     ))}
                                   </div>
@@ -1038,7 +1012,7 @@ export default function ExternalOwnerPortfolio() {
                       <TableRow>
                         <TableHead className="h-10 px-3">{t.owner}</TableHead>
                         <TableHead className="h-10 px-3">{t.contact}</TableHead>
-                        <TableHead className="h-10 px-3">{language === 'es' ? 'Tipología' : 'Typology'}</TableHead>
+                        <TableHead className="h-10 px-3">{language === 'es' ? 'Tipo' : 'Type'}</TableHead>
                         <TableHead className="h-10 px-3">{language === 'es' ? 'Condominio' : 'Condominium'}</TableHead>
                         <TableHead className="h-10 px-3">{language === 'es' ? 'Unidad' : 'Unit'}</TableHead>
                         <TableHead className="h-10 px-3 text-right">{t.units}</TableHead>
@@ -1085,7 +1059,7 @@ export default function ExternalOwnerPortfolio() {
                         <div className="flex flex-wrap gap-1">
                           {portfolio.typologies.map((typ, idx) => (
                             <Badge key={idx} variant="outline" className="text-sm">
-                              {formatTypology(typ, language)}
+                              {typ || '-'}
                             </Badge>
                           ))}
                         </div>
@@ -1443,7 +1417,7 @@ export default function ExternalOwnerPortfolio() {
                     const matchesCondo = formCondominiumId && formCondominiumId !== "__all__" ? u.condominiumId === formCondominiumId : true;
                     const matchesSearch = unitSearchTerm 
                       ? u.unitNumber.toLowerCase().includes(unitSearchTerm.toLowerCase()) ||
-                        (u.typology?.toLowerCase().includes(unitSearchTerm.toLowerCase()))
+                        (u.propertyType?.toLowerCase().includes(unitSearchTerm.toLowerCase()))
                       : true;
                     return matchesCondo && matchesSearch;
                   }) || [];
@@ -1478,7 +1452,7 @@ export default function ExternalOwnerPortfolio() {
                           ) : (
                             filteredUnits.map(unit => (
                               <SelectItem key={unit.id} value={unit.id}>
-                                {unit.unitNumber} {unit.typology ? `(${unit.typology})` : ''}
+                                {unit.unitNumber} {unit.propertyType ? `(${unit.propertyType})` : ''}
                               </SelectItem>
                             ))
                           )}

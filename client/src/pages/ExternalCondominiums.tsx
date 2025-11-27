@@ -26,7 +26,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalCondominium, ExternalUnit, ExternalRentalContract, ExternalPaymentSchedule } from "@shared/schema";
 import { insertExternalCondominiumSchema, insertExternalUnitSchema, externalUnitFormSchema } from "@shared/schema";
 import { z } from "zod";
-import { typologyOptions, floorOptions, formatTypology, formatFloor } from "@/lib/unitHelpers";
+import { floorOptions, formatFloor } from "@/lib/unitHelpers";
 import {
   Popover,
   PopoverContent,
@@ -54,12 +54,12 @@ export default function ExternalCondominiums() {
   const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
   
   // For creating condominium with multiple units
-  const [tempUnits, setTempUnits] = useState<Array<{ unitNumber: string; typology?: string; floor?: string; bedrooms?: number; bathrooms?: number; squareMeters?: number }>>([]);
+  const [tempUnits, setTempUnits] = useState<Array<{ unitNumber: string; propertyType?: string; floor?: string; bedrooms?: number; bathrooms?: number; squareMeters?: number }>>([]);
   
   // For adding multiple units to existing condominium
   const [showAddUnitsDialog, setShowAddUnitsDialog] = useState(false);
   const [selectedCondoForAddUnits, setSelectedCondoForAddUnits] = useState<ExternalCondominium | null>(null);
-  const [addUnitsTemp, setAddUnitsTemp] = useState<Array<{ unitNumber: string; typology?: string; floor?: string; bedrooms?: number; bathrooms?: number; squareMeters?: number }>>([{ unitNumber: '' }]);
+  const [addUnitsTemp, setAddUnitsTemp] = useState<Array<{ unitNumber: string; propertyType?: string; floor?: string; bedrooms?: number; bathrooms?: number; squareMeters?: number }>>([{ unitNumber: '' }]);
   
   // Legacy states for backwards compatibility with edit mode
   const [showCondoDialog, setShowCondoDialog] = useState(false);
@@ -79,9 +79,9 @@ export default function ExternalCondominiums() {
   const [condoFiltersExpanded, setCondoFiltersExpanded] = useState(false);
   const [condoZoneFilter, setCondoZoneFilter] = useState<string>("all");
   
-  // Unit zone and typology filters
+  // Unit zone and property type filters
   const [unitZoneFilter, setUnitZoneFilter] = useState<string>("all");
-  const [unitTypologyFilter, setUnitTypologyFilter] = useState<string>("all");
+  const [unitPropertyTypeFilter, setUnitPropertyTypeFilter] = useState<string>("all");
   
   // Condominium pagination state (default to 10 for table view)
   const [condoCurrentPage, setCondoCurrentPage] = useState(1);
@@ -202,7 +202,7 @@ export default function ExternalCondominiums() {
       if (selectedCondoFilter !== 'all') params.append('condominiumId', selectedCondoFilter);
       if (unitStatusFilter !== 'all') params.append('isActive', unitStatusFilter === 'active' ? 'true' : 'false');
       if (unitZoneFilter !== 'all') params.append('zone', unitZoneFilter);
-      if (unitTypologyFilter !== 'all') params.append('typology', unitTypologyFilter);
+      if (unitPropertyTypeFilter !== 'all') params.append('propertyType', unitPropertyTypeFilter);
       if (unitsSortColumn) {
         params.append('sortField', unitsSortColumn);
         params.append('sortOrder', unitsSortDirection);
@@ -308,7 +308,7 @@ export default function ExternalCondominiums() {
     defaultValues: {
       condominiumId: undefined,
       unitNumber: "",
-      typology: undefined,
+      propertyType: undefined,
       floor: undefined,
       bedrooms: undefined,
       bathrooms: undefined,
@@ -466,7 +466,7 @@ export default function ExternalCondominiums() {
     unitForm.reset({
       condominiumId: undefined,
       unitNumber: "",
-      typology: undefined,
+      propertyType: undefined,
       floor: undefined,
       bedrooms: undefined,
       bathrooms: undefined,
@@ -513,7 +513,7 @@ export default function ExternalCondominiums() {
     unitForm.reset({
       condominiumId: condoId || undefined,
       unitNumber: "",
-      typology: undefined,
+      propertyType: undefined,
       floor: undefined,
       bedrooms: undefined,
       bathrooms: undefined,
@@ -528,7 +528,7 @@ export default function ExternalCondominiums() {
     unitForm.reset({
       condominiumId: unit.condominiumId,
       unitNumber: unit.unitNumber,
-      typology: unit.typology || undefined,
+      propertyType: unit.propertyType || undefined,
       floor: unit.floor || undefined,
       bedrooms: unit.bedrooms || undefined,
       bathrooms: unit.bathrooms || undefined,
@@ -547,7 +547,7 @@ export default function ExternalCondominiums() {
   };
 
   const handleAddTempUnit = () => {
-    setTempUnits([...tempUnits, { unitNumber: "", typology: undefined, floor: undefined, bedrooms: undefined, bathrooms: undefined, squareMeters: undefined }]);
+    setTempUnits([...tempUnits, { unitNumber: "", propertyType: undefined, floor: undefined, bedrooms: undefined, bathrooms: undefined, squareMeters: undefined }]);
   };
 
   const handleRemoveTempUnit = (index: number) => {
@@ -670,7 +670,7 @@ export default function ExternalCondominiums() {
   };
 
   const handleAddMoreUnit = () => {
-    setAddUnitsTemp([...addUnitsTemp, { unitNumber: "", typology: undefined, floor: undefined, bedrooms: undefined, bathrooms: undefined, squareMeters: undefined }]);
+    setAddUnitsTemp([...addUnitsTemp, { unitNumber: "", propertyType: undefined, floor: undefined, bedrooms: undefined, bathrooms: undefined, squareMeters: undefined }]);
   };
 
   const handleRemoveAddUnit = (index: number) => {
@@ -1166,29 +1166,31 @@ export default function ExternalCondominiums() {
                           </div>
                         </div>
 
-                        {/* Tipología Filter */}
+                        {/* Property Type Filter */}
                         <div className="space-y-2">
                           <label className="text-sm text-muted-foreground">
-                            {language === "es" ? "Tipología" : "Typology"}
+                            {language === "es" ? "Tipo de Propiedad" : "Property Type"}
                           </label>
                           <div className="flex gap-2 flex-wrap">
                             <Button
-                              variant={unitTypologyFilter === "all" ? "default" : "outline"}
+                              variant={unitPropertyTypeFilter === "all" ? "default" : "outline"}
                               size="sm"
-                              onClick={() => setUnitTypologyFilter("all")}
-                              data-testid="button-filter-unit-typology-all"
+                              onClick={() => setUnitPropertyTypeFilter("all")}
+                              data-testid="button-filter-unit-property-type-all"
                             >
                               {language === "es" ? "Todas" : "All"}
                             </Button>
-                            {typologyOptions.map(opt => (
+                            {propertyTypesLoading ? (
+                              <span className="text-sm text-muted-foreground">{language === "es" ? "Cargando..." : "Loading..."}</span>
+                            ) : propertyTypes?.filter(pt => pt.isActive).map(pt => (
                               <Button
-                                key={opt.value}
-                                variant={unitTypologyFilter === opt.value ? "default" : "outline"}
+                                key={pt.id}
+                                variant={unitPropertyTypeFilter === pt.name ? "default" : "outline"}
                                 size="sm"
-                                onClick={() => setUnitTypologyFilter(opt.value)}
-                                data-testid={`button-filter-unit-typology-${opt.value}`}
+                                onClick={() => setUnitPropertyTypeFilter(pt.name)}
+                                data-testid={`button-filter-unit-property-type-${pt.id}`}
                               >
-                                {language === 'es' ? opt.labelEs : opt.label}
+                                {pt.name}
                               </Button>
                             ))}
                           </div>
@@ -1461,10 +1463,10 @@ export default function ExternalCondominiums() {
 
                                 {/* Unit Details */}
                                 <div className="space-y-2">
-                                  {unit.typology && (
+                                  {unit.propertyType && (
                                     <div className="flex justify-between text-sm">
-                                      <span className="text-muted-foreground">{language === "es" ? "Tipología:" : "Typology:"}</span>
-                                      <span className="font-medium" data-testid={`text-typology-detail-${unit.id}`}>{formatTypology(unit.typology, language)}</span>
+                                      <span className="text-muted-foreground">{language === "es" ? "Tipo:" : "Type:"}</span>
+                                      <span className="font-medium" data-testid={`text-property-type-detail-${unit.id}`}>{unit.propertyType}</span>
                                     </div>
                                   )}
                                   {unit.floor && (
@@ -1755,9 +1757,9 @@ export default function ExternalCondominiums() {
                                       <div className="flex-1 grid grid-cols-3 gap-2">
                                         <div>
                                           <span className="font-medium">{unit.unitNumber}</span>
-                                          {unit.typology && (
+                                          {unit.propertyType && (
                                             <span className="text-muted-foreground ml-1">
-                                              ({formatTypology(unit.typology, language)})
+                                              ({unit.propertyType})
                                             </span>
                                           )}
                                         </div>
@@ -2078,8 +2080,8 @@ export default function ExternalCondominiums() {
                       <CardContent className="space-y-3">
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
-                            <span className="text-muted-foreground">{language === "es" ? "Tipología:" : "Type:"}</span>
-                            <div className="font-medium">{formatTypology(unit.typology, language)}</div>
+                            <span className="text-muted-foreground">{language === "es" ? "Tipo:" : "Type:"}</span>
+                            <div className="font-medium">{unit.propertyType || "-"}</div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">{language === "es" ? "Piso:" : "Floor:"}</span>
@@ -2165,8 +2167,8 @@ export default function ExternalCondominiums() {
                             <TableHead className="h-10 px-3 min-w-[180px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('condominiumName')}>
                               {language === "es" ? "Condominio" : "Condominium"} {getUnitsSortIcon('condominiumName')}
                             </TableHead>
-                            <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('typology')}>
-                              {language === "es" ? "Tipología" : "Typology"} {getUnitsSortIcon('typology')}
+                            <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('propertyType')}>
+                              {language === "es" ? "Tipo" : "Type"} {getUnitsSortIcon('propertyType')}
                             </TableHead>
                             <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('floor')}>
                               {language === "es" ? "Piso" : "Floor"} {getUnitsSortIcon('floor')}
@@ -2225,7 +2227,7 @@ export default function ExternalCondominiums() {
                             </div>
                           </TableCell>
                           <TableCell>{condo?.name || '-'}</TableCell>
-                          <TableCell>{formatTypology(unit.typology, language)}</TableCell>
+                          <TableCell>{unit.propertyType || '-'}</TableCell>
                           <TableCell>{formatFloor(unit.floor, language)}</TableCell>
                           <TableCell>{unit.bedrooms ?? '-'}</TableCell>
                           <TableCell>{unit.bathrooms ?? '-'}</TableCell>
@@ -2525,20 +2527,13 @@ export default function ExternalCondominiums() {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-medium">{language === "es" ? "Tipología" : "Typology"}</label>
-                                  <select
-                                    value={unit.typology || ""}
-                                    onChange={(e) => handleUpdateTempUnit(index, 'typology', e.target.value || undefined)}
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                                    data-testid={`select-temp-unit-typology-${index}`}
-                                  >
-                                    <option value="">{language === "es" ? "Selecciona" : "Select"}</option>
-                                    {typologyOptions.map(opt => (
-                                      <option key={opt.value} value={opt.value}>
-                                        {language === "es" ? opt.labelEs : opt.labelEn}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <label className="text-xs font-medium">{language === "es" ? "Tipo" : "Type"}</label>
+                                  <Input
+                                    placeholder={language === "es" ? "Ej: Departamento" : "E.g: Apartment"}
+                                    value={unit.propertyType || ""}
+                                    onChange={(e) => handleUpdateTempUnit(index, 'propertyType', e.target.value || undefined)}
+                                    data-testid={`input-temp-unit-property-type-${index}`}
+                                  />
                                 </div>
                                 <div className="space-y-1">
                                   <label className="text-xs font-medium">{language === "es" ? "Piso" : "Floor"}</label>
@@ -2679,20 +2674,13 @@ export default function ExternalCondominiums() {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-medium">{language === "es" ? "Tipología" : "Typology"}</label>
-                                  <select
-                                    value={unit.typology || ""}
-                                    onChange={(e) => handleUpdateTempUnit(index, 'typology', e.target.value || undefined)}
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                                    data-testid={`select-temp-unit-typology-unified-${index}`}
-                                  >
-                                    <option value="">{language === "es" ? "Selecciona" : "Select"}</option>
-                                    {typologyOptions.map(opt => (
-                                      <option key={opt.value} value={opt.value}>
-                                        {language === "es" ? opt.labelEs : opt.labelEn}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <label className="text-xs font-medium">{language === "es" ? "Tipo" : "Type"}</label>
+                                  <Input
+                                    placeholder={language === "es" ? "Ej: Departamento" : "E.g: Apartment"}
+                                    value={unit.propertyType || ""}
+                                    onChange={(e) => handleUpdateTempUnit(index, 'propertyType', e.target.value || undefined)}
+                                    data-testid={`input-temp-unit-property-type-unified-${index}`}
+                                  />
                                 </div>
                                 <div className="space-y-1">
                                   <label className="text-xs font-medium">{language === "es" ? "Piso" : "Floor"}</label>
@@ -2979,24 +2967,18 @@ export default function ExternalCondominiums() {
                 />
                 <FormField
                   control={unitForm.control}
-                  name="typology"
+                  name="propertyType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{language === "es" ? "Tipología" : "Typology"}</FormLabel>
-                      <Select value={field.value || ""} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-unit-typology">
-                            <SelectValue placeholder={language === "es" ? "Selecciona" : "Select"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {typologyOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {language === "es" ? opt.labelEs : opt.labelEn}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>{language === "es" ? "Tipo de Propiedad" : "Property Type"}</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder={language === "es" ? "Ej: Departamento" : "E.g: Apartment"}
+                          data-testid="input-unit-property-type" 
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -3248,20 +3230,13 @@ export default function ExternalCondominiums() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-medium">{language === "es" ? "Tipología" : "Typology"}</label>
-                          <select
-                            value={unit.typology || ""}
-                            onChange={(e) => handleUpdateAddUnit(index, 'typology', e.target.value || undefined)}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                            data-testid={`select-add-unit-typology-${index}`}
-                          >
-                            <option value="">{language === "es" ? "Selecciona" : "Select"}</option>
-                            {typologyOptions.map(opt => (
-                              <option key={opt.value} value={opt.value}>
-                                {language === "es" ? opt.labelEs : opt.labelEn}
-                              </option>
-                            ))}
-                          </select>
+                          <label className="text-xs font-medium">{language === "es" ? "Tipo" : "Type"}</label>
+                          <Input
+                            placeholder={language === "es" ? "Ej: Departamento" : "E.g: Apartment"}
+                            value={unit.propertyType || ""}
+                            onChange={(e) => handleUpdateAddUnit(index, 'propertyType', e.target.value || undefined)}
+                            data-testid={`input-add-unit-property-type-${index}`}
+                          />
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-medium">{language === "es" ? "Piso" : "Floor"}</label>

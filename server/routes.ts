@@ -24966,7 +24966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const unitNumbers: string[] = [];
 
         ownerInstances.forEach(oi => {
-          if (oi.typology) typologies.add(oi.typology);
+          if (oi.propertyType) typologies.add(oi.propertyType);
           if (oi.condominiumName) condominiumNames.add(oi.condominiumName);
           if (oi.unitNumber) unitNumbers.push(oi.unitNumber);
 
