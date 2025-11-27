@@ -314,8 +314,8 @@ export default function ExternalCondominiums() {
       setShowCondoDialog(false);
       condoForm.reset();
       toast({
-        title: language === "es" ? "Condominio creado" : "Condominium created",
-        description: language === "es" ? "El condominio se creó exitosamente" : "The condominium was created successfully",
+        title: language === "es" ? "Propiedad creada" : "Property created",
+        description: language === "es" ? "La propiedad se creó exitosamente" : "The property was created successfully",
       });
     },
     onError: (error: Error) => {
@@ -337,8 +337,8 @@ export default function ExternalCondominiums() {
       setEditingCondo(null);
       condoForm.reset();
       toast({
-        title: language === "es" ? "Condominio actualizado" : "Condominium updated",
-        description: language === "es" ? "El condominio se actualizó exitosamente" : "The condominium was updated successfully",
+        title: language === "es" ? "Propiedad actualizada" : "Property updated",
+        description: language === "es" ? "La propiedad se actualizó exitosamente" : "The property was updated successfully",
       });
     },
     onError: (error: Error) => {
@@ -427,8 +427,8 @@ export default function ExternalCondominiums() {
       setShowDeleteCondoDialog(false);
       setDeletingCondo(null);
       toast({
-        title: language === "es" ? "Condominio eliminado" : "Condominium deleted",
-        description: language === "es" ? "El condominio se eliminó exitosamente" : "The condominium was deleted successfully",
+        title: language === "es" ? "Propiedad eliminada" : "Property deleted",
+        description: language === "es" ? "La propiedad se eliminó exitosamente" : "The property was deleted successfully",
       });
     },
     onError: (error: Error) => {
@@ -579,25 +579,25 @@ export default function ExternalCondominiums() {
         condoForm.reset();
         
         toast({
-          title: language === "es" ? "Condominio creado" : "Condominium created",
+          title: language === "es" ? "Propiedad creada" : "Property created",
           description: parsedUnits.length > 0 
-            ? (language === "es" ? `Condominio creado con ${parsedUnits.length} unidades` : `Condominium created with ${parsedUnits.length} units`)
-            : (language === "es" ? "El condominio se creó exitosamente" : "The condominium was created successfully"),
+            ? (language === "es" ? `Propiedad creada con ${parsedUnits.length} unidades` : `Property created with ${parsedUnits.length} units`)
+            : (language === "es" ? "La propiedad se creó exitosamente" : "The property was created successfully"),
         });
       } catch (error: any) {
         toast({
           title: language === "es" ? "Error" : "Error",
-          description: error.message || (language === "es" ? "No se pudo crear el condominio" : "Failed to create condominium"),
+          description: error.message || (language === "es" ? "No se pudo crear la propiedad" : "Failed to create property"),
           variant: "destructive",
         });
       }
     } else if (creationType === 'unit') {
-      // Add multiple units to existing condominium
+      // Add multiple units to existing property
       try {
         if (!data.condominiumId) {
           toast({
             title: language === "es" ? "Error" : "Error",
-            description: language === "es" ? "Debes seleccionar un condominio" : "You must select a condominium",
+            description: language === "es" ? "Debes seleccionar una propiedad" : "You must select a property",
             variant: "destructive",
           });
           return;
@@ -879,12 +879,12 @@ export default function ExternalCondominiums() {
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">
-            {language === "es" ? "Condominios y Unidades" : "Condominiums & Units"}
+            {language === "es" ? "Propiedades y Unidades" : "Properties & Units"}
           </h1>
           <p className="text-muted-foreground mt-2">
             {language === "es" 
-              ? "Gestiona tus condominios y unidades"
-              : "Manage your condominiums and units"}
+              ? "Gestiona tus propiedades y unidades"
+              : "Manage your properties and units"}
           </p>
         </div>
         <Button onClick={handleOpenUnifiedDialog} data-testid="button-add-unified" className="w-full sm:w-auto">
@@ -905,7 +905,7 @@ export default function ExternalCondominiums() {
         <TabsList className="grid w-full sm:max-w-md grid-cols-2 mb-4">
           <TabsTrigger value="condominiums" data-testid="tab-condominiums">
             <Building2 className="mr-2 h-4 w-4" />
-            {language === "es" ? "Condominios" : "Condominiums"}
+            {language === "es" ? "Propiedades" : "Properties"}
           </TabsTrigger>
           <TabsTrigger value="units" data-testid="tab-units">
             <Home className="mr-2 h-4 w-4" />
@@ -922,7 +922,7 @@ export default function ExternalCondominiums() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder={language === "es" ? "Buscar condominios..." : "Search condominiums..."}
+                      placeholder={language === "es" ? "Buscar propiedades..." : "Search properties..."}
                       value={condoSearchText}
                       onChange={(e) => setCondoSearchText(e.target.value)}
                       className="pl-10"
@@ -1055,10 +1055,10 @@ export default function ExternalCondominiums() {
                           {language === 'es' ? 'Filtrar por' : 'Filter by'}
                         </h4>
 
-                        {/* Condominio Filter */}
+                        {/* Property Filter */}
                         <div className="space-y-2">
                           <label className="text-sm text-muted-foreground">
-                            {language === "es" ? "Condominio" : "Condominium"}
+                            {language === "es" ? "Propiedad" : "Property"}
                           </label>
                           <div className="flex gap-2 flex-wrap">
                             <Button
@@ -1265,7 +1265,7 @@ export default function ExternalCondominiums() {
                   <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
                   <div>
                     <p className="text-sm" data-testid="text-error-title">
-                      {language === "es" ? "Error al cargar condominios" : "Error loading condominiums"}
+                      {language === "es" ? "Error al cargar propiedades" : "Error loading properties"}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1" data-testid="text-error-message">
                       {condosErrorMsg instanceof Error ? condosErrorMsg.message : language === "es" ? "Ocurrió un error inesperado" : "An unexpected error occurred"}
@@ -1290,8 +1290,8 @@ export default function ExternalCondominiums() {
                 <div className="text-center py-8" data-testid="div-empty-state">
                   <p className="text-muted-foreground">
                     {language === "es" 
-                      ? "No hay condominios que coincidan con los filtros"
-                      : "No condominiums match the filters"}
+                      ? "No hay propiedades que coincidan con los filtros"
+                      : "No properties match the filters"}
                   </p>
                 </div>
               </CardContent>
@@ -1313,7 +1313,7 @@ export default function ExternalCondominiums() {
                       data-testid="button-back-to-condos"
                       className="mb-2"
                     >
-                      ← {language === "es" ? "Volver a Condominios" : "Back to Condominiums"}
+                      ← {language === "es" ? "Volver a Propiedades" : "Back to Properties"}
                     </Button>
                     <Card>
                       <CardHeader>
@@ -1483,8 +1483,8 @@ export default function ExternalCondominiums() {
                           </p>
                           <p className="text-sm text-muted-foreground mt-2">
                             {language === "es" 
-                              ? "Agrega la primera unidad para este condominio"
-                              : "Add the first unit for this condominium"}
+                              ? "Agrega la primera unidad para esta propiedad"
+                              : "Add the first unit for this property"}
                           </p>
                         </CardContent>
                       </Card>
@@ -2140,7 +2140,7 @@ export default function ExternalCondominiums() {
                               {language === "es" ? "Número" : "Number"} {getUnitsSortIcon('unitNumber')}
                             </TableHead>
                             <TableHead className="h-10 px-3 min-w-[180px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('condominiumName')}>
-                              {language === "es" ? "Condominio" : "Condominium"} {getUnitsSortIcon('condominiumName')}
+                              {language === "es" ? "Propiedad" : "Property"} {getUnitsSortIcon('condominiumName')}
                             </TableHead>
                             <TableHead className="h-10 px-3 min-w-[120px] cursor-pointer hover:bg-muted" onClick={() => handleUnitsSort('typology')}>
                               {language === "es" ? "Tipología" : "Typology"} {getUnitsSortIcon('typology')}
@@ -2351,14 +2351,14 @@ export default function ExternalCondominiums() {
               {!creationType 
                 ? (language === "es" ? "¿Qué deseas agregar?" : "What would you like to add?")
                 : creationType === 'condominium' 
-                  ? (language === "es" ? "Agregar Condominio" : "Add Condominium")
+                  ? (language === "es" ? "Agregar Propiedad" : "Add Property")
                   : (language === "es" ? "Agregar Unidad" : "Add Unit")}
             </DialogTitle>
             <DialogDescription>
               {!creationType 
                 ? (language === "es" ? "Selecciona qué deseas crear" : "Select what you want to create")
                 : creationType === 'condominium'
-                  ? (language === "es" ? "Completa la información del condominio y agrega las unidades que desees" : "Fill in the condominium information and add the units you want")
+                  ? (language === "es" ? "Completa la información de la propiedad y agrega las unidades que desees" : "Fill in the property information and add the units you want")
                   : (language === "es" ? "Completa la información de la unidad" : "Fill in the unit information")}
             </DialogDescription>
           </DialogHeader>
@@ -2372,9 +2372,9 @@ export default function ExternalCondominiums() {
               >
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Building2 className="h-12 w-12 mb-4 text-primary" />
-                  <p className="text-lg font-medium">{language === "es" ? "Condominio" : "Condominium"}</p>
+                  <p className="text-lg font-medium">{language === "es" ? "Propiedad" : "Property"}</p>
                   <p className="text-sm text-muted-foreground mt-2 text-center">
-                    {language === "es" ? "Crea un condominio con múltiples unidades" : "Create a condominium with multiple units"}
+                    {language === "es" ? "Crea una propiedad con múltiples unidades" : "Create a property with multiple units"}
                   </p>
                 </CardContent>
               </Card>
@@ -2390,7 +2390,7 @@ export default function ExternalCondominiums() {
                   <Home className="h-12 w-12 mb-4 text-primary" />
                   <p className="text-lg font-medium">{language === "es" ? "Unidad" : "Unit"}</p>
                   <p className="text-sm text-muted-foreground mt-2 text-center">
-                    {language === "es" ? "Agrega una unidad a un condominio existente" : "Add a unit to an existing condominium"}
+                    {language === "es" ? "Agrega una unidad a una propiedad existente" : "Add a unit to an existing property"}
                   </p>
                 </CardContent>
               </Card>
@@ -2399,7 +2399,7 @@ export default function ExternalCondominiums() {
             <Form {...condoForm}>
               <form onSubmit={condoForm.handleSubmit(handleUnifiedSubmit)} className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">{language === "es" ? "Información del Condominio" : "Condominium Information"}</h3>
+                  <h3 className="font-semibold text-lg">{language === "es" ? "Información de la Propiedad" : "Property Information"}</h3>
                   
                   <FormField
                     control={condoForm.control}
@@ -2408,7 +2408,7 @@ export default function ExternalCondominiums() {
                       <FormItem>
                         <FormLabel>{language === "es" ? "Nombre" : "Name"} *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-unified-condo-name" placeholder={language === "es" ? "Ej: Condominio Aldea Zama" : "E.g: Aldea Zama Condominium"} />
+                          <Input {...field} data-testid="input-unified-condo-name" placeholder={language === "es" ? "Ej: Aldea Zama" : "E.g: Aldea Zama"} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -2591,7 +2591,7 @@ export default function ExternalCondominiums() {
                   >
                     {createCondoMutation.isPending
                       ? (language === "es" ? "Creando..." : "Creating...")
-                      : (language === "es" ? "Crear Condominio" : "Create Condominium")}
+                      : (language === "es" ? "Crear Propiedad" : "Create Property")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -2605,7 +2605,7 @@ export default function ExternalCondominiums() {
                     name="condominiumId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{language === "es" ? "Condominio" : "Condominium"} *</FormLabel>
+                        <FormLabel>{language === "es" ? "Propiedad" : "Property"} *</FormLabel>
                         <FormControl>
                           <select
                             {...field}
@@ -2614,7 +2614,7 @@ export default function ExternalCondominiums() {
                             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                             data-testid="select-unified-unit-condo"
                           >
-                            <option value="">{language === "es" ? "Selecciona un condominio" : "Select a condominium"}</option>
+                            <option value="">{language === "es" ? "Selecciona una propiedad" : "Select a property"}</option>
                             {condominiums?.map(condo => (
                               <option key={condo.id} value={condo.id}>{condo.name}</option>
                             ))}
@@ -2754,19 +2754,19 @@ export default function ExternalCondominiums() {
         </DialogContent>
       </Dialog>
 
-      {/* Condominium Dialog */}
+      {/* Property Dialog */}
       <Dialog open={showCondoDialog} onOpenChange={setShowCondoDialog}>
         <DialogContent data-testid="dialog-condominium-form">
           <DialogHeader>
             <DialogTitle>
               {editingCondo 
-                ? (language === "es" ? "Editar Condominio" : "Edit Condominium")
-                : (language === "es" ? "Agregar Condominio" : "Add Condominium")}
+                ? (language === "es" ? "Editar Propiedad" : "Edit Property")
+                : (language === "es" ? "Agregar Propiedad" : "Add Property")}
             </DialogTitle>
             <DialogDescription>
               {language === "es" 
-                ? "Completa la información del condominio"
-                : "Fill in the condominium information"}
+                ? "Completa la información de la propiedad"
+                : "Fill in the property information"}
             </DialogDescription>
           </DialogHeader>
           <Form {...condoForm}>
@@ -2780,7 +2780,7 @@ export default function ExternalCondominiums() {
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder={language === "es" ? "Nombre del condominio" : "Condominium name"} 
+                        placeholder={language === "es" ? "Nombre de la propiedad" : "Property name"} 
                         data-testid="input-condo-name" 
                       />
                     </FormControl>
@@ -2922,11 +2922,11 @@ export default function ExternalCondominiums() {
                 name="condominiumId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Condominio" : "Condominium"} *</FormLabel>
+                    <FormLabel>{language === "es" ? "Propiedad" : "Property"} *</FormLabel>
                     <Select value={field.value || ""} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger data-testid="select-unit-condo">
-                          <SelectValue placeholder={language === "es" ? "Selecciona un condominio" : "Select a condominium"} />
+                          <SelectValue placeholder={language === "es" ? "Selecciona una propiedad" : "Select a property"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -3111,25 +3111,25 @@ export default function ExternalCondominiums() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Condominium Confirmation Dialog */}
+      {/* Delete Property Confirmation Dialog */}
       <Dialog open={showDeleteCondoDialog} onOpenChange={setShowDeleteCondoDialog}>
         <DialogContent data-testid="dialog-delete-condo">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-destructive" />
-              {language === "es" ? "Eliminar Condominio" : "Delete Condominium"}
+              {language === "es" ? "Eliminar Propiedad" : "Delete Property"}
             </DialogTitle>
             <DialogDescription>
               {deletingCondo && (
                 <>
                   {language === "es" ? (
                     <>
-                      ¿Estás seguro de que deseas eliminar el condominio <strong>{deletingCondo.name}</strong>?
+                      ¿Estás seguro de que deseas eliminar la propiedad <strong>{deletingCondo.name}</strong>?
                       <br /><br />
                       {getUnitsForCondo(deletingCondo.id).length > 0 ? (
                         <span className="text-destructive font-semibold">
-                          Este condominio tiene {getUnitsForCondo(deletingCondo.id).length} unidades registradas. 
-                          Debes eliminar todas las unidades primero antes de poder eliminar el condominio.
+                          Esta propiedad tiene {getUnitsForCondo(deletingCondo.id).length} unidades registradas. 
+                          Debes eliminar todas las unidades primero antes de poder eliminar la propiedad.
                         </span>
                       ) : (
                         "Esta acción no se puede deshacer."
@@ -3137,12 +3137,12 @@ export default function ExternalCondominiums() {
                     </>
                   ) : (
                     <>
-                      Are you sure you want to delete the condominium <strong>{deletingCondo.name}</strong>?
+                      Are you sure you want to delete the property <strong>{deletingCondo.name}</strong>?
                       <br /><br />
                       {getUnitsForCondo(deletingCondo.id).length > 0 ? (
                         <span className="text-destructive font-semibold">
-                          This condominium has {getUnitsForCondo(deletingCondo.id).length} registered units. 
-                          You must delete all units first before you can delete the condominium.
+                          This property has {getUnitsForCondo(deletingCondo.id).length} registered units. 
+                          You must delete all units first before you can delete the property.
                         </span>
                       ) : (
                         "This action cannot be undone."

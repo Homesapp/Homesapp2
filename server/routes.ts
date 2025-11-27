@@ -192,6 +192,8 @@ import {
   externalCondominiums,
   externalUnits,
   externalUnitAccessControls,
+  externalAgencyZones,
+  externalAgencyPropertyTypes,
   externalUnitOwners,
   externalOwnerCharges,
   externalOwnerNotifications,
@@ -209,7 +211,7 @@ import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
   try {
     // Admin and master users can access all agencies
-    const userRole = req.user?.role || req.session?.adminUser?.role;
+    const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
     if (userRole === "master" || userRole === "admin") {
       return true;
     }
@@ -251,7 +253,7 @@ async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: strin
 async function getUserAgencyId(req: any): Promise<string | null> {
   try {
     // Admin and master users don't have an agency
-    const userRole = req.user?.role || req.session?.adminUser?.role;
+    const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
     if (userRole === "master" || userRole === "admin") {
       return null;
     }
@@ -22619,7 +22621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify ownership: master/admin can access all, others must match agency
-      const userRole = req.user?.role || req.session?.adminUser?.role;
+      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
       const isMasterOrAdmin = userRole === "master" || userRole === "admin";
       
       if (!isMasterOrAdmin) {
@@ -22684,7 +22686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify ownership: master/admin can access all, others must match agency
-      const userRole = req.user?.role || req.session?.adminUser?.role;
+      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
       const isMasterOrAdmin = userRole === "master" || userRole === "admin";
       
       if (!isMasterOrAdmin) {
@@ -23109,7 +23111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userRole = req.user?.role || req.session?.adminUser?.role;
+      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
       
       // Only admins and maintenance managers can modify tickets directly
       // Regular users should use POST /updates and POST /photos endpoints
@@ -23148,7 +23150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status, resolvedDate, completionNotes } = req.body;
       const userId = req.user?.claims?.sub || req.user?.id;
-      const userRole = req.user?.role || req.session?.adminUser?.role;
+      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
       
       if (!status) {
         return res.status(400).json({ message: "Status is required" });
@@ -28632,6 +28634,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
   // EXTERNAL MANAGEMENT SYSTEM - QUOTATIONS ROUTES
+
+  // ============================================================================
+  // EXTERNAL MANAGEMENT SYSTEM - ZONES/PROPERTY TYPES CONFIGURATION
+  // ============================================================================
+
+  // GET /api/external/config/zones - Get all zones for agency
+  app.get("/api/external/config/zones", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const zones = await db.select()
+        .from(externalAgencyZones)
+        .where(eq(externalAgencyZones.agencyId, agencyId))
+        .orderBy(externalAgencyZones.sortOrder, externalAgencyZones.name);
+      
+      res.json(zones);
+    } catch (error: any) {
+      console.error("Error fetching zones:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external/config/zones - Create zone
+  app.post("/api/external/config/zones", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { name, sortOrder } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      
+      const [zone] = await db.insert(externalAgencyZones)
+        .values({
+          id: crypto.randomUUID(),
+          agencyId,
+          name,
+          sortOrder: sortOrder || 0,
+          isActive: true,
+        })
+        .returning();
+      
+      res.status(201).json(zone);
+    } catch (error: any) {
+      console.error("Error creating zone:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/config/zones/:id - Update zone
+  app.patch("/api/external/config/zones/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { id } = req.params;
+      const { name, sortOrder, isActive } = req.body;
+      
+      const [zone] = await db.update(externalAgencyZones)
+        .set({
+          ...(name !== undefined && { name }),
+          ...(sortOrder !== undefined && { sortOrder }),
+          ...(isActive !== undefined && { isActive }),
+        })
+        .where(and(
+          eq(externalAgencyZones.id, id),
+          eq(externalAgencyZones.agencyId, agencyId)
+        ))
+        .returning();
+      
+      if (!zone) {
+        return res.status(404).json({ message: "Zone not found" });
+      }
+      
+      res.json(zone);
+    } catch (error: any) {
+      console.error("Error updating zone:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external/config/zones/:id - Delete zone
+  app.delete("/api/external/config/zones/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { id } = req.params;
+      
+      await db.delete(externalAgencyZones)
+        .where(and(
+          eq(externalAgencyZones.id, id),
+          eq(externalAgencyZones.agencyId, agencyId)
+        ));
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting zone:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external/config/property-types - Get all property types for agency
+  app.get("/api/external/config/property-types", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const types = await db.select()
+        .from(externalAgencyPropertyTypes)
+        .where(eq(externalAgencyPropertyTypes.agencyId, agencyId))
+        .orderBy(externalAgencyPropertyTypes.sortOrder, externalAgencyPropertyTypes.name);
+      
+      res.json(types);
+    } catch (error: any) {
+      console.error("Error fetching property types:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external/config/property-types - Create property type
+  app.post("/api/external/config/property-types", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { name, sortOrder } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      
+      const [type] = await db.insert(externalAgencyPropertyTypes)
+        .values({
+          id: crypto.randomUUID(),
+          agencyId,
+          name,
+          sortOrder: sortOrder || 0,
+          isActive: true,
+        })
+        .returning();
+      
+      res.status(201).json(type);
+    } catch (error: any) {
+      console.error("Error creating property type:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external/config/property-types/:id - Update property type
+  app.patch("/api/external/config/property-types/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { id } = req.params;
+      const { name, sortOrder, isActive } = req.body;
+      
+      const [type] = await db.update(externalAgencyPropertyTypes)
+        .set({
+          ...(name !== undefined && { name }),
+          ...(sortOrder !== undefined && { sortOrder }),
+          ...(isActive !== undefined && { isActive }),
+        })
+        .where(and(
+          eq(externalAgencyPropertyTypes.id, id),
+          eq(externalAgencyPropertyTypes.agencyId, agencyId)
+        ))
+        .returning();
+      
+      if (!type) {
+        return res.status(404).json({ message: "Property type not found" });
+      }
+      
+      res.json(type);
+    } catch (error: any) {
+      console.error("Error updating property type:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external/config/property-types/:id - Delete property type
+  app.delete("/api/external/config/property-types/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { id } = req.params;
+      
+      await db.delete(externalAgencyPropertyTypes)
+        .where(and(
+          eq(externalAgencyPropertyTypes.id, id),
+          eq(externalAgencyPropertyTypes.agencyId, agencyId)
+        ));
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting property type:", error);
+      handleGenericError(res, error);
+    }
+  });
   // ============================================================================
 
   // GET /api/external/quotations - List all quotations for agency
