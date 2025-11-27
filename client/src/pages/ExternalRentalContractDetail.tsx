@@ -34,6 +34,7 @@ import type {
   ExternalRentalNote,
   InsertExternalRentalNote
 } from "@shared/schema";
+import { PortalTokenGenerator } from "@/components/external/PortalTokenGenerator";
 import { insertExternalPaymentScheduleSchema, insertExternalRentalNoteSchema } from "@shared/schema";
 
 type ScheduleFormData = z.infer<typeof insertExternalPaymentScheduleSchema>;
@@ -501,6 +502,15 @@ export default function ExternalRentalContractDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <PortalTokenGenerator
+            contractId={contract.id}
+            contractStatus={contract.status}
+            propertyTitle={(contract as any).propertyTitle}
+            tenantName={contract.tenantName}
+            ownerName={(contract as any).ownerName}
+            tenantEmail={contract.tenantEmail || undefined}
+            ownerEmail={(contract as any).ownerEmail}
+          />
           {contract.status === 'active' && (
             <Button
               variant="outline"
