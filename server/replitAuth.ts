@@ -232,6 +232,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
             lastName: dbUser.lastName,
             role: dbUser.additionalRole || dbUser.role,
             externalAgencyId: dbUser.externalAgencyId,
+            isSuspended: dbUser.isSuspended,
             cachedAt: now,
           };
           localUser = req.session.cachedUser;
@@ -239,6 +240,19 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
           localUser = null;
         }
       }
+      
+      // Block suspended users from accessing the app
+      if (localUser?.isSuspended) {
+        // Clear the session to force logout
+        req.session.destroy((err: any) => {
+          if (err) console.error("Error destroying session for suspended user:", err);
+        });
+        return res.status(403).json({ 
+          message: "Tu cuenta ha sido suspendida. Contacta al administrador.",
+          code: "ACCOUNT_SUSPENDED"
+        });
+      }
+      
       if (localUser) {
         // Attach user to request for downstream middleware
         req.user = {
@@ -263,6 +277,17 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   // Check if user is authenticated via Google OAuth
   const user = req.user as any;
   if (req.isAuthenticated() && user?.googleAuth) {
+    // Check if Google OAuth user is suspended
+    if (user.claims?.sub) {
+      const dbUser = await storage.getUser(user.claims.sub);
+      if (dbUser?.isSuspended) {
+        req.logout(() => {});
+        return res.status(403).json({ 
+          message: "Tu cuenta ha sido suspendida. Contacta al administrador.",
+          code: "ACCOUNT_SUSPENDED"
+        });
+      }
+    }
     // Google OAuth session - no token refresh needed
     return next();
   }
