@@ -211,6 +211,8 @@ import {
   externalUnitOwners,
   externalOwnerCharges,
   externalOwnerNotifications,
+  externalNotifications,
+  insertExternalNotificationSchema,
   externalWorkerAssignments,
   externalRentalContracts,
   externalRentalTenants,
@@ -31759,6 +31761,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Agency - Owner Notifications Routes
+
+  // External Agency - Agency Notifications Routes (visible in agency config)
+  app.get("/api/external/notifications", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const { unreadOnly, limit = "50" } = req.query;
+      
+      const conditions = [eq(externalNotifications.agencyId, agencyId)];
+      if (unreadOnly === "true") {
+        conditions.push(eq(externalNotifications.isRead, false));
+      }
+
+      const notifications = await db.query.externalNotifications.findMany({
+        where: and(...conditions),
+        orderBy: [desc(externalNotifications.createdAt)],
+        limit: parseInt(limit as string) || 50,
+      });
+
+      res.json(notifications);
+    } catch (error: any) {
+      console.error("Error fetching agency notifications:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  app.get("/api/external/notifications/count", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const [result] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(externalNotifications)
+        .where(and(
+          eq(externalNotifications.agencyId, agencyId),
+          eq(externalNotifications.isRead, false)
+        ));
+
+      res.json({ unreadCount: result?.count || 0 });
+    } catch (error: any) {
+      console.error("Error fetching notification count:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  app.patch("/api/external/notifications/:id/read", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const { id } = req.params;
+
+      const [notification] = await db
+        .select()
+        .from(externalNotifications)
+        .where(eq(externalNotifications.id, id))
+        .limit(1);
+
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      if (notification.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const [updated] = await db
+        .update(externalNotifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(eq(externalNotifications.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error marking notification as read:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  app.patch("/api/external/notifications/mark-all-read", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      await db
+        .update(externalNotifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(and(
+          eq(externalNotifications.agencyId, agencyId),
+          eq(externalNotifications.isRead, false)
+        ));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking all notifications as read:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.get("/api/external/owner-notifications", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
