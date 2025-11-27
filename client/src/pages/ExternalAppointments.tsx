@@ -275,6 +275,34 @@ export default function ExternalAppointments() {
   }, [selectedAppointment]);
 
   const selectedUnitIdsKey = selectedUnitIds.join(",");
+  
+  // Fetch unit details with condominium info for display in detail dialog
+  const { data: selectedUnitsDetails = {} } = useQuery<Record<string, { unit: ExternalUnit; condominiumName: string | null }>>({
+    queryKey: ["/api/external-units-details/batch", selectedUnitIdsKey],
+    queryFn: async () => {
+      if (selectedUnitIds.length === 0) return {};
+      const results: Record<string, { unit: ExternalUnit; condominiumName: string | null }> = {};
+      await Promise.all(selectedUnitIds.map(async (unitId) => {
+        try {
+          const response = await fetch(`/api/external-units/${unitId}/overview`, {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const data = await response.json();
+            results[unitId] = {
+              unit: data.unit,
+              condominiumName: data.condominium?.name || null
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching unit details for ${unitId}:`, error);
+        }
+      }));
+      return results;
+    },
+    enabled: selectedUnitIds.length > 0 && !!selectedAppointment,
+  });
+  
   const { data: selectedUnitAccessControls = {} } = useQuery<Record<string, UnitAccessControl[]>>({
     queryKey: ["/api/external-unit-access-controls/batch", selectedUnitIdsKey],
     queryFn: async () => {
@@ -554,6 +582,16 @@ export default function ExternalAppointments() {
 
   const getUnitInfo = (unitId: string | null) => {
     if (!unitId) return null;
+    // First try to get from detailed data (fetched for selected appointment)
+    const detailedInfo = selectedUnitsDetails[unitId];
+    if (detailedInfo) {
+      return {
+        unitNumber: detailedInfo.unit.unitNumber,
+        name: detailedInfo.unit.name,
+        condominiumName: detailedInfo.condominiumName,
+      };
+    }
+    // Fallback to paginated units list
     const unit = units.find(u => u.id === unitId);
     if (!unit) return null;
     const condo = unit.condominiumId ? allCondominiums.find(c => c.id === unit.condominiumId) : null;
