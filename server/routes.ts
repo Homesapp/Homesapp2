@@ -473,6 +473,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Block access for suspended users
+      if (user.isSuspended) {
+        return res.status(403).json({ 
+          message: "Account suspended", 
+          error: "ACCOUNT_SUSPENDED",
+          reason: user.suspensionReason || "Your account has been suspended. Please contact your administrator." 
+        });
+      }
       
       res.json(user);
     } catch (error) {
@@ -21589,6 +21598,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: users.role,
           status: users.status,
           maintenanceSpecialty: users.maintenanceSpecialty,
+          isSuspended: users.isSuspended,
+          suspensionReason: users.suspensionReason,
           createdAt: users.createdAt,
         })
         .from(users)
@@ -21773,6 +21784,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/external-agency-users/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+
+  // Suspend external agency user
+  app.post("/api/external-agency-users/:id/suspend", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user || user.externalAgencyId !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to suspend this user" });
+      }
+
+      const adminId = req.user?.claims?.sub || req.user?.id;
+      if (id === adminId) {
+        return res.status(400).json({ message: "Cannot suspend your own account" });
+      }
+
+      await db
+        .update(users)
+        .set({
+          isSuspended: true,
+          suspensionType: "permanent",
+          suspensionReason: "Suspended by agency admin",
+          suspendedAt: new Date(),
+          suspendedById: adminId,
+        })
+        .where(eq(users.id, id));
+
+      await createAuditLog(req, "update", "user", id, `Suspended external agency user ${user.firstName} ${user.lastName}`);
+
+      res.json({ message: "User suspended successfully" });
+    } catch (error: any) {
+      console.error("Error suspending external agency user:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Unsuspend external agency user
+  app.post("/api/external-agency-users/:id/unsuspend", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user || user.externalAgencyId !== agencyId) {
+        return res.status(403).json({ message: "Unauthorized to unsuspend this user" });
+      }
+
+      await db
+        .update(users)
+        .set({
+          isSuspended: false,
+          suspensionType: null,
+          suspensionReason: null,
+          suspendedAt: null,
+          suspendedById: null,
+        })
+        .where(eq(users.id, id));
+
+      await createAuditLog(req, "update", "user", id, `Reactivated external agency user ${user.firstName} ${user.lastName}`);
+
+      res.json({ message: "User reactivated successfully" });
+    } catch (error: any) {
+      console.error("Error unsuspending external agency user:", error);
+      handleGenericError(res, error);
+    }
+  });
     try {
       const { id } = req.params;
       const agencyId = await getUserAgencyId(req);
@@ -27791,6 +27875,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: users.lastName,
           phone: users.phone,
           maintenanceSpecialty: users.maintenanceSpecialty,
+          isSuspended: users.isSuspended,
+          suspensionReason: users.suspensionReason,
         })
         .from(users)
         .where(and(
