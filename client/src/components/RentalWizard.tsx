@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +31,8 @@ import {
   Upload,
   FileText,
   Mail,
-  Phone
+  Phone,
+  Search
 } from "lucide-react";
 import { format, isValid } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -122,6 +123,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     phone: string;
     idPhotoUrl: string;
   }>>([]);
+  const [condominiumSearch, setCondominiumSearch] = useState("");
 
   const { data: condominiumsResponse, isLoading: condominiumsLoading } = useQuery<{ data: ExternalCondominium[], total: number }>({
     queryKey: ["/api/external-condominiums", "for-rental-wizard"],
@@ -133,6 +135,17 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
   const condominiums = condominiumsResponse?.data;
+
+  // Filter condominiums based on search
+  const filteredCondominiums = useMemo(() => {
+    if (!condominiums) return [];
+    if (!condominiumSearch.trim()) return condominiums;
+    const searchLower = condominiumSearch.toLowerCase().trim();
+    return condominiums.filter(c => 
+      c.name.toLowerCase().includes(searchLower) ||
+      (c.address && c.address.toLowerCase().includes(searchLower))
+    );
+  }, [condominiums, condominiumSearch]);
 
   const { data: unitsResponse, isLoading: unitsLoading } = useQuery<{ data: UnitWithDetails[], total: number }>({
     queryKey: ["/api/external-units", "for-rental-wizard"],
@@ -212,6 +225,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
     setSelectedClientId("");
     setAdditionalServices([]);
     setAdditionalTenants([]);
+    setCondominiumSearch("");
     form.reset();
   };
 
@@ -445,16 +459,37 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
             {/* Step 1: Select Condominium */}
             {step === 1 && (
               <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    {language === "es" ? "Selecciona el Condominio" : "Select Condominium"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {language === "es" 
-                      ? "Elige el condominio donde se encuentra la unidad" 
-                      : "Choose the condominium where the unit is located"}
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {language === "es" ? "Selecciona el Condominio" : "Select Condominium"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {language === "es" 
+                        ? "Elige el condominio donde se encuentra la unidad" 
+                        : "Choose the condominium where the unit is located"}
+                    </p>
+                  </div>
+                  {condominiums && condominiums.length > 0 && (
+                    <Badge variant="secondary" className="self-start">
+                      {filteredCondominiums.length} / {condominiums.length}
+                    </Badge>
+                  )}
                 </div>
+
+                {/* Search Input */}
+                {condominiums && condominiums.length > 10 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."}
+                      value={condominiumSearch}
+                      onChange={(e) => setCondominiumSearch(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-search-condominium"
+                    />
+                  </div>
+                )}
 
                 {condominiumsLoading ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
@@ -464,35 +499,43 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
                   <p className="text-sm text-muted-foreground text-center py-8">
                     {language === "es" ? "No hay condominios disponibles" : "No condominiums available"}
                   </p>
+                ) : filteredCondominiums.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    {language === "es" ? "No se encontraron condominios" : "No condominiums found"}
+                  </p>
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {condominiums.map((condo) => (
-                      <Card
-                        key={condo.id}
-                        className={`cursor-pointer hover-elevate ${
-                          selectedCondominiumId === condo.id ? "border-primary border-2" : ""
-                        }`}
-                        onClick={() => setSelectedCondominiumId(condo.id)}
-                        data-testid={`condo-option-${condo.id}`}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                <p className="font-semibold">{condo.name}</p>
+                  <div className="max-h-[400px] overflow-y-auto pr-1">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {filteredCondominiums.map((condo) => (
+                        <Card
+                          key={condo.id}
+                          className={`cursor-pointer hover-elevate ${
+                            selectedCondominiumId === condo.id ? "border-primary border-2" : ""
+                          }`}
+                          onClick={() => setSelectedCondominiumId(condo.id)}
+                          data-testid={`condo-option-${condo.id}`}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <p className="font-semibold truncate">{condo.name}</p>
+                                </div>
+                                {condo.address && (
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {condo.address}
+                                  </p>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {condo.address}
-                              </p>
+                              {selectedCondominiumId === condo.id && (
+                                <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                              )}
                             </div>
-                            {selectedCondominiumId === condo.id && (
-                              <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
