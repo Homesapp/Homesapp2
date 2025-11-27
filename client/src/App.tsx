@@ -344,7 +344,9 @@ function AuthenticatedApp() {
           <header className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b bg-background">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-1 sm:gap-2">
-              <NotificationBell />
+              {!["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"].includes(userRole || "") && (
+                <NotificationBell />
+              )}
               <LanguageToggle />
               {isAdminAuthenticated && adminUser ? (
                 <UserProfileMenu
