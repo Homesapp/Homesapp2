@@ -339,10 +339,17 @@ export default function ExternalAppointments() {
       notes: formData.notes || null,
     };
 
+    if (formData.clientSource === "client" && formData.clientId) {
+      data.clientId = formData.clientId;
+    }
+    if (formData.clientSource === "lead" && formData.leadId) {
+      data.leadId = formData.leadId;
+    }
+
     if (formData.mode === "individual") {
       data.unitId = formData.unitId || null;
     } else {
-      data.tourStops = formData.tourStops;
+      data.tourStops = formData.tourStops.filter(stop => stop.unitId);
     }
 
     createMutation.mutate(data);

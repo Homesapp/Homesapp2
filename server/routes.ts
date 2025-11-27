@@ -22355,9 +22355,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub || req.user?.id;
       const { tourStops, ...appointmentData } = req.body;
 
+      // Convert date string to Date object if needed
+      const parsedDate = typeof appointmentData.date === 'string' 
+        ? new Date(appointmentData.date) 
+        : appointmentData.date;
+
       // Validate appointment data
       const validatedData = insertExternalAppointmentSchema.parse({
         ...appointmentData,
+        date: parsedDate,
         agencyId,
         createdBy: userId,
       });
