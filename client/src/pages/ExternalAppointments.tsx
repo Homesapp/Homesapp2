@@ -832,7 +832,7 @@ export default function ExternalAppointments() {
             {/* Appointment Type Selection - Card Style */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                <Calendar className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
                 {language === "es" ? "Tipo de Cita" : "Appointment Type"}
               </div>
               <div className="grid grid-cols-2 gap-3">
