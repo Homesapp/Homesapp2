@@ -383,6 +383,7 @@ const translations: Record<Language, Record<string, string>> = {
     "property.deleteButton": "Eliminar",
     "property.scheduleButton": "Agendar",
     "property.petFriendly": "Acepta Mascotas",
+    "property.listedBy": "Listado por",
     
     // Property Display
     "property.bedrooms": "hab",
@@ -615,6 +616,7 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.appointments": "Citas",
     "sidebar.sellerAppointments": "Gestión de Citas",
     "sidebar.myAppointments": "Citas",
+    "sidebar.externalAppointments": "Citas Externas",
     "sidebar.favorites": "Favoritos",
     "sidebar.opportunities": "Oportunidades",
     "sidebar.myOpportunities": "Oportunidades",
@@ -1329,6 +1331,7 @@ const translations: Record<Language, Record<string, string>> = {
     "property.deleteButton": "Delete",
     "property.scheduleButton": "Schedule",
     "property.petFriendly": "Pet Friendly",
+    "property.listedBy": "Listed by",
     
     // Property Display
     "property.bedrooms": "bed",
@@ -1919,6 +1922,7 @@ const translations: Record<Language, Record<string, string>> = {
     "sidebar.appointments": "Appointments",
     "sidebar.sellerAppointments": "Appointment Management",
     "sidebar.myAppointments": "Appointments",
+    "sidebar.externalAppointments": "External Appointments",
     "sidebar.favorites": "Favorites",
     "sidebar.opportunities": "Opportunities",
     "sidebar.myOpportunities": "Opportunities",

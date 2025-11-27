@@ -21021,6 +21021,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // EXTERNAL PUBLICATION REQUESTS
   // ==============================
 
+
+  // Helper function to sync external unit to properties table
+  async function syncExternalUnitToProperty(unit: any, userId: string, agencyId: string): Promise<string | null> {
+    try {
+      // Get condominium info for mapping
+      let condominiumId: string | null = null;
+      let condoName: string | null = null;
+      
+      if (unit.condominiumId) {
+        const extCondo = await storage.getExternalCondominium(unit.condominiumId);
+        if (extCondo) {
+          condoName = extCondo.name;
+          // Check if there's a linked main condominium with the same name
+          const mainCondos = await db.select()
+            .from(condominiums)
+            .where(eq(condominiums.name, extCondo.name))
+            .limit(1);
+          
+          if (mainCondos.length > 0) {
+            condominiumId = mainCondos[0].id;
+          } else {
+            // Create a new condominium in the main system
+            const [newCondo] = await db.insert(condominiums)
+              .values({
+                name: extCondo.name,
+                location: extCondo.address || unit.zone || 'Tulum',
+                address: extCondo.address || '',
+                approvalStatus: 'approved',
+                status: 'active',
+                addedBy: userId,
+              })
+              .returning();
+            condominiumId = newCondo.id;
+          }
+        }
+      }
+
+      // Get agency details
+      const agency = await storage.getExternalAgency(agencyId);
+
+      // Create property from external unit
+      // Use the admin user as owner, fallback to first admin if not available
+      let propertyOwnerId = userId;
+      if (!propertyOwnerId) {
+        // Find a system admin to use as owner
+        const admins = await db.select().from(users).where(eq(users.role, 'admin')).limit(1);
+        propertyOwnerId = admins[0]?.id || userId;
+      }
+
+      // If no condominium was linked, create a generic one for external properties
+      if (!condominiumId) {
+        const externalCondoName = 'Propiedades Externas';
+        const [existingExtCondo] = await db.select()
+          .from(condominiums)
+          .where(eq(condominiums.name, externalCondoName))
+          .limit(1);
+        
+        if (existingExtCondo) {
+          condominiumId = existingExtCondo.id;
+        } else {
+          const [newExtCondo] = await db.insert(condominiums)
+            .values({
+              name: externalCondoName,
+              location: 'Tulum',
+              address: 'Multiple locations',
+              approvalStatus: 'approved',
+              status: 'active',
+              addedBy: propertyOwnerId,
+            })
+            .returning();
+          condominiumId = newExtCondo.id;
+        }
+      }
+
+      // Transform includedServices to proper format
+      const includedServicesData = unit.includedServices ? {
+        water: unit.includedServices.water === true,
+        electricity: unit.includedServices.electricity === true,
+        internet: unit.includedServices.internet === true,
+        gas: unit.includedServices.gas === true,
+      } : null;
+
+      // Transform accessInfo to proper format (use unattended with lockbox as default)
+      let accessInfoData = null;
+      if (unit.accessInfo) {
+        if (unit.accessInfo.lockboxCode) {
+          accessInfoData = {
+            accessType: 'unattended' as const,
+            method: 'lockbox' as const,
+            lockboxCode: unit.accessInfo.lockboxCode || '',
+            lockboxLocation: '',
+          };
+        } else if (unit.accessInfo.contactPerson) {
+          accessInfoData = {
+            accessType: 'attended' as const,
+            contactPerson: unit.accessInfo.contactPerson || '',
+            contactPhone: unit.accessInfo.contactPhone || '',
+          };
+        }
+      }
+
+      const propertyData = {
+        title: unit.title || `${unit.unitNumber} - ${condoName || unit.zone || 'Property'}`,
+        description: unit.description || '',
+        price: unit.price ? String(unit.price) : "0",
+        propertyType: unit.propertyType || 'departamento',
+        bedrooms: unit.bedrooms || 0,
+        bathrooms: unit.bathrooms ? String(unit.bathrooms) : "1",
+        area: unit.area ? String(unit.area) : null,
+        location: unit.address || unit.zone || 'Tulum',
+        colonyName: unit.zone || null,
+        status: 'rent' as const,
+        unitType: 'private',
+        condominiumId: condominiumId,
+        condoName: condoName || null,
+        unitNumber: unit.unitNumber,
+        showCondoInListing: true,
+        showUnitNumberInListing: true,
+        primaryImages: unit.primaryImages || [],
+        secondaryImages: unit.secondaryImages || [],
+        videos: unit.videos || [],
+        virtualTourUrl: unit.virtualTourUrl || null,
+        googleMapsUrl: unit.googleMapsUrl || null,
+        latitude: unit.latitude ? String(unit.latitude) : null,
+        longitude: unit.longitude ? String(unit.longitude) : null,
+        amenities: unit.amenities || [],
+        includedServices: includedServicesData,
+        accessInfo: accessInfoData,
+        petFriendly: unit.petFriendly || false,
+        ownerId: propertyOwnerId,
+        approvalStatus: 'approved' as const,
+        active: true,
+        published: true,
+        externalUnitId: unit.id,
+        externalAgencyId: agency?.id || null,
+        externalAgencyName: agency?.name || null,
+        externalAgencyLogoUrl: agency?.agencyLogoUrl || null,
+      };
+
+      const property = await storage.createProperty(propertyData);
+      return property.id;
+    } catch (error) {
+      console.error("Error syncing external unit to property:", error);
+      return null;
+    }
+  }
+
   // GET /api/external-publication-requests - Admin: Get all publication requests
   app.get("/api/external-publication-requests", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
     try {
@@ -21158,21 +21305,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "A pending request already exists for this unit" });
       }
 
-      // Create the request
       const userId = req.user?.claims?.sub || req.user?.id;
+      
+      // Check if agency has auto-approve enabled
+      const agency = await storage.getExternalAgency(agencyId);
+      const shouldAutoApprove = agency?.autoApprovePublications === true;
+
+      // Create the request with appropriate status
       const [request] = await db.insert(externalPublicationRequests)
         .values({
           unitId,
           agencyId,
           requestedBy: userId,
-          status: 'pending',
+          status: shouldAutoApprove ? 'approved' : 'pending',
+          reviewedBy: shouldAutoApprove ? userId : null,
+          reviewedAt: shouldAutoApprove ? new Date() : null,
+          feedback: shouldAutoApprove ? 'Auto-approved by agency configuration' : null,
         })
         .returning();
 
-      // Update unit publishToMain flag
-      await storage.updateExternalUnit(unitId, { publishToMain: true, publishStatus: 'pending' });
+      if (shouldAutoApprove) {
+        // Auto-approve: sync to properties table
+        await syncExternalUnitToProperty(unit, userId, agencyId);
+        await storage.updateExternalUnit(unitId, { publishToMain: true, publishStatus: 'approved' });
+      } else {
+        // Manual approval required
+        await storage.updateExternalUnit(unitId, { publishToMain: true, publishStatus: 'pending' });
+      }
 
-      res.status(201).json(request);
+      res.status(201).json({ ...request, autoApproved: shouldAutoApprove });
     } catch (error) {
       console.error("Error creating publication request:", error);
       res.status(500).json({ message: "Failed to create publication request" });

@@ -268,6 +268,8 @@ export default function PresentationCards() {
                   location={property.location}
                   status={property.status}
                   image={property.primaryImages?.[property.coverImageIndex || 0] || property.images?.[0]}
+                  externalAgencyName={property.externalAgencyName}
+                  externalAgencyLogoUrl={property.externalAgencyLogoUrl}
                 />
               ))}
             </div>

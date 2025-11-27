@@ -1,7 +1,9 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2, Droplet, Zap, Wifi, PawPrint } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2, Droplet, Zap, Wifi, PawPrint, Building2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type IncludedServices = {
@@ -49,6 +51,8 @@ export type PropertyCardProps = {
   image?: string;
   petFriendly?: boolean;
   includedServices?: IncludedServices;
+  externalAgencyName?: string | null;
+  externalAgencyLogoUrl?: string | null;
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -75,6 +79,8 @@ export function PropertyCard({
   image,
   petFriendly = false,
   includedServices,
+  externalAgencyName,
+  externalAgencyLogoUrl,
   onView,
   onEdit,
   onDelete,
@@ -124,6 +130,26 @@ export function PropertyCard({
         <div className="absolute top-2 right-2">
           <Badge variant={statusVariants[status]}>{statusLabels[status]}</Badge>
         </div>
+        {externalAgencyName && (
+          <div className="absolute bottom-2 left-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm border">
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={externalAgencyLogoUrl || undefined} alt={externalAgencyName} />
+                    <AvatarFallback className="text-[10px]">
+                      <Building2 className="h-3 w-3" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs font-medium truncate max-w-[100px]">{externalAgencyName}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t("property.listedBy")}: {externalAgencyName}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
       </div>
       
       <CardHeader className="gap-1 space-y-0 pb-2">

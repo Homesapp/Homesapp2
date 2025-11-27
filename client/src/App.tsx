@@ -80,6 +80,7 @@ import PropertyInvitations from "@/pages/admin/PropertyInvitations";
 import AdminPropertyOwnerTerms from "@/pages/AdminPropertyOwnerTerms";
 import PropertySubmissionWizard from "@/pages/PropertySubmissionWizard";
 import OwnerAppointments from "@/pages/OwnerAppointments";
+import ExternalAppointments from "@/pages/ExternalAppointments";
 import OwnerOffers from "@/pages/OwnerOffers";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -395,6 +396,7 @@ function AuthenticatedApp() {
               <Route path="/rentas" component={RentalsKanban} />
               <Route path="/properties" component={Properties} />
               <Route path="/appointments" component={Appointments} />
+              <Route path="/external-appointments" component={ExternalAppointments} />
               <Route path="/calendario" component={Calendar} />
               <Route path="/admin/calendario" component={AdminCalendar} />
               <Route path="/admin/horarios" component={AdminBusinessHours} />

@@ -1154,6 +1154,8 @@ export const properties = pgTable("properties", {
   // Link to external unit (if synced from external system)
   externalUnitId: varchar("external_unit_id"), // ID de la unidad externa (si fue sincronizada)
   externalAgencyId: varchar("external_agency_id"), // ID de la agencia externa origen
+  externalAgencyName: varchar("external_agency_name", { length: 255 }), // Nombre de la agencia para mostrar en UI
+  externalAgencyLogoUrl: text("external_agency_logo_url"), // Logo de la agencia para mostrar en UI
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -4998,6 +5000,7 @@ export const externalAgencies = pgTable("external_agencies", {
   contactEmail: varchar("contact_email", { length: 255 }), // Email de contacto
   contactPhone: varchar("contact_phone", { length: 50 }), // Teléfono de contacto
   assignedToUser: varchar("assigned_to_user").references(() => users.id), // Usuario responsable de la agencia
+  autoApprovePublications: boolean("auto_approve_publications").notNull().default(false), // Auto-aprobar publicaciones sin revisión manual
   isActive: boolean("is_active").notNull().default(true), // Si está activa
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -5014,6 +5017,7 @@ export const insertExternalAgencySchema = createInsertSchema(externalAgencies).o
 }).extend({
   isActive: z.boolean().optional().default(true),
   agencyLogoUrl: z.string().optional(),
+  autoApprovePublications: z.boolean().optional().default(false),
   createdBy: z.string().optional(),
 });
 

@@ -13,7 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, FileText, Loader2 } from "lucide-react";
+import { CalendarIcon, FileText, Loader2, Building2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import type { Property, RentalOpportunityRequest } from "@shared/schema";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
 const offerSchema = z.object({
@@ -72,6 +74,7 @@ export default function RentalOfferForm() {
   const [, setLocation] = useWouterLocation();
   const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get requestId from URL params
@@ -179,6 +182,19 @@ export default function RentalOfferForm() {
         <p className="text-sm sm:text-base text-muted-foreground">
           Completa los detalles de tu oferta para {property.title}
         </p>
+        {property.externalAgencyName && (
+          <div className="flex items-center gap-2 mt-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={property.externalAgencyLogoUrl || undefined} alt={property.externalAgencyName} />
+              <AvatarFallback className="text-xs">
+                <Building2 className="h-3 w-3" />
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-muted-foreground">
+              {t("property.listedBy")}: <span className="font-medium">{property.externalAgencyName}</span>
+            </span>
+          </div>
+        )}
       </div>
 
       <Form {...form}>

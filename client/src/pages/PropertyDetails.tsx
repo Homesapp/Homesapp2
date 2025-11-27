@@ -4,19 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Heart, MapPin, Bed, Bath, Square, Star, ArrowLeft, ExternalLink, Image, Video, Map, Scan } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Square, Star, ArrowLeft, ExternalLink, Image, Video, Map, Scan, Building2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type Property } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFavoriteStatus, useToggleFavorite } from "@/hooks/useFavorites";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function PropertyDetails() {
   const [, params] = useRoute("/propiedad/:id");
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ["/api/properties", params?.id],
@@ -150,6 +153,19 @@ export default function PropertyDetails() {
                 <MapPin className="h-5 w-5" />
                 <span className="text-lg">{property.location}</span>
               </div>
+              {property.externalAgencyName && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={property.externalAgencyLogoUrl || undefined} alt={property.externalAgencyName} />
+                    <AvatarFallback className="text-xs">
+                      <Building2 className="h-3 w-3" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground">
+                    {t("property.listedBy")}: <span className="font-medium">{property.externalAgencyName}</span>
+                  </span>
+                </div>
+              )}
             </div>
             <div className="text-right">
               <div className="text-4xl font-bold text-primary mb-1">

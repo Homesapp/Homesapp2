@@ -47,6 +47,7 @@ import type { ExternalAgency } from "@shared/schema";
 import { z } from "zod";
 import { Plus, Pencil, Trash2, Building2, Search, Key, Copy, Upload, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -158,6 +159,7 @@ export default function AdminExternalAgencies() {
       contactPhone: "",
       agencyLogoUrl: "",
       isActive: true,
+      autoApprovePublications: false,
       assignedUserId: "",
     },
   });
@@ -325,6 +327,7 @@ export default function AdminExternalAgencies() {
       contactPhone: agency.contactPhone || "",
       agencyLogoUrl: agency.agencyLogoUrl || "",
       isActive: agency.isActive,
+      autoApprovePublications: agency.autoApprovePublications ?? false,
       assignedUserId: agency.createdBy || "",
     });
     setIsEditDialogOpen(true);
@@ -568,6 +571,32 @@ export default function AdminExternalAgencies() {
                     </div>
                   )}
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="autoApprovePublications"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          {language === "es" ? "Auto-aprobar Publicaciones" : "Auto-approve Publications"}
+                        </FormLabel>
+                        <FormDescription>
+                          {language === "es" 
+                            ? "Las propiedades de esta agencia se publicarán automáticamente sin revisión manual"
+                            : "Properties from this agency will be published automatically without manual review"}
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-auto-approve"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
                 <DialogFooter>
                   <Button
@@ -918,6 +947,32 @@ export default function AdminExternalAgencies() {
                   </div>
                 )}
               </div>
+
+              <FormField
+                control={form.control}
+                name="autoApprovePublications"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        {language === "es" ? "Auto-aprobar Publicaciones" : "Auto-approve Publications"}
+                      </FormLabel>
+                      <FormDescription>
+                        {language === "es" 
+                          ? "Las propiedades de esta agencia se publicarán automáticamente sin revisión manual"
+                          : "Properties from this agency will be published automatically without manual review"}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-edit-auto-approve"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
               <DialogFooter>
                 <Button

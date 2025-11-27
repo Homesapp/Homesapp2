@@ -528,6 +528,8 @@ export default function Properties() {
                 location={property.location}
                 status={property.status}
                 image={property.primaryImages?.[property.coverImageIndex || 0] || property.images?.[0]}
+                externalAgencyName={property.externalAgencyName}
+                externalAgencyLogoUrl={property.externalAgencyLogoUrl}
                 onView={() => handleViewProperty(property.id)}
                 onEdit={canEditProperty(property) ? () => handleEditClick(property) : undefined}
                 onDelete={canEditProperty(property) ? () => handleDeleteClick(property.id) : undefined}
