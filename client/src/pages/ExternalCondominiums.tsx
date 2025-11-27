@@ -193,7 +193,7 @@ export default function ExternalCondominiums() {
 
   // Units with full backend pagination - data, filtering, sorting all handled by server
   const { data: unitsResponse, isLoading: unitsLoading, isFetching: unitsFetching } = useQuery<{ data: ExternalUnit[], total: number }>({
-    queryKey: ['/api/external-units', unitsPage, unitsPerPage, debouncedUnitSearchText, selectedCondoFilter, unitStatusFilter, unitZoneFilter, unitTypologyFilter, unitsSortColumn, unitsSortDirection],
+    queryKey: ['/api/external-units', unitsPage, unitsPerPage, debouncedUnitSearchText, selectedCondoFilter, unitStatusFilter, unitZoneFilter, unitPropertyTypeFilter, unitsSortColumn, unitsSortDirection],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('limit', unitsPerPage.toString());
