@@ -391,7 +391,7 @@ export default function RentalWizard({ open, onOpenChange }: RentalWizardProps) 
   const selectedUnit = availableUnits?.find(u => u.id === selectedUnitId);
   // Filter units: only show active units without an existing contract
   const filteredUnits = availableUnits?.filter(u => 
-    u.status === 'active' && 
+    u.isActive && 
     !u.currentContractId
   ) || [];
 
