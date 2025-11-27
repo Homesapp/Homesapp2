@@ -87,6 +87,29 @@ type ExternalUnit = {
   condominiumId: string | null;
 };
 
+type ExternalCondominium = {
+  id: string;
+  name: string;
+  agencyId: string;
+};
+
+type ExternalClient = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+type ExternalLead = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+};
+
 type AgencyUser = {
   id: string;
   firstName: string | null;
@@ -128,6 +151,9 @@ export default function ExternalAppointments() {
   const [appointmentToDelete, setAppointmentToDelete] = useState<ExternalAppointment | null>(null);
 
   const [formData, setFormData] = useState({
+    clientSource: "client" as "client" | "lead" | "manual",
+    clientId: "",
+    leadId: "",
     clientName: "",
     clientEmail: "",
     clientPhone: "",
@@ -135,9 +161,10 @@ export default function ExternalAppointments() {
     type: "in-person" as "in-person" | "video",
     date: new Date(),
     time: "10:00",
+    condominiumId: "",
     unitId: "",
     notes: "",
-    tourStops: [] as { unitId: string; notes: string }[],
+    tourStops: [] as { unitId: string; condominiumId: string; notes: string }[],
   });
 
   const statusLabels: Record<string, { es: string; en: string }> = {
@@ -161,6 +188,21 @@ export default function ExternalAppointments() {
   });
   const units = unitsData?.data ?? [];
 
+  const { data: condominiumsData } = useQuery<{ data: ExternalCondominium[]; total: number }>({
+    queryKey: ["/api/external-condominiums"],
+  });
+  const condominiums = condominiumsData?.data ?? [];
+
+  const { data: clientsData } = useQuery<{ data: ExternalClient[]; total: number }>({
+    queryKey: ["/api/external-clients"],
+  });
+  const clients = clientsData?.data ?? [];
+
+  const { data: leadsData } = useQuery<{ data: ExternalLead[]; total: number }>({
+    queryKey: ["/api/external-leads"],
+  });
+  const leads = leadsData?.data ?? [];
+
   const { data: agencyUsers = [] } = useQuery<AgencyUser[]>({
     queryKey: ["/api/external/users"],
   });
@@ -171,6 +213,15 @@ export default function ExternalAppointments() {
       u.role === "external_agency_admin"
     );
   }, [agencyUsers]);
+
+  const filteredUnits = useMemo(() => {
+    if (!formData.condominiumId) return [];
+    return units.filter(u => u.condominiumId === formData.condominiumId);
+  }, [units, formData.condominiumId]);
+
+  const getUnitsForCondominium = (condominiumId: string) => {
+    return units.filter(u => u.condominiumId === condominiumId);
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -301,7 +352,7 @@ export default function ExternalAppointments() {
     if (formData.tourStops.length < 3) {
       setFormData(prev => ({
         ...prev,
-        tourStops: [...prev.tourStops, { unitId: "", notes: "" }],
+        tourStops: [...prev.tourStops, { unitId: "", condominiumId: "", notes: "" }],
       }));
     }
   };
@@ -313,12 +364,16 @@ export default function ExternalAppointments() {
     }));
   };
 
-  const handleTourStopChange = (index: number, field: "unitId" | "notes", value: string) => {
+  const handleTourStopChange = (index: number, field: "unitId" | "notes" | "condominiumId", value: string) => {
     setFormData(prev => ({
       ...prev,
-      tourStops: prev.tourStops.map((stop, i) => 
-        i === index ? { ...stop, [field]: value } : stop
-      ),
+      tourStops: prev.tourStops.map((stop, i) => {
+        if (i !== index) return stop;
+        if (field === "condominiumId") {
+          return { ...stop, condominiumId: value, unitId: "" };
+        }
+        return { ...stop, [field]: value };
+      }),
     }));
   };
 
@@ -746,34 +801,123 @@ export default function ExternalAppointments() {
             </div>
 
             <div>
-              <Label>{language === "es" ? "Nombre del cliente" : "Client name"} *</Label>
-              <Input
-                value={formData.clientName}
-                onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
-                placeholder={language === "es" ? "Nombre completo" : "Full name"}
-                data-testid="input-client-name"
-              />
+              <Label>{language === "es" ? "Origen del cliente" : "Client source"} *</Label>
+              <Select 
+                value={formData.clientSource} 
+                onValueChange={(v) => setFormData(prev => ({ 
+                  ...prev, 
+                  clientSource: v as any,
+                  clientId: "",
+                  leadId: "",
+                  clientName: "",
+                  clientEmail: "",
+                  clientPhone: ""
+                }))}
+              >
+                <SelectTrigger data-testid="select-client-source">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="client">{language === "es" ? "Cliente existente" : "Existing client"}</SelectItem>
+                  <SelectItem value="lead">{language === "es" ? "Lead existente" : "Existing lead"}</SelectItem>
+                  <SelectItem value="manual">{language === "es" ? "Ingresar manualmente" : "Enter manually"}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {formData.clientSource === "client" && (
               <div>
-                <Label>{language === "es" ? "Email" : "Email"}</Label>
-                <Input
-                  type="email"
-                  value={formData.clientEmail}
-                  onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
-                  data-testid="input-client-email"
-                />
+                <Label>{language === "es" ? "Seleccionar cliente" : "Select client"} *</Label>
+                <Select 
+                  value={formData.clientId} 
+                  onValueChange={(v) => {
+                    const selectedClient = clients.find(c => c.id === v);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      clientId: v,
+                      clientName: selectedClient ? `${selectedClient.firstName}${selectedClient.lastName ? ` ${selectedClient.lastName}` : ""}` : "",
+                      clientEmail: selectedClient?.email || "",
+                      clientPhone: selectedClient?.phone || ""
+                    }));
+                  }}
+                >
+                  <SelectTrigger data-testid="select-client">
+                    <SelectValue placeholder={language === "es" ? "Buscar cliente..." : "Search client..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.firstName} {client.lastName || ""} {client.email ? `(${client.email})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+            )}
+
+            {formData.clientSource === "lead" && (
               <div>
-                <Label>{language === "es" ? "Teléfono" : "Phone"}</Label>
-                <Input
-                  value={formData.clientPhone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
-                  data-testid="input-client-phone"
-                />
+                <Label>{language === "es" ? "Seleccionar lead" : "Select lead"} *</Label>
+                <Select 
+                  value={formData.leadId} 
+                  onValueChange={(v) => {
+                    const selectedLead = leads.find(l => l.id === v);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      leadId: v,
+                      clientName: selectedLead ? `${selectedLead.firstName}${selectedLead.lastName ? ` ${selectedLead.lastName}` : ""}` : "",
+                      clientEmail: selectedLead?.email || "",
+                      clientPhone: selectedLead?.phone || ""
+                    }));
+                  }}
+                >
+                  <SelectTrigger data-testid="select-lead">
+                    <SelectValue placeholder={language === "es" ? "Buscar lead..." : "Search lead..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leads.map(lead => (
+                      <SelectItem key={lead.id} value={lead.id}>
+                        {lead.firstName} {lead.lastName || ""} {lead.email ? `(${lead.email})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            )}
+
+            {formData.clientSource === "manual" && (
+              <>
+                <div>
+                  <Label>{language === "es" ? "Nombre del cliente" : "Client name"} *</Label>
+                  <Input
+                    value={formData.clientName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
+                    placeholder={language === "es" ? "Nombre completo" : "Full name"}
+                    data-testid="input-client-name"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>{language === "es" ? "Email" : "Email"}</Label>
+                    <Input
+                      type="email"
+                      value={formData.clientEmail}
+                      onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
+                      data-testid="input-client-email"
+                    />
+                  </div>
+                  <div>
+                    <Label>{language === "es" ? "Teléfono" : "Phone"}</Label>
+                    <Input
+                      value={formData.clientPhone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
+                      data-testid="input-client-phone"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -820,20 +964,47 @@ export default function ExternalAppointments() {
             </div>
 
             {formData.mode === "individual" ? (
-              <div>
-                <Label>{language === "es" ? "Propiedad" : "Property"}</Label>
-                <Select value={formData.unitId} onValueChange={(v) => setFormData(prev => ({ ...prev, unitId: v }))}>
-                  <SelectTrigger data-testid="select-unit">
-                    <SelectValue placeholder={language === "es" ? "Seleccionar propiedad" : "Select property"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map(unit => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-4">
+                <div>
+                  <Label>{language === "es" ? "Condominio" : "Condominium"}</Label>
+                  <Select 
+                    value={formData.condominiumId} 
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, condominiumId: v, unitId: "" }))}
+                  >
+                    <SelectTrigger data-testid="select-condominium">
+                      <SelectValue placeholder={language === "es" ? "Seleccionar condominio" : "Select condominium"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {condominiums.map(condo => (
+                        <SelectItem key={condo.id} value={condo.id}>
+                          {condo.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>{language === "es" ? "Unidad" : "Unit"}</Label>
+                  <Select 
+                    value={formData.unitId} 
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, unitId: v }))}
+                    disabled={!formData.condominiumId}
+                  >
+                    <SelectTrigger data-testid="select-unit">
+                      <SelectValue placeholder={formData.condominiumId 
+                        ? (language === "es" ? "Seleccionar unidad" : "Select unit")
+                        : (language === "es" ? "Primero seleccione un condominio" : "First select a condominium")
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredUnits.map(unit => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -869,14 +1040,33 @@ export default function ExternalAppointments() {
                         </span>
                       </div>
                       <Select 
-                        value={stop.unitId} 
-                        onValueChange={(v) => handleTourStopChange(index, "unitId", v)}
+                        value={stop.condominiumId || ""} 
+                        onValueChange={(v) => handleTourStopChange(index, "condominiumId", v)}
                       >
-                        <SelectTrigger data-testid={`select-tour-unit-${index}`}>
-                          <SelectValue placeholder={language === "es" ? "Seleccionar propiedad" : "Select property"} />
+                        <SelectTrigger data-testid={`select-tour-condo-${index}`}>
+                          <SelectValue placeholder={language === "es" ? "Seleccionar condominio" : "Select condominium"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {units.map(unit => (
+                          {condominiums.map(condo => (
+                            <SelectItem key={condo.id} value={condo.id}>
+                              {condo.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select 
+                        value={stop.unitId} 
+                        onValueChange={(v) => handleTourStopChange(index, "unitId", v)}
+                        disabled={!stop.condominiumId}
+                      >
+                        <SelectTrigger data-testid={`select-tour-unit-${index}`}>
+                          <SelectValue placeholder={stop.condominiumId
+                            ? (language === "es" ? "Seleccionar unidad" : "Select unit")
+                            : (language === "es" ? "Primero seleccione un condominio" : "First select a condominium")
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getUnitsForCondominium(stop.condominiumId || "").map(unit => (
                             <SelectItem key={unit.id} value={unit.id}>
                               {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
                             </SelectItem>
