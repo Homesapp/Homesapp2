@@ -1160,7 +1160,10 @@ export default function ExternalAppointments() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[300px] p-0 z-[100]" align="start">
-                        <Command>
+                        <Command filter={(value, search) => {
+                          if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+                          return 0;
+                        }}>
                           <CommandInput placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."} />
                           <CommandList>
                             <CommandEmpty>{language === "es" ? "No se encontraron condominios" : "No condominiums found"}</CommandEmpty>
@@ -1262,7 +1265,10 @@ export default function ExternalAppointments() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[250px] p-0 z-[100]" align="start">
-                            <Command>
+                            <Command filter={(value, search) => {
+                              if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+                              return 0;
+                            }}>
                               <CommandInput placeholder={language === "es" ? "Buscar..." : "Search..."} className="h-9" />
                               <CommandList>
                                 <CommandEmpty>{language === "es" ? "No encontrado" : "Not found"}</CommandEmpty>
