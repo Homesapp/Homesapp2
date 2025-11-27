@@ -619,4 +619,68 @@ export function registerPortalRoutes(
       handleGenericError(res, error);
     }
   });
+
+  // GET all portal tokens for the agency
+  app.get("/api/external/portal-tokens", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { role, status } = req.query;
+      const filters: { role?: string; status?: string } = {};
+      if (role && ['tenant', 'owner'].includes(role)) {
+        filters.role = role;
+      }
+      if (status && ['active', 'revoked', 'expired'].includes(status)) {
+        filters.status = status;
+      }
+
+      const tokens = await storage.getExternalPortalAccessTokensByAgency(agencyId, filters);
+      res.json(tokens);
+    } catch (error: any) {
+      console.error("Error getting portal tokens:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST reset password for a portal token
+  app.post("/api/external/portal-tokens/:id/reset-password", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(403).json({ message: "User is not assigned to any agency" });
+      }
+
+      const token = await storage.getExternalPortalAccessToken(id);
+      if (!token || token.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Token not found" });
+      }
+
+      if (token.status !== 'active') {
+        return res.status(400).json({ message: "Cannot reset password for inactive token" });
+      }
+
+      const plainPassword = crypto.randomBytes(6).toString('hex').toUpperCase();
+      const accessCodeHash = await bcrypt.hash(plainPassword, 10);
+
+      await storage.updateExternalPortalAccessToken(id, { accessCodeHash });
+      await createAuditLog(req, "update", "external_portal_access_token", id, `Reset password for portal token`);
+
+      res.json({
+        success: true,
+        accessCode: token.accessCode,
+        password: plainPassword,
+        message: "Password reset successfully",
+        message_es: "Contraseña restablecida exitosamente"
+      });
+    } catch (error: any) {
+      console.error("Error resetting portal password:", error);
+      handleGenericError(res, error);
+    }
+  });
 }

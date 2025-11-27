@@ -1645,6 +1645,7 @@ export interface IStorage {
   getExternalPortalAccessToken(id: string): Promise<ExternalPortalAccessToken | undefined>;
   getExternalPortalAccessTokenByCode(accessCode: string): Promise<ExternalPortalAccessToken | undefined>;
   getExternalPortalAccessTokensByContract(contractId: string): Promise<ExternalPortalAccessToken[]>;
+  getExternalPortalAccessTokensByAgency(agencyId: string, filters?: { role?: string; status?: string }): Promise<any[]>;
   createExternalPortalAccessToken(token: InsertExternalPortalAccessToken): Promise<ExternalPortalAccessToken>;
   updateExternalPortalAccessToken(id: string, updates: Partial<InsertExternalPortalAccessToken>): Promise<ExternalPortalAccessToken>;
   revokeExternalPortalAccessToken(id: string): Promise<void>;
@@ -11834,6 +11835,46 @@ export class DatabaseStorage implements IStorage {
       .from(externalPortalAccessTokens)
       .where(eq(externalPortalAccessTokens.contractId, contractId))
       .orderBy(desc(externalPortalAccessTokens.createdAt));
+  }
+
+  async getExternalPortalAccessTokensByAgency(agencyId: string, filters?: { role?: string; status?: string }): Promise<any[]> {
+    const conditions = [eq(externalPortalAccessTokens.agencyId, agencyId)];
+    
+    if (filters?.role) {
+      conditions.push(eq(externalPortalAccessTokens.role, filters.role as 'tenant' | 'owner'));
+    }
+    if (filters?.status) {
+      conditions.push(eq(externalPortalAccessTokens.status, filters.status as 'active' | 'revoked' | 'expired'));
+    }
+
+    const tokens = await db
+      .select({
+        id: externalPortalAccessTokens.id,
+        contractId: externalPortalAccessTokens.contractId,
+        agencyId: externalPortalAccessTokens.agencyId,
+        role: externalPortalAccessTokens.role,
+        accessCode: externalPortalAccessTokens.accessCode,
+        status: externalPortalAccessTokens.status,
+        expiresAt: externalPortalAccessTokens.expiresAt,
+        lastUsedAt: externalPortalAccessTokens.lastUsedAt,
+        usageCount: externalPortalAccessTokens.usageCount,
+        createdAt: externalPortalAccessTokens.createdAt,
+        tenantName: externalRentalContracts.tenantName,
+        tenantEmail: externalRentalContracts.tenantEmail,
+        ownerName: externalRentalContracts.ownerName,
+        ownerEmail: externalRentalContracts.ownerEmail,
+        contractStatus: externalRentalContracts.status,
+        contractStartDate: externalRentalContracts.startDate,
+        contractEndDate: externalRentalContracts.endDate,
+        propertyId: externalRentalContracts.propertyId,
+        unitId: externalRentalContracts.unitId,
+      })
+      .from(externalPortalAccessTokens)
+      .leftJoin(externalRentalContracts, eq(externalPortalAccessTokens.contractId, externalRentalContracts.id))
+      .where(and(...conditions))
+      .orderBy(desc(externalPortalAccessTokens.createdAt));
+
+    return tokens;
   }
 
   async createExternalPortalAccessToken(token: InsertExternalPortalAccessToken): Promise<ExternalPortalAccessToken> {
