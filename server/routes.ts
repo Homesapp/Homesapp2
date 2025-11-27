@@ -25343,6 +25343,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertExternalUnitAccessControlSchema.parse(req.body);
       
+      
+      // Verify unit exists and user has agency access (tenant isolation)
+      const unit = await storage.getExternalUnit(validatedData.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
       // Encrypt sensitive data before storing
       const dataToStore: any = {
         ...validatedData,
