@@ -245,6 +245,11 @@ export default function ExternalAppointments() {
     queryKey: ["/api/external/users"],
   });
 
+  const { data: condoUnits = [] } = useQuery<{ id: string; unitNumber: string; type: string }[]>({
+    queryKey: ["/api/external-condominiums", formData.condominiumId, "units"],
+    enabled: !!formData.condominiumId,
+  });
+
   const salespersons = useMemo(() => {
     return agencyUsers.filter(u => 
       u.role === "external_agency_staff" || 
@@ -252,10 +257,24 @@ export default function ExternalAppointments() {
     );
   }, [agencyUsers]);
 
-  const filteredUnits = useMemo(() => {
-    if (!formData.condominiumId) return [];
-    return units.filter(u => u.condominiumId === formData.condominiumId);
-  }, [units, formData.condominiumId]);
+  const filteredUnits = condoUnits;
+
+  const [tourUnitsCache, setTourUnitsCache] = useState<Record<string, { id: string; unitNumber: string; type: string }[]>>({});
+
+  const fetchUnitsForCondominium = async (condominiumId: string) => {
+    if (!condominiumId || tourUnitsCache[condominiumId]) return;
+    try {
+      const response = await fetch(`/api/external-condominiums/${condominiumId}/units`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTourUnitsCache(prev => ({ ...prev, [condominiumId]: data }));
+      }
+    } catch (error) {
+      console.error("Error fetching units:", error);
+    }
+  };
 
   const filteredCondominiums = useMemo(() => {
     if (!condoSearchTerm) return allCondominiums;
@@ -271,9 +290,6 @@ export default function ExternalAppointments() {
     );
   }, [allCondominiums, tourCondoSearchTerm]);
 
-  const getUnitsForCondominium = (condominiumId: string) => {
-    return units.filter(u => u.condominiumId === condominiumId);
-  };
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1239,7 +1255,7 @@ export default function ExternalAppointments() {
                           <SelectItem key={unit.id} value={unit.id}>
                             <div className="flex items-center gap-2">
                               <Home className="h-4 w-4 text-muted-foreground" />
-                              {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
+                              {unit.unitNumber}{unit.type ? ` - ${unit.type}` : ""}
                             </div>
                           </SelectItem>
                         ))}
@@ -1321,6 +1337,7 @@ export default function ExternalAppointments() {
                                       )}
                                       onClick={() => {
                                         handleTourStopChange(index, "condominiumId", condo.id);
+                                        fetchUnitsForCondominium(condo.id);
                                         setTourCondoComboOpen(null);
                                         setTourCondoSearchTerm("");
                                       }}
@@ -1345,9 +1362,9 @@ export default function ExternalAppointments() {
                             <SelectValue placeholder={language === "es" ? "Unidad" : "Unit"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {getUnitsForCondominium(stop.condominiumId || "").map(unit => (
+                            {(tourUnitsCache[stop.condominiumId || ""] || []).map(unit => (
                               <SelectItem key={unit.id} value={unit.id}>
-                                {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
+                                {unit.unitNumber}{unit.type ? ` - ${unit.type}` : ""}
                               </SelectItem>
                             ))}
                           </SelectContent>
