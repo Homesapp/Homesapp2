@@ -5410,6 +5410,7 @@ export const externalAppointments = pgTable("external_appointments", {
   // Client/Lead information
   clientId: varchar("client_id").references(() => externalClients.id, { onDelete: "set null" }), // Linked to existing client
   leadId: varchar("lead_id").references(() => externalLeads.id, { onDelete: "set null" }), // Linked to existing lead
+  presentationCardId: varchar("presentation_card_id"), // Linked to presentation card (search profile)
   // Snapshot fields for leads not in system
   clientName: varchar("client_name", { length: 255 }),
   clientEmail: varchar("client_email", { length: 255 }),
@@ -6177,6 +6178,151 @@ export const updateExternalClientIncidentSchema = insertExternalClientIncidentSc
 export type InsertExternalClientIncident = z.infer<typeof insertExternalClientIncidentSchema>;
 export type UpdateExternalClientIncident = z.infer<typeof updateExternalClientIncidentSchema>;
 export type ExternalClientIncident = typeof externalClientIncidents.$inferSelect;
+
+// External Presentation Card Status Enum
+export const presentationCardStatusEnum = pgEnum("presentation_card_status", [
+  "active",
+  "inactive",
+  "archived",
+]);
+
+// External Property Showing Outcome Enum
+export const showingOutcomeEnum = pgEnum("showing_outcome", [
+  "interested",
+  "not_interested", 
+  "pending",
+  "visited",
+  "no_show",
+  "cancelled",
+]);
+
+// External Presentation Cards - Search profiles for leads/clients
+export const externalPresentationCards = pgTable("external_presentation_cards", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Link to lead OR client (one required)
+  leadId: varchar("lead_id").references(() => externalLeads.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").references(() => externalClients.id, { onDelete: "cascade" }),
+  
+  // Card Info
+  title: varchar("title", { length: 200 }).notNull(), // "Búsqueda #1", "Renta Corta Playa", etc.
+  cardNumber: integer("card_number").notNull().default(1), // Auto-incrementing per lead/client
+  
+  // Property Preferences
+  propertyType: varchar("property_type", { length: 100 }), // departamento, casa, estudio, etc.
+  modality: varchar("modality", { length: 50 }).default("rent"), // rent, sale, both
+  minBudget: decimal("min_budget", { precision: 10, scale: 2 }),
+  maxBudget: decimal("max_budget", { precision: 10, scale: 2 }),
+  budgetText: varchar("budget_text", { length: 100 }), // "25-35mil", flexible text
+  bedrooms: integer("bedrooms"),
+  bedroomsText: varchar("bedrooms_text", { length: 20 }), // "1-2", "2/3"
+  bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }),
+  
+  // Location & Timing
+  preferredZone: varchar("preferred_zone", { length: 200 }), // La Veleta, Aldea Zama, etc.
+  moveInDate: timestamp("move_in_date"),
+  moveInDateText: varchar("move_in_date_text", { length: 100 }), // "Noviembre", "Inmediato"
+  contractDuration: varchar("contract_duration", { length: 100 }), // "6 meses", "1 año"
+  
+  // Pets
+  hasPets: boolean("has_pets").default(false),
+  petsDescription: varchar("pets_description", { length: 200 }), // "2 perros pequeños"
+  
+  // Additional Requirements
+  amenities: text("amenities").array().default(sql`ARRAY[]::text[]`), // pool, gym, parking, etc.
+  additionalRequirements: text("additional_requirements"),
+  specificProperty: varchar("specific_property", { length: 200 }), // "Naia Naay E302"
+  
+  // Status & Usage
+  status: presentationCardStatusEnum("status").notNull().default("active"),
+  isDefault: boolean("is_default").notNull().default(false), // Primary search profile
+  usageCount: integer("usage_count").notNull().default(0), // How many times used for showings
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_presentation_cards_agency").on(table.agencyId),
+  index("idx_presentation_cards_lead").on(table.leadId),
+  index("idx_presentation_cards_client").on(table.clientId),
+  index("idx_presentation_cards_status").on(table.status),
+]);
+
+export const insertExternalPresentationCardSchema = createInsertSchema(externalPresentationCards).omit({
+  id: true,
+  agencyId: true,
+  cardNumber: true,
+  usageCount: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  moveInDate: z.coerce.date().optional(),
+});
+
+export const updateExternalPresentationCardSchema = insertExternalPresentationCardSchema.partial();
+
+export type InsertExternalPresentationCard = z.infer<typeof insertExternalPresentationCardSchema>;
+export type UpdateExternalPresentationCard = z.infer<typeof updateExternalPresentationCardSchema>;
+export type ExternalPresentationCard = typeof externalPresentationCards.$inferSelect;
+
+// External Property Showings - Track property visits linked to cards
+export const externalPropertyShowings = pgTable("external_property_showings", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Links
+  presentationCardId: varchar("presentation_card_id").references(() => externalPresentationCards.id, { onDelete: "set null" }),
+  appointmentId: varchar("appointment_id").references(() => externalAppointments.id, { onDelete: "set null" }),
+  leadId: varchar("lead_id").references(() => externalLeads.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").references(() => externalClients.id, { onDelete: "cascade" }),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }),
+  
+  // Showing Details
+  shownAt: timestamp("shown_at").notNull(), // When the property was shown
+  outcome: showingOutcomeEnum("outcome").notNull().default("pending"),
+  
+  // Feedback
+  clientFeedback: text("client_feedback"), // What the client said
+  agentNotes: text("agent_notes"), // Internal notes from agent
+  rating: integer("rating"), // 1-5 star rating from client
+  
+  // Follow-up
+  followUpDate: timestamp("follow_up_date"),
+  followUpNotes: text("follow_up_notes"),
+  
+  // Metadata
+  recordedBy: varchar("recorded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_property_showings_agency").on(table.agencyId),
+  index("idx_property_showings_card").on(table.presentationCardId),
+  index("idx_property_showings_appointment").on(table.appointmentId),
+  index("idx_property_showings_lead").on(table.leadId),
+  index("idx_property_showings_client").on(table.clientId),
+  index("idx_property_showings_unit").on(table.unitId),
+  index("idx_property_showings_outcome").on(table.outcome),
+  index("idx_property_showings_shown_at").on(table.shownAt),
+]);
+
+export const insertExternalPropertyShowingSchema = createInsertSchema(externalPropertyShowings).omit({
+  id: true,
+  agencyId: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  shownAt: z.coerce.date(),
+  followUpDate: z.coerce.date().optional(),
+});
+
+export const updateExternalPropertyShowingSchema = insertExternalPropertyShowingSchema.partial();
+
+export type InsertExternalPropertyShowing = z.infer<typeof insertExternalPropertyShowingSchema>;
+export type UpdateExternalPropertyShowing = z.infer<typeof updateExternalPropertyShowingSchema>;
+export type ExternalPropertyShowing = typeof externalPropertyShowings.$inferSelect;
 
 // External Leads - Leads registrados por brokers o sellers que se convierten en clientes
 export const externalLeads = pgTable("external_leads", {
