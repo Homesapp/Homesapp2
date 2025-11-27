@@ -138,6 +138,7 @@ import AdminRentalFormManagement from "@/pages/AdminRentalFormManagement";
 import ExternalDashboard from "@/pages/ExternalDashboard";
 import ExternalAgencyConfig from "@/pages/ExternalAgencyConfig";
 import ExternalAccounts from "@/pages/ExternalAccounts";
+import ExternalPortal from "@/pages/ExternalPortal";
 import ExternalAccesses from "@/pages/ExternalAccesses";
 import ExternalProperties from "@/pages/ExternalProperties";
 import ExternalPayments from "@/pages/ExternalPayments";
@@ -465,6 +466,7 @@ function AuthenticatedApp() {
               <Route path="/external/dashboard" component={ExternalDashboard} />
               <Route path="/external/agency" component={ExternalAgencyConfig} />
               <Route path="/external/accounts" component={ExternalAccounts} />
+              <Route path="/external/portal" component={ExternalPortal} />
               <Route path="/external/accesses" component={ExternalAccesses} />
               <Route path="/external/properties" component={ExternalProperties} />
               <Route path="/external/payments" component={ExternalPayments} />
