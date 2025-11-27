@@ -12,7 +12,6 @@ import {
   User, 
   ScrollText, 
   UserCircle2, 
-  Settings,
   Users,
   Key
 } from "lucide-react";
@@ -142,13 +141,6 @@ export default function ExternalDashboard() {
       icon: Key,
       href: "/external/accesses",
       color: "text-amber-600",
-    },
-    {
-      title: language === "es" ? "Configuración" : "Settings",
-      description: language === "es" ? "Ajustes del sistema" : "System settings",
-      icon: Settings,
-      href: "/external/configuration",
-      color: "text-gray-600",
     },
   ];
 
