@@ -167,7 +167,8 @@ function BackfillPresentationCards({ language, toast }: { language: string; toas
 export default function ExternalConfiguration() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"tenant" | "owner" | "designs" | "integrations" | "data" | "catalogs">("tenant");
+  const [activeTab, setActiveTab] = useState<"terms" | "designs" | "integrations" | "data" | "catalogs">("terms");
+  const [termsSubTab, setTermsSubTab] = useState<"tenant" | "owner">("tenant");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerms, setEditingTerms] = useState<any>(null);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
@@ -354,7 +355,7 @@ export default function ExternalConfiguration() {
         version: "",
         title: "",
         content: "",
-        type: activeTab,
+        type: termsSubTab,
       });
     }
     setIsDialogOpen(true);
@@ -1846,19 +1847,18 @@ export default function ExternalConfiguration() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full max-w-5xl grid-cols-6">
-          <TabsTrigger value="tenant" data-testid="tab-tenant-terms">
-            {t("configuration.tenantTerms")}
-          </TabsTrigger>
-          <TabsTrigger value="owner" data-testid="tab-owner-terms">
-            {t("configuration.ownerTerms")}
+        <TabsList className="grid w-full max-w-4xl grid-cols-5">
+          <TabsTrigger value="terms" data-testid="tab-terms">
+            <FileText className="h-4 w-4 mr-2" />
+            {language === "es" ? "Términos" : "Terms"}
           </TabsTrigger>
           <TabsTrigger value="catalogs" data-testid="tab-catalogs">
             <List className="h-4 w-4 mr-2" />
             {language === "es" ? "Catálogos" : "Catalogs"}
           </TabsTrigger>
           <TabsTrigger value="designs" data-testid="tab-pdf-designs">
-            {language === "es" ? "Diseños de PDF" : "PDF Designs"}
+            <Eye className="h-4 w-4 mr-2" />
+            {language === "es" ? "Diseños PDF" : "PDF Designs"}
           </TabsTrigger>
           <TabsTrigger value="integrations" data-testid="tab-integrations">
             <Plug className="h-4 w-4 mr-2" />
@@ -1866,32 +1866,47 @@ export default function ExternalConfiguration() {
           </TabsTrigger>
           <TabsTrigger value="data" data-testid="tab-data-import">
             <FileSpreadsheet className="h-4 w-4 mr-2" />
-            {language === "es" ? "Importar Datos" : "Import Data"}
+            {language === "es" ? "Datos" : "Data"}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="tenant" className="mt-6">
-          {isLoading ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">Cargando...</div>
-              </CardContent>
-            </Card>
-          ) : (
-            renderTermsList(tenantTerms, "tenant")
-          )}
-        </TabsContent>
-
-        <TabsContent value="owner" className="mt-6">
-          {isLoading ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">Cargando...</div>
-              </CardContent>
-            </Card>
-          ) : (
-            renderTermsList(ownerTerms, "owner")
-          )}
+        <TabsContent value="terms" className="mt-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 border-b pb-3">
+              <Button
+                variant={termsSubTab === "tenant" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTermsSubTab("tenant")}
+                data-testid="subtab-tenant-terms"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                {language === "es" ? "Inquilinos" : "Tenants"}
+              </Button>
+              <Button
+                variant={termsSubTab === "owner" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTermsSubTab("owner")}
+                data-testid="subtab-owner-terms"
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                {language === "es" ? "Propietarios" : "Owners"}
+              </Button>
+            </div>
+            
+            {isLoading ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center text-muted-foreground">
+                    {language === "es" ? "Cargando..." : "Loading..."}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : termsSubTab === "tenant" ? (
+              renderTermsList(tenantTerms, "tenant")
+            ) : (
+              renderTermsList(ownerTerms, "owner")
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="catalogs" className="mt-6">
@@ -2240,35 +2255,37 @@ export default function ExternalConfiguration() {
                 </Card>
               )}
 
-              <GoogleSheetsImport 
-                agencyId={agency?.id} 
-                language={language}
-                toast={toast}
-              />
-
-              <CSVDataManager
-                agencyId={agency?.id}
-                language={language}
-                toast={toast}
-              />
-
-              {/* Presentation Cards Backfill */}
-              <Card>
+              {/* Presentation Cards Backfill - Prominent at top */}
+              <Card className="border-primary/20 bg-primary/5">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Home className="h-5 w-5" />
+                    <Home className="h-5 w-5 text-primary" />
                     {language === "es" ? "Tarjetas de Presentación" : "Presentation Cards"}
                   </CardTitle>
                   <CardDescription>
                     {language === "es" 
-                      ? "Genera tarjetas de presentación iniciales para leads que no tienen ninguna"
-                      : "Generate initial presentation cards for leads that don't have any"}
+                      ? "Genera tarjetas de presentación iniciales para leads existentes que no tienen ninguna"
+                      : "Generate initial presentation cards for existing leads that don't have any"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <BackfillPresentationCards language={language} toast={toast} />
                 </CardContent>
               </Card>
+
+              {/* Google Sheets Import */}
+              <GoogleSheetsImport 
+                agencyId={agency?.id} 
+                language={language}
+                toast={toast}
+              />
+
+              {/* CSV Import/Export */}
+              <CSVDataManager
+                agencyId={agency?.id}
+                language={language}
+                toast={toast}
+              />
             </div>
           )}
         </TabsContent>
