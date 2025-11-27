@@ -5771,6 +5771,12 @@ export const externalMaintenanceTickets = pgTable("external_maintenance_tickets"
   accountingTransactionId: varchar("accounting_transaction_id"), // ID de la transacción contable generada
   accountingSyncStatus: varchar("accounting_sync_status", { length: 50 }).default("pending"), // pending, synced, error
   
+  // Payment tracking - Estado de pagos
+  workerPaymentStatus: varchar("worker_payment_status", { length: 50 }).default("pending"), // pending, paid - Si ya se le pagó al trabajador
+  workerPaymentDate: timestamp("worker_payment_date"), // Fecha en que se pagó al trabajador
+  agencyCollectedStatus: varchar("agency_collected_status", { length: 50 }).default("pending"), // pending, collected - Si la agencia ya cobró
+  agencyCollectedDate: timestamp("agency_collected_date"), // Fecha en que la agencia cobró
+  
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
