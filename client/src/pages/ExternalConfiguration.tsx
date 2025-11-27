@@ -183,6 +183,14 @@ export default function ExternalConfiguration() {
     },
   });
 
+  // Fetch current user to check role
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/auth/user'],
+  });
+  
+  // Check if user can switch agencies (only master/admin can)
+  const canSwitchAgencies = currentUser?.role && ["master", "admin"].includes(currentUser.role);
+
   // Fetch all terms
   const { data: allTerms, isLoading } = useQuery({
     queryKey: ['/api/external/configuration/terms'],
@@ -1967,7 +1975,7 @@ export default function ExternalConfiguration() {
                         : "Select the design that will be applied to rental forms and offer PDFs"}
                     </CardDescription>
                   </div>
-                  {hasMultipleAgencies && agencies && agencies.length > 0 && (
+                  {hasMultipleAgencies && canSwitchAgencies && agencies && agencies.length > 0 && (
                     <div className="flex items-center gap-2 min-w-[250px]">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
                       <Select value={selectedAgencyId || agencies[0]?.id} onValueChange={setSelectedAgencyId}>
@@ -2161,7 +2169,7 @@ export default function ExternalConfiguration() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {hasMultipleAgencies && (
+              {hasMultipleAgencies && canSwitchAgencies && (
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
@@ -2228,7 +2236,7 @@ export default function ExternalConfiguration() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {hasMultipleAgencies && (
+              {hasMultipleAgencies && canSwitchAgencies && (
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">

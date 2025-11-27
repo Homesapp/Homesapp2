@@ -27541,7 +27541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all leads for this agency
-      const leads = await storage.getExternalLeads(agencyId);
+      const leads = await storage.getExternalLeadsByAgency(agencyId, {});
       
       let created = 0;
       let skipped = 0;
