@@ -340,12 +340,20 @@ export default function ExternalMaintenance() {
   if (debouncedSearch) ticketsQueryParams.set('search', debouncedSearch);
   if (statusFilter !== 'all') ticketsQueryParams.set('status', statusFilter);
   if (priorityFilter !== 'all') ticketsQueryParams.set('priority', priorityFilter);
-  if (categoryFilter !== 'all') ticketsQueryParams.set('category', categoryFilter);
-  // Filter by active service tab
+  // Filter by active service tab - tab-level filtering takes precedence over category filter
   if (activeServiceTab === "cleaning") {
+    // Cleaning tab: ONLY show cleaning category, ignore categoryFilter
     ticketsQueryParams.set('category', 'cleaning');
-  } else if (activeServiceTab === "maintenance" && categoryFilter === 'all') {
+  } else if (activeServiceTab === "maintenance") {
+    // Maintenance tab: ALWAYS exclude cleaning category
     ticketsQueryParams.set('excludeCategories', 'cleaning');
+    // Apply additional category filter if selected (except cleaning which is excluded)
+    if (categoryFilter !== 'all' && categoryFilter !== 'cleaning') {
+      ticketsQueryParams.set('category', categoryFilter);
+    }
+  } else {
+    // Default: apply category filter as normal
+    if (categoryFilter !== 'all') ticketsQueryParams.set('category', categoryFilter);
   }
   if (condominiumFilter !== 'all') ticketsQueryParams.set('condominiumId', condominiumFilter);
   if (dateFilter !== 'all') ticketsQueryParams.set('dateFilter', dateFilter);
