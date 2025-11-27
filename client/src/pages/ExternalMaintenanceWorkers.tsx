@@ -195,18 +195,23 @@ export default function ExternalMaintenanceWorkers({
     return workers.filter(w => !assignedWorkerIds.has(w.id));
   }, [workers, assignments]);
 
-  // Static/semi-static data: condominiums for dropdowns
+  // Static/semi-static data: condominiums for dropdowns (load all)
   const { data: condominiumsResponse } = useQuery<{ data: any[], total: number }>({
-    queryKey: ['/api/external-condominiums'],
+    queryKey: ['/api/external-condominiums', 'all-for-workers'],
+    queryFn: async () => {
+      const response = await fetch('/api/external-condominiums?limit=2000', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch condominiums');
+      return response.json();
+    },
     staleTime: 15 * 60 * 1000, // 15 minutes (rarely changes)
   });
   const condominiums = condominiumsResponse?.data || [];
 
-  // Static/semi-static data: units for dropdowns
+  // Static/semi-static data: units for dropdowns (load all)
   const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({
-    queryKey: ['/api/external-units', 'for-workers-dropdown'],
+    queryKey: ['/api/external-units', 'all-for-workers'],
     queryFn: async () => {
-      const response = await fetch('/api/external-units?limit=1000', { credentials: 'include' });
+      const response = await fetch('/api/external-units?limit=5000', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch units');
       return response.json();
     },
