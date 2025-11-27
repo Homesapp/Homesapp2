@@ -28343,6 +28343,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Helper to get effective close date (closedAt or resolvedDate)
+  function getEffectiveCloseDate(ticket: any): Date | null {
+    if (ticket.closedAt) return new Date(ticket.closedAt);
+    if (ticket.resolvedDate) return new Date(ticket.resolvedDate);
+    if (ticket.invoiceDate) return new Date(ticket.invoiceDate);
+    return null;
+  }
+
   // GET /api/external/accounting/payroll/maintenance - Get maintenance payroll for biweekly period
   app.get("/api/external/accounting/payroll/maintenance", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
@@ -28358,7 +28366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
       
-      // Get all closed/resolved tickets for the period - excluding cleaning category
+      // Get all closed/resolved tickets - excluding cleaning category
       const allTickets = await db.select({
         ticket: externalMaintenanceTickets,
         unit: externalUnits,
@@ -28372,40 +28380,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(externalMaintenanceTickets.agencyId, agencyId),
           inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
-          ne(externalMaintenanceTickets.category, 'cleaning'),
-          gte(externalMaintenanceTickets.closedAt, startDate),
-          lte(externalMaintenanceTickets.closedAt, endDate)
+          ne(externalMaintenanceTickets.category, 'cleaning')
         ))
         .orderBy(desc(externalMaintenanceTickets.closedAt));
       
-      // Calculate totals - using finalChargeAmount (without admin fee)
-      const payrollItems = allTickets.map(item => ({
-        ticketId: item.ticket.id,
-        ticketNumber: item.ticket.ticketNumber,
-        title: item.ticket.title,
-        category: item.ticket.category,
-        closedAt: item.ticket.closedAt,
-        unitNumber: item.unit?.unitNumber,
-        condominiumName: item.condominium?.name,
-        workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() : 'Sin asignar',
-        workerEmail: item.worker?.email,
-        netPayment: item.ticket.finalChargeAmount || '0', // Net amount to worker (without admin fee)
-        adminFee: item.ticket.adminFeeAmount || '0',
-        totalCharged: item.ticket.totalChargeAmount || '0',
-      }));
+      // Filter by date range using effective close date (closedAt or resolvedDate)
+      const filteredTickets = allTickets.filter(item => {
+        const effectiveDate = getEffectiveCloseDate(item.ticket);
+        if (!effectiveDate) return false;
+        return effectiveDate >= startDate && effectiveDate <= endDate;
+      });
+      
+      // Build payroll items
+      const payrollItems = filteredTickets.map(item => {
+        const effectiveDate = getEffectiveCloseDate(item.ticket);
+        return {
+          ticketId: item.ticket.id,
+          ticketNumber: item.ticket.ticketNumber || `TK-${item.ticket.id.slice(0, 8)}`,
+          title: item.ticket.title,
+          category: item.ticket.category,
+          closedAt: effectiveDate?.toISOString() || null,
+          unitNumber: item.unit?.unitNumber || null,
+          condominiumName: item.condominium?.name || null,
+          workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() || item.worker.email : 'Sin asignar',
+          workerEmail: item.worker?.email || null,
+          netPayment: parseFloat(item.ticket.finalChargeAmount || '0'),
+          adminFee: parseFloat(item.ticket.adminFeeAmount || '0'),
+          totalCharged: parseFloat(item.ticket.totalChargeAmount || '0'),
+        };
+      });
 
-      const totalNetPayment = payrollItems.reduce((sum, item) => sum + parseFloat(item.netPayment), 0);
-      const totalAdminFees = payrollItems.reduce((sum, item) => sum + parseFloat(item.adminFee), 0);
+      const totalNetPayment = payrollItems.reduce((sum, item) => sum + item.netPayment, 0);
+      const totalAdminFees = payrollItems.reduce((sum, item) => sum + item.adminFee, 0);
 
       res.json({
         period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate,
-        endDate,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         items: payrollItems,
         totals: {
           count: payrollItems.length,
-          netPayment: totalNetPayment.toFixed(2),
-          adminFees: totalAdminFees.toFixed(2),
+          netPayment: totalNetPayment,
+          adminFees: totalAdminFees,
         }
       });
     } catch (error: any) {
@@ -28429,7 +28445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
       
-      // Get all closed/resolved tickets for the period - only cleaning category
+      // Get all closed/resolved tickets - only cleaning category
       const allTickets = await db.select({
         ticket: externalMaintenanceTickets,
         unit: externalUnits,
@@ -28443,40 +28459,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(externalMaintenanceTickets.agencyId, agencyId),
           inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
-          eq(externalMaintenanceTickets.category, 'cleaning'),
-          gte(externalMaintenanceTickets.closedAt, startDate),
-          lte(externalMaintenanceTickets.closedAt, endDate)
+          eq(externalMaintenanceTickets.category, 'cleaning')
         ))
         .orderBy(desc(externalMaintenanceTickets.closedAt));
       
-      // Calculate totals - using finalChargeAmount (without admin fee)
-      const payrollItems = allTickets.map(item => ({
-        ticketId: item.ticket.id,
-        ticketNumber: item.ticket.ticketNumber,
-        title: item.ticket.title,
-        category: item.ticket.category,
-        closedAt: item.ticket.closedAt,
-        unitNumber: item.unit?.unitNumber,
-        condominiumName: item.condominium?.name,
-        workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() : 'Sin asignar',
-        workerEmail: item.worker?.email,
-        netPayment: item.ticket.finalChargeAmount || '0',
-        adminFee: item.ticket.adminFeeAmount || '0',
-        totalCharged: item.ticket.totalChargeAmount || '0',
-      }));
+      // Filter by date range using effective close date
+      const filteredTickets = allTickets.filter(item => {
+        const effectiveDate = getEffectiveCloseDate(item.ticket);
+        if (!effectiveDate) return false;
+        return effectiveDate >= startDate && effectiveDate <= endDate;
+      });
+      
+      // Build payroll items
+      const payrollItems = filteredTickets.map(item => {
+        const effectiveDate = getEffectiveCloseDate(item.ticket);
+        return {
+          ticketId: item.ticket.id,
+          ticketNumber: item.ticket.ticketNumber || `TK-${item.ticket.id.slice(0, 8)}`,
+          title: item.ticket.title,
+          category: item.ticket.category,
+          closedAt: effectiveDate?.toISOString() || null,
+          unitNumber: item.unit?.unitNumber || null,
+          condominiumName: item.condominium?.name || null,
+          workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() || item.worker.email : 'Sin asignar',
+          workerEmail: item.worker?.email || null,
+          netPayment: parseFloat(item.ticket.finalChargeAmount || '0'),
+          adminFee: parseFloat(item.ticket.adminFeeAmount || '0'),
+          totalCharged: parseFloat(item.ticket.totalChargeAmount || '0'),
+        };
+      });
 
-      const totalNetPayment = payrollItems.reduce((sum, item) => sum + parseFloat(item.netPayment), 0);
-      const totalAdminFees = payrollItems.reduce((sum, item) => sum + parseFloat(item.adminFee), 0);
+      const totalNetPayment = payrollItems.reduce((sum, item) => sum + item.netPayment, 0);
+      const totalAdminFees = payrollItems.reduce((sum, item) => sum + item.adminFee, 0);
 
       res.json({
         period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate,
-        endDate,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         items: payrollItems,
         totals: {
           count: payrollItems.length,
-          netPayment: totalNetPayment.toFixed(2),
-          adminFees: totalAdminFees.toFixed(2),
+          netPayment: totalNetPayment,
+          adminFees: totalAdminFees,
         }
       });
     } catch (error: any) {
@@ -28511,13 +28535,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
         .where(and(
           eq(externalMaintenanceTickets.agencyId, agencyId),
-          inArray(externalMaintenanceTickets.status, ['closed', 'resolved']),
-          gte(externalMaintenanceTickets.closedAt, startDate),
-          lte(externalMaintenanceTickets.closedAt, endDate)
+          inArray(externalMaintenanceTickets.status, ['closed', 'resolved'])
         ))
         .orderBy(desc(externalMaintenanceTickets.closedAt));
 
-      // Get rental commissions from contracts signed in the period
+      // Filter by date range
+      const filteredServiceTickets = serviceTickets.filter(item => {
+        const effectiveDate = getEffectiveCloseDate(item.ticket);
+        if (!effectiveDate) return false;
+        return effectiveDate >= startDate && effectiveDate <= endDate;
+      });
+
+      // Get rental commissions from contracts started in the period
       const rentalContracts = await db.select({
         contract: externalRentalContracts,
         unit: externalUnits,
@@ -28535,49 +28564,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(externalRentalContracts.startDate));
 
       // Build commission items
-      const serviceCommissions = serviceTickets.map(item => ({
-        type: 'service',
-        id: item.ticket.id,
-        reference: item.ticket.ticketNumber,
-        description: item.ticket.title,
-        category: item.ticket.category === 'cleaning' ? 'Limpieza' : 'Mantenimiento',
-        date: item.ticket.closedAt,
-        unitNumber: item.unit?.unitNumber,
-        condominiumName: item.condominium?.name,
-        baseAmount: item.ticket.finalChargeAmount || '0',
-        commissionAmount: item.ticket.adminFeeAmount || '0',
-      }));
+      const serviceCommissions = filteredServiceTickets.map(item => {
+        const effectiveDate = getEffectiveCloseDate(item.ticket);
+        return {
+          type: 'service' as const,
+          id: item.ticket.id,
+          reference: item.ticket.ticketNumber || `TK-${item.ticket.id.slice(0, 8)}`,
+          description: item.ticket.title,
+          category: item.ticket.category === 'cleaning' ? 'Limpieza' : 'Mantenimiento',
+          date: effectiveDate?.toISOString() || null,
+          unitNumber: item.unit?.unitNumber || null,
+          condominiumName: item.condominium?.name || null,
+          baseAmount: parseFloat(item.ticket.finalChargeAmount || '0'),
+          commissionAmount: parseFloat(item.ticket.adminFeeAmount || '0'),
+        };
+      });
 
       const rentalCommissions = rentalContracts.map(item => ({
-        type: 'rental',
+        type: 'rental' as const,
         id: item.contract.id,
         reference: `RENT-${item.contract.id.slice(0, 8)}`,
         description: `Comisión por renta - ${item.unit?.unitNumber || 'Unidad'}`,
         category: 'Renta',
-        date: item.contract.startDate,
-        unitNumber: item.unit?.unitNumber,
-        condominiumName: item.condominium?.name,
-        baseAmount: item.contract.monthlyRent || '0',
-        commissionAmount: item.contract.commissionAmount || '0',
+        date: item.contract.startDate ? new Date(item.contract.startDate).toISOString() : null,
+        unitNumber: item.unit?.unitNumber || null,
+        condominiumName: item.condominium?.name || null,
+        baseAmount: parseFloat(item.contract.monthlyRent || '0'),
+        commissionAmount: parseFloat(item.contract.commissionAmount || '0'),
       }));
 
       const allCommissions = [...serviceCommissions, ...rentalCommissions]
         .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 
-      const totalServiceCommissions = serviceCommissions.reduce((sum, item) => sum + parseFloat(item.commissionAmount), 0);
-      const totalRentalCommissions = rentalCommissions.reduce((sum, item) => sum + parseFloat(item.commissionAmount), 0);
+      const totalServiceCommissions = serviceCommissions.reduce((sum, item) => sum + item.commissionAmount, 0);
+      const totalRentalCommissions = rentalCommissions.reduce((sum, item) => sum + item.commissionAmount, 0);
 
       res.json({
         period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate,
-        endDate,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         items: allCommissions,
         totals: {
           serviceCount: serviceCommissions.length,
           rentalCount: rentalCommissions.length,
-          serviceCommissions: totalServiceCommissions.toFixed(2),
-          rentalCommissions: totalRentalCommissions.toFixed(2),
-          totalCommissions: (totalServiceCommissions + totalRentalCommissions).toFixed(2),
+          serviceCommissions: totalServiceCommissions,
+          rentalCommissions: totalRentalCommissions,
+          totalCommissions: totalServiceCommissions + totalRentalCommissions,
         }
       });
     } catch (error: any) {
@@ -28633,28 +28665,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           leadId: item.lead.id,
           contractId: item.contract.id,
           leadName: item.lead.fullName,
-          leadEmail: item.lead.email,
-          sellerName: item.seller ? `${item.seller.firstName || ''} ${item.seller.lastName || ''}`.trim() : 'Sin vendedor',
-          sellerEmail: item.seller?.email,
-          unitNumber: item.unit?.unitNumber,
-          condominiumName: item.condominium?.name,
-          contractStartDate: item.contract.startDate,
-          monthlyRent: item.contract.monthlyRent,
-          rentalCommission: rentalCommission.toFixed(2),
-          sellerPayout: sellerCommission.toFixed(2),
+          leadEmail: item.lead.email || null,
+          sellerName: item.seller ? `${item.seller.firstName || ''} ${item.seller.lastName || ''}`.trim() || item.seller.email : 'Sin vendedor',
+          sellerEmail: item.seller?.email || null,
+          unitNumber: item.unit?.unitNumber || null,
+          condominiumName: item.condominium?.name || null,
+          contractStartDate: item.contract.startDate ? new Date(item.contract.startDate).toISOString() : null,
+          monthlyRent: parseFloat(item.contract.monthlyRent || '0'),
+          rentalCommission: rentalCommission,
+          sellerPayout: sellerCommission,
         };
       });
 
-      const totalPayouts = sellerPayouts.reduce((sum, item) => sum + parseFloat(item.sellerPayout), 0);
+      const totalPayouts = sellerPayouts.reduce((sum, item) => sum + item.sellerPayout, 0);
 
       res.json({
         period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate,
-        endDate,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         items: sellerPayouts,
         totals: {
           count: sellerPayouts.length,
-          totalPayouts: totalPayouts.toFixed(2),
+          totalPayouts: totalPayouts,
         }
       });
     } catch (error: any) {
@@ -28663,7 +28695,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============================================================================
   // EXTERNAL MANAGEMENT SYSTEM - TERMS AND CONDITIONS ROUTES
   // ============================================================================
 
