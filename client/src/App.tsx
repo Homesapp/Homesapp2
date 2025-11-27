@@ -159,6 +159,7 @@ import ExternalClientEdit from "@/pages/ExternalClientEdit";
 import ExternalContracts from "@/pages/ExternalContracts";
 import ExternalAgencyUsers from "@/pages/ExternalAgencyUsers";
 import AdminExternalAgencies from "@/pages/AdminExternalAgencies";
+import AdminExternalPublicationRequests from "@/pages/AdminExternalPublicationRequests";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -433,6 +434,7 @@ function AuthenticatedApp() {
               <Route path="/admin/offers" component={AdminOfferManagement} />
               <Route path="/admin/rental-forms" component={AdminRentalFormManagement} />
               <Route path="/admin/external-agencies" component={AdminExternalAgencies} />
+              <Route path="/admin/external-publication-requests" component={AdminExternalPublicationRequests} />
               <Route path="/external/dashboard" component={ExternalDashboard} />
               <Route path="/external/agency" component={ExternalAgencyConfig} />
               <Route path="/external/accounts" component={ExternalAccounts} />
