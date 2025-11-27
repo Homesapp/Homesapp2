@@ -118,11 +118,11 @@ const unitEditSchema = z.object({
   videos: z.array(z.string()).default([]),
   amenities: z.array(z.string()).default([]),
   includedServices: z.object({
-    water: z.boolean().optional(),
-    electricity: z.boolean().optional(),
-    internet: z.boolean().optional(),
-    gas: z.boolean().optional(),
-  }).nullable(),
+    water: z.boolean().default(false),
+    electricity: z.boolean().default(false),
+    internet: z.boolean().default(false),
+    gas: z.boolean().default(false),
+  }).default({ water: false, electricity: false, internet: false, gas: false }),
   accessInfo: z.object({
     lockboxCode: z.string().optional(),
     contactPerson: z.string().optional(),
@@ -527,7 +527,12 @@ export default function ExternalUnitDetail() {
       secondaryImages: unit.secondaryImages ?? [],
       videos: unit.videos ?? [],
       amenities: unit.amenities ?? [],
-      includedServices: unit.includedServices as any ?? null,
+      includedServices: {
+        water: (unit.includedServices as any)?.water ?? false,
+        electricity: (unit.includedServices as any)?.electricity ?? false,
+        internet: (unit.includedServices as any)?.internet ?? false,
+        gas: (unit.includedServices as any)?.gas ?? false,
+      },
       accessInfo: unit.accessInfo as any ?? null,
     });
     setShowUnitEditDialog(true);
