@@ -430,6 +430,27 @@ import {
   externalPropertyShowings,
   type ExternalPropertyShowing,
   type InsertExternalPropertyShowing,
+  externalPortalAccessTokens,
+  type ExternalPortalAccessToken,
+  type InsertExternalPortalAccessToken,
+  externalPortalSessions,
+  type ExternalPortalSession,
+  type InsertExternalPortalSession,
+  externalPaymentReceipts,
+  type ExternalPaymentReceipt,
+  type InsertExternalPaymentReceipt,
+  externalServiceAccounts,
+  type ExternalServiceAccount,
+  type InsertExternalServiceAccount,
+  externalTerminationRequests,
+  type ExternalTerminationRequest,
+  type InsertExternalTerminationRequest,
+  externalOwnerPaymentConfirmations,
+  type ExternalOwnerPaymentConfirmation,
+  type InsertExternalOwnerPaymentConfirmation,
+  externalPortalChatMessages,
+  type ExternalPortalChatMessage,
+  type InsertExternalPortalChatMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray } from "drizzle-orm";
@@ -1619,6 +1640,51 @@ export interface IStorage {
   createExternalQuotationToken(tokenData: InsertExternalQuotationToken): Promise<ExternalQuotationToken>;
   getExternalQuotationByToken(token: string): Promise<{ quotation: ExternalQuotation; token: ExternalQuotationToken } | undefined>;
   incrementQuotationTokenAccess(tokenId: string): Promise<void>;
+
+  // Portal Access System - Token operations
+  getExternalPortalAccessToken(id: string): Promise<ExternalPortalAccessToken | undefined>;
+  getExternalPortalAccessTokenByCode(accessCode: string): Promise<ExternalPortalAccessToken | undefined>;
+  getExternalPortalAccessTokensByContract(contractId: string): Promise<ExternalPortalAccessToken[]>;
+  createExternalPortalAccessToken(token: InsertExternalPortalAccessToken): Promise<ExternalPortalAccessToken>;
+  updateExternalPortalAccessToken(id: string, updates: Partial<InsertExternalPortalAccessToken>): Promise<ExternalPortalAccessToken>;
+  revokeExternalPortalAccessToken(id: string): Promise<void>;
+  incrementPortalTokenUsage(id: string): Promise<void>;
+
+  // Portal Access System - Session operations
+  getExternalPortalSession(id: string): Promise<ExternalPortalSession | undefined>;
+  getExternalPortalSessionByToken(sessionToken: string): Promise<ExternalPortalSession | undefined>;
+  createExternalPortalSession(session: InsertExternalPortalSession): Promise<ExternalPortalSession>;
+  updatePortalSessionActivity(id: string): Promise<void>;
+  revokeExternalPortalSession(id: string): Promise<void>;
+
+  // Portal Access System - Payment Receipts
+  getExternalPaymentReceipt(id: string): Promise<ExternalPaymentReceipt | undefined>;
+  getExternalPaymentReceiptsByContract(contractId: string): Promise<ExternalPaymentReceipt[]>;
+  createExternalPaymentReceipt(receipt: InsertExternalPaymentReceipt): Promise<ExternalPaymentReceipt>;
+  updateExternalPaymentReceipt(id: string, updates: Partial<InsertExternalPaymentReceipt>): Promise<ExternalPaymentReceipt>;
+  deleteExternalPaymentReceipt(id: string): Promise<void>;
+
+  // Portal Access System - Service Accounts
+  getExternalServiceAccount(id: string): Promise<ExternalServiceAccount | undefined>;
+  getExternalServiceAccountsByContract(contractId: string): Promise<ExternalServiceAccount[]>;
+  createExternalServiceAccount(account: InsertExternalServiceAccount): Promise<ExternalServiceAccount>;
+  updateExternalServiceAccount(id: string, updates: Partial<InsertExternalServiceAccount>): Promise<ExternalServiceAccount>;
+  deleteExternalServiceAccount(id: string): Promise<void>;
+
+  // Portal Access System - Termination Requests
+  getExternalTerminationRequest(id: string): Promise<ExternalTerminationRequest | undefined>;
+  getExternalTerminationRequestsByContract(contractId: string): Promise<ExternalTerminationRequest[]>;
+  createExternalTerminationRequest(request: InsertExternalTerminationRequest): Promise<ExternalTerminationRequest>;
+  updateExternalTerminationRequest(id: string, updates: Partial<InsertExternalTerminationRequest>): Promise<ExternalTerminationRequest>;
+
+  // Portal Access System - Owner Payment Confirmations
+  getExternalOwnerPaymentConfirmation(id: string): Promise<ExternalOwnerPaymentConfirmation | undefined>;
+  getExternalOwnerPaymentConfirmationsByContract(contractId: string): Promise<ExternalOwnerPaymentConfirmation[]>;
+  createExternalOwnerPaymentConfirmation(confirmation: InsertExternalOwnerPaymentConfirmation): Promise<ExternalOwnerPaymentConfirmation>;
+
+  // Portal Access System - Chat Messages
+  getExternalPortalChatMessages(contractId: string, role: string): Promise<ExternalPortalChatMessage[]>;
+  createExternalPortalChatMessage(message: InsertExternalPortalChatMessage): Promise<ExternalPortalChatMessage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -11738,6 +11804,279 @@ export class DatabaseStorage implements IStorage {
         lastAccessedAt: new Date(),
       })
       .where(eq(externalQuotationTokens.id, tokenId));
+  }
+
+  // Portal Access System - Token operations
+  async getExternalPortalAccessToken(id: string): Promise<ExternalPortalAccessToken | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalPortalAccessTokens)
+      .where(eq(externalPortalAccessTokens.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalPortalAccessTokenByCode(accessCode: string): Promise<ExternalPortalAccessToken | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalPortalAccessTokens)
+      .where(and(
+        eq(externalPortalAccessTokens.accessCode, accessCode),
+        eq(externalPortalAccessTokens.status, 'active')
+      ))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalPortalAccessTokensByContract(contractId: string): Promise<ExternalPortalAccessToken[]> {
+    return await db
+      .select()
+      .from(externalPortalAccessTokens)
+      .where(eq(externalPortalAccessTokens.contractId, contractId))
+      .orderBy(desc(externalPortalAccessTokens.createdAt));
+  }
+
+  async createExternalPortalAccessToken(token: InsertExternalPortalAccessToken): Promise<ExternalPortalAccessToken> {
+    const [result] = await db
+      .insert(externalPortalAccessTokens)
+      .values(token)
+      .returning();
+    return result;
+  }
+
+  async updateExternalPortalAccessToken(id: string, updates: Partial<InsertExternalPortalAccessToken>): Promise<ExternalPortalAccessToken> {
+    const [result] = await db
+      .update(externalPortalAccessTokens)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalPortalAccessTokens.id, id))
+      .returning();
+    return result;
+  }
+
+  async revokeExternalPortalAccessToken(id: string): Promise<void> {
+    await db
+      .update(externalPortalAccessTokens)
+      .set({ status: 'revoked', updatedAt: new Date() })
+      .where(eq(externalPortalAccessTokens.id, id));
+  }
+
+  async incrementPortalTokenUsage(id: string): Promise<void> {
+    await db
+      .update(externalPortalAccessTokens)
+      .set({
+        usageCount: sql`${externalPortalAccessTokens.usageCount} + 1`,
+        lastUsedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(externalPortalAccessTokens.id, id));
+  }
+
+  // Portal Access System - Session operations
+  async getExternalPortalSession(id: string): Promise<ExternalPortalSession | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalPortalSessions)
+      .where(eq(externalPortalSessions.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalPortalSessionByToken(sessionToken: string): Promise<ExternalPortalSession | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalPortalSessions)
+      .where(and(
+        eq(externalPortalSessions.sessionToken, sessionToken),
+        isNull(externalPortalSessions.revokedAt),
+        gte(externalPortalSessions.expiresAt, new Date())
+      ))
+      .limit(1);
+    return result;
+  }
+
+  async createExternalPortalSession(session: InsertExternalPortalSession): Promise<ExternalPortalSession> {
+    const [result] = await db
+      .insert(externalPortalSessions)
+      .values(session)
+      .returning();
+    return result;
+  }
+
+  async updatePortalSessionActivity(id: string): Promise<void> {
+    await db
+      .update(externalPortalSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(externalPortalSessions.id, id));
+  }
+
+  async revokeExternalPortalSession(id: string): Promise<void> {
+    await db
+      .update(externalPortalSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(externalPortalSessions.id, id));
+  }
+
+  // Portal Access System - Payment Receipts
+  async getExternalPaymentReceipt(id: string): Promise<ExternalPaymentReceipt | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalPaymentReceipts)
+      .where(eq(externalPaymentReceipts.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalPaymentReceiptsByContract(contractId: string): Promise<ExternalPaymentReceipt[]> {
+    return await db
+      .select()
+      .from(externalPaymentReceipts)
+      .where(eq(externalPaymentReceipts.contractId, contractId))
+      .orderBy(desc(externalPaymentReceipts.createdAt));
+  }
+
+  async createExternalPaymentReceipt(receipt: InsertExternalPaymentReceipt): Promise<ExternalPaymentReceipt> {
+    const [result] = await db
+      .insert(externalPaymentReceipts)
+      .values(receipt)
+      .returning();
+    return result;
+  }
+
+  async updateExternalPaymentReceipt(id: string, updates: Partial<InsertExternalPaymentReceipt>): Promise<ExternalPaymentReceipt> {
+    const [result] = await db
+      .update(externalPaymentReceipts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalPaymentReceipts.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalPaymentReceipt(id: string): Promise<void> {
+    await db
+      .delete(externalPaymentReceipts)
+      .where(eq(externalPaymentReceipts.id, id));
+  }
+
+  // Portal Access System - Service Accounts
+  async getExternalServiceAccount(id: string): Promise<ExternalServiceAccount | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalServiceAccounts)
+      .where(eq(externalServiceAccounts.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalServiceAccountsByContract(contractId: string): Promise<ExternalServiceAccount[]> {
+    return await db
+      .select()
+      .from(externalServiceAccounts)
+      .where(eq(externalServiceAccounts.contractId, contractId))
+      .orderBy(asc(externalServiceAccounts.serviceType));
+  }
+
+  async createExternalServiceAccount(account: InsertExternalServiceAccount): Promise<ExternalServiceAccount> {
+    const [result] = await db
+      .insert(externalServiceAccounts)
+      .values(account)
+      .returning();
+    return result;
+  }
+
+  async updateExternalServiceAccount(id: string, updates: Partial<InsertExternalServiceAccount>): Promise<ExternalServiceAccount> {
+    const [result] = await db
+      .update(externalServiceAccounts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalServiceAccounts.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalServiceAccount(id: string): Promise<void> {
+    await db
+      .delete(externalServiceAccounts)
+      .where(eq(externalServiceAccounts.id, id));
+  }
+
+  // Portal Access System - Termination Requests
+  async getExternalTerminationRequest(id: string): Promise<ExternalTerminationRequest | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalTerminationRequests)
+      .where(eq(externalTerminationRequests.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalTerminationRequestsByContract(contractId: string): Promise<ExternalTerminationRequest[]> {
+    return await db
+      .select()
+      .from(externalTerminationRequests)
+      .where(eq(externalTerminationRequests.contractId, contractId))
+      .orderBy(desc(externalTerminationRequests.createdAt));
+  }
+
+  async createExternalTerminationRequest(request: InsertExternalTerminationRequest): Promise<ExternalTerminationRequest> {
+    const [result] = await db
+      .insert(externalTerminationRequests)
+      .values(request)
+      .returning();
+    return result;
+  }
+
+  async updateExternalTerminationRequest(id: string, updates: Partial<InsertExternalTerminationRequest>): Promise<ExternalTerminationRequest> {
+    const [result] = await db
+      .update(externalTerminationRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalTerminationRequests.id, id))
+      .returning();
+    return result;
+  }
+
+  // Portal Access System - Owner Payment Confirmations
+  async getExternalOwnerPaymentConfirmation(id: string): Promise<ExternalOwnerPaymentConfirmation | undefined> {
+    const [result] = await db
+      .select()
+      .from(externalOwnerPaymentConfirmations)
+      .where(eq(externalOwnerPaymentConfirmations.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getExternalOwnerPaymentConfirmationsByContract(contractId: string): Promise<ExternalOwnerPaymentConfirmation[]> {
+    return await db
+      .select()
+      .from(externalOwnerPaymentConfirmations)
+      .where(eq(externalOwnerPaymentConfirmations.contractId, contractId))
+      .orderBy(desc(externalOwnerPaymentConfirmations.createdAt));
+  }
+
+  async createExternalOwnerPaymentConfirmation(confirmation: InsertExternalOwnerPaymentConfirmation): Promise<ExternalOwnerPaymentConfirmation> {
+    const [result] = await db
+      .insert(externalOwnerPaymentConfirmations)
+      .values(confirmation)
+      .returning();
+    return result;
+  }
+
+  // Portal Access System - Chat Messages
+  async getExternalPortalChatMessages(contractId: string, role: string): Promise<ExternalPortalChatMessage[]> {
+    return await db
+      .select()
+      .from(externalPortalChatMessages)
+      .where(and(
+        eq(externalPortalChatMessages.contractId, contractId),
+        eq(externalPortalChatMessages.role, role as any)
+      ))
+      .orderBy(asc(externalPortalChatMessages.createdAt));
+  }
+
+  async createExternalPortalChatMessage(message: InsertExternalPortalChatMessage): Promise<ExternalPortalChatMessage> {
+    const [result] = await db
+      .insert(externalPortalChatMessages)
+      .values(message)
+      .returning();
+    return result;
   }
 }
 
