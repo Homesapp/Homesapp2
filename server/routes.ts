@@ -30702,7 +30702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the transaction to mark as paid
       const updatedTransaction = await storage.updateExternalFinancialTransaction(id, {
         status: 'paid',
-        paidDate: paidDate ? new Date(paidDate) : new Date(),
+        performedDate: paidDate ? new Date(paidDate) : new Date(),
         notes: notes ? (existing.notes ? `${existing.notes}\n${notes}` : notes) : existing.notes,
       });
 
