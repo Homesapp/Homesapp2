@@ -34,7 +34,36 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar as CalendarIcon, Clock, User, MapPin, Plus, Search, Filter, List, LayoutGrid, Phone, Mail, Building2, X, Edit, Trash2, Check, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { 
+  Calendar as CalendarIcon, 
+  Clock, 
+  User, 
+  MapPin, 
+  Plus, 
+  Search, 
+  Filter, 
+  List, 
+  LayoutGrid, 
+  Phone, 
+  Mail, 
+  Building2, 
+  Building,
+  Home,
+  X, 
+  Edit, 
+  Edit3,
+  Trash2, 
+  Check, 
+  XCircle, 
+  ChevronLeft, 
+  ChevronRight,
+  CalendarPlus,
+  Users,
+  UserPlus,
+  Video,
+  FileText,
+  CheckCircle2
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -645,7 +674,7 @@ export default function ExternalAppointments() {
             onClick={() => setViewMode("calendar")}
             data-testid="button-calendar-view"
           >
-            <CalendarIcon className="h-4 w-4 mr-2" />
+            <CalendarIcon2 className="h-4 w-4 mr-2" />
             {language === "es" ? "Calendario" : "Calendar"}
           </Button>
           <Button
@@ -770,173 +799,285 @@ export default function ExternalAppointments() {
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
+      {/* Create/Edit Dialog - Professional Design */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         if (!open) handleCloseDialog();
         else setIsDialogOpen(true);
       }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingAppointment 
-                ? (language === "es" ? "Editar Cita" : "Edit Appointment")
-                : (language === "es" ? "Nueva Cita" : "New Appointment")}
-            </DialogTitle>
-            <DialogDescription>
-              {language === "es" 
-                ? "Completa los datos para agendar una cita"
-                : "Fill in the details to schedule an appointment"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label>{language === "es" ? "Tipo de cita" : "Appointment type"}</Label>
-              <Select value={formData.mode} onValueChange={(v) => setFormData(prev => ({ ...prev, mode: v as any, tourStops: [] }))}>
-                <SelectTrigger data-testid="select-mode">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">
-                    {language === "es" ? "Individual (1 hora)" : "Individual (1 hour)"}
-                  </SelectItem>
-                  <SelectItem value="tour">
-                    {language === "es" ? "Tour (30 min por propiedad, máx. 3)" : "Tour (30 min per property, max 3)"}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>{language === "es" ? "Origen del cliente" : "Client source"} *</Label>
-              <Select 
-                value={formData.clientSource} 
-                onValueChange={(v) => setFormData(prev => ({ 
-                  ...prev, 
-                  clientSource: v as any,
-                  clientId: "",
-                  leadId: "",
-                  clientName: "",
-                  clientEmail: "",
-                  clientPhone: ""
-                }))}
-              >
-                <SelectTrigger data-testid="select-client-source">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">{language === "es" ? "Cliente existente" : "Existing client"}</SelectItem>
-                  <SelectItem value="lead">{language === "es" ? "Lead existente" : "Existing lead"}</SelectItem>
-                  <SelectItem value="manual">{language === "es" ? "Ingresar manualmente" : "Enter manually"}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.clientSource === "client" && (
-              <div>
-                <Label>{language === "es" ? "Seleccionar cliente" : "Select client"} *</Label>
-                <Select 
-                  value={formData.clientId} 
-                  onValueChange={(v) => {
-                    const selectedClient = clients.find(c => c.id === v);
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      clientId: v,
-                      clientName: selectedClient ? `${selectedClient.firstName}${selectedClient.lastName ? ` ${selectedClient.lastName}` : ""}` : "",
-                      clientEmail: selectedClient?.email || "",
-                      clientPhone: selectedClient?.phone || ""
-                    }));
-                  }}
-                >
-                  <SelectTrigger data-testid="select-client">
-                    <SelectValue placeholder={language === "es" ? "Buscar cliente..." : "Search client..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.firstName} {client.lastName || ""} {client.email ? `(${client.email})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {formData.clientSource === "lead" && (
-              <div>
-                <Label>{language === "es" ? "Seleccionar lead" : "Select lead"} *</Label>
-                <Select 
-                  value={formData.leadId} 
-                  onValueChange={(v) => {
-                    const selectedLead = leads.find(l => l.id === v);
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      leadId: v,
-                      clientName: selectedLead ? `${selectedLead.firstName}${selectedLead.lastName ? ` ${selectedLead.lastName}` : ""}` : "",
-                      clientEmail: selectedLead?.email || "",
-                      clientPhone: selectedLead?.phone || ""
-                    }));
-                  }}
-                >
-                  <SelectTrigger data-testid="select-lead">
-                    <SelectValue placeholder={language === "es" ? "Buscar lead..." : "Search lead..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leads.map(lead => (
-                      <SelectItem key={lead.id} value={lead.id}>
-                        {lead.firstName} {lead.lastName || ""} {lead.email ? `(${lead.email})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {formData.clientSource === "manual" && (
-              <>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+          {/* Header with gradient */}
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b">
+            <DialogHeader className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <CalendarPlus className="h-5 w-5 text-primary" />
+                </div>
                 <div>
-                  <Label>{language === "es" ? "Nombre del cliente" : "Client name"} *</Label>
-                  <Input
-                    value={formData.clientName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
-                    placeholder={language === "es" ? "Nombre completo" : "Full name"}
-                    data-testid="input-client-name"
-                  />
+                  <DialogTitle className="text-xl">
+                    {editingAppointment 
+                      ? (language === "es" ? "Editar Cita" : "Edit Appointment")
+                      : (language === "es" ? "Nueva Cita" : "New Appointment")}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm">
+                    {language === "es" 
+                      ? "Complete la informacion para agendar la cita"
+                      : "Complete the information to schedule the appointment"}
+                  </DialogDescription>
                 </div>
+              </div>
+            </DialogHeader>
+          </div>
 
-                <div className="grid grid-cols-2 gap-4">
+          <div className="p-6 space-y-6">
+            {/* Appointment Type Selection - Card Style */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                <Calendar className="h-4 w-4" />
+                {language === "es" ? "Tipo de Cita" : "Appointment Type"}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, mode: "individual", tourStops: [] }))}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    formData.mode === "individual" 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover-elevate"
+                  }`}
+                  data-testid="button-mode-individual"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                      formData.mode === "individual" ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}>
+                      <User className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{language === "es" ? "Individual" : "Individual"}</div>
+                      <div className="text-xs text-muted-foreground">{language === "es" ? "1 hora - 1 propiedad" : "1 hour - 1 property"}</div>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, mode: "tour", tourStops: [] }))}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    formData.mode === "tour" 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover-elevate"
+                  }`}
+                  data-testid="button-mode-tour"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                      formData.mode === "tour" ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}>
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{language === "es" ? "Tour" : "Tour"}</div>
+                      <div className="text-xs text-muted-foreground">{language === "es" ? "30 min por propiedad (max 3)" : "30 min per property (max 3)"}</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Client Section */}
+            <div className="space-y-4 p-4 rounded-lg bg-muted/30 border">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                <Users className="h-4 w-4" />
+                {language === "es" ? "Informacion del Cliente" : "Client Information"}
+              </div>
+              
+              {/* Client Source Tabs */}
+              <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                {[
+                  { value: "client", label: language === "es" ? "Cliente" : "Client", icon: User },
+                  { value: "lead", label: "Lead", icon: UserPlus },
+                  { value: "manual", label: language === "es" ? "Manual" : "Manual", icon: Edit3 }
+                ].map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      clientSource: value as any,
+                      clientId: "",
+                      leadId: "",
+                      clientName: "",
+                      clientEmail: "",
+                      clientPhone: ""
+                    }))}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                      formData.clientSource === value 
+                        ? "bg-background shadow-sm" 
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`tab-source-${value}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Client Selection */}
+              {formData.clientSource === "client" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">{language === "es" ? "Seleccionar cliente" : "Select client"}</Label>
+                  <Select 
+                    value={formData.clientId} 
+                    onValueChange={(v) => {
+                      const selectedClient = clients.find(c => c.id === v);
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        clientId: v,
+                        clientName: selectedClient ? `${selectedClient.firstName}${selectedClient.lastName ? ` ${selectedClient.lastName}` : ""}` : "",
+                        clientEmail: selectedClient?.email || "",
+                        clientPhone: selectedClient?.phone || ""
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="bg-background" data-testid="select-client">
+                      <SelectValue placeholder={language === "es" ? "Buscar cliente..." : "Search client..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span>{client.firstName} {client.lastName || ""}</span>
+                            {client.email && <span className="text-muted-foreground">({client.email})</span>}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.clientId && (
+                    <div className="flex items-center gap-4 p-3 rounded-md bg-background border text-sm">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{formData.clientName}</div>
+                        <div className="text-muted-foreground flex flex-wrap gap-3">
+                          {formData.clientEmail && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{formData.clientEmail}</span>}
+                          {formData.clientPhone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{formData.clientPhone}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formData.clientSource === "lead" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">{language === "es" ? "Seleccionar lead" : "Select lead"}</Label>
+                  <Select 
+                    value={formData.leadId} 
+                    onValueChange={(v) => {
+                      const selectedLead = leads.find(l => l.id === v);
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        leadId: v,
+                        clientName: selectedLead ? `${selectedLead.firstName}${selectedLead.lastName ? ` ${selectedLead.lastName}` : ""}` : "",
+                        clientEmail: selectedLead?.email || "",
+                        clientPhone: selectedLead?.phone || ""
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="bg-background" data-testid="select-lead">
+                      <SelectValue placeholder={language === "es" ? "Buscar lead..." : "Search lead..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leads.map(lead => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          <div className="flex items-center gap-2">
+                            <UserPlus className="h-4 w-4 text-muted-foreground" />
+                            <span>{lead.firstName} {lead.lastName || ""}</span>
+                            {lead.email && <span className="text-muted-foreground">({lead.email})</span>}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.leadId && (
+                    <div className="flex items-center gap-4 p-3 rounded-md bg-background border text-sm">
+                      <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                        <UserPlus className="h-5 w-5 text-orange-500" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{formData.clientName}</div>
+                        <div className="text-muted-foreground flex flex-wrap gap-3">
+                          {formData.clientEmail && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{formData.clientEmail}</span>}
+                          {formData.clientPhone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{formData.clientPhone}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formData.clientSource === "manual" && (
+                <div className="space-y-3">
                   <div>
-                    <Label>{language === "es" ? "Email" : "Email"}</Label>
+                    <Label className="text-sm">{language === "es" ? "Nombre completo" : "Full name"} *</Label>
                     <Input
-                      type="email"
-                      value={formData.clientEmail}
-                      onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
-                      data-testid="input-client-email"
+                      value={formData.clientName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
+                      placeholder={language === "es" ? "Ej: Juan Perez" : "Ex: John Doe"}
+                      className="bg-background mt-1"
+                      data-testid="input-client-name"
                     />
                   </div>
-                  <div>
-                    <Label>{language === "es" ? "Teléfono" : "Phone"}</Label>
-                    <Input
-                      value={formData.clientPhone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
-                      data-testid="input-client-phone"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-sm">{language === "es" ? "Email" : "Email"}</Label>
+                      <div className="relative mt-1">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="email"
+                          value={formData.clientEmail}
+                          onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
+                          className="bg-background pl-9"
+                          placeholder="email@ejemplo.com"
+                          data-testid="input-client-email"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm">{language === "es" ? "Telefono" : "Phone"}</Label>
+                      <div className="relative mt-1">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={formData.clientPhone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
+                          className="bg-background pl-9"
+                          placeholder="+52 998 123 4567"
+                          data-testid="input-client-phone"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>{language === "es" ? "Fecha" : "Date"} *</Label>
+            {/* Date, Time & Modality Section */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-2">
+                  <CalendarIcon2 className="h-4 w-4 text-muted-foreground" />
+                  {language === "es" ? "Fecha" : "Date"} *
+                </Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start" data-testid="button-date">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(formData.date, "PPP", { locale })}
+                    <Button variant="outline" className="w-full justify-start font-normal" data-testid="button-date">
+                      {format(formData.date, "d MMM yyyy", { locale })}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
+                  <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
                       selected={formData.date}
@@ -946,181 +1087,246 @@ export default function ExternalAppointments() {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div>
-                <Label>{language === "es" ? "Hora" : "Time"} *</Label>
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  {language === "es" ? "Hora" : "Time"} *
+                </Label>
                 <Input
                   type="time"
                   value={formData.time}
                   onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
+                  className="font-medium"
                   data-testid="input-time"
                 />
               </div>
-            </div>
-
-            <div>
-              <Label>{language === "es" ? "Modalidad" : "Modality"}</Label>
-              <Select value={formData.type} onValueChange={(v) => setFormData(prev => ({ ...prev, type: v as any }))}>
-                <SelectTrigger data-testid="select-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in-person">{language === "es" ? "Presencial" : "In-person"}</SelectItem>
-                  <SelectItem value="video">{language === "es" ? "Video llamada" : "Video call"}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.mode === "individual" ? (
-              <div className="space-y-4">
-                <div>
-                  <Label>{language === "es" ? "Condominio" : "Condominium"}</Label>
-                  <Select 
-                    value={formData.condominiumId} 
-                    onValueChange={(v) => setFormData(prev => ({ ...prev, condominiumId: v, unitId: "" }))}
-                  >
-                    <SelectTrigger data-testid="select-condominium">
-                      <SelectValue placeholder={language === "es" ? "Seleccionar condominio" : "Select condominium"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {condominiums.map(condo => (
-                        <SelectItem key={condo.id} value={condo.id}>
-                          {condo.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>{language === "es" ? "Unidad" : "Unit"}</Label>
-                  <Select 
-                    value={formData.unitId} 
-                    onValueChange={(v) => setFormData(prev => ({ ...prev, unitId: v }))}
-                    disabled={!formData.condominiumId}
-                  >
-                    <SelectTrigger data-testid="select-unit">
-                      <SelectValue placeholder={formData.condominiumId 
-                        ? (language === "es" ? "Seleccionar unidad" : "Select unit")
-                        : (language === "es" ? "Primero seleccione un condominio" : "First select a condominium")
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredUnits.map(unit => (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-2">
+                  {formData.type === "in-person" ? <MapPin className="h-4 w-4 text-muted-foreground" /> : <Video className="h-4 w-4 text-muted-foreground" />}
+                  {language === "es" ? "Modalidad" : "Modality"}
+                </Label>
+                <Select value={formData.type} onValueChange={(v) => setFormData(prev => ({ ...prev, type: v as any }))}>
+                  <SelectTrigger data-testid="select-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in-person">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {language === "es" ? "Presencial" : "In-person"}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="video">
+                      <div className="flex items-center gap-2">
+                        <Video className="h-4 w-4" />
+                        {language === "es" ? "Video llamada" : "Video call"}
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>{language === "es" ? "Propiedades del tour" : "Tour properties"}</Label>
-                  {formData.tourStops.length < 3 && (
+            </div>
+
+            {/* Property Section */}
+            <div className="space-y-4 p-4 rounded-lg bg-muted/30 border">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                <Building2 className="h-4 w-4" />
+                {formData.mode === "individual" 
+                  ? (language === "es" ? "Propiedad a Visitar" : "Property to Visit")
+                  : (language === "es" ? "Propiedades del Tour" : "Tour Properties")}
+              </div>
+
+              {formData.mode === "individual" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">{language === "es" ? "Condominio" : "Condominium"}</Label>
+                    <Select 
+                      value={formData.condominiumId} 
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, condominiumId: v, unitId: "" }))}
+                    >
+                      <SelectTrigger className="bg-background" data-testid="select-condominium">
+                        <SelectValue placeholder={language === "es" ? "Seleccionar..." : "Select..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {condominiums.map(condo => (
+                          <SelectItem key={condo.id} value={condo.id}>
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4 text-muted-foreground" />
+                              {condo.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">{language === "es" ? "Unidad" : "Unit"}</Label>
+                    <Select 
+                      value={formData.unitId} 
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, unitId: v }))}
+                      disabled={!formData.condominiumId}
+                    >
+                      <SelectTrigger className="bg-background" data-testid="select-unit">
+                        <SelectValue placeholder={formData.condominiumId 
+                          ? (language === "es" ? "Seleccionar..." : "Select...")
+                          : (language === "es" ? "Primero seleccione condominio" : "First select condo")
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredUnits.map(unit => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            <div className="flex items-center gap-2">
+                              <Home className="h-4 w-4 text-muted-foreground" />
+                              {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {formData.tourStops.length === 0 && (
+                    <div className="text-center py-6 border-2 border-dashed rounded-lg">
+                      <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {language === "es" 
+                          ? "Agrega hasta 3 propiedades para el tour"
+                          : "Add up to 3 properties for the tour"}
+                      </p>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-3"
+                        onClick={handleAddTourStop}
+                        data-testid="button-add-stop-empty"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        {language === "es" ? "Agregar propiedad" : "Add property"}
+                      </Button>
+                    </div>
+                  )}
+                  {formData.tourStops.map((stop, index) => (
+                    <div key={index} className="flex gap-3 items-center p-3 bg-background border rounded-lg">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+                          {index + 1}
+                        </div>
+                        <span className="text-xs text-muted-foreground">30 min</span>
+                      </div>
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <Select 
+                          value={stop.condominiumId || ""} 
+                          onValueChange={(v) => handleTourStopChange(index, "condominiumId", v)}
+                        >
+                          <SelectTrigger className="h-9" data-testid={`select-tour-condo-${index}`}>
+                            <SelectValue placeholder={language === "es" ? "Condominio" : "Condo"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {condominiums.map(condo => (
+                              <SelectItem key={condo.id} value={condo.id}>{condo.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select 
+                          value={stop.unitId} 
+                          onValueChange={(v) => handleTourStopChange(index, "unitId", v)}
+                          disabled={!stop.condominiumId}
+                        >
+                          <SelectTrigger className="h-9" data-testid={`select-tour-unit-${index}`}>
+                            <SelectValue placeholder={language === "es" ? "Unidad" : "Unit"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getUnitsForCondominium(stop.condominiumId || "").map(unit => (
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveTourStop(index)}
+                        data-testid={`button-remove-stop-${index}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {formData.tourStops.length > 0 && formData.tourStops.length < 3 && (
                     <Button 
                       type="button" 
                       variant="outline" 
                       size="sm" 
+                      className="w-full"
                       onClick={handleAddTourStop}
                       data-testid="button-add-stop"
                     >
                       <Plus className="h-4 w-4 mr-1" />
-                      {language === "es" ? "Agregar" : "Add"}
+                      {language === "es" ? "Agregar otra propiedad" : "Add another property"}
                     </Button>
                   )}
                 </div>
-                {formData.tourStops.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {language === "es" 
-                      ? "Agrega hasta 3 propiedades para el tour"
-                      : "Add up to 3 properties for the tour"}
-                  </p>
-                )}
-                {formData.tourStops.map((stop, index) => (
-                  <div key={index} className="flex gap-2 items-start p-3 border rounded-lg">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{index + 1}</Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {language === "es" ? "30 min" : "30 min"}
-                        </span>
-                      </div>
-                      <Select 
-                        value={stop.condominiumId || ""} 
-                        onValueChange={(v) => handleTourStopChange(index, "condominiumId", v)}
-                      >
-                        <SelectTrigger data-testid={`select-tour-condo-${index}`}>
-                          <SelectValue placeholder={language === "es" ? "Seleccionar condominio" : "Select condominium"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {condominiums.map(condo => (
-                            <SelectItem key={condo.id} value={condo.id}>
-                              {condo.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select 
-                        value={stop.unitId} 
-                        onValueChange={(v) => handleTourStopChange(index, "unitId", v)}
-                        disabled={!stop.condominiumId}
-                      >
-                        <SelectTrigger data-testid={`select-tour-unit-${index}`}>
-                          <SelectValue placeholder={stop.condominiumId
-                            ? (language === "es" ? "Seleccionar unidad" : "Select unit")
-                            : (language === "es" ? "Primero seleccione un condominio" : "First select a condominium")
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getUnitsForCondominium(stop.condominiumId || "").map(unit => (
-                            <SelectItem key={unit.id} value={unit.id}>
-                              {unit.unitNumber ? `${unit.name} - ${unit.unitNumber}` : unit.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleRemoveTourStop(index)}
-                      data-testid={`button-remove-stop-${index}`}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+              )}
+            </div>
 
-            <div>
-              <Label>{language === "es" ? "Notas" : "Notes"}</Label>
+            {/* Notes Section */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                {language === "es" ? "Notas adicionales" : "Additional notes"}
+              </Label>
               <Textarea
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder={language === "es" ? "Notas adicionales..." : "Additional notes..."}
+                placeholder={language === "es" ? "Informacion adicional sobre la cita..." : "Additional information about the appointment..."}
                 rows={3}
+                className="resize-none"
                 data-testid="input-notes"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog} data-testid="button-cancel">
-              {language === "es" ? "Cancelar" : "Cancel"}
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={!formData.clientName || createMutation.isPending}
-              data-testid="button-save"
-            >
-              {createMutation.isPending 
-                ? (language === "es" ? "Guardando..." : "Saving...")
-                : (language === "es" ? "Guardar" : "Save")}
-            </Button>
-          </DialogFooter>
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 p-4 bg-muted/30 border-t">
+            <div className="text-sm text-muted-foreground">
+              {formData.clientName && (
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  {language === "es" ? "Listo para guardar" : "Ready to save"}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleCloseDialog} data-testid="button-cancel">
+                {language === "es" ? "Cancelar" : "Cancel"}
+              </Button>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={!formData.clientName || createMutation.isPending}
+                className="min-w-[120px]"
+                data-testid="button-save"
+              >
+                {createMutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    {language === "es" ? "Guardando..." : "Saving..."}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <CalendarPlus className="h-4 w-4" />
+                    {language === "es" ? "Crear Cita" : "Create Appointment"}
+                  </span>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1142,7 +1348,7 @@ export default function ExternalAppointments() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                <CalendarIcon2 className="h-4 w-4 text-muted-foreground" />
                 <span>{format(new Date(selectedAppointment.date), "PPP", { locale })}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
