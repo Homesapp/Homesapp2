@@ -418,10 +418,16 @@ export default function ExternalMaintenance() {
     };
   };
 
-  const biweeklyStatsUrl = `/api/external-tickets/stats/biweekly?year=${periodYear}&month=${periodMonth}&period=${periodIndex}`;
+  const biweeklyStatsUrl = `/api/external-tickets/stats/biweekly?year=${periodYear}&month=${periodMonth}&period=${periodIndex}&excludeCategories=cleaning`;
+  const cleaningStatsUrl = `/api/external-tickets/stats/biweekly?year=${periodYear}&month=${periodMonth}&period=${periodIndex}&category=cleaning`;
   const { data: biweeklyStats } = useQuery<BiweeklyStatsResponse>({
     queryKey: ['/api/external-tickets/stats/biweekly', periodYear, periodMonth, periodIndex],
     queryFn: () => fetch(biweeklyStatsUrl, { credentials: 'include' }).then(res => res.json()),
+  });
+
+  const { data: cleaningStats } = useQuery<BiweeklyStatsResponse>({
+    queryKey: ['/api/external-tickets/stats/biweekly-cleaning', periodYear, periodMonth, periodIndex],
+    queryFn: () => fetch(cleaningStatsUrl, { credentials: 'include' }).then(res => res.json()),
   });
 
   const maintenanceWorkers = agencyUsers?.filter(u => 
@@ -942,7 +948,7 @@ export default function ExternalMaintenance() {
     open: 'Total Abiertos',
     resolved: 'Resueltos',
     actualCost: 'Costo Real',
-    commissions: 'Comisiones (15%)',
+    commissions: 'Comisiones',
     totalCharge: 'Total a Cobrar',
     paidTotal: 'Total Pagado',
     search: 'Buscar por título, descripción o unidad...',
@@ -983,7 +989,7 @@ export default function ExternalMaintenance() {
     open: 'Total Open',
     resolved: 'Resolved',
     actualCost: 'Actual Cost',
-    commissions: 'Commissions (15%)',
+    commissions: 'Commissions',
     totalCharge: 'Total Charge',
     paidTotal: 'Total Paid',
     search: 'Search by title, description or unit...',
@@ -2714,7 +2720,7 @@ export default function ExternalMaintenance() {
                 <Wrench className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" data-testid="text-cleaning-total">{biweeklyStats?.stats?.total || 0}</div>
+                <div className="text-2xl font-bold" data-testid="text-cleaning-total">{cleaningStats?.stats?.total || 0}</div>
               </CardContent>
             </Card>
 
@@ -2724,7 +2730,7 @@ export default function ExternalMaintenance() {
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-amber-600" data-testid="text-cleaning-open">{biweeklyStats?.stats?.open || 0}</div>
+                <div className="text-2xl font-bold text-amber-600" data-testid="text-cleaning-open">{cleaningStats?.stats?.open || 0}</div>
               </CardContent>
             </Card>
 
@@ -2734,7 +2740,7 @@ export default function ExternalMaintenance() {
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600" data-testid="text-cleaning-resolved">{biweeklyStats?.stats?.resolved || 0}</div>
+                <div className="text-2xl font-bold text-green-600" data-testid="text-cleaning-resolved">{cleaningStats?.stats?.resolved || 0}</div>
               </CardContent>
             </Card>
 
@@ -2744,7 +2750,7 @@ export default function ExternalMaintenance() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold" data-testid="text-cleaning-actual-cost">{formatCurrency(biweeklyStats?.stats?.actualCost || 0)}</div>
+                <div className="text-lg font-bold" data-testid="text-cleaning-actual-cost">{formatCurrency(cleaningStats?.stats?.actualCost || 0)}</div>
               </CardContent>
             </Card>
 
@@ -2754,7 +2760,7 @@ export default function ExternalMaintenance() {
                 <TrendingUp className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold text-blue-600" data-testid="text-cleaning-commissions">{formatCurrency(biweeklyStats?.stats?.commission || 0)}</div>
+                <div className="text-lg font-bold text-blue-600" data-testid="text-cleaning-commissions">{formatCurrency(cleaningStats?.stats?.commission || 0)}</div>
               </CardContent>
             </Card>
 
@@ -2764,7 +2770,7 @@ export default function ExternalMaintenance() {
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold text-green-600" data-testid="text-cleaning-total-charge">{formatCurrency(biweeklyStats?.stats?.totalCharge || 0)}</div>
+                <div className="text-lg font-bold text-green-600" data-testid="text-cleaning-total-charge">{formatCurrency(cleaningStats?.stats?.totalCharge || 0)}</div>
               </CardContent>
             </Card>
 
@@ -2774,7 +2780,7 @@ export default function ExternalMaintenance() {
                 <CreditCard className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold text-purple-600" data-testid="text-cleaning-paid-total">{formatCurrency(biweeklyStats?.stats?.paidTotal || 0)}</div>
+                <div className="text-lg font-bold text-purple-600" data-testid="text-cleaning-paid-total">{formatCurrency(cleaningStats?.stats?.paidTotal || 0)}</div>
               </CardContent>
             </Card>
           </div>

@@ -223,7 +223,7 @@ import {
   insertExternalAgencyPropertyTypeSchema,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, not, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
 
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
@@ -23244,10 +23244,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = new Date(targetYear, targetMonth - 1, endDay);
       endDate.setHours(23, 59, 59, 999);
       
+      // Build category filter conditions
+      const categoryConditions: any[] = [];
+      if (category && typeof category === 'string') {
+        categoryConditions.push(sql`category = ${category.trim()}`);
+      }
+      if (excludeCategories && typeof excludeCategories === 'string') {
+        const excludeList = excludeCategories.split(',').map((c: string) => c.trim()).filter((c: string) => c);
+        if (excludeList.length > 0) {
+          categoryConditions.push(sql`category NOT IN (${sql.join(excludeList.map((c: string) => sql`${c}`), sql`, `)})`);
+        }
+      }
+      
       // Query tickets for this agency within the biweekly period using reference date
       // Reference date: for closed/resolved tickets use closed_at, otherwise use scheduled_date or created_at
       let result;
       if (agencyId) {
+        const baseCondition = sql`agency_id = ${agencyId}
+            AND COALESCE(closed_at, scheduled_date, created_at) >= ${startDate.toISOString()}::timestamp
+            AND COALESCE(closed_at, scheduled_date, created_at) <= ${endDate.toISOString()}::timestamp`;
+        
+        const whereClause = categoryConditions.length > 0
+          ? sql`${baseCondition} AND ${sql.join(categoryConditions, sql` AND `)}`
+          : baseCondition;
+          
         result = await db.execute(sql`
           SELECT 
             COUNT(*) as total,
@@ -23257,12 +23277,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') THEN COALESCE(total_charge_amount, actual_cost * 1.15, 0) ELSE 0 END), 0) as total_charge_sum,
             COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') AND accounting_sync_status = 'synced' THEN COALESCE(total_charge_amount, actual_cost * 1.15, 0) ELSE 0 END), 0) as paid_total_sum
           FROM external_maintenance_tickets
-          WHERE agency_id = ${agencyId}
-            AND COALESCE(closed_at, scheduled_date, created_at) >= ${startDate.toISOString()}::timestamp
-            AND COALESCE(closed_at, scheduled_date, created_at) <= ${endDate.toISOString()}::timestamp
+          WHERE ${whereClause}
         `);
       } else {
         // Admin/master users see all agencies
+        const baseCondition = sql`COALESCE(closed_at, scheduled_date, created_at) >= ${startDate.toISOString()}::timestamp
+            AND COALESCE(closed_at, scheduled_date, created_at) <= ${endDate.toISOString()}::timestamp`;
+        
+        const whereClause = categoryConditions.length > 0
+          ? sql`${baseCondition} AND ${sql.join(categoryConditions, sql` AND `)}`
+          : baseCondition;
+          
         result = await db.execute(sql`
           SELECT 
             COUNT(*) as total,
@@ -23272,8 +23297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') THEN COALESCE(total_charge_amount, actual_cost * 1.15, 0) ELSE 0 END), 0) as total_charge_sum,
             COALESCE(SUM(CASE WHEN status IN ('resolved', 'closed') AND accounting_sync_status = 'synced' THEN COALESCE(total_charge_amount, actual_cost * 1.15, 0) ELSE 0 END), 0) as paid_total_sum
           FROM external_maintenance_tickets
-          WHERE COALESCE(closed_at, scheduled_date, created_at) >= ${startDate.toISOString()}::timestamp
-            AND COALESCE(closed_at, scheduled_date, created_at) <= ${endDate.toISOString()}::timestamp
+          WHERE ${whereClause}
         `);
       }
       

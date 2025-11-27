@@ -2128,7 +2128,7 @@ export default function ExternalAccounting() {
             </Card>
             <Card className="hover-elevate">
               <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{language === 'es' ? 'Comisión (15%)' : 'Commission (15%)'}</CardTitle>
+                <CardTitle className="text-sm font-medium">{language === 'es' ? 'Comisión' : 'Commission'}</CardTitle>
                 <Receipt className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
@@ -2292,7 +2292,7 @@ export default function ExternalAccounting() {
             </Card>
             <Card className="hover-elevate">
               <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{language === 'es' ? 'Comisión (15%)' : 'Commission (15%)'}</CardTitle>
+                <CardTitle className="text-sm font-medium">{language === 'es' ? 'Comisión' : 'Commission'}</CardTitle>
                 <Receipt className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
