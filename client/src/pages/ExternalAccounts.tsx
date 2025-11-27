@@ -38,7 +38,7 @@ const createUserSchema = z.object({
   firstName: z.string().min(1, "Nombre requerido"),
   lastName: z.string().min(1, "Apellido requerido"),
   phone: z.string().optional(),
-  role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"]),
+  role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]),
   maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
 });
 
@@ -46,7 +46,7 @@ const updateUserSchema = z.object({
   firstName: z.string().min(1, "Nombre requerido"),
   lastName: z.string().min(1, "Apellido requerido"),
   phone: z.string().optional(),
-  role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"]),
+  role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]),
   maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
 });
 
@@ -58,15 +58,17 @@ const ROLE_LABELS = {
     external_agency_admin: "Admin Jr",
     external_agency_accounting: "Contabilidad",
     external_agency_maintenance: "Mantenimiento",
-    external_agency_staff: "Staff",
     external_agency_seller: "Vendedor",
+    external_agency_concierge: "Conserje",
+    external_agency_lawyer: "Abogado",
   },
   en: {
     external_agency_admin: "Admin Jr",
     external_agency_accounting: "Accounting",
     external_agency_maintenance: "Maintenance",
-    external_agency_staff: "Staff",
     external_agency_seller: "Seller",
+    external_agency_concierge: "Concierge",
+    external_agency_lawyer: "Lawyer",
   },
 };
 
@@ -101,8 +103,9 @@ const PERMISSION_ROLES = [
   "external_agency_admin",
   "external_agency_accounting",
   "external_agency_maintenance",
-  "external_agency_staff",
   "external_agency_seller",
+  "external_agency_concierge",
+  "external_agency_lawyer",
 ] as const;
 
 const PERMISSION_SECTIONS_CONFIG = {

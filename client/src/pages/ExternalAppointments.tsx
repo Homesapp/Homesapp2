@@ -674,7 +674,7 @@ export default function ExternalAppointments() {
             onClick={() => setViewMode("calendar")}
             data-testid="button-calendar-view"
           >
-            <CalendarIcon2 className="h-4 w-4 mr-2" />
+            <CalendarIcon className="h-4 w-4 mr-2" />
             {language === "es" ? "Calendario" : "Calendar"}
           </Button>
           <Button
@@ -1068,7 +1068,7 @@ export default function ExternalAppointments() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm flex items-center gap-2">
-                  <CalendarIcon2 className="h-4 w-4 text-muted-foreground" />
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   {language === "es" ? "Fecha" : "Date"} *
                 </Label>
                 <Popover>
@@ -1348,7 +1348,7 @@ export default function ExternalAppointments() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm">
-                <CalendarIcon2 className="h-4 w-4 text-muted-foreground" />
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                 <span>{format(new Date(selectedAppointment.date), "PPP", { locale })}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">

@@ -13631,7 +13631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Offer Token routes - Enlaces privados para ofertas sin login (soporta sistema interno y externo)
-  app.post("/api/offer-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
+  app.post("/api/offer-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_seller"]), async (req: any, res) => {
     try {
       const { propertyId, externalUnitId, externalClientId, leadId } = req.body;
       const userId = req.user.claims.sub;
@@ -14156,7 +14156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rental Form Token routes - Enlaces privados para formato de renta de inquilino (soporta sistema interno y externo)
-  app.post("/api/rental-form-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
+  app.post("/api/rental-form-tokens", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_seller"]), async (req: any, res) => {
     try {
       const { propertyId, externalUnitId, externalClientId, externalUnitOwnerId, leadId, recipientType = 'tenant' } = req.body;
       const userId = req.user.claims.sub;
@@ -15009,7 +15009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send rental form link via email
-  app.post("/api/rental-form-tokens/:id/send-email", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_staff"]), async (req: any, res) => {
+  app.post("/api/rental-form-tokens/:id/send-email", isAuthenticated, requireRole(["admin", "master", "admin_jr", "seller", "external_agency_admin", "external_agency_accounting", "external_agency_seller"]), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { clientEmail, clientName } = req.body;
@@ -21019,7 +21019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // EXTERNAL_MAINTENANCE_ROLES: Property, contract, and maintenance operations
   const EXTERNAL_MAINTENANCE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_maintenance"];
   // EXTERNAL_ALL_ROLES: Read-only access for all external agency users
-  const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"];
+  const EXTERNAL_ALL_ROLES = ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"];
 
   // ==============================
   // EXTERNAL PUBLICATION REQUESTS
@@ -22251,8 +22251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== External Appointments Routes ====================
   // Roles for appointment management
-  const EXTERNAL_APPOINTMENT_VIEW_ROLES = ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"];
-  const EXTERNAL_APPOINTMENT_MANAGE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge"];
+  const EXTERNAL_APPOINTMENT_VIEW_ROLES = ["master", "admin", "external_agency_admin", "external_agency_concierge", "external_agency_lawyer"];
+  const EXTERNAL_APPOINTMENT_MANAGE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_concierge"];
 
   // GET /api/external-appointments - Get all appointments for agency
   app.get("/api/external-appointments", isAuthenticated, requireRole(EXTERNAL_APPOINTMENT_VIEW_ROLES), async (req: any, res) => {
@@ -22866,7 +22866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all users with external agency roles that belong to this agency
-      const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"];
+      const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"];
       const externalUsers = await db
         .select({
           id: users.id,
@@ -22907,7 +22907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: z.string().min(1, "First name required"),
         lastName: z.string().min(1, "Last name required"),
         phone: z.string().optional(),
-        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"]),
+        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]),
         maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
       });
 
@@ -22977,7 +22977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: z.string().min(1, "First name required").optional(),
         lastName: z.string().min(1, "Last name required").optional(),
         phone: z.string().optional().nullable(),
-        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"]).optional(),
+        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]).optional(),
         maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional().nullable(),
       });
 
@@ -32672,7 +32672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'accounts':
-          const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"];
+          const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"];
           const agencyUsers = await db
             .select({
               id: users.id,
@@ -33327,8 +33327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               
               // Validate role
-              const validRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"];
-              const role = row.role?.trim() || 'external_agency_staff';
+              const validRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"];
+              const role = row.role?.trim() || 'external_agency_seller';
               if (!validRoles.includes(role)) {
                 errors.push(`Invalid role "${role}" for user "${email}"`);
                 skipped++;
