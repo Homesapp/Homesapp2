@@ -192,8 +192,6 @@ import {
   externalCondominiums,
   externalUnits,
   externalUnitAccessControls,
-  externalAgencyZones,
-  externalAgencyPropertyTypes,
   externalUnitOwners,
   externalOwnerCharges,
   externalOwnerNotifications,
@@ -203,17 +201,15 @@ import {
   externalPayments,
   externalPaymentSchedules,
   externalMaintenanceTickets,
-  externalClients,
-  externalFinancialTransactions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, inArray, desc, asc, sql, ne, isNull, isNotNull, gte, lte } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
 
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
   try {
     // Admin and master users can access all agencies
-    const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
+    const userRole = req.user?.role || req.session?.adminUser?.role;
     if (userRole === "master" || userRole === "admin") {
       return true;
     }
@@ -255,7 +251,7 @@ async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: strin
 async function getUserAgencyId(req: any): Promise<string | null> {
   try {
     // Admin and master users don't have an agency
-    const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
+    const userRole = req.user?.role || req.session?.adminUser?.role;
     if (userRole === "master" || userRole === "admin") {
       return null;
     }
@@ -476,15 +472,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
-      }
-
-      // Block access for suspended users
-      if (user.isSuspended) {
-        return res.status(403).json({ 
-          message: "Account suspended", 
-          error: "ACCOUNT_SUSPENDED",
-          reason: user.suspensionReason || "Your account has been suspended. Please contact your administrator." 
-        });
       }
       
       res.json(user);
@@ -8284,7 +8271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Sidebar Menu Visibility Configuration routes
   // Admin: Get sidebar configuration for a role
-  app.get("/api/admin/sidebar-config/:role", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/sidebar-config/:role", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
     try {
       const { role } = req.params;
       
@@ -8412,7 +8399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: Get sidebar configuration for a specific user
-  app.get("/api/admin/sidebar-config-user/:userId", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/sidebar-config-user/:userId", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
     try {
       const { userId } = req.params;
       const config = await storage.getSidebarMenuVisibilityByUser(userId);
@@ -21479,25 +21466,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Rental Contracts Routes
-  // Get all rental contracts for user's agency with unit and condominium info
-  app.get("/api/external-rental-contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+  app.get("/api/external-contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
+      const { agencyId, propertyId, status } = req.query;
+      
+      if (propertyId) {
+        const contracts = await storage.getExternalRentalContractsByProperty(propertyId);
+        return res.json(contracts);
       }
       
-      const contracts = await db.select()
-        .from(externalRentalContracts)
-        .where(eq(externalRentalContracts.agencyId, agencyId));
+      if (!agencyId) {
+        return res.status(400).json({ message: "Agency ID or Property ID is required" });
+      }
+      
+      const filters = status ? { status } : undefined;
+      const contracts = await storage.getExternalRentalContractsByAgency(agencyId, filters);
       
       res.json(contracts);
     } catch (error: any) {
-      console.error("Error fetching rental contracts:", error);
+      console.error("Error fetching external contracts:", error);
       handleGenericError(res, error);
     }
   });
-
 
   app.get("/api/external-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
@@ -21588,7 +21578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all users with external agency roles that belong to this agency
-      const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"];
+      const externalRoles = ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"];
       const externalUsers = await db
         .select({
           id: users.id,
@@ -21599,14 +21589,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: users.role,
           status: users.status,
           maintenanceSpecialty: users.maintenanceSpecialty,
-          isSuspended: users.isSuspended,
-          suspensionReason: users.suspensionReason,
           createdAt: users.createdAt,
         })
         .from(users)
         .where(and(
           inArray(users.role, externalRoles),
-          eq(users.externalAgencyId, agencyId)
+          eq(users.assignedToUser, agencyId)
         ))
         .orderBy(users.createdAt);
 
@@ -21618,37 +21606,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/external-agency-users", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-
-  // Get sellers for external agency (for lead assignment dropdowns)
-  app.get("/api/external-sellers", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(400).json({ message: "No agency assigned to user" });
-      }
-
-      // Get all users with seller role that belong to this agency and are not suspended
-      const sellerUsers = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-        })
-        .from(users)
-        .where(and(
-          or(eq(users.role, "external_agency_admin"), eq(users.role, "external_agency_staff"), eq(users.role, "external_agency_seller")),
-          eq(users.externalAgencyId, agencyId),
-          or(eq(users.isSuspended, false), isNull(users.isSuspended))
-        ))
-        .orderBy(users.firstName, users.lastName);
-
-      res.json(sellerUsers);
-    } catch (error: any) {
-      console.error("Error fetching external sellers:", error);
-      handleGenericError(res, error);
-    }
-  });
     try {
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) {
@@ -21661,7 +21618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: z.string().min(1, "First name required"),
         lastName: z.string().min(1, "Last name required"),
         phone: z.string().optional(),
-        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"]),
+        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"]),
         maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
       });
 
@@ -21731,7 +21688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: z.string().min(1, "First name required").optional(),
         lastName: z.string().min(1, "Last name required").optional(),
         phone: z.string().optional().nullable(),
-        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_seller"]).optional(),
+        role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff"]).optional(),
         maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional().nullable(),
       });
 
@@ -21739,7 +21696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify user belongs to this agency
       const user = await storage.getUser(id);
-      if (!user || user.externalAgencyId !== agencyId) {
+      if (!user || user.assignedToUser !== agencyId) {
         return res.status(403).json({ message: "Unauthorized to update this user" });
       }
 
@@ -21792,7 +21749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify user belongs to this agency
       const user = await storage.getUser(id);
-      if (!user || user.externalAgencyId !== agencyId) {
+      if (!user || user.assignedToUser !== agencyId) {
         return res.status(403).json({ message: "Unauthorized to reset password for this user" });
       }
 
@@ -21816,79 +21773,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/external-agency-users/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-
-  // Suspend external agency user
-  app.post("/api/external-agency-users/:id/suspend", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(400).json({ message: "No agency assigned to user" });
-      }
-
-      const user = await storage.getUser(id);
-      if (!user || user.externalAgencyId !== agencyId) {
-        return res.status(403).json({ message: "Unauthorized to suspend this user" });
-      }
-
-      const adminId = req.user?.claims?.sub || req.user?.id;
-      if (id === adminId) {
-        return res.status(400).json({ message: "Cannot suspend your own account" });
-      }
-
-      await db
-        .update(users)
-        .set({
-          isSuspended: true,
-          suspensionType: "permanent",
-          suspensionReason: "Suspended by agency admin",
-          suspendedAt: new Date(),
-          suspendedById: adminId,
-        })
-        .where(eq(users.id, id));
-
-      await createAuditLog(req, "update", "user", id, `Suspended external agency user ${user.firstName} ${user.lastName}`);
-
-      res.json({ message: "User suspended successfully" });
-    } catch (error: any) {
-      console.error("Error suspending external agency user:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // Unsuspend external agency user
-  app.post("/api/external-agency-users/:id/unsuspend", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(400).json({ message: "No agency assigned to user" });
-      }
-
-      const user = await storage.getUser(id);
-      if (!user || user.externalAgencyId !== agencyId) {
-        return res.status(403).json({ message: "Unauthorized to unsuspend this user" });
-      }
-
-      await db
-        .update(users)
-        .set({
-          isSuspended: false,
-          suspensionType: null,
-          suspensionReason: null,
-          suspendedAt: null,
-          suspendedById: null,
-        })
-        .where(eq(users.id, id));
-
-      await createAuditLog(req, "update", "user", id, `Reactivated external agency user ${user.firstName} ${user.lastName}`);
-
-      res.json({ message: "User reactivated successfully" });
-    } catch (error: any) {
-      console.error("Error unsuspending external agency user:", error);
-      handleGenericError(res, error);
-    }
-  });
     try {
       const { id } = req.params;
       const agencyId = await getUserAgencyId(req);
@@ -21898,7 +21782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify user belongs to this agency
       const user = await storage.getUser(id);
-      if (!user || user.externalAgencyId !== agencyId) {
+      if (!user || user.assignedToUser !== agencyId) {
         return res.status(403).json({ message: "Unauthorized to delete this user" });
       }
 
@@ -22322,9 +22206,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
-      // Always use authenticated user's agency for security
-      const agencyId = await getUserAgencyId(req);
+      let agencyId = req.query.agencyId;
       if (!agencyId) {
+        agencyId = await getUserAgencyId(req);
         if (!agencyId) {
           return res.status(400).json({ message: "User is not assigned to any agency" });
         }
@@ -22528,9 +22412,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
-      // Always use authenticated user's agency for security
-      const agencyId = await getUserAgencyId(req);
+      let agencyId = req.query.agencyId;
       if (!agencyId) {
+        agencyId = await getUserAgencyId(req);
         if (!agencyId) {
           return res.status(400).json({ message: "User is not assigned to any agency" });
         }
@@ -22620,7 +22504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify ownership: master/admin can access all, others must match agency
-      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
+      const userRole = req.user?.role || req.session?.adminUser?.role;
       const isMasterOrAdmin = userRole === "master" || userRole === "admin";
       
       if (!isMasterOrAdmin) {
@@ -22685,7 +22569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify ownership: master/admin can access all, others must match agency
-      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
+      const userRole = req.user?.role || req.session?.adminUser?.role;
       const isMasterOrAdmin = userRole === "master" || userRole === "admin";
       
       if (!isMasterOrAdmin) {
@@ -22882,115 +22766,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Maintenance Tickets Routes
-  
-  // Helper function to calculate biweekly date range
-  function getBiweeklyDateRange(year: number, month: number, period: number): { startDate: Date; endDate: Date } {
-    if (period === 1) {
-      // First biweekly: 1st to 15th
-      const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
-      const endDate = new Date(year, month - 1, 15, 23, 59, 59, 999);
-      return { startDate, endDate };
-    } else {
-      // Second biweekly: 16th to end of month
-      const startDate = new Date(year, month - 1, 16, 0, 0, 0, 0);
-      const lastDay = new Date(year, month, 0).getDate();
-      const endDate = new Date(year, month - 1, lastDay, 23, 59, 59, 999);
-      return { startDate, endDate };
-    }
-  }
-  
-  // Biweekly statistics endpoint
-  app.get("/api/external-tickets/stats/biweekly", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const { year, month, period, category } = req.query;
-      
-      // Always use authenticated user's agency for security
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        if (!agencyId) {
-          return res.status(400).json({ message: "User is not assigned to any agency" });
-        }
-      }
-      
-      const yearNum = parseInt(year) || new Date().getFullYear();
-      const monthNum = parseInt(month) || new Date().getMonth() + 1;
-      const periodNum = parseInt(period) || (new Date().getDate() <= 15 ? 1 : 2);
-      
-      const { startDate, endDate } = getBiweeklyDateRange(yearNum, monthNum, periodNum);
-      
-      // Get all tickets for the agency
-      const filters: any = {};
-      if (category) filters.category = category;
-      
-      let allTickets = await storage.getExternalMaintenanceTicketsByAgency(agencyId, filters);
-      
-      // Filter tickets by date range (using createdAt)
-      const filteredTickets = allTickets.filter(ticket => {
-        const ticketDate = new Date(ticket.createdAt);
-        return ticketDate >= startDate && ticketDate <= endDate;
-      });
-      
-      // Calculate statistics
-      const total = filteredTickets.length;
-      const open = filteredTickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
-      const resolved = filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
-      
-      // Calculate costs from actual closed/resolved tickets
-      let actualCost = 0;
-      filteredTickets.forEach(ticket => {
-        if (ticket.actualCost) {
-          const cost = parseFloat(ticket.actualCost);
-          if (!isNaN(cost)) actualCost += cost;
-        }
-      });
-      
-      const commissionRate = 0.15;
-      const commission = actualCost * commissionRate;
-      const totalCharge = actualCost + commission;
-      
-      // Calculate paid total (tickets with status resolved/closed)
-      let paidTotal = 0;
-      filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed').forEach(ticket => {
-        if (ticket.actualCost) {
-          const cost = parseFloat(ticket.actualCost);
-          if (!isNaN(cost)) paidTotal += cost * (1 + commissionRate);
-        }
-      });
-      
-      // Generate period label
-      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-      const periodText = periodNum === 1 ? '1ra' : '2da';
-      const label = `${periodText} Quincena de ${monthNames[monthNum - 1]} ${yearNum}`;
-      
-      res.json({
-        period: {
-          year: yearNum,
-          month: monthNum,
-          biweekly: periodNum,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          label
-        },
-        stats: {
-          total,
-          open,
-          resolved,
-          actualCost,
-          commission,
-          totalCharge,
-          paidTotal
-        }
-      });
-    } catch (error: any) {
-      console.error("Error fetching biweekly stats:", error);
-      handleGenericError(res, error);
-    }
-  });
-  
   app.get("/api/external-tickets", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const { propertyId, assignedTo, status, priority, page, pageSize, search, category, condominiumId, dateFilter, sortField, sortOrder, periodYear, periodMonth, periodIndex } = req.query;
+      const { propertyId, assignedTo, status, priority } = req.query;
       
       if (propertyId) {
         const tickets = await storage.getExternalMaintenanceTicketsByProperty(propertyId);
@@ -23003,9 +22781,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
-      // Always use authenticated user's agency for security
-      const agencyId = await getUserAgencyId(req);
+      let agencyId = req.query.agencyId;
       if (!agencyId) {
+        agencyId = await getUserAgencyId(req);
         if (!agencyId) {
           return res.status(400).json({ message: "User is not assigned to any agency" });
         }
@@ -23014,55 +22792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (status) filters.status = status;
       if (priority) filters.priority = priority;
-      if (category) filters.category = category;
-      if (condominiumId) filters.condominiumId = condominiumId;
-      if (search) filters.search = search;
-      if (dateFilter) filters.dateFilter = dateFilter;
       
-      let tickets = await storage.getExternalMaintenanceTicketsByAgency(agencyId, filters);
-      
-      // Apply biweekly period filter if provided
-      if (periodYear && periodMonth && periodIndex) {
-        const yearNum = parseInt(periodYear);
-        const monthNum = parseInt(periodMonth);
-        const periodNum = parseInt(periodIndex);
-        const { startDate, endDate } = getBiweeklyDateRange(yearNum, monthNum, periodNum);
-        
-        tickets = tickets.filter(ticket => {
-          const ticketDate = new Date(ticket.createdAt);
-          return ticketDate >= startDate && ticketDate <= endDate;
-        });
-      }
-      
-      // Sort tickets
-      const field = sortField || 'createdAt';
-      const order = sortOrder || 'desc';
-      tickets = tickets.sort((a, b) => {
-        const aVal = field === 'created' ? a.createdAt : a[field];
-        const bVal = field === 'created' ? b.createdAt : b[field];
-        if (order === 'asc') {
-          return aVal > bVal ? 1 : -1;
-        }
-        return aVal < bVal ? 1 : -1;
-      });
-      
-      // If pagination params provided, return paginated response
-      if (page && pageSize) {
-        const pageNum = parseInt(page) || 1;
-        const pageSizeNum = parseInt(pageSize) || 10;
-        const total = tickets.length;
-        const totalPages = Math.ceil(total / pageSizeNum);
-        const start = (pageNum - 1) * pageSizeNum;
-        const paginatedTickets = tickets.slice(start, start + pageSizeNum);
-        
-        return res.json({
-          data: paginatedTickets,
-          total,
-          page: pageNum,
-          pageSize: pageSizeNum,
-          totalPages
-        });
-      }
+      const tickets = await storage.getExternalMaintenanceTicketsByAgency(agencyId, filters);
       
       res.json(tickets);
     } catch (error: any) {
@@ -23070,7 +22801,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       handleGenericError(res, error);
     }
   });
-
 
   app.get("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
@@ -23110,7 +22840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/external-tickets/:id", isAuthenticated, requireRole(EXTERNAL_MAINTENANCE_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
+      const userRole = req.user?.role || req.session?.adminUser?.role;
       
       // Only admins and maintenance managers can modify tickets directly
       // Regular users should use POST /updates and POST /photos endpoints
@@ -23149,7 +22879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status, resolvedDate, completionNotes } = req.body;
       const userId = req.user?.claims?.sub || req.user?.id;
-      const userRole = req.session?.adminUser?.role || req.user?.cachedRole || req.user?.role;
+      const userRole = req.user?.role || req.session?.adminUser?.role;
       
       if (!status) {
         return res.status(400).json({ message: "Status is required" });
@@ -23444,38 +23174,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  // External Dashboard Summary
-  app.get("/api/external-dashboard-summary", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      // Always use authenticated user's agency for security
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        if (!agencyId) {
-          return res.status(400).json({ message: "User is not assigned to any agency" });
-        }
-      }
-      
-      // Verify ownership
-      const hasAccess = await verifyExternalAgencyOwnership(req, res, agencyId);
-      if (!hasAccess) return;
-      
-      const summary = await storage.getExternalDashboardSummary(agencyId);
-      res.json(summary);
-    } catch (error: any) {
-      console.error("Error fetching dashboard summary:", error);
-      handleGenericError(res, error);
-    }
-  });
   // External Condominiums Routes
   app.get("/api/external-condominiums", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { isActive, search, sortField, sortOrder, limit, offset } = req.query;
       
       // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
-      // Always use authenticated user's agency for security
-      const agencyId = await getUserAgencyId(req);
+      let agencyId = req.query.agencyId;
       if (!agencyId) {
+        agencyId = await getUserAgencyId(req);
         if (!agencyId) {
           return res.status(400).json({ message: "User is not assigned to any agency" });
         }
@@ -23733,12 +23440,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // External Units Routes
   app.get("/api/external-units", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
-      const { condominiumId, isActive, search, zone, typology, limit, offset, sortField, sortOrder } = req.query;
+      const { condominiumId, isActive } = req.query;
       
-      // Get agency ID from authenticated user
-      const agencyId = await getUserAgencyId(req);
+      // Get agency ID from authenticated user (admin/master can pass agencyId to view other agencies)
+      let agencyId = req.query.agencyId;
       if (!agencyId) {
-        return res.status(400).json({ message: "User is not assigned to any agency" });
+        agencyId = await getUserAgencyId(req);
+        if (!agencyId) {
+          return res.status(400).json({ message: "User is not assigned to any agency" });
+        }
       }
       
       // Verify ownership
@@ -23747,30 +23457,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const filters: any = {};
       if (isActive !== undefined) filters.isActive = isActive === 'true';
-      if (condominiumId && condominiumId !== 'all') filters.condominiumId = condominiumId;
+      if (condominiumId) filters.condominiumId = condominiumId;
       
-      let units = await storage.getExternalUnitsByAgency(agencyId, filters);
-      
-      // Apply search filter
-      if (search) {
-        const searchLower = search.toLowerCase();
-        units = units.filter(u => 
-          u.unitNumber?.toLowerCase().includes(searchLower) ||
-          u.name?.toLowerCase().includes(searchLower) ||
-          u.ownerName?.toLowerCase().includes(searchLower) ||
-          u.description?.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      // Apply zone filter
-      if (zone && zone !== 'all') {
-        units = units.filter(u => u.zone === zone);
-      }
-      
-      // Apply typology filter
-      if (typology && typology !== 'all') {
-        units = units.filter(u => u.typology === typology);
-      }
+      const units = await storage.getExternalUnitsByAgency(agencyId, filters);
       
       // Get all active contracts for this agency to determine which units are rented
       const activeContracts = await storage.getExternalRentalContractsByAgency(agencyId);
@@ -23781,30 +23470,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // Add currentContractId and status field to each unit
-      let unitsWithContractInfo = units.map(unit => ({
+      const unitsWithContractInfo = units.map(unit => ({
         ...unit,
         status: unit.isActive ? 'active' : 'inactive',
         currentContractId: activeContractsByUnit.get(unit.id) || null,
       }));
       
-      // Apply sorting
-      if (sortField) {
-        unitsWithContractInfo.sort((a: any, b: any) => {
-          const aVal = a[sortField] || '';
-          const bVal = b[sortField] || '';
-          const comparison = String(aVal).localeCompare(String(bVal));
-          return sortOrder === 'desc' ? -comparison : comparison;
-        });
-      }
-      
-      const total = unitsWithContractInfo.length;
-      
-      // Apply pagination
-      const limitNum = parseInt(limit) || 50;
-      const offsetNum = parseInt(offset) || 0;
-      const paginatedUnits = unitsWithContractInfo.slice(offsetNum, offsetNum + limitNum);
-      
-      res.json({ data: paginatedUnits, total });
+      res.json(unitsWithContractInfo);
     } catch (error: any) {
       console.error("Error fetching external units:", error);
       handleGenericError(res, error);
@@ -26273,17 +25945,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/external/rentals/overview", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+  // External Rental Contracts Routes
+  // Get all rental contracts for user's agency with unit and condominium info
+  app.get("/api/external-rental-contracts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) {
         return res.status(403).json({ message: "No agency access" });
       }
       
-      const { status } = req.query;
+      const { status, limit, offset } = req.query;
+      const filters = status ? { status: status as string } : undefined;
       
-      // Get all rental contracts for agency
-      let allContracts = await db.select({
+      // Parse pagination parameters with sensible defaults
+      const limitNum = limit ? parseInt(limit as string, 10) : 100;
+      const offsetNum = offset ? parseInt(offset as string, 10) : 0;
+      
+      // Validate pagination parameters
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 500) {
+        return res.status(400).json({ message: "Invalid limit parameter (must be 1-500)" });
+      }
+      if (isNaN(offsetNum) || offsetNum < 0) {
+        return res.status(400).json({ message: "Invalid offset parameter (must be >= 0)" });
+      }
+      
+      // Get rental contracts with unit and condominium information using SQL joins
+      const contractsWithDetails = await db.select({
         contract: externalRentalContracts,
         unit: externalUnits,
         condominium: externalCondominiums,
@@ -26291,46 +25978,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(externalRentalContracts)
         .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
         .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .where(eq(externalRentalContracts.agencyId, agencyId))
-        .orderBy(desc(externalRentalContracts.createdAt));
+        .where(
+          filters?.status 
+            ? and(
+                eq(externalRentalContracts.agencyId, agencyId),
+                eq(externalRentalContracts.status, filters.status as any)
+              )
+            : eq(externalRentalContracts.agencyId, agencyId)
+        )
+        .orderBy(desc(externalRentalContracts.createdAt))
+        .limit(limitNum)
+        .offset(offsetNum);
       
-      // Calculate stats
-      const stats = {
-        total: allContracts.length,
-        active: allContracts.filter(c => c.contract.status === 'active').length,
-        completed: allContracts.filter(c => c.contract.status === 'completed').length,
-        pending: allContracts.filter(c => c.contract.status === 'pending').length,
-      };
-      
-      // Filter by status if provided
-      let filteredContracts = allContracts;
-      if (status && status !== 'all') {
-        filteredContracts = allContracts.filter(c => c.contract.status === status);
+      if (contractsWithDetails.length === 0) {
+        return res.json([]);
       }
       
-      // Format contracts with unit and condominium info
-      const contracts = filteredContracts.map(c => ({
-        ...c.contract,
-        unit: c.unit ? {
-          id: c.unit.id,
-          unitNumber: c.unit.unitNumber,
-          name: c.unit.name,
-        } : null,
-        condominium: c.condominium ? {
-          id: c.condominium.id,
-          name: c.condominium.name,
-        } : null,
-      }));
+      // Bulk fetch: Get all active schedules for all contracts in ONE query
+      const contractIds = contractsWithDetails.map(c => c.contract.id);
+      const allSchedules = await db.select()
+        .from(externalPaymentSchedules)
+        .where(
+          and(
+            inArray(externalPaymentSchedules.contractId, contractIds),
+            eq(externalPaymentSchedules.isActive, true)
+          )
+        );
       
-      res.json({
-        contracts,
-        stats,
+      // Bulk fetch: Get next upcoming payment for all contracts in ONE query
+      // Use a window function to get first payment per contract
+      const allNextPayments = await db.select()
+        .from(externalPayments)
+        .where(
+          and(
+            inArray(externalPayments.contractId, contractIds),
+            eq(externalPayments.status, 'pending'),
+            sql`${externalPayments.dueDate} >= CURRENT_DATE`
+          )
+        )
+        .orderBy(asc(externalPayments.dueDate));
+      
+      // Group schedules by contract ID
+      const schedulesByContract = allSchedules.reduce((acc, schedule) => {
+        if (!acc[schedule.contractId]) {
+          acc[schedule.contractId] = [];
+        }
+        acc[schedule.contractId].push(schedule);
+        return acc;
+      }, {} as Record<string, typeof allSchedules>);
+      
+      // Get first payment per contract ID
+      const nextPaymentByContract = allNextPayments.reduce((acc, payment) => {
+        if (!acc[payment.contractId]) {
+          acc[payment.contractId] = payment;
+        }
+        return acc;
+      }, {} as Record<string, typeof allNextPayments[0]>);
+      
+      // Combine data in memory (no additional DB queries)
+      const enhancedContracts = contractsWithDetails.map((item) => {
+        const schedules = schedulesByContract[item.contract.id] || [];
+        const nextPayment = nextPaymentByContract[item.contract.id];
+        
+        return {
+          ...item,
+          activeServices: schedules.map(s => ({
+            serviceType: s.serviceType,
+            amount: s.amount,
+            currency: s.currency,
+            dayOfMonth: s.dayOfMonth,
+          })),
+          nextPaymentDue: nextPayment?.dueDate || null,
+          nextPaymentAmount: nextPayment?.amount || null,
+          nextPaymentService: nextPayment?.serviceType || null,
+        };
       });
+      
+      res.json(enhancedContracts);
     } catch (error: any) {
-      console.error("Error fetching rentals overview:", error);
+      console.error("Error fetching rental contracts:", error);
       handleGenericError(res, error);
     }
   });
+
+  // Get individual rental contract by ID
   app.get("/api/external-rental-contracts/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -27883,13 +27614,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: users.lastName,
           phone: users.phone,
           maintenanceSpecialty: users.maintenanceSpecialty,
-          isSuspended: users.isSuspended,
-          suspensionReason: users.suspensionReason,
         })
         .from(users)
         .where(and(
           eq(users.role, "external_agency_maintenance"),
-          eq(users.externalAgencyId, agencyId)
+          eq(users.assignedToUser, agencyId)
         ))
         .orderBy(users.firstName);
 
@@ -28328,375 +28057,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // EXTERNAL ACCOUNTING - NEW PAYROLL AND COMMISSIONS ENDPOINTS
-  // ============================================================================
-
-  // Helper function to calculate biweekly date range for accounting
-  function getAccountingBiweeklyDateRange(year: number, month: number, period: number): { startDate: Date; endDate: Date } {
-    if (period === 1) {
-      const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
-      const endDate = new Date(year, month - 1, 15, 23, 59, 59, 999);
-      return { startDate, endDate };
-    } else {
-      const startDate = new Date(year, month - 1, 16, 0, 0, 0, 0);
-      const lastDay = new Date(year, month, 0).getDate();
-      const endDate = new Date(year, month - 1, lastDay, 23, 59, 59, 999);
-      return { startDate, endDate };
-    }
-  }
-
-  // Helper to get effective close date (closedAt or resolvedDate)
-  function getEffectiveCloseDate(ticket: any): Date | null {
-    if (ticket.closedAt) return new Date(ticket.closedAt);
-    if (ticket.resolvedDate) return new Date(ticket.resolvedDate);
-    if (ticket.invoiceDate) return new Date(ticket.invoiceDate);
-    return null;
-  }
-
-  // GET /api/external/accounting/payroll/maintenance - Get maintenance payroll for biweekly period
-  app.get("/api/external/accounting/payroll/maintenance", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "User is not assigned to any agency" });
-      }
-
-      const { year, month, period } = req.query;
-      const yearNum = parseInt(year as string) || new Date().getFullYear();
-      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
-      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
-      
-      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
-      
-      // Get all closed/resolved tickets - excluding cleaning category
-      const allTickets = await db.select({
-        ticket: externalMaintenanceTickets,
-        unit: externalUnits,
-        condominium: externalCondominiums,
-        worker: users,
-      })
-        .from(externalMaintenanceTickets)
-        .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
-        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .leftJoin(users, eq(externalMaintenanceTickets.assignedTo, users.id))
-        .where(and(
-          eq(externalMaintenanceTickets.agencyId, agencyId),
-          or(eq(externalMaintenanceTickets.status, 'closed'), eq(externalMaintenanceTickets.status, 'resolved')),
-          ne(externalMaintenanceTickets.category, 'cleaning')
-        ))
-        .orderBy(desc(externalMaintenanceTickets.closedAt));
-      
-      // Filter by date range using effective close date (closedAt or resolvedDate)
-      const filteredTickets = allTickets.filter(item => {
-        const effectiveDate = getEffectiveCloseDate(item.ticket);
-        if (!effectiveDate) return false;
-        return effectiveDate >= startDate && effectiveDate <= endDate;
-      });
-      
-      // Build payroll items
-      const payrollItems = filteredTickets.map(item => {
-        const effectiveDate = getEffectiveCloseDate(item.ticket);
-        return {
-          ticketId: item.ticket.id,
-          ticketNumber: item.ticket.ticketNumber || `TK-${item.ticket.id.slice(0, 8)}`,
-          title: item.ticket.title,
-          category: item.ticket.category,
-          closedAt: effectiveDate?.toISOString() || null,
-          unitNumber: item.unit?.unitNumber || null,
-          condominiumName: item.condominium?.name || null,
-          workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() || item.worker.email : 'Sin asignar',
-          workerEmail: item.worker?.email || null,
-          netPayment: parseFloat(item.ticket.finalChargeAmount || '0'),
-          adminFee: parseFloat(item.ticket.adminFeeAmount || '0'),
-          totalCharged: parseFloat(item.ticket.totalChargeAmount || '0'),
-        };
-      });
-
-      const totalNetPayment = payrollItems.reduce((sum, item) => sum + item.netPayment, 0);
-      const totalAdminFees = payrollItems.reduce((sum, item) => sum + item.adminFee, 0);
-
-      res.json({
-        period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        items: payrollItems,
-        totals: {
-          count: payrollItems.length,
-          netPayment: totalNetPayment,
-          adminFees: totalAdminFees,
-        }
-      });
-    } catch (error: any) {
-      console.error("Error fetching maintenance payroll:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // GET /api/external/accounting/payroll/cleaning - Get cleaning payroll for biweekly period
-  app.get("/api/external/accounting/payroll/cleaning", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "User is not assigned to any agency" });
-      }
-
-      const { year, month, period } = req.query;
-      const yearNum = parseInt(year as string) || new Date().getFullYear();
-      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
-      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
-      
-      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
-      
-      // Get all closed/resolved tickets - only cleaning category
-      const allTickets = await db.select({
-        ticket: externalMaintenanceTickets,
-        unit: externalUnits,
-        condominium: externalCondominiums,
-        worker: users,
-      })
-        .from(externalMaintenanceTickets)
-        .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
-        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .leftJoin(users, eq(externalMaintenanceTickets.assignedTo, users.id))
-        .where(and(
-          eq(externalMaintenanceTickets.agencyId, agencyId),
-          or(eq(externalMaintenanceTickets.status, 'closed'), eq(externalMaintenanceTickets.status, 'resolved')),
-          eq(externalMaintenanceTickets.category, 'cleaning')
-        ))
-        .orderBy(desc(externalMaintenanceTickets.closedAt));
-      
-      // Filter by date range using effective close date
-      const filteredTickets = allTickets.filter(item => {
-        const effectiveDate = getEffectiveCloseDate(item.ticket);
-        if (!effectiveDate) return false;
-        return effectiveDate >= startDate && effectiveDate <= endDate;
-      });
-      
-      // Build payroll items
-      const payrollItems = filteredTickets.map(item => {
-        const effectiveDate = getEffectiveCloseDate(item.ticket);
-        return {
-          ticketId: item.ticket.id,
-          ticketNumber: item.ticket.ticketNumber || `TK-${item.ticket.id.slice(0, 8)}`,
-          title: item.ticket.title,
-          category: item.ticket.category,
-          closedAt: effectiveDate?.toISOString() || null,
-          unitNumber: item.unit?.unitNumber || null,
-          condominiumName: item.condominium?.name || null,
-          workerName: item.worker ? `${item.worker.firstName || ''} ${item.worker.lastName || ''}`.trim() || item.worker.email : 'Sin asignar',
-          workerEmail: item.worker?.email || null,
-          netPayment: parseFloat(item.ticket.finalChargeAmount || '0'),
-          adminFee: parseFloat(item.ticket.adminFeeAmount || '0'),
-          totalCharged: parseFloat(item.ticket.totalChargeAmount || '0'),
-        };
-      });
-
-      const totalNetPayment = payrollItems.reduce((sum, item) => sum + item.netPayment, 0);
-      const totalAdminFees = payrollItems.reduce((sum, item) => sum + item.adminFee, 0);
-
-      res.json({
-        period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        items: payrollItems,
-        totals: {
-          count: payrollItems.length,
-          netPayment: totalNetPayment,
-          adminFees: totalAdminFees,
-        }
-      });
-    } catch (error: any) {
-      console.error("Error fetching cleaning payroll:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // GET /api/external/accounting/commissions - Get all commissions for biweekly period
-  app.get("/api/external/accounting/commissions", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "User is not assigned to any agency" });
-      }
-
-      const { year, month, period } = req.query;
-      const yearNum = parseInt(year as string) || new Date().getFullYear();
-      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
-      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
-      
-      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
-      
-      // Get service commissions from closed tickets (admin fees)
-      const serviceTickets = await db.select({
-        ticket: externalMaintenanceTickets,
-        unit: externalUnits,
-        condominium: externalCondominiums,
-      })
-        .from(externalMaintenanceTickets)
-        .leftJoin(externalUnits, eq(externalMaintenanceTickets.unitId, externalUnits.id))
-        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .where(and(
-          eq(externalMaintenanceTickets.agencyId, agencyId),
-          or(eq(externalMaintenanceTickets.status, 'closed'), eq(externalMaintenanceTickets.status, 'resolved'))
-        ))
-        .orderBy(desc(externalMaintenanceTickets.closedAt));
-
-      // Filter by date range
-      const filteredServiceTickets = serviceTickets.filter(item => {
-        const effectiveDate = getEffectiveCloseDate(item.ticket);
-        if (!effectiveDate) return false;
-        return effectiveDate >= startDate && effectiveDate <= endDate;
-      });
-
-      // Get rental commissions from contracts started in the period
-      const rentalContracts = await db.select({
-        contract: externalRentalContracts,
-        unit: externalUnits,
-        condominium: externalCondominiums,
-      })
-        .from(externalRentalContracts)
-        .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
-        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .where(and(
-          eq(externalRentalContracts.agencyId, agencyId),
-          eq(externalRentalContracts.status, 'active'),
-          gte(externalRentalContracts.startDate, startDate),
-          lte(externalRentalContracts.startDate, endDate)
-        ))
-        .orderBy(desc(externalRentalContracts.startDate));
-
-      // Build commission items
-      const serviceCommissions = filteredServiceTickets.map(item => {
-        const effectiveDate = getEffectiveCloseDate(item.ticket);
-        return {
-          type: 'service' as const,
-          id: item.ticket.id,
-          reference: item.ticket.ticketNumber || `TK-${item.ticket.id.slice(0, 8)}`,
-          description: item.ticket.title,
-          category: item.ticket.category === 'cleaning' ? 'Limpieza' : 'Mantenimiento',
-          date: effectiveDate?.toISOString() || null,
-          unitNumber: item.unit?.unitNumber || null,
-          condominiumName: item.condominium?.name || null,
-          baseAmount: parseFloat(item.ticket.finalChargeAmount || '0'),
-          commissionAmount: parseFloat(item.ticket.adminFeeAmount || '0'),
-        };
-      });
-
-      const rentalCommissions = rentalContracts.map(item => ({
-        type: 'rental' as const,
-        id: item.contract.id,
-        reference: `RENT-${item.contract.id.slice(0, 8)}`,
-        description: `Comisión por renta - ${item.unit?.unitNumber || 'Unidad'}`,
-        category: 'Renta',
-        date: item.contract.startDate ? new Date(item.contract.startDate).toISOString() : null,
-        unitNumber: item.unit?.unitNumber || null,
-        condominiumName: item.condominium?.name || null,
-        baseAmount: parseFloat(item.contract.monthlyRent || '0'),
-        commissionAmount: parseFloat(item.contract.commissionAmount || '0'),
-      }));
-
-      const allCommissions = [...serviceCommissions, ...rentalCommissions]
-        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-
-      const totalServiceCommissions = serviceCommissions.reduce((sum, item) => sum + item.commissionAmount, 0);
-      const totalRentalCommissions = rentalCommissions.reduce((sum, item) => sum + item.commissionAmount, 0);
-
-      res.json({
-        period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        items: allCommissions,
-        totals: {
-          serviceCount: serviceCommissions.length,
-          rentalCount: rentalCommissions.length,
-          serviceCommissions: totalServiceCommissions,
-          rentalCommissions: totalRentalCommissions,
-          totalCommissions: totalServiceCommissions + totalRentalCommissions,
-        }
-      });
-    } catch (error: any) {
-      console.error("Error fetching commissions:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // GET /api/external/accounting/seller-payouts - Get seller payouts for biweekly period
-  app.get("/api/external/accounting/seller-payouts", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "User is not assigned to any agency" });
-      }
-
-      const { year, month, period } = req.query;
-      const yearNum = parseInt(year as string) || new Date().getFullYear();
-      const monthNum = parseInt(month as string) || new Date().getMonth() + 1;
-      const periodNum = parseInt(period as string) || (new Date().getDate() <= 15 ? 1 : 2);
-      
-      const { startDate, endDate } = getAccountingBiweeklyDateRange(yearNum, monthNum, periodNum);
-      
-      // Get leads that converted to clients with rental contracts in this period
-      const leadsWithRentals = await db.select({
-        lead: externalLeads,
-        contract: externalRentalContracts,
-        unit: externalUnits,
-        condominium: externalCondominiums,
-        seller: users,
-      })
-        .from(externalLeads)
-        .innerJoin(externalClients, eq(externalLeads.convertedToClientId, externalClients.id))
-        .innerJoin(externalRentalContracts, eq(externalClients.id, externalRentalContracts.tenantClientId))
-        .leftJoin(externalUnits, eq(externalRentalContracts.unitId, externalUnits.id))
-        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
-        .leftJoin(users, eq(externalLeads.sellerId, users.id))
-        .where(and(
-          eq(externalLeads.agencyId, agencyId),
-          eq(externalRentalContracts.status, 'active'),
-          isNotNull(externalLeads.sellerId),
-          gte(externalRentalContracts.startDate, startDate),
-          lte(externalRentalContracts.startDate, endDate)
-        ))
-        .orderBy(desc(externalRentalContracts.startDate));
-
-      // Calculate seller commissions (typically a percentage of the rental commission)
-      const sellerPayouts = leadsWithRentals.map(item => {
-        const rentalCommission = parseFloat(item.contract.commissionAmount || '0');
-        const sellerCommission = rentalCommission * 0.5; // 50% to seller by default
-        
-        return {
-          leadId: item.lead.id,
-          contractId: item.contract.id,
-          leadName: item.lead.fullName,
-          leadEmail: item.lead.email || null,
-          sellerName: item.seller ? `${item.seller.firstName || ''} ${item.seller.lastName || ''}`.trim() || item.seller.email : 'Sin vendedor',
-          sellerEmail: item.seller?.email || null,
-          unitNumber: item.unit?.unitNumber || null,
-          condominiumName: item.condominium?.name || null,
-          contractStartDate: item.contract.startDate ? new Date(item.contract.startDate).toISOString() : null,
-          monthlyRent: parseFloat(item.contract.monthlyRent || '0'),
-          rentalCommission: rentalCommission,
-          sellerPayout: sellerCommission,
-        };
-      });
-
-      const totalPayouts = sellerPayouts.reduce((sum, item) => sum + item.sellerPayout, 0);
-
-      res.json({
-        period: { year: yearNum, month: monthNum, biweekly: periodNum },
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        items: sellerPayouts,
-        totals: {
-          count: sellerPayouts.length,
-          totalPayouts: totalPayouts,
-        }
-      });
-    } catch (error: any) {
-      console.error("Error fetching seller payouts:", error);
-      handleGenericError(res, error);
-    }
-  });
-
   // EXTERNAL MANAGEMENT SYSTEM - TERMS AND CONDITIONS ROUTES
   // ============================================================================
 
@@ -28883,224 +28243,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
   // EXTERNAL MANAGEMENT SYSTEM - QUOTATIONS ROUTES
-
-  // ============================================================================
-  // EXTERNAL MANAGEMENT SYSTEM - ZONES/PROPERTY TYPES CONFIGURATION
-  // ============================================================================
-
-  // GET /api/external/config/zones - Get all zones for agency
-  app.get("/api/external/config/zones", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const zones = await db.select()
-        .from(externalAgencyZones)
-        .where(eq(externalAgencyZones.agencyId, agencyId))
-        .orderBy(externalAgencyZones.sortOrder, externalAgencyZones.name);
-      
-      res.json(zones);
-    } catch (error: any) {
-      console.error("Error fetching zones:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // POST /api/external/config/zones - Create zone
-  app.post("/api/external/config/zones", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const { name, sortOrder } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-      }
-      
-      const [zone] = await db.insert(externalAgencyZones)
-        .values({
-          id: crypto.randomUUID(),
-          agencyId,
-          name,
-          sortOrder: sortOrder || 0,
-          isActive: true,
-        })
-        .returning();
-      
-      res.status(201).json(zone);
-    } catch (error: any) {
-      console.error("Error creating zone:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // PATCH /api/external/config/zones/:id - Update zone
-  app.patch("/api/external/config/zones/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const { id } = req.params;
-      const { name, sortOrder, isActive } = req.body;
-      
-      const [zone] = await db.update(externalAgencyZones)
-        .set({
-          ...(name !== undefined && { name }),
-          ...(sortOrder !== undefined && { sortOrder }),
-          ...(isActive !== undefined && { isActive }),
-        })
-        .where(and(
-          eq(externalAgencyZones.id, id),
-          eq(externalAgencyZones.agencyId, agencyId)
-        ))
-        .returning();
-      
-      if (!zone) {
-        return res.status(404).json({ message: "Zone not found" });
-      }
-      
-      res.json(zone);
-    } catch (error: any) {
-      console.error("Error updating zone:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // DELETE /api/external/config/zones/:id - Delete zone
-  app.delete("/api/external/config/zones/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const { id } = req.params;
-      
-      await db.delete(externalAgencyZones)
-        .where(and(
-          eq(externalAgencyZones.id, id),
-          eq(externalAgencyZones.agencyId, agencyId)
-        ));
-      
-      res.status(204).send();
-    } catch (error: any) {
-      console.error("Error deleting zone:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // GET /api/external/config/property-types - Get all property types for agency
-  app.get("/api/external/config/property-types", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const types = await db.select()
-        .from(externalAgencyPropertyTypes)
-        .where(eq(externalAgencyPropertyTypes.agencyId, agencyId))
-        .orderBy(externalAgencyPropertyTypes.sortOrder, externalAgencyPropertyTypes.name);
-      
-      res.json(types);
-    } catch (error: any) {
-      console.error("Error fetching property types:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // POST /api/external/config/property-types - Create property type
-  app.post("/api/external/config/property-types", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const { name, sortOrder } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-      }
-      
-      const [type] = await db.insert(externalAgencyPropertyTypes)
-        .values({
-          id: crypto.randomUUID(),
-          agencyId,
-          name,
-          sortOrder: sortOrder || 0,
-          isActive: true,
-        })
-        .returning();
-      
-      res.status(201).json(type);
-    } catch (error: any) {
-      console.error("Error creating property type:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // PATCH /api/external/config/property-types/:id - Update property type
-  app.patch("/api/external/config/property-types/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const { id } = req.params;
-      const { name, sortOrder, isActive } = req.body;
-      
-      const [type] = await db.update(externalAgencyPropertyTypes)
-        .set({
-          ...(name !== undefined && { name }),
-          ...(sortOrder !== undefined && { sortOrder }),
-          ...(isActive !== undefined && { isActive }),
-        })
-        .where(and(
-          eq(externalAgencyPropertyTypes.id, id),
-          eq(externalAgencyPropertyTypes.agencyId, agencyId)
-        ))
-        .returning();
-      
-      if (!type) {
-        return res.status(404).json({ message: "Property type not found" });
-      }
-      
-      res.json(type);
-    } catch (error: any) {
-      console.error("Error updating property type:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-  // DELETE /api/external/config/property-types/:id - Delete property type
-  app.delete("/api/external/config/property-types/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(403).json({ message: "No agency access" });
-      }
-      
-      const { id } = req.params;
-      
-      await db.delete(externalAgencyPropertyTypes)
-        .where(and(
-          eq(externalAgencyPropertyTypes.id, id),
-          eq(externalAgencyPropertyTypes.agencyId, agencyId)
-        ));
-      
-      res.status(204).send();
-    } catch (error: any) {
-      console.error("Error deleting property type:", error);
-      handleGenericError(res, error);
-    }
-  });
   // ============================================================================
 
   // GET /api/external/quotations - List all quotations for agency

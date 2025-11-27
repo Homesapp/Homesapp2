@@ -104,7 +104,6 @@ import { cn } from "@/lib/utils";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import ExternalQuotationsTab from "@/components/ExternalQuotationsTab";
 import ExternalMaintenanceWorkers from "@/pages/ExternalMaintenanceWorkers";
-import { ExternalCleaningTab } from "@/components/ExternalCleaningTab";
 
 // Form-specific schema - agencyId added after validation, scheduledDate as string
 const maintenanceFormSchema = z.object({
@@ -298,22 +297,6 @@ export default function ExternalMaintenance() {
     }
   };
   
-  // Helper to get Spanish month name
-  const getSpanishMonthName = (month: number): string => {
-    const monthNames = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
-    return monthNames[month - 1] || '';
-  };
-  
-  // Generate biweekly period label with month and year
-  const getBiweeklyPeriodLabel = (): string => {
-    const periodText = periodIndex === 1 ? '1ra' : '2da';
-    const monthName = getSpanishMonthName(periodMonth);
-    return `${periodText} Quincena de ${monthName} ${periodYear}`;
-  };
-  
   // Auto-switch view mode on genuine breakpoint transitions
   useEffect(() => {
     if (isMobile !== prevIsMobile) {
@@ -349,18 +332,10 @@ export default function ExternalMaintenance() {
     totalPages: number;
   };
 
-  // Reset to page 1 when biweekly period changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [periodYear, periodMonth, periodIndex]);
-
   // Build query params for the URL
   const ticketsQueryParams = new URLSearchParams();
   ticketsQueryParams.set('page', String(currentPage));
   ticketsQueryParams.set('pageSize', String(itemsPerPage));
-  ticketsQueryParams.set('periodYear', String(periodYear));
-  ticketsQueryParams.set('periodMonth', String(periodMonth));
-  ticketsQueryParams.set('periodIndex', String(periodIndex));
   if (debouncedSearch) ticketsQueryParams.set('search', debouncedSearch);
   if (statusFilter !== 'all') ticketsQueryParams.set('status', statusFilter);
   if (priorityFilter !== 'all') ticketsQueryParams.set('priority', priorityFilter);
@@ -945,7 +920,7 @@ export default function ExternalMaintenance() {
   };
 
   const t = language === 'es' ? {
-    title: 'Servicios',
+    title: 'Mantenimiento',
     subtitle: 'Gestiona tickets de mantenimiento y servicios',
     newTicket: 'Nuevo Ticket',
     totalJobs: 'Total Trabajos',
@@ -986,7 +961,7 @@ export default function ExternalMaintenance() {
     create: 'Crear Ticket',
     creating: 'Creando...',
   } : {
-    title: 'Services',
+    title: 'Maintenance',
     subtitle: 'Manage maintenance tickets and services',
     newTicket: 'New Ticket',
     totalJobs: 'Total Jobs',
@@ -1042,13 +1017,13 @@ export default function ExternalMaintenance() {
       <Tabs defaultValue="tickets" className="w-full">
         <TabsList className="grid grid-cols-4">
           <TabsTrigger value="tickets" data-testid="tab-tickets">
-            {language === 'es' ? 'Mantenimiento' : 'Maintenance'}
-          </TabsTrigger>
-          <TabsTrigger value="cleaning" data-testid="tab-cleaning">
-            {language === 'es' ? 'Limpieza' : 'Cleaning'}
+            {language === 'es' ? 'Tickets' : 'Tickets'}
           </TabsTrigger>
           <TabsTrigger value="quotations" data-testid="tab-quotations">
             {language === 'es' ? 'Cotizaciones' : 'Quotations'}
+          </TabsTrigger>
+          <TabsTrigger value="workers" data-testid="tab-workers">
+            {language === 'es' ? 'Trabajadores' : 'Workers'}
           </TabsTrigger>
           <TabsTrigger value="assignments" data-testid="tab-assignments">
             {language === 'es' ? 'Asignaciones' : 'Assignments'}
@@ -1081,7 +1056,7 @@ export default function ExternalMaintenance() {
         <div className="flex items-center gap-2 text-sm px-3 py-1 bg-muted rounded-md">
           <CalendarIcon className="h-4 w-4" />
           <span className="font-medium">
-            {getBiweeklyPeriodLabel()}
+            {biweeklyStats?.period?.label || `${periodIndex === 1 ? '1ra' : '2da'} Quincena`}
           </span>
         </div>
         <Button
@@ -2682,8 +2657,8 @@ export default function ExternalMaintenance() {
           <ExternalQuotationsTab />
         </TabsContent>
 
-        <TabsContent value="cleaning" className="mt-6">
-          <ExternalCleaningTab language={language} />
+        <TabsContent value="workers" className="mt-6">
+          <ExternalMaintenanceWorkers initialTab="workers" hideHeader />
         </TabsContent>
 
         <TabsContent value="assignments" className="mt-6">
