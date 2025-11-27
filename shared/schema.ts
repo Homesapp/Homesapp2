@@ -6873,7 +6873,9 @@ export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
   }).optional().nullable(),
 });
 
-export const updateExternalUnitSchema = insertExternalUnitSchema.partial();
+export const updateExternalUnitSchema = insertExternalUnitSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
 
 export type InsertExternalUnit = z.infer<typeof insertExternalUnitSchema>;
 export type UpdateExternalUnit = z.infer<typeof updateExternalUnitSchema>;
