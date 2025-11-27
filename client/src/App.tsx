@@ -465,7 +465,6 @@ function AuthenticatedApp() {
               <Route path="/external/dashboard" component={ExternalDashboard} />
               <Route path="/external/agency" component={ExternalAgencyConfig} />
               <Route path="/external/accounts" component={ExternalAccounts} />
-              <Route path="/external/portal" component={ExternalAccesses} />
               <Route path="/external/accesses" component={ExternalAccesses} />
               <Route path="/external/properties" component={ExternalProperties} />
               <Route path="/external/payments" component={ExternalPayments} />
