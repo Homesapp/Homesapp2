@@ -397,10 +397,10 @@ export default function SellerPropertyCatalog() {
     if (search) params.append("search", search);
     if (filters.minPrice) params.append("minPrice", filters.minPrice);
     if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
-    if (filters.bedrooms) params.append("bedrooms", filters.bedrooms);
-    if (filters.zone) params.append("zone", filters.zone);
-    if (filters.propertyType) params.append("propertyType", filters.propertyType);
-    if (filters.status) params.append("status", filters.status);
+    if (filters.bedrooms && filters.bedrooms !== "_all") params.append("bedrooms", filters.bedrooms);
+    if (filters.zone && filters.zone !== "_all") params.append("zone", filters.zone);
+    if (filters.propertyType && filters.propertyType !== "_all") params.append("propertyType", filters.propertyType);
+    if (filters.status && filters.status !== "_all") params.append("status", filters.status);
     params.append("limit", String(ITEMS_PER_PAGE));
     params.append("offset", String((pageNum - 1) * ITEMS_PER_PAGE));
     return params.toString();
@@ -1098,7 +1098,7 @@ export default function SellerPropertyCatalog() {
                           <SelectValue placeholder="Cualquiera" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Cualquiera</SelectItem>
+                          <SelectItem value="_all">Cualquiera</SelectItem>
                           <SelectItem value="1">1</SelectItem>
                           <SelectItem value="2">2</SelectItem>
                           <SelectItem value="3">3</SelectItem>
@@ -1117,7 +1117,7 @@ export default function SellerPropertyCatalog() {
                           <SelectValue placeholder="Todas las zonas" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todas las zonas</SelectItem>
+                          <SelectItem value="_all">Todas las zonas</SelectItem>
                           {zones?.map((zone) => (
                             <SelectItem key={zone.id} value={zone.name}>
                               {zone.name}
@@ -1137,7 +1137,7 @@ export default function SellerPropertyCatalog() {
                           <SelectValue placeholder="Todos los tipos" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos los tipos</SelectItem>
+                          <SelectItem value="_all">Todos los tipos</SelectItem>
                           {propertyTypes?.map((type) => (
                             <SelectItem key={type.id} value={type.name}>
                               {type.name}
@@ -1159,7 +1159,7 @@ export default function SellerPropertyCatalog() {
                         <SelectContent>
                           <SelectItem value="active">Disponible</SelectItem>
                           <SelectItem value="rented">Rentada</SelectItem>
-                          <SelectItem value="">Todas</SelectItem>
+                          <SelectItem value="_all">Todas</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
