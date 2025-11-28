@@ -33,11 +33,35 @@ export function UserProfileMenu({ user, isAdmin = false, onLogout }: UserProfile
   
   const profileImageUrl = 'profileImageUrl' in user ? user.profileImageUrl : undefined;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (isAdmin && onLogout) {
       onLogout();
     } else {
-      window.location.href = "/api/logout";
+      // Check if user is from external agency
+      const isExternalUser = 'role' in user && (
+        user.role === 'external_agency_admin' || 
+        user.role === 'external_agency_seller' || 
+        user.role === 'external_agency_seller_assistant'
+      );
+      
+      try {
+        // Call logout endpoint
+        await fetch("/api/logout", { 
+          method: "GET",
+          credentials: "include"
+        });
+        
+        // Redirect based on user type
+        if (isExternalUser) {
+          window.location.href = "/external-login";
+        } else {
+          window.location.href = "/";
+        }
+      } catch (error) {
+        console.error("Logout error:", error);
+        // Fallback to direct navigation
+        window.location.href = isExternalUser ? "/external-login" : "/";
+      }
     }
   };
 
