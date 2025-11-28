@@ -124,7 +124,7 @@ export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabP
 
   const createMutation = useMutation({
     mutationFn: async (data: ReminderFormData) => {
-      return apiRequest(`/api/external-leads/${leadId}/reminders`, "POST", data);
+      return apiRequest("POST", `/api/external-leads/${leadId}/reminders`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId, "reminders"] });
@@ -147,7 +147,7 @@ export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabP
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ReminderFormData & { status?: string }> }) => {
-      return apiRequest(`/api/external-lead-reminders/${id}`, "PATCH", data);
+      return apiRequest("PATCH", `/api/external-lead-reminders/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId, "reminders"] });
@@ -161,7 +161,7 @@ export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabP
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/external-lead-reminders/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/external-lead-reminders/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId, "reminders"] });
