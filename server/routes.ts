@@ -241,6 +241,8 @@ import {
   insertSellerMessageTemplateSchema,
   insertSellerFollowUpTaskSchema,
   insertExternalLeadPropertyOfferSchema,
+  sellerGoals,
+  insertSellerGoalSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { registerPortalRoutes } from "./portal-routes";
@@ -25520,6 +25522,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Condominiums Routes
+
+  // ============================================
+  // ADMIN SELLER GOALS CRUD ENDPOINTS
+  // ============================================
+
+  // GET /api/admin/seller-goals - List all goals for the agency
+  app.get("/api/admin/seller-goals", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const goals = await db.select()
+        .from(sellerGoals)
+        .where(eq(sellerGoals.agencyId, agencyId))
+        .orderBy(desc(sellerGoals.createdAt));
+
+      res.json(goals);
+    } catch (error: any) {
+      console.error("Error fetching seller goals:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/admin/seller-goals - Create a new goal
+  app.post("/api/admin/seller-goals", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const validation = insertSellerGoalSchema.safeParse({
+        ...req.body,
+        agencyId,
+        createdBy: req.user.id,
+      });
+
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid goal data", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const [newGoal] = await db.insert(sellerGoals)
+        .values(validation.data)
+        .returning();
+
+      res.status(201).json(newGoal);
+    } catch (error: any) {
+      console.error("Error creating seller goal:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PUT /api/admin/seller-goals/:id - Update a goal
+  app.put("/api/admin/seller-goals/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { id } = req.params;
+
+      // Check goal exists and belongs to agency
+      const existingGoal = await db.select()
+        .from(sellerGoals)
+        .where(and(
+          eq(sellerGoals.id, id),
+          eq(sellerGoals.agencyId, agencyId)
+        ))
+        .then(r => r[0]);
+
+      if (!existingGoal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+
+      const [updatedGoal] = await db.update(sellerGoals)
+        .set({
+          ...req.body,
+          updatedAt: new Date(),
+        })
+        .where(eq(sellerGoals.id, id))
+        .returning();
+
+      res.json(updatedGoal);
+    } catch (error: any) {
+      console.error("Error updating seller goal:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/admin/seller-goals/:id - Delete a goal
+  app.delete("/api/admin/seller-goals/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { id } = req.params;
+
+      // Check goal exists and belongs to agency
+      const existingGoal = await db.select()
+        .from(sellerGoals)
+        .where(and(
+          eq(sellerGoals.id, id),
+          eq(sellerGoals.agencyId, agencyId)
+        ))
+        .then(r => r[0]);
+
+      if (!existingGoal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+
+      await db.delete(sellerGoals)
+        .where(eq(sellerGoals.id, id));
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting seller goal:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/admin/seller-goals/:id - Get a specific goal
+  app.get("/api/admin/seller-goals/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { id } = req.params;
+
+      const goal = await db.select()
+        .from(sellerGoals)
+        .where(and(
+          eq(sellerGoals.id, id),
+          eq(sellerGoals.agencyId, agencyId)
+        ))
+        .then(r => r[0]);
+
+      if (!goal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+
+      res.json(goal);
+    } catch (error: any) {
+      console.error("Error fetching seller goal:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/admin/sellers-for-goals - Get list of sellers for goal assignment
+  app.get("/api/admin/sellers-for-goals", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const sellers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+        .from(users)
+        .where(and(
+          eq(users.agencyId, agencyId),
+          eq(users.role, 'external_agency_seller')
+        ))
+        .orderBy(users.firstName, users.lastName);
+
+      res.json(sellers);
+    } catch (error: any) {
+      console.error("Error fetching sellers for goals:", error);
+      handleGenericError(res, error);
+    }
+  });
 
   // ============================================
   // SELLER WORKSPACE ENDPOINTS
