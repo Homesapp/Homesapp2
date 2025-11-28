@@ -8254,3 +8254,61 @@ export const insertExternalLeadPropertyOfferSchema = createInsertSchema(external
 });
 export type InsertExternalLeadPropertyOffer = z.infer<typeof insertExternalLeadPropertyOfferSchema>;
 export type ExternalLeadPropertyOffer = typeof externalLeadPropertyOffers.$inferSelect;
+
+// =====================================================
+// Seller Goals - Metas para vendedores
+// =====================================================
+
+export const sellerGoalTypeEnum = pgEnum("seller_goal_type", [
+  "leads",
+  "conversions", 
+  "revenue",
+  "showings"
+]);
+
+export const sellerGoalPeriodEnum = pgEnum("seller_goal_period", [
+  "weekly",
+  "monthly",
+  "quarterly"
+]);
+
+// Seller Goals - Metas asignadas por admin a vendedores
+export const sellerGoals = pgTable("seller_goals", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  sellerId: varchar("seller_id").references(() => users.id, { onDelete: "cascade" }), // null = applies to all sellers in agency
+  
+  // Bilingual names
+  nameEs: varchar("name_es", { length: 200 }).notNull(),
+  nameEn: varchar("name_en", { length: 200 }).notNull(),
+  descriptionEs: text("description_es"),
+  descriptionEn: text("description_en"),
+  
+  goalType: sellerGoalTypeEnum("goal_type").notNull(),
+  target: integer("target").notNull(), // Target number to achieve
+  period: sellerGoalPeriodEnum("period").notNull().default("monthly"),
+  
+  // Date range
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  // Audit
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_seller_goals_agency").on(table.agencyId),
+  index("idx_seller_goals_seller").on(table.sellerId),
+  index("idx_seller_goals_type").on(table.goalType),
+  index("idx_seller_goals_period").on(table.period),
+  index("idx_seller_goals_dates").on(table.startDate, table.endDate),
+]);
+
+export const insertSellerGoalSchema = createInsertSchema(sellerGoals).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertSellerGoal = z.infer<typeof insertSellerGoalSchema>;
+export type SellerGoal = typeof sellerGoals.$inferSelect;
