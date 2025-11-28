@@ -28715,6 +28715,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
       if (!hasAccess) return;
       
+      // Security: Block sellers from modifying leads in locked statuses
+      const lockedStatuses = ["proceso_renta", "renta_concretada"];
+      const isSeller = req.user?.role === 'external_agency_seller';
+      
+      // If seller and lead is in locked status, block ALL modifications
+      if (isSeller && lockedStatuses.includes(existing.status)) {
+        return res.status(403).json({ 
+          message: "No puedes modificar un lead en proceso de renta o renta concretada. El administrador de la agencia es responsable de este lead." 
+        });
+      }
+      
       // Transform date strings to Date objects before validation
       const bodyWithDates = { ...req.body };
       if (bodyWithDates.checkInDate && typeof bodyWithDates.checkInDate === 'string') {
@@ -28725,19 +28736,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const validatedData = updateExternalLeadSchema.parse(bodyWithDates);
+      
+      // Security: Block sellers from setting status TO locked statuses (after validation)
+      if (isSeller && validatedData.status && lockedStatuses.includes(validatedData.status)) {
+        return res.status(403).json({ 
+          message: "No puedes cambiar el estado a proceso de renta o renta concretada. Solo el administrador de la agencia puede hacerlo." 
+        });
+      }
+      
       // Track status change for history
       const oldStatus = existing.status;
-      const newStatus = validatedData.status;
+      const statusChanged = validatedData.status && oldStatus !== validatedData.status;
       
       const lead = await storage.updateExternalLead(id, validatedData);
       
       // Log status change to history if status changed
-      if (newStatus && oldStatus !== newStatus) {
+      if (statusChanged && req.user?.id) {
         await storage.createExternalLeadStatusHistory({
           leadId: id,
           agencyId: existing.agencyId,
           fromStatus: oldStatus,
-          toStatus: newStatus,
+          toStatus: validatedData.status!,
           changedBy: req.user.id,
         });
         
@@ -28746,7 +28765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           leadId: id,
           agencyId: existing.agencyId,
           activityType: "status_change",
-          title: `Cambio de estado: ${oldStatus} → ${newStatus}`,
+          title: `Cambio de estado: ${oldStatus} → ${validatedData.status}`,
           createdBy: req.user.id,
         });
       }

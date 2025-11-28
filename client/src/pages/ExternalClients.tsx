@@ -4514,25 +4514,39 @@ export default function ExternalClients() {
                     <RefreshCw className="h-4 w-4" />
                     {language === "es" ? "Actualizar Estado" : "Update Status"}
                   </h3>
+                  {isSeller && ["proceso_renta", "renta_concretada"].includes(selectedLead.status) && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
+                      {language === "es" 
+                        ? "El administrador de la agencia es responsable de este lead en esta etapa."
+                        : "The agency admin is responsible for this lead at this stage."}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 flex-wrap">
-                    {["nuevo_lead", "cita_coordinada", "interesado", "oferta_enviada", "proceso_renta", "renta_concretada", "perdido", "muerto"].map((status) => (
-                      <Button
-                        key={status}
-                        size="sm"
-                        variant={selectedLead.status === status ? "default" : "outline"}
-                        onClick={() => {
-                          updateLeadStatusMutation.mutate({ leadId: selectedLead.id, status });
-                          setSelectedLead({ ...selectedLead, status });
-                        }}
-                        disabled={updateLeadStatusMutation.isPending}
-                        className="text-xs"
-                      >
-                        {getLeadStatusLabel(status)}
-                      </Button>
-                    ))}
+                    {["nuevo_lead", "cita_coordinada", "interesado", "oferta_enviada", "proceso_renta", "renta_concretada", "perdido", "muerto"].map((status) => {
+                      const lockedStatuses = ["proceso_renta", "renta_concretada"];
+                      const isStatusLocked = isSeller && (
+                        lockedStatuses.includes(selectedLead.status) || 
+                        lockedStatuses.includes(status)
+                      );
+                      return (
+                        <Button
+                          key={status}
+                          size="sm"
+                          variant={selectedLead.status === status ? "default" : "outline"}
+                          onClick={() => {
+                            updateLeadStatusMutation.mutate({ leadId: selectedLead.id, status });
+                            setSelectedLead({ ...selectedLead, status });
+                          }}
+                          disabled={updateLeadStatusMutation.isPending || isStatusLocked}
+                          className="text-xs"
+                          title={isStatusLocked ? (language === "es" ? "Solo el administrador puede cambiar este estado" : "Only admin can change this status") : undefined}
+                        >
+                          {getLeadStatusLabel(status)}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
-
                 {/* Notes */}
                 {selectedLead.notes && (
                   <div className="space-y-3">
