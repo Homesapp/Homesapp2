@@ -231,10 +231,16 @@ import {
   externalAppointmentUnits,
   insertExternalAppointmentSchema,
   insertExternalAppointmentUnitSchema,
+  sellerMessageTemplates,
+  sellerFollowUpTasks,
+  externalLeadPropertyOffers,
+  insertSellerMessageTemplateSchema,
+  insertSellerFollowUpTaskSchema,
+  insertExternalLeadPropertyOfferSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { registerPortalRoutes } from "./portal-routes";
-import { eq, and, or, not, inArray, desc, asc, sql, ne, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, not, inArray, desc, asc, sql, ne, isNull, isNotNull, gte, lte, lt, ilike } from "drizzle-orm";
 
 // Helper function to verify external agency ownership
 async function verifyExternalAgencyOwnership(req: any, res: any, agencyId: string): Promise<boolean> {
@@ -25509,6 +25515,807 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External Condominiums Routes
+
+  // ============================================
+  // SELLER WORKSPACE ENDPOINTS
+  // ============================================
+
+  // GET /api/external-seller/property-catalog - Property catalog with filters for sellers
+  app.get("/api/external-seller/property-catalog", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { 
+        minPrice, maxPrice, 
+        bedrooms, 
+        zone, 
+        propertyType,
+        status = 'active',
+        search,
+        limit = '50', 
+        offset = '0' 
+      } = req.query;
+
+      const conditions: any[] = [
+        eq(externalUnits.agencyId, agencyId),
+      ];
+
+      if (status) {
+        conditions.push(eq(externalUnits.status, status as string));
+      }
+
+      if (minPrice) {
+        conditions.push(gte(externalUnits.monthlyRent, parseInt(minPrice as string)));
+      }
+      if (maxPrice) {
+        conditions.push(lte(externalUnits.monthlyRent, parseInt(maxPrice as string)));
+      }
+      if (bedrooms) {
+        conditions.push(eq(externalUnits.bedrooms, parseInt(bedrooms as string)));
+      }
+      if (zone) {
+        conditions.push(ilike(externalUnits.zone, \`%\${zone}%\`));
+      }
+      if (propertyType) {
+        conditions.push(eq(externalUnits.unitType, propertyType as string));
+      }
+      if (search) {
+        conditions.push(or(
+          ilike(externalUnits.name, \`%\${search}%\`),
+          ilike(externalUnits.zone, \`%\${search}%\`),
+          ilike(externalUnits.unitType, \`%\${search}%\`)
+        ));
+      }
+
+      const [units, totalResult] = await Promise.all([
+        db.select({
+          id: externalUnits.id,
+          name: externalUnits.name,
+          zone: externalUnits.zone,
+          unitType: externalUnits.unitType,
+          bedrooms: externalUnits.bedrooms,
+          bathrooms: externalUnits.bathrooms,
+          monthlyRent: externalUnits.monthlyRent,
+          currency: externalUnits.currency,
+          status: externalUnits.status,
+          images: externalUnits.images,
+          amenities: externalUnits.amenities,
+          condominiumId: externalUnits.condominiumId,
+        })
+          .from(externalUnits)
+          .where(and(...conditions))
+          .orderBy(desc(externalUnits.createdAt))
+          .limit(parseInt(limit as string))
+          .offset(parseInt(offset as string)),
+        db.select({ count: sql<number>\`count(*)\` })
+          .from(externalUnits)
+          .where(and(...conditions))
+      ]);
+
+      res.json({
+        data: units,
+        total: totalResult[0]?.count || 0,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      });
+    } catch (error: any) {
+      console.error("Error fetching property catalog:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-seller/share-property - Share property with lead and log it
+  app.post("/api/external-seller/share-property", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { leadId, unitId, propertyId, channel = 'whatsapp', templateId, message } = req.body;
+
+      if (!leadId || (!unitId && !propertyId)) {
+        return res.status(400).json({ message: "Lead ID and Unit/Property ID are required" });
+      }
+
+      // Create the property offer record
+      const [offer] = await db.insert(externalLeadPropertyOffers).values({
+        agencyId,
+        leadId,
+        unitId: unitId || null,
+        propertyId: propertyId || null,
+        sellerId: req.user.id,
+        channel,
+        templateId: templateId || null,
+        message,
+      }).returning();
+
+      // Get lead and unit details for WhatsApp message
+      const [lead] = await db.select().from(externalLeads).where(eq(externalLeads.id, leadId));
+      let unit = null;
+      if (unitId) {
+        [unit] = await db.select().from(externalUnits).where(eq(externalUnits.id, unitId));
+      }
+
+      // Generate WhatsApp link
+      let whatsappMessage = message;
+      if (!whatsappMessage && unit) {
+        whatsappMessage = \`Hola \${lead?.firstName || ''}! Te comparto esta propiedad que puede interesarte:\n\n\` +
+          \`📍 \${unit.name}\n\` +
+          \`🏠 \${unit.unitType || 'Propiedad'} - \${unit.bedrooms || 0} recámaras\n\` +
+          \`💰 $\${unit.monthlyRent?.toLocaleString() || 'Consultar'} \${unit.currency || 'MXN'}/mes\n\` +
+          \`📍 \${unit.zone || ''}\n\n\` +
+          \`¿Te gustaría agendar una visita?\`;
+      }
+
+      const phone = lead?.phone?.replace(/\D/g, '') || '';
+      const whatsappUrl = \`https://wa.me/\${phone}?text=\${encodeURIComponent(whatsappMessage || '')}\`;
+
+      res.json({
+        success: true,
+        offer,
+        whatsappUrl,
+        message: whatsappMessage,
+      });
+    } catch (error: any) {
+      console.error("Error sharing property:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/lead/:leadId/property-offers - Get property offers history for a lead
+  app.get("/api/external-seller/lead/:leadId/property-offers", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { leadId } = req.params;
+
+      const offers = await db.select({
+        id: externalLeadPropertyOffers.id,
+        unitId: externalLeadPropertyOffers.unitId,
+        propertyId: externalLeadPropertyOffers.propertyId,
+        channel: externalLeadPropertyOffers.channel,
+        message: externalLeadPropertyOffers.message,
+        isViewed: externalLeadPropertyOffers.isViewed,
+        isInterested: externalLeadPropertyOffers.isInterested,
+        sentAt: externalLeadPropertyOffers.sentAt,
+        unitName: externalUnits.name,
+        unitZone: externalUnits.zone,
+        unitType: externalUnits.unitType,
+        unitPrice: externalUnits.monthlyRent,
+        sellerName: users.name,
+      })
+        .from(externalLeadPropertyOffers)
+        .leftJoin(externalUnits, eq(externalLeadPropertyOffers.unitId, externalUnits.id))
+        .leftJoin(users, eq(externalLeadPropertyOffers.sellerId, users.id))
+        .where(and(
+          eq(externalLeadPropertyOffers.agencyId, agencyId),
+          eq(externalLeadPropertyOffers.leadId, leadId)
+        ))
+        .orderBy(desc(externalLeadPropertyOffers.sentAt));
+
+      res.json(offers);
+    } catch (error: any) {
+      console.error("Error fetching lead property offers:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/templates - Get seller message templates
+  app.get("/api/external-seller/templates", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const templates = await db.select()
+        .from(sellerMessageTemplates)
+        .where(and(
+          eq(sellerMessageTemplates.agencyId, agencyId),
+          eq(sellerMessageTemplates.isActive, true),
+          or(
+            isNull(sellerMessageTemplates.sellerId),
+            eq(sellerMessageTemplates.sellerId, req.user.id)
+          )
+        ))
+        .orderBy(sellerMessageTemplates.templateType, sellerMessageTemplates.title);
+
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching templates:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-seller/templates - Create a new template
+  app.post("/api/external-seller/templates", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { templateType, title, body, isDefault } = req.body;
+
+      if (!templateType || !title || !body) {
+        return res.status(400).json({ message: "Template type, title, and body are required" });
+      }
+
+      // If setting as default, unset other defaults of same type
+      if (isDefault) {
+        await db.update(sellerMessageTemplates)
+          .set({ isDefault: false })
+          .where(and(
+            eq(sellerMessageTemplates.agencyId, agencyId),
+            eq(sellerMessageTemplates.templateType, templateType),
+            or(
+              isNull(sellerMessageTemplates.sellerId),
+              eq(sellerMessageTemplates.sellerId, req.user.id)
+            )
+          ));
+      }
+
+      const [template] = await db.insert(sellerMessageTemplates).values({
+        agencyId,
+        sellerId: req.user.id,
+        templateType,
+        title,
+        body,
+        isDefault: isDefault || false,
+      }).returning();
+
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error("Error creating template:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-seller/templates/:id - Update a template
+  app.patch("/api/external-seller/templates/:id", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { id } = req.params;
+      const { title, body, isDefault, isActive } = req.body;
+
+      // Verify ownership
+      const [existing] = await db.select().from(sellerMessageTemplates)
+        .where(and(
+          eq(sellerMessageTemplates.id, id),
+          eq(sellerMessageTemplates.agencyId, agencyId)
+        ));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      // Only allow editing own templates or shared templates if admin
+      if (existing.sellerId && existing.sellerId !== req.user.id) {
+        return res.status(403).json({ message: "Cannot edit other seller's templates" });
+      }
+
+      const updates: any = { updatedAt: new Date() };
+      if (title !== undefined) updates.title = title;
+      if (body !== undefined) updates.body = body;
+      if (isActive !== undefined) updates.isActive = isActive;
+
+      if (isDefault !== undefined) {
+        if (isDefault) {
+          await db.update(sellerMessageTemplates)
+            .set({ isDefault: false })
+            .where(and(
+              eq(sellerMessageTemplates.agencyId, agencyId),
+              eq(sellerMessageTemplates.templateType, existing.templateType),
+              or(
+                isNull(sellerMessageTemplates.sellerId),
+                eq(sellerMessageTemplates.sellerId, req.user.id)
+              )
+            ));
+        }
+        updates.isDefault = isDefault;
+      }
+
+      const [updated] = await db.update(sellerMessageTemplates)
+        .set(updates)
+        .where(eq(sellerMessageTemplates.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating template:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external-seller/templates/:id - Delete a template
+  app.delete("/api/external-seller/templates/:id", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { id } = req.params;
+
+      // Verify ownership
+      const [existing] = await db.select().from(sellerMessageTemplates)
+        .where(and(
+          eq(sellerMessageTemplates.id, id),
+          eq(sellerMessageTemplates.agencyId, agencyId)
+        ));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      if (existing.sellerId && existing.sellerId !== req.user.id) {
+        return res.status(403).json({ message: "Cannot delete other seller's templates" });
+      }
+
+      await db.delete(sellerMessageTemplates).where(eq(sellerMessageTemplates.id, id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting template:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/follow-ups - Get follow-up tasks for seller
+  app.get("/api/external-seller/follow-ups", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { status = 'pending', limit = '20' } = req.query;
+
+      const conditions = [
+        eq(sellerFollowUpTasks.agencyId, agencyId),
+        eq(sellerFollowUpTasks.sellerId, req.user.id),
+      ];
+
+      if (status && status !== 'all') {
+        conditions.push(eq(sellerFollowUpTasks.status, status as string));
+      }
+
+      const tasks = await db.select({
+        id: sellerFollowUpTasks.id,
+        status: sellerFollowUpTasks.status,
+        dueDate: sellerFollowUpTasks.dueDate,
+        priority: sellerFollowUpTasks.priority,
+        reason: sellerFollowUpTasks.reason,
+        notes: sellerFollowUpTasks.notes,
+        autoGenerated: sellerFollowUpTasks.autoGenerated,
+        lastContactedAt: sellerFollowUpTasks.lastContactedAt,
+        snoozedUntil: sellerFollowUpTasks.snoozedUntil,
+        createdAt: sellerFollowUpTasks.createdAt,
+        leadId: sellerFollowUpTasks.leadId,
+        leadFirstName: externalLeads.firstName,
+        leadLastName: externalLeads.lastName,
+        leadPhone: externalLeads.phone,
+        leadStatus: externalLeads.status,
+      })
+        .from(sellerFollowUpTasks)
+        .leftJoin(externalLeads, eq(sellerFollowUpTasks.leadId, externalLeads.id))
+        .where(and(...conditions))
+        .orderBy(asc(sellerFollowUpTasks.dueDate))
+        .limit(parseInt(limit as string));
+
+      // Count overdue
+      const now = new Date();
+      const overdue = tasks.filter(t => t.status === 'pending' && new Date(t.dueDate) < now);
+
+      res.json({
+        tasks,
+        overdueCount: overdue.length,
+        totalPending: tasks.filter(t => t.status === 'pending').length,
+      });
+    } catch (error: any) {
+      console.error("Error fetching follow-ups:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-seller/follow-ups - Create a follow-up task
+  app.post("/api/external-seller/follow-ups", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { leadId, dueDate, priority = 'medium', reason, notes } = req.body;
+
+      if (!leadId || !dueDate) {
+        return res.status(400).json({ message: "Lead ID and due date are required" });
+      }
+
+      const [task] = await db.insert(sellerFollowUpTasks).values({
+        agencyId,
+        sellerId: req.user.id,
+        leadId,
+        dueDate: new Date(dueDate),
+        priority,
+        reason,
+        notes,
+        autoGenerated: false,
+      }).returning();
+
+      res.status(201).json(task);
+    } catch (error: any) {
+      console.error("Error creating follow-up:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-seller/follow-ups/:id - Update follow-up (complete, snooze, etc.)
+  app.patch("/api/external-seller/follow-ups/:id", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { id } = req.params;
+      const { status, snoozedUntil, notes } = req.body;
+
+      const updates: any = { updatedAt: new Date() };
+      if (status) {
+        updates.status = status;
+        if (status === 'completed') {
+          updates.completedAt = new Date();
+        }
+      }
+      if (snoozedUntil) {
+        updates.snoozedUntil = new Date(snoozedUntil);
+        updates.status = 'snoozed';
+      }
+      if (notes !== undefined) {
+        updates.notes = notes;
+      }
+
+      const [updated] = await db.update(sellerFollowUpTasks)
+        .set(updates)
+        .where(and(
+          eq(sellerFollowUpTasks.id, id),
+          eq(sellerFollowUpTasks.agencyId, agencyId),
+          eq(sellerFollowUpTasks.sellerId, req.user.id)
+        ))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Follow-up task not found" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating follow-up:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/matching-leads/:unitId - Get leads that match a property/unit
+  app.get("/api/external-seller/matching-leads/:unitId", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { unitId } = req.params;
+
+      // Get unit details
+      const [unit] = await db.select().from(externalUnits).where(eq(externalUnits.id, unitId));
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+
+      const unitPrice = unit.monthlyRent ? Number(unit.monthlyRent) : 0;
+      const priceMin = unitPrice * 0.8;
+      const priceMax = unitPrice * 1.2;
+
+      // Find matching leads based on preferences
+      const conditions = [
+        eq(externalLeads.agencyId, agencyId),
+        not(inArray(externalLeads.status, ['converted', 'renta_concretada', 'lost'])),
+      ];
+
+      // Sellers only see their assigned leads
+      if (req.user.role === 'external_agency_seller') {
+        conditions.push(eq(externalLeads.assignedToId, req.user.id));
+      }
+
+      const leads = await db.select({
+        id: externalLeads.id,
+        firstName: externalLeads.firstName,
+        lastName: externalLeads.lastName,
+        phone: externalLeads.phone,
+        estimatedRentCost: externalLeads.estimatedRentCost,
+        bedrooms: externalLeads.bedrooms,
+        desiredNeighborhood: externalLeads.desiredNeighborhood,
+        desiredUnitType: externalLeads.desiredUnitType,
+        status: externalLeads.status,
+      })
+        .from(externalLeads)
+        .where(and(...conditions))
+        .limit(50);
+
+      // Score leads by match quality
+      const scoredLeads = leads.map(lead => {
+        let score = 0;
+        let matchReasons: string[] = [];
+
+        // Budget match (±20%)
+        const leadBudget = lead.estimatedRentCost ? Number(lead.estimatedRentCost) : 0;
+        if (leadBudget >= priceMin && leadBudget <= priceMax) {
+          score += 30;
+          matchReasons.push('Presupuesto compatible');
+        }
+
+        // Bedrooms match
+        if (lead.bedrooms && unit.bedrooms && Number(lead.bedrooms) === unit.bedrooms) {
+          score += 25;
+          matchReasons.push('Recámaras coinciden');
+        }
+
+        // Zone match
+        if (lead.desiredNeighborhood && unit.zone && 
+            lead.desiredNeighborhood.toLowerCase().includes(unit.zone.toLowerCase())) {
+          score += 25;
+          matchReasons.push('Zona de interés');
+        }
+
+        // Unit type match
+        if (lead.desiredUnitType && unit.unitType &&
+            lead.desiredUnitType.toLowerCase() === unit.unitType.toLowerCase()) {
+          score += 20;
+          matchReasons.push('Tipo de propiedad');
+        }
+
+        return { ...lead, matchScore: score, matchReasons };
+      });
+
+      // Filter and sort by score
+      const matchingLeads = scoredLeads
+        .filter(l => l.matchScore > 0)
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      res.json(matchingLeads);
+    } catch (error: any) {
+      console.error("Error finding matching leads:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/matching-properties/:leadId - Get properties that match a lead
+  app.get("/api/external-seller/matching-properties/:leadId", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { leadId } = req.params;
+
+      // Get lead details
+      const [lead] = await db.select().from(externalLeads).where(eq(externalLeads.id, leadId));
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      const leadBudget = lead.estimatedRentCost ? Number(lead.estimatedRentCost) : 0;
+      const priceMin = leadBudget * 0.8;
+      const priceMax = leadBudget * 1.2;
+
+      // Get available units
+      const units = await db.select()
+        .from(externalUnits)
+        .where(and(
+          eq(externalUnits.agencyId, agencyId),
+          eq(externalUnits.status, 'active')
+        ))
+        .limit(100);
+
+      // Score units by match quality
+      const scoredUnits = units.map(unit => {
+        let score = 0;
+        let matchReasons: string[] = [];
+
+        const unitPrice = unit.monthlyRent ? Number(unit.monthlyRent) : 0;
+
+        // Budget match
+        if (unitPrice >= priceMin && unitPrice <= priceMax) {
+          score += 30;
+          matchReasons.push('Dentro del presupuesto');
+        }
+
+        // Bedrooms match
+        if (lead.bedrooms && unit.bedrooms && Number(lead.bedrooms) === unit.bedrooms) {
+          score += 25;
+          matchReasons.push('Recámaras coinciden');
+        }
+
+        // Zone match
+        if (lead.desiredNeighborhood && unit.zone && 
+            lead.desiredNeighborhood.toLowerCase().includes(unit.zone.toLowerCase())) {
+          score += 25;
+          matchReasons.push('Zona preferida');
+        }
+
+        // Unit type match
+        if (lead.desiredUnitType && unit.unitType &&
+            lead.desiredUnitType.toLowerCase() === unit.unitType.toLowerCase()) {
+          score += 20;
+          matchReasons.push('Tipo de propiedad');
+        }
+
+        return { ...unit, matchScore: score, matchReasons };
+      });
+
+      // Filter and sort by score
+      const matchingUnits = scoredUnits
+        .filter(u => u.matchScore > 0)
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 20);
+
+      res.json(matchingUnits);
+    } catch (error: any) {
+      console.error("Error finding matching properties:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/metrics - Get seller performance metrics
+  app.get("/api/external-seller/metrics", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const sellerId = req.user.id;
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Get leads stats
+      const [leadsStats] = await db.select({
+        total: sql<number>\`count(*)\`,
+        converted: sql<number>\`count(*) filter (where \${externalLeads.status} = 'converted' or \${externalLeads.status} = 'renta_concretada')\`,
+        thisMonth: sql<number>\`count(*) filter (where \${externalLeads.createdAt} >= \${startOfMonth})\`,
+      })
+        .from(externalLeads)
+        .where(and(
+          eq(externalLeads.agencyId, agencyId),
+          eq(externalLeads.assignedToId, sellerId)
+        ));
+
+      // Get properties shared count
+      const [offersStats] = await db.select({
+        totalSent: sql<number>\`count(*)\`,
+        thisMonth: sql<number>\`count(*) filter (where \${externalLeadPropertyOffers.sentAt} >= \${startOfMonth})\`,
+        interested: sql<number>\`count(*) filter (where \${externalLeadPropertyOffers.isInterested} = true)\`,
+      })
+        .from(externalLeadPropertyOffers)
+        .where(and(
+          eq(externalLeadPropertyOffers.agencyId, agencyId),
+          eq(externalLeadPropertyOffers.sellerId, sellerId)
+        ));
+
+      // Get pending follow-ups
+      const [followUpStats] = await db.select({
+        pending: sql<number>\`count(*) filter (where \${sellerFollowUpTasks.status} = 'pending')\`,
+        overdue: sql<number>\`count(*) filter (where \${sellerFollowUpTasks.status} = 'pending' and \${sellerFollowUpTasks.dueDate} < \${now})\`,
+      })
+        .from(sellerFollowUpTasks)
+        .where(and(
+          eq(sellerFollowUpTasks.agencyId, agencyId),
+          eq(sellerFollowUpTasks.sellerId, sellerId)
+        ));
+
+      // Calculate conversion rate
+      const totalLeads = Number(leadsStats?.total || 0);
+      const convertedLeads = Number(leadsStats?.converted || 0);
+      const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
+
+      res.json({
+        leads: {
+          total: totalLeads,
+          converted: convertedLeads,
+          thisMonth: Number(leadsStats?.thisMonth || 0),
+          conversionRate: Math.round(conversionRate * 10) / 10,
+        },
+        propertiesSent: {
+          total: Number(offersStats?.totalSent || 0),
+          thisMonth: Number(offersStats?.thisMonth || 0),
+          interested: Number(offersStats?.interested || 0),
+        },
+        followUps: {
+          pending: Number(followUpStats?.pending || 0),
+          overdue: Number(followUpStats?.overdue || 0),
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching seller metrics:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-seller/auto-generate-follow-ups - Auto-generate follow-ups for inactive leads
+  app.post("/api/external-seller/auto-generate-follow-ups", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const sellerId = req.user.id;
+      const { inactiveDays = 3 } = req.body;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - inactiveDays);
+
+      // Find leads without recent activity or follow-up
+      const inactiveLeads = await db.select({
+        id: externalLeads.id,
+        firstName: externalLeads.firstName,
+        lastName: externalLeads.lastName,
+        updatedAt: externalLeads.updatedAt,
+      })
+        .from(externalLeads)
+        .leftJoin(sellerFollowUpTasks, and(
+          eq(sellerFollowUpTasks.leadId, externalLeads.id),
+          eq(sellerFollowUpTasks.status, 'pending')
+        ))
+        .where(and(
+          eq(externalLeads.agencyId, agencyId),
+          eq(externalLeads.assignedToId, sellerId),
+          not(inArray(externalLeads.status, ['converted', 'renta_concretada', 'lost'])),
+          lt(externalLeads.updatedAt, cutoffDate),
+          isNull(sellerFollowUpTasks.id)
+        ))
+        .limit(10);
+
+      // Create follow-up tasks
+      const created = [];
+      for (const lead of inactiveLeads) {
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 1); // Due tomorrow
+
+        const [task] = await db.insert(sellerFollowUpTasks).values({
+          agencyId,
+          sellerId,
+          leadId: lead.id,
+          dueDate,
+          priority: 'medium',
+          reason: \`Sin contacto en \${inactiveDays}+ días\`,
+          autoGenerated: true,
+          lastContactedAt: lead.updatedAt,
+        }).returning();
+
+        created.push(task);
+      }
+
+      res.json({
+        generated: created.length,
+        tasks: created,
+      });
+    } catch (error: any) {
+      console.error("Error generating follow-ups:", error);
+      handleGenericError(res, error);
+    }
+  });
   app.get("/api/external-condominiums", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { isActive, search, zone, sortField, sortOrder, limit, offset } = req.query;
