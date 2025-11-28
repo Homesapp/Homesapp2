@@ -354,11 +354,10 @@ export default function ExternalClients() {
   const [selectedEditAmenities, setSelectedEditAmenities] = useState<string[]>([]);
 
   useEffect(() => {
-    const clampedPage = Math.min(leadCurrentPage, totalLeadPages);
-    if (clampedPage !== leadCurrentPage) {
-      setLeadCurrentPage(clampedPage);
+    if (totalLeadPages > 0 && leadCurrentPage > totalLeadPages) {
+      setLeadCurrentPage(totalLeadPages);
     }
-  }, [totalLeadPages, leadCurrentPage]);
+  }, [totalLeadPages]);
 
   // Backend handles all filtering, sorting, and pagination
   // No client-side processing needed
@@ -368,11 +367,10 @@ export default function ExternalClients() {
   const totalPages = Math.max(1, Math.ceil(totalClients / itemsPerPage));
 
   useEffect(() => {
-    const clampedPage = Math.min(currentPage, totalPages);
-    if (clampedPage !== currentPage) {
-      setCurrentPage(clampedPage);
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
-  }, [totalPages, currentPage]);
+  }, [totalPages]);
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(insertExternalClientSchema),

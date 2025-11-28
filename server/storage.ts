@@ -10134,7 +10134,7 @@ export class DatabaseStorage implements IStorage {
 
   async getExternalLeadsByAgency(
     agencyId: string, 
-    filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }
+    filters?: { status?: string; registrationType?: string; sellerId?: string; sellerScope?: boolean; expiringDays?: number; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }
   ): Promise<ExternalLead[]> {
     const conditions = [eq(externalLeads.agencyId, agencyId)];
     
@@ -10145,7 +10145,16 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalLeads.registrationType, filters.registrationType));
     }
     if (filters?.sellerId) {
-      conditions.push(eq(externalLeads.sellerId, filters.sellerId));
+      if (filters?.sellerScope) {
+        conditions.push(
+          or(
+            eq(externalLeads.sellerId, filters.sellerId),
+            eq(externalLeads.createdBy, filters.sellerId)
+          )!
+        );
+      } else {
+        conditions.push(eq(externalLeads.sellerId, filters.sellerId));
+      }
     }
     if (filters?.expiringDays) {
       const EXPIRY_DAYS = 90;
@@ -10207,7 +10216,7 @@ export class DatabaseStorage implements IStorage {
   
   async getExternalLeadsCountByAgency(
     agencyId: string,
-    filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string }
+    filters?: { status?: string; registrationType?: string; sellerId?: string; sellerScope?: boolean; expiringDays?: number; search?: string }
   ): Promise<number> {
     const conditions = [eq(externalLeads.agencyId, agencyId)];
     
@@ -10218,7 +10227,16 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalLeads.registrationType, filters.registrationType));
     }
     if (filters?.sellerId) {
-      conditions.push(eq(externalLeads.sellerId, filters.sellerId));
+      if (filters?.sellerScope) {
+        conditions.push(
+          or(
+            eq(externalLeads.sellerId, filters.sellerId),
+            eq(externalLeads.createdBy, filters.sellerId)
+          )!
+        );
+      } else {
+        conditions.push(eq(externalLeads.sellerId, filters.sellerId));
+      }
     }
     if (filters?.expiringDays) {
       const EXPIRY_DAYS = 90;

@@ -26897,6 +26897,7 @@ ${{precio}}/mes
           isActive: filters.isActive,
           search: filters.search,
           sellerId: filters.sellerId,
+          sellerScope: filters.sellerScope,
           expiringDays: filters.expiringDays,
         }),
       ]);
@@ -27172,6 +27173,7 @@ ${{precio}}/mes
           condominiumId: filters.condominiumId,
           search: filters.search,
           sellerId: filters.sellerId,
+          sellerScope: filters.sellerScope,
           expiringDays: filters.expiringDays,
         }),
       ]);
@@ -28751,6 +28753,7 @@ ${{precio}}/mes
           isVerified: filters.isVerified,
           search: filters.search,
           sellerId: filters.sellerId,
+          sellerScope: filters.sellerScope,
           expiringDays: filters.expiringDays,
         }),
       ]);
@@ -29032,6 +29035,7 @@ ${{precio}}/mes
         status: status as string | undefined,
         registrationType: registrationType as string | undefined,
         sellerId: effectiveSellerId,
+        sellerScope: isSeller,
         expiringDays: expiringDays ? parseInt(expiringDays as string, 10) : undefined,
         search: search as string | undefined,
         sortField: sortField as string | undefined,
@@ -29047,6 +29051,7 @@ ${{precio}}/mes
           registrationType: filters.registrationType,
           search: filters.search,
           sellerId: filters.sellerId,
+          sellerScope: filters.sellerScope,
           expiringDays: filters.expiringDays,
         }),
       ]);
@@ -34521,6 +34526,7 @@ ${{precio}}/mes
             endDate: filters.endDate,
             search: filters.search,
           sellerId: filters.sellerId,
+          sellerScope: filters.sellerScope,
           expiringDays: filters.expiringDays,
           }),
         ]);
