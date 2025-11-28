@@ -1275,9 +1275,9 @@ export default function SellerPropertyCatalog() {
                         </div>
                       )}
                       
-                      {/* Bottom Right: Status Badge */}
+                      {/* Bottom Right: Status Badge - positioned higher for visibility */}
                       <Badge
-                        className={`absolute right-2 bottom-2 text-xs px-2 py-1 ${
+                        className={`absolute right-2 bottom-3 text-xs px-2 py-1 shadow-md ${
                           unit.status === "active" 
                             ? "bg-green-600 hover:bg-green-700 text-white border-0" 
                             : "bg-red-600 hover:bg-red-700 text-white border-0"
@@ -1501,9 +1501,9 @@ export default function SellerPropertyCatalog() {
                           </div>
                         )}
                         
-                        {/* Status Badge */}
+                        {/* Status Badge - positioned higher for visibility */}
                         <Badge
-                          className={`absolute left-2 bottom-2 text-xs ${
+                          className={`absolute left-2 bottom-3 text-xs shadow-md ${
                             unit.status === "active" 
                               ? "bg-green-600 text-white border-0" 
                               : "bg-red-600 text-white border-0"
