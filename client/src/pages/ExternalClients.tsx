@@ -2734,7 +2734,39 @@ export default function ExternalClients() {
                           >
                             <TableCell>
                               <div className="space-y-0.5">
-                                <div className="font-medium">{`${lead.firstName} ${lead.lastName}`}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{`${lead.firstName} ${lead.lastName}`}</span>
+                                  {(() => {
+                                    const followUpDate = lead.followUpDate ? new Date(lead.followUpDate) : null;
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    const tomorrow = new Date(today);
+                                    tomorrow.setDate(tomorrow.getDate() + 1);
+                                    if (followUpDate) {
+                                      followUpDate.setHours(0, 0, 0, 0);
+                                      if (followUpDate < today) {
+                                        return (
+                                          <span 
+                                            className="flex items-center text-red-600" 
+                                            title={language === "es" ? "Seguimiento vencido" : "Follow-up overdue"}
+                                          >
+                                            <AlertTriangle className="h-4 w-4" />
+                                          </span>
+                                        );
+                                      } else if (followUpDate.getTime() === today.getTime()) {
+                                        return (
+                                          <span 
+                                            className="flex items-center text-amber-600" 
+                                            title={language === "es" ? "Seguimiento hoy" : "Follow-up today"}
+                                          >
+                                            <Clock className="h-4 w-4" />
+                                          </span>
+                                        );
+                                      }
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
                                 <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"} className="text-xs">
                                   {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
                                 </Badge>
@@ -2834,7 +2866,37 @@ export default function ExternalClients() {
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
-                            <CardTitle className="text-base">{`${lead.firstName} ${lead.lastName}`}</CardTitle>
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-base">{`${lead.firstName} ${lead.lastName}`}</CardTitle>
+                              {(() => {
+                                const followUpDate = lead.followUpDate ? new Date(lead.followUpDate) : null;
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                if (followUpDate) {
+                                  followUpDate.setHours(0, 0, 0, 0);
+                                  if (followUpDate < today) {
+                                    return (
+                                      <span 
+                                        className="flex items-center text-red-600" 
+                                        title={language === "es" ? "Seguimiento vencido" : "Follow-up overdue"}
+                                      >
+                                        <AlertTriangle className="h-4 w-4" />
+                                      </span>
+                                    );
+                                  } else if (followUpDate.getTime() === today.getTime()) {
+                                    return (
+                                      <span 
+                                        className="flex items-center text-amber-600" 
+                                        title={language === "es" ? "Seguimiento hoy" : "Follow-up today"}
+                                      >
+                                        <Clock className="h-4 w-4" />
+                                      </span>
+                                    );
+                                  }
+                                }
+                                return null;
+                              })()}
+                            </div>
                             <div className="flex gap-2 flex-wrap">
                               <Badge variant={lead.registrationType === "broker" ? "default" : "secondary"} className="text-xs">
                                 {lead.registrationType === "broker" ? "Broker" : (language === "es" ? "Vendedor" : "Seller")}
