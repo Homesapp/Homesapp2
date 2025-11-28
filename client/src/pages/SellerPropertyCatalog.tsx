@@ -659,6 +659,7 @@ export default function SellerPropertyCatalog() {
     let message = template.content;
     
     const propertyName = unit.name || unit.condominiumName || unit.unitNumber || "Propiedad";
+    const propertyLink = `${window.location.origin}/propiedad/${unit.id}/completo`;
     
     message = message.replace(/\{\{?nombre\}\}?/g, lead?.firstName || "");
     message = message.replace(/\{\{?propiedad\}\}?/g, propertyName);
@@ -668,6 +669,8 @@ export default function SellerPropertyCatalog() {
     message = message.replace(/\{\{?precio\}\}?/g, unit.monthlyRent?.toLocaleString() || "Consultar");
     message = message.replace(/\{\{?moneda\}\}?/g, unit.currency || "MXN");
     message = message.replace(/\{\{?vendedor\}\}?/g, "");
+    message = message.replace(/\{\{?link\}\}?/g, propertyLink);
+    message = message.replace(/\{\{?enlace\}\}?/g, propertyLink);
     return message;
   };
 
@@ -677,7 +680,8 @@ export default function SellerPropertyCatalog() {
     
     const propertiesList = unitsList.map((unit, i) => {
       const propertyName = unit.name || unit.condominiumName || unit.unitNumber || "Propiedad";
-      return `${i + 1}. ${propertyName}\n   Ubicacion: ${unit.zone || "Sin zona"}\n   ${unit.bedrooms || 0} rec. | $${unit.monthlyRent?.toLocaleString() || "—"} ${unit.currency || "MXN"}/mes`;
+      const propertyLink = `${window.location.origin}/propiedad/${unit.id}/completo`;
+      return `${i + 1}. ${propertyName}\n   Ubicacion: ${unit.zone || "Sin zona"}\n   ${unit.bedrooms || 0} rec. | $${unit.monthlyRent?.toLocaleString() || "—"} ${unit.currency || "MXN"}/mes\n   Ver: ${propertyLink}`;
     }).join("\n\n");
     
     message = message.replace(/\{\{?propiedades_lista\}\}?/g, propertiesList);
