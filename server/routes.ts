@@ -22314,7 +22314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== External Appointments Routes ====================
   // Roles for appointment management
-  const EXTERNAL_APPOINTMENT_VIEW_ROLES = ["master", "admin", "external_agency_admin", "external_agency_concierge", "external_agency_lawyer"];
+  const EXTERNAL_APPOINTMENT_VIEW_ROLES = ["master", "admin", "external_agency_admin", "external_agency_concierge", "external_agency_lawyer", "external_agency_seller"];
   const EXTERNAL_APPOINTMENT_MANAGE_ROLES = ["master", "admin", "external_agency_admin", "external_agency_concierge"];
 
   // GET /api/external-appointments - Get all appointments for agency
@@ -26156,6 +26156,200 @@ ${{precio}}/mes
       });
     } catch (error: any) {
       console.error("Error seeding default templates:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+
+  // ==================== Seller Appointment Endpoints ====================
+  // POST /api/external-seller/appointments - Create appointment (seller can create for their leads)
+  app.post("/api/external-seller/appointments", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      const userId = req.user?.id || req.session?.user?.id;
+      const { tourStops, leadId, ...appointmentData } = req.body;
+
+      // If leadId provided, verify lead belongs to this seller
+      if (leadId) {
+        const lead = await storage.getExternalLead(leadId);
+        if (!lead || lead.agencyId !== agencyId) {
+          return res.status(404).json({ message: "Lead not found" });
+        }
+        // Sellers can only create appointments for their own leads
+        if (req.user.role === 'external_agency_seller' && lead.sellerId !== userId) {
+          return res.status(403).json({ message: "You can only create appointments for your own leads" });
+        }
+      }
+
+      // Convert date string to Date object if needed
+      const parsedDate = typeof appointmentData.date === 'string' 
+        ? new Date(appointmentData.date) 
+        : appointmentData.date;
+
+      // Validate appointment data
+      const validatedData = insertExternalAppointmentSchema.parse({
+        ...appointmentData,
+        date: parsedDate,
+        agencyId,
+        createdBy: userId,
+        salespersonId: userId, // Seller is the salesperson
+        leadId: leadId || null,
+      });
+
+      // For tours, validate max 3 properties rule
+      if (validatedData.mode === 'tour' && tourStops && tourStops.length > 3) {
+        return res.status(400).json({ message: "Tours can have a maximum of 3 properties" });
+      }
+
+      // Calculate end time based on mode
+      const startDate = new Date(validatedData.date);
+      let endDate: Date;
+      
+      if (validatedData.mode === 'individual') {
+        // Individual appointments are 1 hour
+        endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      } else {
+        // Tours: 30 minutes per property
+        const propertyCount = tourStops?.length || 1;
+        endDate = new Date(startDate.getTime() + propertyCount * 30 * 60 * 1000);
+      }
+
+      // Generate tour group ID if this is a tour
+      const tourGroupId = validatedData.mode === 'tour' ? crypto.randomUUID() : null;
+
+      const appointment = await storage.createExternalAppointment({
+        ...validatedData,
+        endTime: endDate,
+        tourGroupId,
+      });
+
+      // Create tour stops if this is a tour
+      if (validatedData.mode === 'tour' && tourStops && tourStops.length > 0) {
+        const stopsData = tourStops.map((stop: any, index: number) => ({
+          appointmentId: appointment.id,
+          unitId: stop.unitId,
+          sequence: index + 1,
+          scheduledTime: new Date(startDate.getTime() + index * 30 * 60 * 1000),
+          notes: stop.notes || null,
+        }));
+
+        await storage.createExternalAppointmentUnits(stopsData);
+      }
+
+      await createAuditLog(req, "create", "external_appointment", appointment.id, 
+        `Seller created ${validatedData.mode} appointment for ${validatedData.clientName}`);
+
+      res.status(201).json(appointment);
+    } catch (error: any) {
+      console.error("Error creating seller appointment:", error);
+      if (error.name === "ZodError") {
+        return handleZodError(res, error);
+      }
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/appointments - Get appointments for seller's calendar view
+  app.get("/api/external-seller/appointments", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      const userId = req.user?.id || req.session?.user?.id;
+      const isSeller = req.user.role === 'external_agency_seller';
+      const { startDate, endDate, status } = req.query;
+
+      const filters: any = {};
+      if (status) filters.status = status.includes(',') ? status.split(',') : status;
+      if (startDate) filters.startDate = new Date(startDate);
+      if (endDate) filters.endDate = new Date(endDate);
+
+      const appointments = await storage.getExternalAppointmentsByAgency(agencyId, filters);
+
+      // Transform appointments for seller view
+      const transformedAppointments = appointments.map((apt: any) => {
+        const isOwner = apt.salespersonId === userId || apt.createdBy === userId;
+        
+        if (isSeller && !isOwner) {
+          // Limited view for other sellers' appointments
+          return {
+            id: apt.id,
+            date: apt.date,
+            endTime: apt.endTime,
+            mode: apt.mode,
+            status: apt.status,
+            // Limited info - only show client first name and property info
+            clientName: apt.clientName?.split(' ')[0] || 'Cliente',
+            condominiumName: apt.condominiumName || null,
+            unitNumber: apt.unitNumber || null,
+            // Mark as restricted
+            isRestricted: true,
+            canEdit: false,
+            canCancel: false,
+          };
+        }
+
+        // Full view for owner or admin
+        return {
+          ...apt,
+          isRestricted: false,
+          canEdit: isOwner || !isSeller,
+          canCancel: isOwner || !isSeller,
+        };
+      });
+
+      res.json(transformedAppointments);
+    } catch (error: any) {
+      console.error("Error fetching seller appointments:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-seller/appointments/:id/cancel - Cancel own appointment
+  app.patch("/api/external-seller/appointments/:id/cancel", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { cancellationReason } = req.body;
+      const userId = req.user?.id || req.session?.user?.id;
+      const isSeller = req.user.role === 'external_agency_seller';
+
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency assigned" });
+      }
+
+      const appointment = await storage.getExternalAppointmentByAgency(id, agencyId);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Sellers can only cancel their own appointments
+      if (isSeller && appointment.salespersonId !== userId && appointment.createdBy !== userId) {
+        return res.status(403).json({ message: "You can only cancel your own appointments" });
+      }
+
+      // Check if appointment can be cancelled
+      if (appointment.status === 'cancelled' || appointment.status === 'completed') {
+        return res.status(400).json({ message: "Cannot cancel this appointment" });
+      }
+
+      const updated = await storage.updateExternalAppointmentStatus(id, 'cancelled', {
+        cancelledAt: new Date(),
+        cancellationReason: cancellationReason || null,
+      });
+
+      await createAuditLog(req, "update", "external_appointment", id, 
+        `Seller cancelled appointment: ${cancellationReason || 'No reason provided'}`);
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error cancelling appointment:", error);
       handleGenericError(res, error);
     }
   });

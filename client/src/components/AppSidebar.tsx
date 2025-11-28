@@ -311,6 +311,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.externalOwners", url: "/external/owners/portfolio", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalClients", url: "/external/clients", icon: UserCircle2, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge"] },
     { titleKey: "sidebar.sellerLeads", url: "/external/clients", icon: Users, roles: ["external_agency_seller"] },
+    { titleKey: "sidebar.sellerCalendar", url: "/external/seller-calendar", icon: Calendar, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerCatalog", url: "/external/seller-catalog", icon: Home, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerTemplates", url: "/external/seller-templates", icon: MessageSquare, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerReports", url: "/external/seller-reports", icon: BarChart3, roles: ["external_agency_seller"] },
