@@ -4702,9 +4702,11 @@ export const tenantRentalFormTokens = pgTable("tenant_rental_form_tokens", {
   propertyId: varchar("property_id").references(() => properties.id, { onDelete: "cascade" }), // Para sistema interno
   externalUnitId: varchar("external_unit_id").references(() => externalUnits.id, { onDelete: "cascade" }), // Para sistema externo
   externalClientId: varchar("external_client_id").references(() => externalClients.id, { onDelete: "cascade" }), // Cliente externo (opcional)
+  externalLeadId: varchar("external_lead_id").references(() => externalLeads.id, { onDelete: "set null" }), // Lead externo asociado (opcional)
   externalUnitOwnerId: varchar("external_unit_owner_id"), // Owner externo (para recipient_type='owner') - referencia se agregará después
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "set null" }),
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdByName: varchar("created_by_name", { length: 255 }), // Nombre del creador (desnormalizado para consultas)
   expiresAt: timestamp("expires_at").notNull(),
   isUsed: boolean("is_used").notNull().default(false),
   usedAt: timestamp("used_at"),

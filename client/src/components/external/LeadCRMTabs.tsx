@@ -54,6 +54,9 @@ import {
   FileText,
   Send,
   Lock,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -110,6 +113,17 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
   const [newShowingProperty, setNewShowingProperty] = useState("");
   const [newShowingDate, setNewShowingDate] = useState("");
   const [newShowingNotes, setNewShowingNotes] = useState("");
+  
+  const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
+  const [selectedUnitId, setSelectedUnitId] = useState("");
+  const [generatedOffer, setGeneratedOffer] = useState<any>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  
+  const [isRentalFormDialogOpen, setIsRentalFormDialogOpen] = useState(false);
+  const [selectedRentalFormUnitId, setSelectedRentalFormUnitId] = useState("");
+  const [selectedRecipientType, setSelectedRecipientType] = useState<"tenant" | "owner">("tenant");
+  const [generatedRentalForm, setGeneratedRentalForm] = useState<any>(null);
+  const [copiedFormLink, setCopiedFormLink] = useState(false);
 
   const { data: activities, isLoading: activitiesLoading } = useQuery<any[]>({
     queryKey: ["/api/external-leads", lead.id, "activities"],
@@ -144,6 +158,73 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
       const response = await fetch(`/api/external-leads/${lead.id}/properties-sent`, { credentials: 'include' });
       if (!response.ok) return [];
       return response.json();
+    },
+  });
+  
+  const { data: unitsData, isLoading: unitsLoading } = useQuery<{ data: any[] }>({
+    queryKey: ["/api/external-units", "for-offer"],
+    queryFn: async () => {
+      const response = await fetch('/api/external-units?limit=1000&availabilityStatus=available', { credentials: 'include' });
+      if (!response.ok) return { data: [] };
+      return response.json();
+    },
+  });
+  const units = unitsData?.data || [];
+
+  const { data: rentalForms, isLoading: rentalFormsLoading } = useQuery<any[]>({
+    queryKey: ["/api/external-leads", lead.id, "rental-forms"],
+    queryFn: async () => {
+      const response = await fetch(`/api/external-leads/${lead.id}/rental-forms`, { credentials: 'include' });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  const generateRentalFormMutation = useMutation({
+    mutationFn: async ({ unitId, recipientType }: { unitId: string; recipientType: "tenant" | "owner" }) => {
+      const res = await apiRequest("POST", `/api/external-leads/${lead.id}/rental-forms`, {
+        externalUnitId: unitId,
+        recipientType,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedRentalForm(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads", lead.id, "rental-forms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads", lead.id, "activities"] });
+      toast({
+        title: language === "es" ? "Formato generado" : "Form generated",
+        description: language === "es" ? "Comparte el link con el lead" : "Share the link with the lead",
+      });
+    },
+    onError: () => {
+      toast({
+        title: language === "es" ? "Error al generar formato" : "Error generating form",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateOfferMutation = useMutation({
+    mutationFn: async (unitId: string) => {
+      const res = await apiRequest("POST", `/api/external-leads/${lead.id}/offer`, {
+        externalUnitId: unitId,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedOffer(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads", lead.id, "activities"] });
+      toast({
+        title: language === "es" ? "Link generado" : "Link generated",
+        description: language === "es" ? "Comparte el link con el lead" : "Share the link with the lead",
+      });
+    },
+    onError: () => {
+      toast({
+        title: language === "es" ? "Error al generar link" : "Error generating link",
+        variant: "destructive",
+      });
     },
   });
 
@@ -223,6 +304,66 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
     };
     return variants[outcome] || "outline";
   };
+  
+  const handleCopyLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+  
+  const handleGenerateOffer = () => {
+    if (!selectedUnitId) {
+      toast({
+        title: language === "es" ? "Selecciona una unidad" : "Select a unit",
+        variant: "destructive",
+      });
+      return;
+    }
+    generateOfferMutation.mutate(selectedUnitId);
+  };
+  
+  const handleCloseOfferDialog = () => {
+    setIsOfferDialogOpen(false);
+    setSelectedUnitId("");
+    setGeneratedOffer(null);
+  };
+  
+  const handleCloseRentalFormDialog = () => {
+    setIsRentalFormDialogOpen(false);
+    setSelectedRentalFormUnitId("");
+    setSelectedRecipientType("tenant");
+    setGeneratedRentalForm(null);
+    setCopiedFormLink(false);
+  };
+  
+  const handleGenerateRentalForm = () => {
+    if (selectedRentalFormUnitId) {
+      generateRentalFormMutation.mutate({ unitId: selectedRentalFormUnitId, recipientType: selectedRecipientType });
+    }
+  };
+  
+  const handleCopyFormLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedFormLink(true);
+    setTimeout(() => setCopiedFormLink(false), 2000);
+    toast({
+      title: language === "es" ? "Link copiado" : "Link copied",
+    });
+  };
+  
+  const getWhatsAppMessage = (url: string) => {
+    const message = language === "es"
+      ? `Hola ${lead.fullName}, te comparto esta oferta de renta. Por favor completa tu información aquí: ${url}`
+      : `Hi ${lead.fullName}, I'm sharing this rental offer with you. Please complete your information here: ${url}`;
+    return `https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+  };
+  
+  const getRentalFormWhatsAppMessage = (url: string) => {
+    const message = language === "es"
+      ? `Hola ${lead.fullName}, te comparto el formato de renta. Por favor completa tu información aquí: ${url}`
+      : `Hi ${lead.fullName}, I'm sharing the rental form with you. Please complete your information here: ${url}`;
+    return `https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+  };
 
   const isInterestedStatus = ["interesado", "oferta_enviada", "proceso_renta", "renta_concretada"].includes(lead.status);
 
@@ -250,6 +391,19 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
               <Lock className="h-3 w-3 text-muted-foreground" />
             )}
             <span className="hidden sm:inline">{language === "es" ? "Ofertas" : "Offers"}</span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="rental-forms" 
+            className="flex items-center gap-2" 
+            disabled={!isInterestedStatus}
+            data-testid="tab-lead-rental-forms"
+          >
+            {isInterestedStatus ? (
+              <Send className="h-4 w-4" />
+            ) : (
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            )}
+            <span className="hidden sm:inline">{language === "es" ? "Formatos" : "Forms"}</span>
           </TabsTrigger>
           <TabsTrigger value="activities" className="flex items-center gap-2" data-testid="tab-lead-activities">
             <Activity className="h-4 w-4" />
@@ -393,11 +547,11 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
         <TabsContent value="rental-offers" className="space-y-4">
           {isInterestedStatus ? (
             <>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <h4 className="font-medium text-sm">
                   {language === "es" ? "Ofertas de Renta" : "Rental Offers"}
                 </h4>
-                <Button size="sm" data-testid="button-create-rental-offer">
+                <Button size="sm" onClick={() => setIsOfferDialogOpen(true)} data-testid="button-create-rental-offer">
                   <Plus className="h-4 w-4 mr-1" />
                   {language === "es" ? "Nueva Oferta" : "New Offer"}
                 </Button>
@@ -407,15 +561,9 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
                 <p className="font-medium">{language === "es" ? "Sistema de Ofertas de Renta" : "Rental Offer System"}</p>
                 <p className="text-xs mt-1 max-w-sm mx-auto">
                   {language === "es" 
-                    ? "Aquí podrás generar y enviar ofertas formales de renta para propiedades en las que el lead está interesado" 
-                    : "Here you can generate and send formal rental offers for properties the lead is interested in"}
+                    ? "Genera links de ofertas de renta personalizadas para este lead" 
+                    : "Generate personalized rental offer links for this lead"}
                 </p>
-                <div className="mt-4 flex flex-col gap-2 items-center">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Send className="h-4 w-4" />
-                    {language === "es" ? "Enviar Oferta vía WhatsApp" : "Send Offer via WhatsApp"}
-                  </Button>
-                </div>
               </div>
             </>
           ) : (
@@ -426,6 +574,116 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
                 {language === "es" 
                   ? "El lead debe estar en estado 'Interesado' o superior para acceder a las ofertas de renta" 
                   : "Lead must be in 'Interested' status or higher to access rental offers"}
+              </p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rental-forms" className="space-y-4">
+          {isInterestedStatus ? (
+            <>
+              <div className="flex justify-between items-center gap-2">
+                <h4 className="font-medium text-sm">
+                  {language === "es" ? "Formatos de Renta" : "Rental Forms"}
+                </h4>
+                <Button size="sm" onClick={() => setIsRentalFormDialogOpen(true)} data-testid="button-create-rental-form">
+                  <Plus className="h-4 w-4 mr-1" />
+                  {language === "es" ? "Nuevo Formato" : "New Form"}
+                </Button>
+              </div>
+              
+              {rentalFormsLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : rentalForms && rentalForms.length > 0 ? (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {rentalForms.map((form: any) => (
+                    <Card key={form.id} className="hover-elevate">
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300">
+                            <Send className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{form.propertyTitle}</span>
+                              <Badge variant={form.isUsed ? "secondary" : "default"} className="text-xs">
+                                {form.recipientType === 'owner' 
+                                  ? (language === "es" ? "Propietario" : "Owner")
+                                  : (language === "es" ? "Inquilino" : "Tenant")}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-2">
+                              <span>{format(new Date(form.createdAt), "d MMM yyyy HH:mm", { locale: language === "es" ? es : enUS })}</span>
+                              <span>•</span>
+                              <span className={form.isUsed ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}>
+                                {form.isUsed 
+                                  ? (language === "es" ? "Completado" : "Completed")
+                                  : (language === "es" ? "Pendiente" : "Pending")}
+                              </span>
+                              {form.createdByName && (
+                                <>
+                                  <span>•</span>
+                                  <span>{language === "es" ? "Por" : "By"}: {form.createdByName}</span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/rental-form/${form.token}`;
+                                  navigator.clipboard.writeText(url);
+                                  toast({
+                                    title: language === "es" ? "Link copiado" : "Link copied",
+                                  });
+                                }}
+                                data-testid={`button-copy-form-link-${form.id}`}
+                              >
+                                <Copy className="h-3 w-3 mr-1" />
+                                {language === "es" ? "Copiar" : "Copy"}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => window.open(`/rental-form/${form.token}`, '_blank')}
+                                data-testid={`button-view-form-${form.id}`}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                {language === "es" ? "Ver" : "View"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Send className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">{language === "es" ? "Formatos de Renta" : "Rental Forms"}</p>
+                  <p className="text-xs mt-1 max-w-sm mx-auto">
+                    {language === "es" 
+                      ? "Genera links de formatos de renta para que inquilinos o propietarios completen su información" 
+                      : "Generate rental form links for tenants or owners to complete their information"}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Lock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="font-medium">{language === "es" ? "Pestaña Bloqueada" : "Tab Locked"}</p>
+              <p className="text-xs mt-1">
+                {language === "es" 
+                  ? "El lead debe estar en estado 'Interesado' o superior para acceder a los formatos de renta" 
+                  : "Lead must be in 'Interested' status or higher to access rental forms"}
               </p>
             </div>
           )}
@@ -701,6 +959,293 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
               {addShowingMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {language === "es" ? "Programar" : "Schedule"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isOfferDialogOpen} onOpenChange={handleCloseOfferDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Generar Oferta de Renta" : "Generate Rental Offer"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium">{language === "es" ? "Lead:" : "Lead:"}</p>
+              <p className="text-sm text-muted-foreground">{lead.fullName}</p>
+              {lead.phone && (
+                <p className="text-xs text-muted-foreground">{lead.phone}</p>
+              )}
+            </div>
+            
+            {!generatedOffer ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Seleccionar Unidad" : "Select Unit"}
+                  </label>
+                  <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
+                    <SelectTrigger data-testid="select-offer-unit">
+                      <SelectValue placeholder={language === "es" ? "Selecciona una unidad..." : "Select a unit..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unitsLoading ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          {language === "es" ? "Cargando..." : "Loading..."}
+                        </div>
+                      ) : units.length === 0 ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          {language === "es" ? "No hay unidades disponibles" : "No units available"}
+                        </div>
+                      ) : (
+                        units.map((unit: any) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.condominiumName || unit.propertyName} - {unit.unitNumber} 
+                            {unit.rentPrice && ` ($${Number(unit.rentPrice).toLocaleString()})`}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="font-medium text-sm">
+                      {language === "es" ? "Link generado exitosamente" : "Link generated successfully"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    {generatedOffer.propertyName} - {generatedOffer.unitNumber}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Link de Oferta" : "Offer Link"}
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={generatedOffer.offerUrl}
+                      readOnly
+                      className="flex-1 text-xs"
+                      data-testid="input-offer-url"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => handleCopyLink(generatedOffer.offerUrl)}
+                      data-testid="button-copy-offer-link"
+                    >
+                      {copiedLink ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="default"
+                    className="w-full gap-2"
+                    onClick={() => window.open(getWhatsAppMessage(generatedOffer.offerUrl), '_blank')}
+                    data-testid="button-send-whatsapp"
+                  >
+                    <SiWhatsapp className="h-4 w-4" />
+                    {language === "es" ? "Enviar por WhatsApp" : "Send via WhatsApp"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => window.open(generatedOffer.offerUrl, '_blank')}
+                    data-testid="button-preview-offer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {language === "es" ? "Vista Previa" : "Preview"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {!generatedOffer ? (
+              <>
+                <Button variant="outline" onClick={handleCloseOfferDialog}>
+                  {language === "es" ? "Cancelar" : "Cancel"}
+                </Button>
+                <Button
+                  onClick={handleGenerateOffer}
+                  disabled={generateOfferMutation.isPending || !selectedUnitId}
+                  data-testid="button-generate-offer"
+                >
+                  {generateOfferMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {language === "es" ? "Generar Link" : "Generate Link"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleCloseOfferDialog} data-testid="button-close-offer-dialog">
+                {language === "es" ? "Cerrar" : "Close"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isRentalFormDialogOpen} onOpenChange={handleCloseRentalFormDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Generar Formato de Renta" : "Generate Rental Form"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium">{language === "es" ? "Lead:" : "Lead:"}</p>
+              <p className="text-sm text-muted-foreground">{lead.fullName}</p>
+              {lead.phone && (
+                <p className="text-xs text-muted-foreground">{lead.phone}</p>
+              )}
+            </div>
+            
+            {!generatedRentalForm ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Tipo de Destinatario" : "Recipient Type"}
+                  </label>
+                  <Select value={selectedRecipientType} onValueChange={(v) => setSelectedRecipientType(v as "tenant" | "owner")}>
+                    <SelectTrigger data-testid="select-recipient-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tenant">
+                        {language === "es" ? "Inquilino" : "Tenant"}
+                      </SelectItem>
+                      <SelectItem value="owner">
+                        {language === "es" ? "Propietario" : "Owner"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Seleccionar Unidad" : "Select Unit"}
+                  </label>
+                  <Select value={selectedRentalFormUnitId} onValueChange={setSelectedRentalFormUnitId}>
+                    <SelectTrigger data-testid="select-rental-form-unit">
+                      <SelectValue placeholder={language === "es" ? "Selecciona una unidad..." : "Select a unit..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unitsLoading ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          {language === "es" ? "Cargando..." : "Loading..."}
+                        </div>
+                      ) : units.length === 0 ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          {language === "es" ? "No hay unidades disponibles" : "No units available"}
+                        </div>
+                      ) : (
+                        units.map((unit: any) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.condominiumName || unit.propertyName} - {unit.unitNumber} 
+                            {unit.rentPrice && ` ($${Number(unit.rentPrice).toLocaleString()})`}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="font-medium text-sm">
+                      {language === "es" ? "Formato generado exitosamente" : "Form generated successfully"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    {generatedRentalForm.propertyName} - {generatedRentalForm.unitNumber}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {language === "es" ? "Link del Formato" : "Form Link"}
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={generatedRentalForm.formUrl}
+                      readOnly
+                      className="flex-1 text-xs"
+                      data-testid="input-rental-form-url"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => handleCopyFormLink(generatedRentalForm.formUrl)}
+                      data-testid="button-copy-rental-form-link"
+                    >
+                      {copiedFormLink ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="default"
+                    className="w-full gap-2"
+                    onClick={() => window.open(getRentalFormWhatsAppMessage(generatedRentalForm.formUrl), '_blank')}
+                    data-testid="button-send-form-whatsapp"
+                  >
+                    <SiWhatsapp className="h-4 w-4" />
+                    {language === "es" ? "Enviar por WhatsApp" : "Send via WhatsApp"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => window.open(generatedRentalForm.formUrl, '_blank')}
+                    data-testid="button-preview-rental-form"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {language === "es" ? "Vista Previa" : "Preview"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {!generatedRentalForm ? (
+              <>
+                <Button variant="outline" onClick={handleCloseRentalFormDialog}>
+                  {language === "es" ? "Cancelar" : "Cancel"}
+                </Button>
+                <Button
+                  onClick={handleGenerateRentalForm}
+                  disabled={generateRentalFormMutation.isPending || !selectedRentalFormUnitId}
+                  data-testid="button-generate-rental-form"
+                >
+                  {generateRentalFormMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {language === "es" ? "Generar Formato" : "Generate Form"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleCloseRentalFormDialog} data-testid="button-close-rental-form-dialog">
+                {language === "es" ? "Cerrar" : "Close"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

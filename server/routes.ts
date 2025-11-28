@@ -29573,6 +29573,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // POST /api/external-leads/:id/offer - Generate rental offer link for a lead (seller flow)
+  app.post("/api/external-leads/:id/offer", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id: leadId } = req.params;
+      const { externalUnitId } = req.body;
+      
+      // Validate lead exists and belongs to agency
+      const lead = await storage.getExternalLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      // Validate unit exists and belongs to same agency
+      if (!externalUnitId) {
+        return res.status(400).json({ message: "externalUnitId is required" });
+      }
+      
+      const unit = await storage.getExternalUnit(externalUnitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      if (String(unit.agencyId) !== String(lead.agencyId)) {
+        return res.status(403).json({ message: "Unit does not belong to the same agency" });
+      }
+      
+      // Get user info for createdByName
+      const userId = req.user.claims?.sub || req.user.id;
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const createdByName = user?.firstName && user?.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : user?.username || 'Unknown';
+      
+      // Generate token
+      const tokenValue = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days validity
+      
+      // Create the offer token
+      const [newToken] = await db.insert(offerTokens).values({
+        token: tokenValue,
+        externalUnitId: String(externalUnitId),
+        externalLeadId: leadId,
+        createdBy: userId,
+        createdByName,
+        expiresAt,
+        isUsed: false,
+      }).returning();
+      
+      // Get unit and property details for response
+      const property = unit.propertyId ? await storage.getExternalProperty(unit.propertyId) : null;
+      
+      // Generate the offer URL
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+      const host = req.get('host');
+      const offerUrl = `${protocol}://${host}/offer/${tokenValue}`;
+      
+      // Create activity entry
+      await storage.createExternalLeadActivity({
+        leadId,
+        agencyId: lead.agencyId,
+        activityType: 'whatsapp',
+        title: `Oferta de Renta generada: ${property?.name || 'Propiedad'} - ${unit.unitNumber || ''}`,
+        description: `Se generó link de oferta de renta para ${lead.fullName}`,
+        relatedPropertyId: unit.propertyId,
+        relatedUnitId: externalUnitId,
+        createdBy: userId,
+      });
+      
+      await createAuditLog(req, "create", "offer_token", newToken.id, `Created rental offer link for lead ${leadId}`);
+      
+      res.status(201).json({
+        ...newToken,
+        offerUrl,
+        leadName: lead.fullName,
+        propertyName: property?.name,
+        unitNumber: unit.unitNumber,
+        createdByName,
+      });
+    } catch (error: any) {
+      console.error("Error creating rental offer for lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+  
+  // GET /api/external-leads/:id/rental-forms - Get rental form tokens for a lead
+  app.get("/api/external-leads/:id/rental-forms", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id: leadId } = req.params;
+      
+      const lead = await storage.getExternalLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      // Get rental form tokens for this lead
+      const tokens = await db
+        .select({
+          id: tenantRentalFormTokens.id,
+          token: tenantRentalFormTokens.token,
+          recipientType: tenantRentalFormTokens.recipientType,
+          isUsed: tenantRentalFormTokens.isUsed,
+          expiresAt: tenantRentalFormTokens.expiresAt,
+          createdAt: tenantRentalFormTokens.createdAt,
+          createdByName: tenantRentalFormTokens.createdByName,
+          unitNumber: externalUnits.unitNumber,
+          condoName: externalCondominiums.name,
+        })
+        .from(tenantRentalFormTokens)
+        .leftJoin(externalUnits, eq(tenantRentalFormTokens.externalUnitId, externalUnits.id))
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .where(eq(tenantRentalFormTokens.externalLeadId, leadId))
+        .orderBy(desc(tenantRentalFormTokens.createdAt));
+      
+      const formatted = tokens.map(t => ({
+        ...t,
+        propertyTitle: t.unitNumber 
+          ? (t.condoName ? `${t.condoName} - ${t.unitNumber}` : t.unitNumber)
+          : 'Sin unidad',
+      }));
+      
+      res.json(formatted);
+    } catch (error: any) {
+      console.error("Error fetching lead rental forms:", error);
+      handleGenericError(res, error);
+    }
+  });
+  
+  // POST /api/external-leads/:id/rental-forms - Generate rental form token for a lead
+  app.post("/api/external-leads/:id/rental-forms", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id: leadId } = req.params;
+      const { externalUnitId, recipientType = 'tenant' } = req.body;
+      
+      const lead = await storage.getExternalLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      if (!externalUnitId) {
+        return res.status(400).json({ message: "externalUnitId is required" });
+      }
+      
+      const unit = await storage.getExternalUnit(externalUnitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      if (String(unit.agencyId) !== String(lead.agencyId)) {
+        return res.status(403).json({ message: "Unit does not belong to the same agency" });
+      }
+      
+      const userId = req.user.claims?.sub || req.user.id;
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const createdByName = user?.firstName && user?.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : user?.username || 'Unknown';
+      
+      const tokenValue = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      
+      const [newToken] = await db.insert(tenantRentalFormTokens).values({
+        token: tokenValue,
+        recipientType,
+        externalUnitId,
+        externalLeadId: leadId,
+        createdBy: userId,
+        createdByName,
+        expiresAt,
+        isUsed: false,
+      }).returning();
+      
+      const property = unit.propertyId ? await storage.getExternalProperty(unit.propertyId) : null;
+      
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+      const host = req.get('host');
+      const formUrl = `${protocol}://${host}/rental-form/${tokenValue}`;
+      
+      await storage.createExternalLeadActivity({
+        leadId,
+        agencyId: lead.agencyId,
+        activityType: 'whatsapp',
+        title: `Formato de Renta generado: ${property?.name || 'Propiedad'} - ${unit.unitNumber || ''}`,
+        description: `Se generó formato de renta (${recipientType}) para ${lead.fullName}`,
+        relatedPropertyId: unit.propertyId,
+        relatedUnitId: externalUnitId,
+        createdBy: userId,
+      });
+      
+      await createAuditLog(req, "create", "tenant_rental_form_token", newToken.id, `Created rental form for lead ${leadId}`);
+      
+      res.status(201).json({
+        ...newToken,
+        formUrl,
+        leadName: lead.fullName,
+        propertyName: property?.name,
+        unitNumber: unit.unitNumber,
+        createdByName,
+      });
+    } catch (error: any) {
+      console.error("Error creating rental form for lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+  
   // PATCH /api/external-lead-properties-sent/:id - Update property sent (e.g., lead response)
   app.patch("/api/external-lead-properties-sent/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
     try {

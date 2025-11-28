@@ -425,6 +425,15 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer hover-elevate"
+                  onClick={() => handleSort("creatorName")}
+                >
+                  <div className="flex items-center gap-2">
+                    {language === "es" ? "Enviado por" : "Sent by"}
+                    {getSortIcon("creatorName")}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover-elevate"
                   onClick={() => handleSort("expiresAt")}
                 >
                   <div className="flex items-center gap-2">
@@ -451,6 +460,9 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
                             locale: language === "es" ? es : enUS,
                           })
                         : "-"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {token.creatorName || "-"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {token.expiresAt ? getTimeRemaining(token.expiresAt) : "-"}
