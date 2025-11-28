@@ -230,7 +230,7 @@ export default function ExternalLeadDetail() {
             <Button 
               variant="outline" 
               className="mt-4"
-              onClick={() => navigate("/external/leads")}
+              onClick={() => navigate("/external/clients")}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               {language === "es" ? "Volver" : "Go back"}
@@ -254,7 +254,7 @@ export default function ExternalLeadDetail() {
               <Button 
                 variant="ghost" 
                 size="icon"
-                onClick={() => navigate("/external/leads")}
+                onClick={() => navigate("/external/clients")}
                 data-testid="button-back-to-leads"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -277,7 +277,7 @@ export default function ExternalLeadDetail() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => navigate(`/external/leads?edit=${lead.id}`)}>
+                    <DropdownMenuItem onClick={() => navigate(`/external/clients?edit=${lead.id}`)}>
                       <Edit2 className="h-4 w-4 mr-2" />
                       {language === "es" ? "Editar" : "Edit"}
                     </DropdownMenuItem>

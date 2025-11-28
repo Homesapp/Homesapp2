@@ -1491,8 +1491,8 @@ export interface IStorage {
 
   // External Leads
   getExternalLead(id: string): Promise<ExternalLead | undefined>;
-  getExternalLeadsByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }): Promise<ExternalLead[]>;
-  getExternalLeadsCountByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; sellerId?: string; expiringDays?: number; search?: string }): Promise<number>;
+  getExternalLeadsByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; sellerId?: string; sellerScope?: boolean; expiringDays?: number; search?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }): Promise<ExternalLead[]>;
+  getExternalLeadsCountByAgency(agencyId: string, filters?: { status?: string; registrationType?: string; sellerId?: string; sellerScope?: boolean; expiringDays?: number; search?: string }): Promise<number>;
   createExternalLead(lead: InsertExternalLead): Promise<ExternalLead>;
   updateExternalLead(id: string, updates: Partial<InsertExternalLead>): Promise<ExternalLead>;
   deleteExternalLead(id: string): Promise<void>;
