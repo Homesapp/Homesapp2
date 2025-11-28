@@ -4435,18 +4435,20 @@ export default function ExternalClients() {
                            (language === "es" ? "Sin asignar" : "Unassigned")}
                         </p>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          setNewAssignedSellerId(selectedLead.assignedSellerId || selectedLead.sellerId || "");
-                          setIsReassignDialogOpen(true);
-                        }}
-                        data-testid="button-reassign-lead"
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        {language === "es" ? "Reasignar" : "Reassign"}
-                      </Button>
+                      {!isSeller && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setNewAssignedSellerId(selectedLead.assignedSellerId || selectedLead.sellerId || "");
+                            setIsReassignDialogOpen(true);
+                          }}
+                          data-testid="button-reassign-lead"
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          {language === "es" ? "Reasignar" : "Reassign"}
+                        </Button>
+                      )}
                     </div>
                     {selectedLead.assistantSellerName && (
                       <div>

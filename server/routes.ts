@@ -28536,10 +28536,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limitNum = Math.max(1, Math.min(parseInt(limit as string, 10) || 50, 1000));
       const offsetNum = Math.max(0, parseInt(offset as string, 10) || 0);
       
+      // Security: Force seller scoping for seller users - they can only see their own leads
+      const isSeller = req.user?.role === 'external_agency_seller';
+      const effectiveSellerId = isSeller ? req.user.id : (sellerId as string | undefined);
+      
       const filters = {
         status: status as string | undefined,
         registrationType: registrationType as string | undefined,
-        sellerId: sellerId as string | undefined,
+        sellerId: effectiveSellerId,
         expiringDays: expiringDays ? parseInt(expiringDays as string, 10) : undefined,
         search: search as string | undefined,
         sortField: sortField as string | undefined,
@@ -28612,6 +28616,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         checkInDate: req.body.checkInDate ? new Date(req.body.checkInDate) : undefined,
       };
+      
+      // Security: Force sellerId for seller users - they can only create their own leads
+      const isSeller = userRole === 'external_agency_seller';
+      if (isSeller) {
+        requestData.sellerId = req.user.id;
+        requestData.registrationType = 'seller'; // Force seller type
+      }
       
       // Handle agency as seller - agency IDs start with 'agency_'
       // When agency is selected, store agency name in sellerName and clear sellerId
