@@ -389,7 +389,7 @@ export default function SellerPropertyCatalog() {
   const [leadsPanelExpanded, setLeadsPanelExpanded] = useState(true);
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = 50;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Create stable filter key for useEffect dependency
   const filterKey = useMemo(() => JSON.stringify({
@@ -402,7 +402,7 @@ export default function SellerPropertyCatalog() {
     status: filters.status,
   }), [search, filters.minPrice, filters.maxPrice, filters.bedrooms, filters.zone, filters.propertyType, filters.status]);
 
-  const buildQueryString = (pageNum: number = page) => {
+  const buildQueryString = (pageNum: number = page, perPage: number = itemsPerPage) => {
     const params = new URLSearchParams();
     if (search) params.append("search", search);
     if (filters.minPrice) params.append("minPrice", filters.minPrice);
@@ -411,8 +411,8 @@ export default function SellerPropertyCatalog() {
     if (filters.zone && filters.zone !== "_all") params.append("zone", filters.zone);
     if (filters.propertyType && filters.propertyType !== "_all") params.append("propertyType", filters.propertyType);
     if (filters.status && filters.status !== "_all") params.append("status", filters.status);
-    params.append("limit", String(ITEMS_PER_PAGE));
-    params.append("offset", String((pageNum - 1) * ITEMS_PER_PAGE));
+    params.append("limit", String(perPage));
+    params.append("offset", String((pageNum - 1) * perPage));
     return params.toString();
   };
 
@@ -426,9 +426,9 @@ export default function SellerPropertyCatalog() {
   }, [filterKey]);
   
   const { data: catalogData, isLoading, isFetching } = useQuery<{ data: any[]; total: number }>({
-    queryKey: ["/api/external-seller/property-catalog", search, filters, page],
+    queryKey: ["/api/external-seller/property-catalog", filterKey, page, itemsPerPage],
     queryFn: async () => {
-      const qs = buildQueryString(page);
+      const qs = buildQueryString(page, itemsPerPage);
       const res = await fetch(`/api/external-seller/property-catalog?${qs}`);
       if (!res.ok) throw new Error("Failed to fetch properties");
       return res.json();
@@ -508,7 +508,7 @@ export default function SellerPropertyCatalog() {
   }, [mappedUnits]);
 
   const totalUnits = catalogData?.total || 0;
-  const totalPages = Math.ceil(totalUnits / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalUnits / itemsPerPage);
   const allLeads = leadsData?.data || [];
   
   // Clear selection when page changes
@@ -1186,6 +1186,61 @@ export default function SellerPropertyCatalog() {
           </div>
         </div>
 
+        {/* Pagination Controls - Admin Style at Top */}
+        {!isLoading && totalUnits > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-b bg-muted/30">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Mostrar</span>
+              <Select
+                value={String(itemsPerPage)}
+                onValueChange={(val) => {
+                  setItemsPerPage(Number(val));
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[70px] h-9" data-testid="select-items-per-page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">por página</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Página {page} de {totalPages || 1}
+              </span>
+              <div className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1 || isFetching}
+                  className="h-9 w-9"
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setPage(p => Math.min(totalPages || 1, p + 1))}
+                  disabled={page === totalPages || totalPages === 0 || isFetching}
+                  className="h-9 w-9"
+                  data-testid="button-next-page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <ScrollArea className="flex-1 p-3 sm:p-4">
           {isLoading ? (
             viewMode === "grid" ? (
@@ -1276,9 +1331,13 @@ export default function SellerPropertyCatalog() {
                         </div>
                       )}
                       
-                      {/* Bottom Left: Status Badge - positioned with more clearance */}
+                    </div>
+
+                    {/* Content Section */}
+                    <CardContent className="p-3 flex-1 flex flex-col gap-2">
+                      {/* Status Badge - outside image container to avoid clipping */}
                       <Badge
-                        className={`absolute left-2 bottom-4 text-xs px-2 py-1 ${
+                        className={`w-fit text-xs px-2 py-0.5 mb-1 ${
                           unit.status === "active" 
                             ? "bg-green-600 hover:bg-green-700 text-white border-0" 
                             : "bg-red-600 hover:bg-red-700 text-white border-0"
@@ -1286,10 +1345,6 @@ export default function SellerPropertyCatalog() {
                       >
                         {unit.status === "active" ? "Disponible" : "Rentada"}
                       </Badge>
-                    </div>
-
-                    {/* Content Section */}
-                    <CardContent className="p-3 flex-1 flex flex-col gap-2">
                       {/* Title Row: Name + Price */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -1502,16 +1557,6 @@ export default function SellerPropertyCatalog() {
                           </div>
                         )}
                         
-                        {/* Status Badge - positioned with clearance */}
-                        <Badge
-                          className={`absolute left-2 bottom-4 text-xs ${
-                            unit.status === "active" 
-                              ? "bg-green-600 text-white border-0" 
-                              : "bg-red-600 text-white border-0"
-                          }`}
-                        >
-                          {unit.status === "active" ? "Disponible" : "Rentada"}
-                        </Badge>
                         
                         {/* Match Score */}
                         {matchInfo.score > 0 && (
@@ -1527,6 +1572,16 @@ export default function SellerPropertyCatalog() {
                       
                       {/* Main Content */}
                       <div className="flex-1 p-3 flex flex-col gap-2">
+                        {/* Status Badge - outside image to avoid clipping */}
+                        <Badge
+                          className={`w-fit text-xs px-2 py-0.5 ${
+                            unit.status === "active" 
+                              ? "bg-green-600 text-white border-0" 
+                              : "bg-red-600 text-white border-0"
+                          }`}
+                        >
+                          {unit.status === "active" ? "Disponible" : "Rentada"}
+                        </Badge>
                         {/* Title Row: Name + Price */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -1672,80 +1727,6 @@ export default function SellerPropertyCatalog() {
             </div>
           )}
 
-          {/* Pagination Controls - 44px min touch targets for mobile */}
-          {totalPages > 1 && !isLoading && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 px-2">
-              <span className="text-sm text-muted-foreground">
-                Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(page * ITEMS_PER_PAGE, totalUnits)} de {totalUnits} propiedades
-              </span>
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                <Button
-                  variant="outline"
-                  onClick={() => setPage(1)}
-                  disabled={page === 1 || isFetching}
-                  className="min-h-11 min-w-11 px-3"
-                  data-testid="button-first-page"
-                >
-                  Primera
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1 || isFetching}
-                  className="min-h-11 min-w-11"
-                  data-testid="button-prev-page"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex items-center gap-1 px-1">
-                  {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) {
-                      pageNum = idx + 1;
-                    } else if (page <= 3) {
-                      pageNum = idx + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + idx;
-                    } else {
-                      pageNum = page - 2 + idx;
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={page === pageNum ? "default" : "outline"}
-                        onClick={() => setPage(pageNum)}
-                        disabled={isFetching}
-                        className="min-h-11 min-w-11"
-                        data-testid={`button-page-${pageNum}`}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages || isFetching}
-                  className="min-h-11 min-w-11"
-                  data-testid="button-next-page"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages || isFetching}
-                  className="min-h-11 min-w-11 px-3"
-                  data-testid="button-last-page"
-                >
-                  Última
-                </Button>
-              </div>
-            </div>
-          )}
         </ScrollArea>
       </div>
 
