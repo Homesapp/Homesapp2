@@ -83,7 +83,11 @@ const LEAD_STATUS_OPTIONS = [
   { value: "nuevo_lead", label: { es: "Nuevo Lead", en: "New Lead" }, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
   { value: "cita_coordinada", label: { es: "Cita Coordinada", en: "Appointment Scheduled" }, color: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" },
   { value: "interesado", label: { es: "Interesado", en: "Interested" }, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
-  { value: "proceso_de_renta", label: { es: "Proceso de Renta", en: "Rental Process" }, color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" },
+  { value: "oferta_enviada", label: { es: "Oferta Enviada", en: "Offer Sent" }, color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" },
+  { value: "oferta_completada", label: { es: "Oferta Completada", en: "Offer Completed" }, color: "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300" },
+  { value: "formato_enviado", label: { es: "Formato Enviado", en: "Form Sent" }, color: "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300" },
+  { value: "formato_completado", label: { es: "Formato Completado", en: "Form Completed" }, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" },
+  { value: "proceso_renta", label: { es: "Proceso de Renta", en: "Rental Process" }, color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300" },
   { value: "renta_concretada", label: { es: "Renta Concretada", en: "Rental Completed" }, color: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300" },
   { value: "perdido", label: { es: "Perdido", en: "Lost" }, color: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" },
   { value: "muerto", label: { es: "Muerto", en: "Dead" }, color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },
@@ -134,7 +138,7 @@ export default function ExternalLeadDetail() {
     enabled: !!leadId,
   });
 
-  const activeCard = presentationCards?.find(c => c.status === 'active' || c.isDefault);
+  const activeCard = presentationCards?.find(c => c.isDefault) || (presentationCards && presentationCards.length > 0 ? presentationCards[0] : null);
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
@@ -168,7 +172,11 @@ export default function ExternalLeadDetail() {
   };
 
   const isInterestedStatus = lead?.status === "interesado" || 
-    lead?.status === "proceso_de_renta" || 
+    lead?.status === "oferta_enviada" ||
+    lead?.status === "oferta_completada" ||
+    lead?.status === "formato_enviado" ||
+    lead?.status === "formato_completado" ||
+    lead?.status === "proceso_renta" || 
     lead?.status === "renta_concretada";
 
   if (!matched) {
@@ -355,6 +363,24 @@ export default function ExternalLeadDetail() {
 
             <Separator />
 
+            {/* Move-in Date - Highlighted */}
+            {(lead.checkInDateText || lead.checkInDate) && (
+              <>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground font-medium">
+                    {language === "es" ? "Fecha de Mudanza" : "Move-in Date"}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>
+                      {lead.checkInDateText || (lead.checkInDate ? format(new Date(lead.checkInDate), "PPP", { locale: language === "es" ? es : enUS }) : "")}
+                    </span>
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
             {/* Search Preferences */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium flex items-center gap-2">
@@ -399,14 +425,6 @@ export default function ExternalLeadDetail() {
                   <div className="flex items-center gap-2">
                     <PawPrint className="h-4 w-4 text-amber-600" />
                     <span>{lead.hasPets}</span>
-                  </div>
-                )}
-                {(lead.checkInDateText || lead.checkInDate) && (
-                  <div className="flex items-center gap-2 col-span-2">
-                    <CalendarIcon className="h-4 w-4 text-indigo-600" />
-                    <span>
-                      {lead.checkInDateText || (lead.checkInDate ? format(new Date(lead.checkInDate), "PPP", { locale: language === "es" ? es : enUS }) : "")}
-                    </span>
                   </div>
                 )}
               </div>

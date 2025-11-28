@@ -41,6 +41,9 @@ type LeadStatus =
   | "cita_coordinada"
   | "interesado"
   | "oferta_enviada"
+  | "oferta_completada"
+  | "formato_enviado"
+  | "formato_completado"
   | "proceso_renta"
   | "renta_concretada"
   | "perdido"
@@ -51,6 +54,7 @@ interface LeadKanbanViewProps {
   onUpdateStatus: (leadId: string, newStatus: LeadStatus) => void;
   onEdit: (lead: ExternalLead) => void;
   onDelete: (lead: ExternalLead) => void;
+  onViewDetail?: (lead: ExternalLead) => void;
 }
 
 interface KanbanColumnDef {
@@ -64,6 +68,9 @@ const KANBAN_COLUMNS: KanbanColumnDef[] = [
   { id: "cita_coordinada", labelEs: "Cita Coordinada", labelEn: "Appointment Scheduled" },
   { id: "interesado", labelEs: "Interesado", labelEn: "Interested" },
   { id: "oferta_enviada", labelEs: "Oferta Enviada", labelEn: "Offer Sent" },
+  { id: "oferta_completada", labelEs: "Oferta Completada", labelEn: "Offer Completed" },
+  { id: "formato_enviado", labelEs: "Formato Enviado", labelEn: "Form Sent" },
+  { id: "formato_completado", labelEs: "Formato Completado", labelEn: "Form Completed" },
   { id: "proceso_renta", labelEs: "Proceso de Renta", labelEn: "Rental Process" },
   { id: "renta_concretada", labelEs: "Renta Concretada", labelEn: "Rental Completed" },
   { id: "perdido", labelEs: "Lead Perdido", labelEn: "Lead Lost" },

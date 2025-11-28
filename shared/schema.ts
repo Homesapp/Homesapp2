@@ -474,8 +474,11 @@ export const externalLeadStatusEnum = pgEnum("external_lead_status", [
   "nuevo_lead",           // Nuevo lead recién registrado
   "cita_coordinada",      // Cita coordinada con el lead
   "interesado",           // Lead mostró interés
-  "oferta_enviada",       // Oferta enviada al lead
-  "proceso_renta",        // En proceso de renta
+  "oferta_enviada",       // Oferta de renta enviada al lead
+  "oferta_completada",    // Lead completó la oferta de renta
+  "formato_enviado",      // Formato de inquilino enviado
+  "formato_completado",   // Lead completó el formato de inquilino
+  "proceso_renta",        // En proceso de renta (firma de contrato)
   "renta_concretada",     // Renta completada exitosamente
   "perdido",              // Lead perdido (no interesado)
   "muerto"                // Lead sin respuesta
