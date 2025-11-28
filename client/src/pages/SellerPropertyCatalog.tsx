@@ -390,6 +390,9 @@ export default function SellerPropertyCatalog() {
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailUnit, setDetailUnit] = useState<Unit | null>(null);
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
 
   // Create stable filter key for useEffect dependency
   const filterKey = useMemo(() => JSON.stringify({
@@ -687,6 +690,12 @@ export default function SellerPropertyCatalog() {
     message = message.replace(/\{\{?propiedades_lista\}\}?/g, propertiesList);
     
     return message;
+  };
+
+  const handleOpenDetail = (unit: Unit) => {
+    setDetailUnit(unit);
+    setDetailImageIndex(0);
+    setDetailDialogOpen(true);
   };
 
   const handleShareClick = (unit: Unit) => {
@@ -1390,8 +1399,12 @@ export default function SellerPropertyCatalog() {
                     className="group overflow-hidden flex flex-col bg-card hover-elevate transition-all duration-200" 
                     data-testid={`card-property-${unit.id}`}
                   >
-                    {/* Image Section */}
-                    <div className="relative aspect-[16/10] bg-muted overflow-hidden">
+                    {/* Image Section - Clickable to open detail */}
+                    <div 
+                      className="relative aspect-[16/10] bg-muted overflow-hidden cursor-pointer"
+                      onClick={() => handleOpenDetail(unit)}
+                      data-testid={`button-open-detail-${unit.id}`}
+                    >
                       {unit.images && unit.images.length > 0 ? (
                         <img
                           src={unit.images[0]}
@@ -2090,6 +2103,249 @@ export default function SellerPropertyCatalog() {
               Abrir WhatsApp
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Property Detail Modal */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+          {detailUnit && (
+            <div className="flex flex-col max-h-[90vh]">
+              {/* Image Gallery */}
+              <div className="relative aspect-[16/9] bg-muted overflow-hidden">
+                {detailUnit.images && detailUnit.images.length > 0 ? (
+                  <>
+                    <img
+                      src={detailUnit.images[detailImageIndex]}
+                      alt={detailUnit.name}
+                      className="h-full w-full object-cover"
+                    />
+                    {/* Image Navigation */}
+                    {detailUnit.images.length > 1 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 hover:bg-background"
+                          onClick={() => setDetailImageIndex(prev => prev === 0 ? detailUnit.images!.length - 1 : prev - 1)}
+                          data-testid="button-prev-image"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 hover:bg-background"
+                          onClick={() => setDetailImageIndex(prev => prev === detailUnit.images!.length - 1 ? 0 : prev + 1)}
+                          data-testid="button-next-image"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </Button>
+                        {/* Image Counter */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                          {detailUnit.images.map((_, idx) => (
+                            <button
+                              key={idx}
+                              className={`h-2 w-2 rounded-full transition-colors ${idx === detailImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                              onClick={() => setDetailImageIndex(idx)}
+                            />
+                          ))}
+                        </div>
+                        <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                          {detailImageIndex + 1} / {detailUnit.images.length}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/20">
+                    <Home className="h-16 w-16 text-muted-foreground/40" />
+                  </div>
+                )}
+                
+                {/* Status Badge */}
+                <Badge
+                  className={`absolute top-3 left-3 ${
+                    detailUnit.status === "active" 
+                      ? "bg-green-600 hover:bg-green-700 text-white border-0" 
+                      : "bg-red-600 hover:bg-red-700 text-white border-0"
+                  }`}
+                >
+                  {detailUnit.status === "active" ? "Disponible" : "Rentada"}
+                </Badge>
+              </div>
+
+              {/* Content */}
+              <ScrollArea className="flex-1 max-h-[50vh]">
+                <div className="p-6 space-y-6">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        {detailUnit.condominiumName || detailUnit.name}
+                      </h2>
+                      <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                        {detailUnit.unitNumber && (
+                          <span className="font-medium text-foreground">#{detailUnit.unitNumber}</span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {detailUnit.zone || "Sin zona"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary">
+                        ${detailUnit.monthlyRent?.toLocaleString() || "—"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {detailUnit.currency || "MXN"}/mes
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Property Specs */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                      <Bed className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-semibold">{detailUnit.bedrooms || 0}</div>
+                        <div className="text-xs text-muted-foreground">Recámaras</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                      <Bath className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-semibold">{detailUnit.bathrooms || 0}</div>
+                        <div className="text-xs text-muted-foreground">Baños</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                      <Square className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-semibold">{detailUnit.squareMeters || "—"}</div>
+                        <div className="text-xs text-muted-foreground">m²</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-semibold">{detailUnit.unitType || "—"}</div>
+                        <div className="text-xs text-muted-foreground">Tipo</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div className="flex flex-wrap gap-2">
+                    {detailUnit.hasFurniture && (
+                      <Badge variant="secondary" className="gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Amueblado
+                      </Badge>
+                    )}
+                    {detailUnit.hasParking && (
+                      <Badge variant="secondary" className="gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Estacionamiento
+                      </Badge>
+                    )}
+                    {detailUnit.petsAllowed && (
+                      <Badge variant="secondary" className="gap-1 text-green-600 dark:text-green-500">
+                        <PawPrint className="h-3 w-3" />
+                        Pet Friendly
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Amenities */}
+                  {detailUnit.amenities && detailUnit.amenities.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Amenidades</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {detailUnit.amenities.map((amenity, idx) => (
+                          <Badge key={idx} variant="outline">
+                            {amenity}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  {detailUnit.description && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Descripción</h4>
+                      <p className="text-muted-foreground leading-relaxed">
+                        {detailUnit.description}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+
+              {/* Action Footer */}
+              <div className="border-t p-4 bg-background">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {selectedLead ? (
+                    <>
+                      <Button
+                        className="flex-1 h-12 gap-2"
+                        onClick={() => {
+                          handleDirectWhatsApp(detailUnit, selectedLead);
+                          setDetailDialogOpen(false);
+                        }}
+                        data-testid="button-detail-whatsapp"
+                      >
+                        <SiWhatsapp className="h-5 w-5" />
+                        Enviar a {selectedLead.firstName} por WhatsApp
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-12 gap-2"
+                        onClick={() => {
+                          handleFindMatches(detailUnit);
+                          setDetailDialogOpen(false);
+                        }}
+                        data-testid="button-detail-find-matches"
+                      >
+                        <Users className="h-5 w-5" />
+                        Buscar otros leads
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        className="flex-1 h-12 gap-2"
+                        onClick={() => {
+                          handleFindMatches(detailUnit);
+                          setDetailDialogOpen(false);
+                        }}
+                        data-testid="button-detail-find-leads"
+                      >
+                        <Sparkles className="h-5 w-5" />
+                        Buscar Leads Compatibles
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-12 gap-2"
+                        onClick={() => {
+                          handleShareClick(detailUnit);
+                          setDetailDialogOpen(false);
+                        }}
+                        data-testid="button-detail-share"
+                      >
+                        <Share2 className="h-5 w-5" />
+                        Compartir
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
