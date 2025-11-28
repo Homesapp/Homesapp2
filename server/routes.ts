@@ -25238,8 +25238,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Recent activities (last 10)
         db.select({
           id: externalLeadActivities.id,
-          type: externalLeadActivities.type,
-          notes: externalLeadActivities.notes,
+          activityType: externalLeadActivities.activityType,
+          description: externalLeadActivities.description,
           createdAt: externalLeadActivities.createdAt,
           leadName: sql<string>`concat(${externalLeads.firstName}, ' ', ${externalLeads.lastName})`,
         })
@@ -25329,7 +25329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ] = await Promise.all([
         // Activities by type
         db.select({
-          type: externalLeadActivities.type,
+          activityType: externalLeadActivities.activityType,
           count: sql<number>`count(*)::int`
         })
           .from(externalLeadActivities)
@@ -25543,14 +25543,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       if (status) {
-        conditions.push(eq(externalUnits.status, status as string));
+        conditions.push(eq(externalUnits.isActive, status === 'active'));
       }
 
       if (minPrice) {
-        conditions.push(gte(externalUnits.monthlyRent, parseInt(minPrice as string)));
+        conditions.push(gte(externalUnits.price, parseInt(minPrice as string)));
       }
       if (maxPrice) {
-        conditions.push(lte(externalUnits.monthlyRent, parseInt(maxPrice as string)));
+        conditions.push(lte(externalUnits.price, parseInt(maxPrice as string)));
       }
       if (bedrooms) {
         conditions.push(eq(externalUnits.bedrooms, parseInt(bedrooms as string)));
@@ -25572,15 +25572,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [units, totalResult] = await Promise.all([
         db.select({
           id: externalUnits.id,
-          name: externalUnits.name,
+          name: externalUnits.title,
           zone: externalUnits.zone,
-          unitType: externalUnits.unitType,
+          unitType: externalUnits.propertyType,
           bedrooms: externalUnits.bedrooms,
           bathrooms: externalUnits.bathrooms,
-          monthlyRent: externalUnits.monthlyRent,
+          monthlyRent: externalUnits.price,
           currency: externalUnits.currency,
-          status: externalUnits.status,
-          images: externalUnits.images,
+          isActive: externalUnits.isActive,
+          images: externalUnits.primaryImages,
           amenities: externalUnits.amenities,
           condominiumId: externalUnits.condominiumId,
         })
@@ -25686,7 +25686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sentAt: externalLeadPropertyOffers.sentAt,
         unitName: externalUnits.name,
         unitZone: externalUnits.zone,
-        unitType: externalUnits.unitType,
+        unitType: externalUnits.propertyType,
         unitPrice: externalUnits.monthlyRent,
         sellerName: users.name,
       })
@@ -27413,7 +27413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rentalStatus: externalUnits.rentalStatus,
           bedroomCount: externalUnits.bedroomCount,
           bathroomCount: externalUnits.bathroomCount,
-          unitType: externalUnits.unitType,
+          unitType: externalUnits.propertyType,
           agencyId: externalUnits.agencyId,
         }
       })
