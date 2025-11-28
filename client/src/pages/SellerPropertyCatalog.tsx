@@ -220,9 +220,9 @@ export default function SellerPropertyCatalog() {
   });
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery<{ data: Lead[] }>({
-    queryKey: ["/api/external/leads"],
+    queryKey: ["/api/external-leads"],
     queryFn: async () => {
-      const res = await fetch("/api/external/leads?limit=100");
+      const res = await fetch("/api/external-leads?limit=100");
       if (!res.ok) throw new Error("Failed to fetch leads");
       return res.json();
     },
