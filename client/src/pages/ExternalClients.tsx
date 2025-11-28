@@ -2670,8 +2670,8 @@ export default function ExternalClients() {
                       </div>
                     </div>
                     
-                    {/* Seller Filter */}
-                    {sellers.length > 0 && (
+                    {/* Seller Filter - Only visible for admins, not for sellers */}
+                    {!isSeller && sellers.length > 0 && (
                       <div className="space-y-2">
                         <span className="text-xs font-medium text-muted-foreground">
                           {language === "es" ? "Vendedor" : "Seller"}
@@ -2738,7 +2738,7 @@ export default function ExternalClients() {
                       />
                     </Badge>
                   )}
-                  {leadSellerFilter !== "all" && (
+                  {!isSeller && leadSellerFilter !== "all" && (
                     <Badge variant="secondary" className="gap-1">
                       {language === "es" ? "Vendedor:" : "Seller:"} {sellers.find(s => s.id === leadSellerFilter)?.firstName || ""}
                       <X 
