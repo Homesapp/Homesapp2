@@ -4675,7 +4675,7 @@ export default function ExternalClients() {
       </Dialog>
       {/* Lead Detail Dialog - Enhanced */}
       <Dialog open={isLeadDetailOpen} onOpenChange={setIsLeadDetailOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto w-full h-full sm:h-auto sm:w-auto fixed sm:relative inset-0 sm:inset-auto rounded-none sm:rounded-lg p-4 sm:p-6">
           <DialogHeader className="pb-4 border-b">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -4956,7 +4956,7 @@ export default function ExternalClients() {
                             setSelectedLead({ ...selectedLead, status });
                           }}
                           disabled={updateLeadStatusMutation.isPending || isStatusLocked}
-                          className="text-xs"
+                          className="text-xs h-9 sm:h-8 px-3"
                           title={isStatusLocked ? (language === "es" ? "Solo el administrador puede cambiar este estado" : "Only admin can change this status") : undefined}
                         >
                           {getLeadStatusLabel(status)}
@@ -4988,9 +4988,10 @@ export default function ExternalClients() {
             </div>
           )}
 
-          <DialogFooter className="border-t pt-4 gap-2 flex-wrap sm:flex-nowrap">
+          <DialogFooter className="border-t pt-4 gap-2 flex-col sm:flex-row">
             <Button
               variant="outline"
+              className="h-11 sm:h-9 w-full sm:w-auto order-last sm:order-first"
               onClick={() => setIsLeadDetailOpen(false)}
               data-testid="button-lead-detail-close"
             >
@@ -4998,6 +4999,7 @@ export default function ExternalClients() {
             </Button>
             <Button
               variant="outline"
+              className="h-11 sm:h-9 w-full sm:w-auto"
               onClick={() => {
                 setIsLeadDetailOpen(false);
                 if (selectedLead) {
@@ -5017,7 +5019,7 @@ export default function ExternalClients() {
               <Button
                 onClick={() => convertLeadToClientMutation.mutate(selectedLead)}
                 disabled={convertLeadToClientMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
+                className="h-11 sm:h-9 w-full sm:w-auto bg-green-600 hover:bg-green-700"
                 data-testid="button-convert-to-client"
               >
                 <UserCheck className="h-4 w-4 mr-2" />
