@@ -806,24 +806,60 @@ export default function SellerPropertyCatalog() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "nuevo": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "nuevo_lead": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "interesado": return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200";
       case "contactado": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "cita_coordinada": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "cita_agendada": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
       case "en_negociacion": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "oferta_enviada": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
       case "proceso_renta": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default: return "";
+      case "rentado": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
+      case "perdido": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "descartado": return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       nuevo: "Nuevo",
+      nuevo_lead: "Nuevo Lead",
+      interesado: "Interesado",
       contactado: "Contactado",
-      en_negociacion: "En Negociación",
+      cita_coordinada: "Cita Coordinada",
       cita_agendada: "Cita Agendada",
+      en_negociacion: "En Negociación",
+      oferta_enviada: "Oferta Enviada",
       proceso_renta: "En Proceso",
+      rentado: "Rentado",
       perdido: "Perdido",
       descartado: "Descartado"
     };
     return labels[status] || status;
+  };
+
+  const [expandedLeads, setExpandedLeads] = useState<Set<string>>(new Set());
+
+  const toggleLeadExpanded = (leadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newSet = new Set(expandedLeads);
+    if (newSet.has(leadId)) {
+      newSet.delete(leadId);
+    } else {
+      newSet.add(leadId);
+    }
+    setExpandedLeads(newSet);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "—";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+    } catch {
+      return "—";
+    }
   };
 
   return (
@@ -898,74 +934,129 @@ export default function SellerPropertyCatalog() {
                     </p>
                   </div>
                 ) : (
-                  filteredLeads.map((lead) => (
-                    <Card 
-                      key={lead.id} 
-                      className={`cursor-pointer transition-all hover-elevate ${
-                        selectedLead?.id === lead.id 
-                          ? "ring-2 ring-primary" 
-                          : ""
-                      }`}
-                      onClick={() => applyLeadFilters(lead)}
-                      data-testid={`card-lead-${lead.id}`}
-                    >
-                      <CardContent className="p-2 sm:p-3">
-                        <div className="mb-2 flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-primary/10">
-                              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  filteredLeads.map((lead) => {
+                    const isExpanded = expandedLeads.has(lead.id);
+                    return (
+                      <Card 
+                        key={lead.id} 
+                        className={`cursor-pointer transition-all hover-elevate ${
+                          selectedLead?.id === lead.id 
+                            ? "ring-2 ring-primary" 
+                            : ""
+                        }`}
+                        onClick={() => applyLeadFilters(lead)}
+                        data-testid={`card-lead-${lead.id}`}
+                      >
+                        <CardContent className="p-2 sm:p-3">
+                          <div className="mb-2 flex items-start justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-primary/10">
+                                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium leading-tight text-sm">
+                                  {lead.firstName} {lead.lastName}
+                                </p>
+                                {lead.phone && (
+                                  <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium leading-tight text-sm">
-                                {lead.firstName} {lead.lastName}
-                              </p>
-                              {lead.phone && (
-                                <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                            <div className="flex items-center gap-1">
+                              {selectedLead?.id === lead.id && (
+                                <CheckCircle2 className="h-5 w-5 text-primary" />
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e) => toggleLeadExpanded(lead.id, e)}
+                                data-testid={`button-expand-lead-${lead.id}`}
+                              >
+                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-1 text-xs mb-2">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Wallet className="h-3 w-3" />
+                              <span className="font-medium text-foreground truncate">
+                                {lead.estimatedRentCost 
+                                  ? `$${lead.estimatedRentCost.toLocaleString()}` 
+                                  : "—"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Bed className="h-3 w-3" />
+                              <span className="font-medium text-foreground">
+                                {lead.bedrooms || "—"} rec.
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <Badge className={`text-xs ${getStatusColor(lead.status)}`}>
+                              {getStatusLabel(lead.status)}
+                            </Badge>
+                            {lead.hasPets && lead.hasPets !== "no" && (
+                              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                                <PawPrint className="h-3 w-3" />
+                                <span>Mascota</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {isExpanded && (
+                            <div className="mt-2 pt-2 border-t space-y-1.5 text-xs">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span>Ingreso: <span className="text-foreground">{formatDate(lead.createdAt)}</span></span>
+                              </div>
+                              {lead.desiredNeighborhood && (
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <MapPin className="h-3 w-3" />
+                                  <span className="text-foreground truncate">{lead.desiredNeighborhood}</span>
+                                </div>
+                              )}
+                              {lead.desiredUnitType && (
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Home className="h-3 w-3" />
+                                  <span className="text-foreground">{lead.desiredUnitType}</span>
+                                </div>
+                              )}
+                              {lead.contractDuration && (
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <FileText className="h-3 w-3" />
+                                  <span className="text-foreground">{lead.contractDuration}</span>
+                                </div>
+                              )}
+                              {lead.email && (
+                                <div className="flex items-center gap-1 text-muted-foreground truncate">
+                                  <span className="text-foreground truncate">{lead.email}</span>
+                                </div>
                               )}
                             </div>
-                          </div>
-                          {selectedLead?.id === lead.id && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
                           )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-1 text-xs mb-2">
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Wallet className="h-3 w-3" />
-                            <span className="font-medium text-foreground truncate">
-                              {lead.estimatedRentCost 
-                                ? `$${lead.estimatedRentCost.toLocaleString()}` 
-                                : "—"}
-                            </span>
+                          
+                          <div className="flex items-center justify-end gap-1 mt-2">
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="h-8 gap-1 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                applyLeadFilters(lead);
+                              }}
+                            >
+                              <Target className="h-3 w-3" />
+                              Filtrar
+                            </Button>
                           </div>
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Bed className="h-3 w-3" />
-                            <span className="font-medium text-foreground">
-                              {lead.bedrooms || "—"} rec.
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between gap-2">
-                          <Badge className={`text-xs ${getStatusColor(lead.status)}`}>
-                            {getStatusLabel(lead.status)}
-                          </Badge>
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            className="h-8 gap-1 px-2 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              applyLeadFilters(lead);
-                            }}
-                          >
-                            <Target className="h-3 w-3" />
-                            Filtrar
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 )}
               </div>
             </ScrollArea>
