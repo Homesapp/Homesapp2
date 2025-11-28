@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Search, 
   Calendar, 
@@ -27,7 +30,17 @@ import {
   Star,
   CheckCircle,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  Sparkles,
+  MapPin,
+  Shield,
+  ArrowRight,
+  Phone,
+  Mail,
+  Palmtree,
+  Sun,
+  Waves,
+  Eye
 } from "lucide-react";
 
 type UserRole = "master" | "admin" | "admin_jr" | "seller" | "owner" | "management" | "concierge" | "provider" | "cliente" | "abogado" | "contador" | "agente_servicios_especiales";
@@ -735,6 +748,182 @@ export default function Help() {
           </div>
         </CardContent>
       </Card>
+
+      {(userRole === "seller" || userRole === "master" || userRole === "admin" || user?.role === "external_agency_seller") && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Propuestas de Diseño - Nuevo Home Page
+            </CardTitle>
+            <CardDescription>
+              Explora 3 diseños diferentes para la nueva página principal. Selecciona el que más te guste.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="modern" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="modern" className="gap-1">
+                  <Building2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Moderno</span>
+                </TabsTrigger>
+                <TabsTrigger value="elegant" className="gap-1">
+                  <Star className="h-4 w-4" />
+                  <span className="hidden sm:inline">Elegante</span>
+                </TabsTrigger>
+                <TabsTrigger value="tropical" className="gap-1">
+                  <Palmtree className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tropical</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="modern" className="mt-0">
+                <div className="border rounded-lg overflow-hidden bg-background">
+                  <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                    <div className="p-4 flex items-center justify-between border-b border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-6 w-6 text-emerald-400" />
+                        <span className="font-bold text-lg">HomesApp</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline" className="text-white border-white/30 text-xs">Iniciar Sesión</Badge>
+                        <Badge className="bg-emerald-500 text-xs">Registrarse</Badge>
+                      </div>
+                    </div>
+                    <div className="p-8 text-center space-y-4">
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">#1 en Tulum</Badge>
+                      <h2 className="text-2xl sm:text-3xl font-bold">Encuentra tu hogar ideal en Tulum</h2>
+                      <p className="text-slate-300 text-sm max-w-md mx-auto">Propiedades exclusivas en la Riviera Maya. Renta o compra con los mejores asesores.</p>
+                      <div className="flex justify-center gap-2 pt-2">
+                        <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600">Explorar Propiedades</Button>
+                        <Button size="sm" variant="outline" className="text-white border-white/30">Contactar</Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900">
+                    <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg border mb-4">
+                      <Search className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Buscar por ubicación, tipo, precio...</span>
+                      <Button size="sm" className="ml-auto bg-emerald-500 text-xs h-7">Buscar</Button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="aspect-square bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                          <Home className="h-6 w-6 text-slate-400" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-3 text-center text-xs text-muted-foreground bg-slate-100 dark:bg-slate-800">
+                    <span className="font-medium">Diseño Moderno:</span> Limpio, profesional, enfocado en búsqueda
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="elegant" className="mt-0">
+                <div className="border rounded-lg overflow-hidden bg-background">
+                  <div className="bg-gradient-to-br from-amber-900 via-stone-900 to-stone-950 text-white">
+                    <div className="p-4 flex items-center justify-between border-b border-amber-700/30">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                          <Home className="h-4 w-4 text-stone-900" />
+                        </div>
+                        <span className="font-serif text-xl tracking-wide">HOMES<span className="text-amber-400">APP</span></span>
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        <span className="text-amber-200/70">Propiedades</span>
+                        <span className="text-amber-200/70">Servicios</span>
+                        <span className="text-amber-200/70">Contacto</span>
+                      </div>
+                    </div>
+                    <div className="p-8 text-center space-y-4">
+                      <div className="flex justify-center gap-1">
+                        {[1,2,3,4,5].map(i => <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />)}
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-serif">Propiedades de Lujo</h2>
+                      <p className="text-amber-100/70 text-sm max-w-sm mx-auto font-light">Experiencia inmobiliaria premium en los destinos más exclusivos de la Riviera Maya</p>
+                      <Button size="sm" className="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-900 font-medium">
+                        Descubrir Colección
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-stone-100 dark:bg-stone-900">
+                    <div className="grid grid-cols-3 gap-3">
+                      {["Villas", "Penthouses", "Beachfront"].map(type => (
+                        <div key={type} className="p-3 text-center bg-white dark:bg-stone-800 rounded-lg border border-amber-200/30 dark:border-amber-700/30">
+                          <Building2 className="h-5 w-5 mx-auto text-amber-600 mb-1" />
+                          <span className="text-xs font-medium">{type}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-3 text-center text-xs text-muted-foreground bg-stone-50 dark:bg-stone-800">
+                    <span className="font-medium">Diseño Elegante:</span> Lujo, sofisticación, tonos dorados
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="tropical" className="mt-0">
+                <div className="border rounded-lg overflow-hidden bg-background">
+                  <div className="bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 text-white">
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Palmtree className="h-6 w-6" />
+                        <span className="font-bold text-lg">HomesApp</span>
+                        <Sun className="h-4 w-4 text-yellow-300" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline" className="text-white border-white/50 text-xs">ES</Badge>
+                        <Badge className="bg-white/20 text-xs">Entrar</Badge>
+                      </div>
+                    </div>
+                    <div className="p-8 text-center space-y-4">
+                      <div className="flex justify-center gap-2 text-yellow-200">
+                        <Waves className="h-5 w-5" />
+                        <Palmtree className="h-5 w-5" />
+                        <Sun className="h-5 w-5" />
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-bold">Vive el Paraíso en Tulum</h2>
+                      <p className="text-white/80 text-sm max-w-md mx-auto">Descubre propiedades frente al mar, en la selva o en el corazón del pueblo mágico</p>
+                      <div className="flex justify-center gap-2 pt-2">
+                        <Button size="sm" className="bg-white text-teal-600 hover:bg-white/90">Ver Propiedades</Button>
+                        <Button size="sm" variant="outline" className="text-white border-white/50">WhatsApp</Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-b from-cyan-50 to-white dark:from-cyan-950 dark:to-slate-900">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { icon: Waves, label: "Playa", color: "text-blue-500" },
+                        { icon: Palmtree, label: "Selva", color: "text-green-500" },
+                        { icon: Building2, label: "Pueblo", color: "text-amber-500" },
+                        { icon: Eye, label: "Cenotes", color: "text-cyan-500" }
+                      ].map(item => (
+                        <div key={item.label} className="p-2 text-center bg-white dark:bg-slate-800 rounded-lg border flex items-center gap-2 justify-center">
+                          <item.icon className={`h-4 w-4 ${item.color}`} />
+                          <span className="text-xs font-medium">{item.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-3 text-center text-xs text-muted-foreground bg-cyan-50/50 dark:bg-cyan-950/50">
+                    <span className="font-medium">Diseño Tropical:</span> Vibrante, fresco, inspirado en el Caribe
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg text-center">
+              <p className="text-xs text-muted-foreground mb-2">¿Te gusta algún diseño? Dinos cuál prefieres para implementarlo.</p>
+              <div className="flex justify-center gap-2">
+                <Badge variant="secondary" className="cursor-pointer hover-elevate">Moderno</Badge>
+                <Badge variant="secondary" className="cursor-pointer hover-elevate">Elegante</Badge>
+                <Badge variant="secondary" className="cursor-pointer hover-elevate">Tropical</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
