@@ -575,6 +575,7 @@ export default function SellerCalendar() {
                     size="sm"
                     onClick={() => openCreateDialog(selectedDate)}
                     className="min-h-[44px]"
+                    data-testid="button-create-empty-state"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {language === "es" ? "Crear cita" : "Create appointment"}
@@ -617,6 +618,7 @@ export default function SellerCalendar() {
                   variant={formData.mode === 'individual' ? 'default' : 'outline'}
                   className="flex-1 min-h-[44px]"
                   onClick={() => setFormData(prev => ({ ...prev, mode: 'individual', tourStops: [] }))}
+                  data-testid="button-mode-individual"
                 >
                   <Home className="mr-2 h-4 w-4" />
                   {language === "es" ? "Individual (1 hr)" : "Individual (1 hr)"}
@@ -626,6 +628,7 @@ export default function SellerCalendar() {
                   variant={formData.mode === 'tour' ? 'default' : 'outline'}
                   className="flex-1 min-h-[44px]"
                   onClick={() => setFormData(prev => ({ ...prev, mode: 'tour', unitId: '' }))}
+                  data-testid="button-mode-tour"
                 >
                   <Route className="mr-2 h-4 w-4" />
                   {language === "es" ? "Tour (30 min c/u)" : "Tour (30 min each)"}
@@ -715,7 +718,8 @@ export default function SellerCalendar() {
                     size="sm"
                     onClick={addTourStop}
                     disabled={formData.tourStops.length >= 3}
-                    className="min-h-[36px]"
+                    className="min-h-[44px]"
+                    data-testid="button-add-tour-stop"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     {language === "es" ? "Agregar" : "Add"}
@@ -751,7 +755,7 @@ export default function SellerCalendar() {
                             value={stop.unitId} 
                             onValueChange={(v) => updateTourStop(index, 'unitId', v)}
                           >
-                            <SelectTrigger className="min-h-[44px]">
+                            <SelectTrigger className="min-h-[44px]" data-testid={`select-tour-stop-${index}`}>
                               <SelectValue placeholder={language === "es" ? "Seleccionar..." : "Select..."} />
                             </SelectTrigger>
                             <SelectContent>
@@ -770,7 +774,8 @@ export default function SellerCalendar() {
                           variant="ghost"
                           size="icon"
                           onClick={() => removeTourStop(index)}
-                          className="shrink-0"
+                          className="shrink-0 min-h-[44px] min-w-[44px]"
+                          data-testid={`button-remove-stop-${index}`}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -801,6 +806,7 @@ export default function SellerCalendar() {
               variant="outline" 
               onClick={() => setIsCreateOpen(false)}
               className="min-h-[44px]"
+              data-testid="button-cancel-dialog"
             >
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
