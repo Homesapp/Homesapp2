@@ -25221,11 +25221,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scheduledAt: externalLeadShowings.scheduledAt,
           status: externalLeadShowings.status,
           leadName: sql<string>`concat(${externalLeads.firstName}, ' ', ${externalLeads.lastName})`,
-          propertyName: externalUnits.name,
+          propertyName: externalLeadShowings.propertyName,
         })
           .from(externalLeadShowings)
           .innerJoin(externalLeads, eq(externalLeadShowings.leadId, externalLeads.id))
-          .leftJoin(externalUnits, eq(externalLeadShowings.unitId, externalUnits.id))
           .where(and(
             eq(externalLeads.agencyId, agencyId),
             eq(externalLeads.sellerId, userId),
@@ -26035,7 +26034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Sellers only see their assigned leads
       if (req.user.role === 'external_agency_seller') {
-        conditions.push(eq(externalLeads.assignedToId, req.user.id));
+        conditions.push(eq(externalLeads.sellerId, req.user.id));
       }
 
       const leads = await db.select({
@@ -26197,7 +26196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(externalLeads)
         .where(and(
           eq(externalLeads.agencyId, agencyId),
-          eq(externalLeads.assignedToId, sellerId)
+          eq(externalLeads.sellerId, sellerId)
         ));
 
       // Get converted leads
@@ -26207,7 +26206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(externalLeads)
         .where(and(
           eq(externalLeads.agencyId, agencyId),
-          eq(externalLeads.assignedToId, sellerId),
+          eq(externalLeads.sellerId, sellerId),
           or(
             eq(externalLeads.status, 'convertido'),
             eq(externalLeads.status, 'renta_concretada')
@@ -26221,7 +26220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(externalLeads)
         .where(and(
           eq(externalLeads.agencyId, agencyId),
-          eq(externalLeads.assignedToId, sellerId),
+          eq(externalLeads.sellerId, sellerId),
           gte(externalLeads.createdAt, startOfMonth)
         ));
 
@@ -26333,7 +26332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ))
         .where(and(
           eq(externalLeads.agencyId, agencyId),
-          eq(externalLeads.assignedToId, sellerId),
+          eq(externalLeads.sellerId, sellerId),
           not(inArray(externalLeads.status, ['converted', 'renta_concretada', 'lost'])),
           lt(externalLeads.updatedAt, cutoffDate),
           isNull(sellerFollowUpTasks.id)
