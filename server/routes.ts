@@ -25287,6 +25287,227 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // External Condominiums Routes
+
+  // Seller Activity Reports - statistics on activities, showings, and conversions
+  app.get("/api/external-dashboard/seller-reports", isAuthenticated, requireRole(['external_agency_seller', 'master', 'admin']), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const { period = 'week' } = req.query;
+      
+      // Calculate date range based on period
+      const today = new Date();
+      let startDate: Date;
+      
+      switch (period) {
+        case 'today':
+          startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          break;
+        case 'month':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case 'week':
+        default:
+          startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+          break;
+      }
+
+      const [
+        activitiesByType,
+        showingsByOutcome,
+        leadsContacted,
+        leadsConverted
+      ] = await Promise.all([
+        // Activities by type
+        db.select({
+          type: externalLeadActivities.type,
+          count: sql<number>`count(*)::int`
+        })
+          .from(externalLeadActivities)
+          .innerJoin(externalLeads, eq(externalLeadActivities.leadId, externalLeads.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`\${externalLeadActivities.createdAt} >= \${startDate}`
+          ))
+          .groupBy(externalLeadActivities.type)
+          .then(rows => {
+            const counts: Record<string, number> = {};
+            rows.forEach(r => { counts[r.type] = r.count || 0; });
+            return counts;
+          }),
+        
+        // Showings by outcome
+        db.select({
+          outcome: externalLeadShowings.outcome,
+          count: sql<number>`count(*)::int`
+        })
+          .from(externalLeadShowings)
+          .innerJoin(externalLeads, eq(externalLeadShowings.leadId, externalLeads.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`\${externalLeadShowings.scheduledAt} >= \${startDate}`,
+            isNotNull(externalLeadShowings.outcome)
+          ))
+          .groupBy(externalLeadShowings.outcome)
+          .then(rows => {
+            const counts: Record<string, number> = {};
+            rows.forEach(r => { 
+              if (r.outcome) counts[r.outcome] = r.count || 0; 
+            });
+            return counts;
+          }),
+        
+        // Unique leads contacted (with at least one activity)
+        db.selectDistinct({ leadId: externalLeadActivities.leadId })
+          .from(externalLeadActivities)
+          .innerJoin(externalLeads, eq(externalLeadActivities.leadId, externalLeads.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`\${externalLeadActivities.createdAt} >= \${startDate}`
+          ))
+          .then(r => r.length),
+        
+        // Leads converted in period
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            isNotNull(externalLeads.convertedToClientId),
+            sql`\${externalLeads.updatedAt} >= \${startDate}`
+          ))
+          .then(r => r[0]?.count || 0),
+      ]);
+
+      // Calculate totals
+      const totalActivities = Object.values(activitiesByType).reduce((sum, count) => sum + count, 0);
+      const totalShowings = Object.values(showingsByOutcome).reduce((sum, count) => sum + count, 0);
+      const conversionRate = leadsContacted > 0 
+        ? Math.round((leadsConverted / leadsContacted) * 100) 
+        : 0;
+
+      res.json({
+        period,
+        totalActivities,
+        activitiesByType,
+        totalShowings,
+        showingsByOutcome,
+        leadsContacted,
+        leadsConverted,
+        conversionRate,
+        dailyActivity: [],
+      });
+    } catch (error: any) {
+      console.error("Error fetching seller reports:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Seller Goals - active goals and achievement tracking
+  app.get("/api/external-dashboard/seller-goals", isAuthenticated, requireRole(['external_agency_seller', 'master', 'admin']), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      // For now, return a placeholder structure since goals table may not exist
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      // Calculate current stats for default goals
+      const [totalLeads, convertedLeads, totalShowings] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`\${externalLeads.createdAt} >= \${startOfMonth}`
+          ))
+          .then(r => r[0]?.count || 0),
+        
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            isNotNull(externalLeads.convertedToClientId),
+            sql`\${externalLeads.updatedAt} >= \${startOfMonth}`
+          ))
+          .then(r => r[0]?.count || 0),
+        
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeadShowings)
+          .innerJoin(externalLeads, eq(externalLeadShowings.leadId, externalLeads.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`\${externalLeadShowings.scheduledAt} >= \${startOfMonth}`
+          ))
+          .then(r => r[0]?.count || 0),
+      ]);
+
+      // Default goals based on typical sales targets
+      const activeGoals = [
+        {
+          id: 'default-leads',
+          name: 'Monthly Lead Acquisition',
+          description: 'Acquire new leads this month',
+          type: 'leads',
+          target: 20,
+          current: totalLeads,
+          period: 'monthly',
+          startDate: startOfMonth.toISOString(),
+          endDate: endOfMonth.toISOString(),
+        },
+        {
+          id: 'default-conversions',
+          name: 'Monthly Conversions',
+          description: 'Convert leads to clients',
+          type: 'conversions',
+          target: 5,
+          current: convertedLeads,
+          period: 'monthly',
+          startDate: startOfMonth.toISOString(),
+          endDate: endOfMonth.toISOString(),
+        },
+        {
+          id: 'default-showings',
+          name: 'Monthly Property Showings',
+          description: 'Schedule and complete property showings',
+          type: 'showings',
+          target: 15,
+          current: totalShowings,
+          period: 'monthly',
+          startDate: startOfMonth.toISOString(),
+          endDate: endOfMonth.toISOString(),
+        },
+      ];
+
+      const achievedCount = activeGoals.filter(g => g.current >= g.target).length;
+
+      res.json({
+        activeGoals,
+        achievedCount,
+        totalPoints: achievedCount * 100,
+        rank: 0,
+      });
+    } catch (error: any) {
+      console.error("Error fetching seller goals:", error);
+      handleGenericError(res, error);
+    }
+  });
   app.get("/api/external-condominiums", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { isActive, search, zone, sortField, sortOrder, limit, offset } = req.query;
