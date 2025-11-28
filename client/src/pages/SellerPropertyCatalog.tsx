@@ -657,25 +657,30 @@ export default function SellerPropertyCatalog() {
 
   const generateMessageFromTemplate = (template: MessageTemplate, unit: Unit, lead?: Lead | null) => {
     let message = template.content;
-    message = message.replace(/{nombre}/g, lead?.firstName || "");
-    message = message.replace(/{propiedad}/g, unit.name);
-    message = message.replace(/{zona}/g, unit.zone || "");
-    message = message.replace(/{recamaras}/g, String(unit.bedrooms || 0));
-    message = message.replace(/{banos}/g, String(unit.bathrooms || 0));
-    message = message.replace(/{precio}/g, unit.monthlyRent?.toLocaleString() || "Consultar");
-    message = message.replace(/{moneda}/g, unit.currency || "MXN");
+    
+    const propertyName = unit.name || unit.condominiumName || unit.unitNumber || "Propiedad";
+    
+    message = message.replace(/\{\{?nombre\}\}?/g, lead?.firstName || "");
+    message = message.replace(/\{\{?propiedad\}\}?/g, propertyName);
+    message = message.replace(/\{\{?zona\}\}?/g, unit.zone || "");
+    message = message.replace(/\{\{?recamaras\}\}?/g, String(unit.bedrooms || 0));
+    message = message.replace(/\{\{?banos\}\}?/g, String(unit.bathrooms || 0));
+    message = message.replace(/\{\{?precio\}\}?/g, unit.monthlyRent?.toLocaleString() || "Consultar");
+    message = message.replace(/\{\{?moneda\}\}?/g, unit.currency || "MXN");
+    message = message.replace(/\{\{?vendedor\}\}?/g, "");
     return message;
   };
 
   const generateBulkMessage = (template: MessageTemplate, unitsList: Unit[], lead?: Lead | null) => {
     let message = template.content;
-    message = message.replace(/{nombre}/g, lead?.firstName || "");
+    message = message.replace(/\{\{?nombre\}\}?/g, lead?.firstName || "");
     
-    const propertiesList = unitsList.map((unit, i) => 
-      `${i + 1}. ${unit.name}\n   Ubicacion: ${unit.zone || "Sin zona"}\n   ${unit.bedrooms || 0} rec. | $${unit.monthlyRent?.toLocaleString() || "—"} ${unit.currency || "MXN"}/mes`
-    ).join("\n\n");
+    const propertiesList = unitsList.map((unit, i) => {
+      const propertyName = unit.name || unit.condominiumName || unit.unitNumber || "Propiedad";
+      return `${i + 1}. ${propertyName}\n   Ubicacion: ${unit.zone || "Sin zona"}\n   ${unit.bedrooms || 0} rec. | $${unit.monthlyRent?.toLocaleString() || "—"} ${unit.currency || "MXN"}/mes`;
+    }).join("\n\n");
     
-    message = message.replace(/{propiedades_lista}/g, propertiesList);
+    message = message.replace(/\{\{?propiedades_lista\}\}?/g, propertiesList);
     
     return message;
   };

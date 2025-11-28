@@ -23145,6 +23145,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await createAuditLog(req, "create", "user", user.id, `Created external agency user with role ${validatedData.role}`);
 
+
+      // Auto-seed default message templates for sellers
+      if (validatedData.role === "external_agency_seller") {
+        try {
+          const templatesCreated = await seedDefaultTemplatesForSeller(agencyId);
+          console.log(`Auto-seeded ${templatesCreated} default templates for new seller ${user.email} in agency ${agencyId}`);
+        } catch (templateError) {
+          console.error("Error auto-seeding templates for new seller:", templateError);
+          // Non-blocking - user creation succeeded
+        }
+      }
       // Return user and temp password
       res.status(201).json({ 
         user: {
@@ -26122,6 +26133,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
       handleGenericError(res, error);
     }
   });
+
+
+
+  // Helper function to seed default templates for an agency
+  async function seedDefaultTemplatesForSeller(agencyId: string): Promise<number> {
+    const defaultTemplates = [
+      // Property Share Templates
+      {
+        templateType: "property_share",
+        title: "Propiedad Destacada",
+        body: `¡Hola {{nombre}}! 
+
+Te comparto esta excelente propiedad que coincide con lo que buscas:
+
+*{{propiedad}}*
+{{zona}}
+\${{precio}} MXN/mes
+{{recamaras}} recámaras
+
+¿Te gustaría agendar una visita? Estoy a tus órdenes.
+
+Saludos,
+{{vendedor}}`,
+        isDefault: true,
+      },
+      {
+        templateType: "property_share",
+        title: "Múltiples Opciones",
+        body: `¡Hola {{nombre}}!
+
+Basándome en tus preferencias, encontré esta propiedad que podría interesarte:
+
+*{{propiedad}}*
+Ubicación: {{zona}}
+Renta: \${{precio}} MXN mensuales
+Habitaciones: {{recamaras}}
+
+Tengo más opciones similares si esta no te convence. ¿Qué te parece?
+
+{{vendedor}}`,
+        isDefault: false,
+      },
+      {
+        templateType: "property_share",
+        title: "Oportunidad Rápida",
+        body: `{{nombre}}, ¡buenas noticias! 
+
+Acaba de entrar esta propiedad al mercado:
+
+*{{propiedad}}* en {{zona}}
+Precio: \${{precio}}/mes | {{recamaras}} recámaras
+
+Las propiedades en esta zona se rentan rápido. ¿Cuándo puedes verla?
+
+{{vendedor}}`,
+        isDefault: false,
+      },
+      // Follow-up Templates
+      {
+        templateType: "follow_up",
+        title: "Seguimiento General",
+        body: `¡Hola {{nombre}}! 
+
+Quería dar seguimiento a tu búsqueda de departamento. ¿Has tenido oportunidad de revisar las opciones que te compartí?
+
+Quedo atento a tus comentarios.
+
+{{vendedor}}`,
+        isDefault: true,
+      },
+      {
+        templateType: "follow_up",
+        title: "Post-Visita",
+        body: `¡Hola {{nombre}}!
+
+Espero que estés muy bien. ¿Qué te pareció la propiedad que visitamos? 
+
+Me encantaría conocer tus impresiones y si necesitas más información para tomar tu decisión.
+
+Saludos,
+{{vendedor}}`,
+        isDefault: false,
+      },
+      {
+        templateType: "follow_up",
+        title: "Recordatorio Amigable",
+        body: `{{nombre}}, ¡espero que todo marche bien! 
+
+No he sabido de ti desde nuestra última conversación. ¿Sigues buscando propiedad? Tengo nuevas opciones que podrían gustarte.
+
+Cuando tengas un momento, platiquemos.
+
+{{vendedor}}`,
+        isDefault: false,
+      },
+      // Initial Contact Templates
+      {
+        templateType: "initial_contact",
+        title: "Bienvenida",
+        body: `¡Hola {{nombre}}! 
+
+Gracias por tu interés en nuestras propiedades. Soy {{vendedor}} y te ayudaré a encontrar el lugar perfecto para ti.
+
+Para poder enviarte las mejores opciones, ¿podrías confirmarme:
+- Zona de preferencia
+- Presupuesto aproximado
+- Número de recámaras que necesitas
+
+¡Estoy a tus órdenes!`,
+        isDefault: true,
+      },
+      {
+        templateType: "initial_contact",
+        title: "Respuesta a Consulta",
+        body: `¡Hola {{nombre}}!
+
+Recibí tu consulta y con gusto te ayudo. Tenemos varias opciones que podrían interesarte.
+
+¿Tienes disponibilidad esta semana para platicar sobre lo que buscas? Así puedo enviarte propiedades que realmente se ajusten a tus necesidades.
+
+Saludos,
+{{vendedor}}`,
+        isDefault: false,
+      },
+      // Appointment Templates
+      {
+        templateType: "appointment",
+        title: "Confirmación de Cita",
+        body: `¡Hola {{nombre}}!
+
+Te confirmo nuestra cita para visitar:
+
+*{{propiedad}}*
+{{zona}}
+
+Por favor llega 10 minutos antes. Si necesitas reagendar, avísame con anticipación.
+
+Te espero,
+{{vendedor}}`,
+        isDefault: true,
+      },
+      {
+        templateType: "appointment",
+        title: "Recordatorio de Visita",
+        body: `{{nombre}}, te recuerdo que mañana tenemos cita para visitar {{propiedad}}.
+
+Te espero puntual. Si tienes algún contratiempo, por favor avísame.
+
+{{vendedor}}`,
+        isDefault: false,
+      },
+      // Closing Templates
+      {
+        templateType: "closing",
+        title: "Cierre Exitoso",
+        body: `¡Felicidades {{nombre}}! 
+
+Muchas gracias por confiar en nosotros para encontrar tu nuevo hogar. Fue un placer ayudarte.
+
+Si en el futuro necesitas algo más, no dudes en contactarme.
+
+¡Te deseo lo mejor!
+{{vendedor}}`,
+        isDefault: true,
+      },
+      // General Templates
+      {
+        templateType: "general",
+        title: "Información Adicional",
+        body: `{{nombre}}, aquí te comparto información adicional sobre la propiedad que te interesó:
+
+*{{propiedad}}*
+{{zona}}
+\${{precio}}/mes
+
+¿Tienes alguna otra pregunta? Con gusto te ayudo.
+
+{{vendedor}}`,
+        isDefault: false,
+      },
+    ];
+
+    let createdCount = 0;
+    for (const template of defaultTemplates) {
+      try {
+        const [existing] = await db.select().from(sellerMessageTemplates)
+          .where(and(
+            eq(sellerMessageTemplates.agencyId, agencyId),
+            eq(sellerMessageTemplates.title, template.title),
+            eq(sellerMessageTemplates.templateType, template.templateType as any),
+            isNull(sellerMessageTemplates.sellerId)
+          ));
+
+        if (!existing) {
+          await db.insert(sellerMessageTemplates).values({
+            agencyId,
+            sellerId: null,
+            templateType: template.templateType as any,
+            title: template.title,
+            body: template.body,
+            isDefault: template.isDefault,
+          });
+          createdCount++;
+        }
+      } catch (err) {
+        console.error(`Error creating template \${template.title}:`, err);
+      }
+    }
+    return createdCount;
+  }
 
 
   // POST /api/external-seller/templates/seed-defaults - Create default templates for agency
@@ -29214,9 +29435,11 @@ ${{precio}}/mes
       const offsetNum = Math.max(0, parseInt(offset as string, 10) || 0);
       
       // Security: Force seller scoping for seller users - they can only see their own leads
-      const isSeller = req.user?.role === 'external_agency_seller';
-      const effectiveSellerId = isSeller ? req.user.id : (sellerId as string | undefined);
-      console.log("[DEBUG] external-leads filter:", { userId: req.user?.id, userRole: req.user?.role, isSeller, effectiveSellerId, agencyId });
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const isSeller = userRole === 'external_agency_seller';
+      const effectiveSellerId = isSeller ? userId : (sellerId as string | undefined);
+      console.log("[DEBUG] external-leads filter:", { userId, userRole, isSeller, effectiveSellerId, agencyId });
       
       const filters = {
         status: status as string | undefined,
@@ -29408,7 +29631,9 @@ ${{precio}}/mes
       
       // Security: Block sellers from modifying leads in locked statuses
       const lockedStatuses = ["proceso_renta", "renta_concretada"];
-      const isSeller = req.user?.role === 'external_agency_seller';
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const isSeller = userRole === 'external_agency_seller';
       
       // If seller and lead is in locked status, block ALL modifications
       if (isSeller && lockedStatuses.includes(existing.status)) {
