@@ -391,6 +391,13 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
     });
   };
 
+  const setAsDefault = (card: ExternalPresentationCard) => {
+    updateMutation.mutate({
+      id: card.id,
+      data: { isDefault: true },
+    });
+  };
+
   const hasPreferences = leadPreferences && (
     leadPreferences.budgetMin ||
     leadPreferences.budgetMax ||
@@ -949,6 +956,12 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {!card.isDefault && (
+                          <DropdownMenuItem onClick={() => setAsDefault(card)} className="min-h-[44px]">
+                            <Star className="w-4 h-4 mr-2" />
+                            {language === "es" ? "Establecer como activa" : "Set as active"}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => toggleStatus(card)} className="min-h-[44px]">
                           {card.status === "active" ? (
                             <>

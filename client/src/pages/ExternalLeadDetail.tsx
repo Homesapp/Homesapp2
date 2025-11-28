@@ -78,6 +78,7 @@ import LeadOffersSection from "@/components/external/LeadOffersSection";
 import LeadActivitiesTab from "@/components/external/LeadActivitiesTab";
 import LeadShowingsTab from "@/components/external/LeadShowingsTab";
 import LeadStatusHistoryTab from "@/components/external/LeadStatusHistoryTab";
+import LeadRentalFormsTab from "@/components/external/LeadRentalFormsTab";
 
 const LEAD_STATUS_OPTIONS = [
   { value: "nuevo_lead", label: { es: "Nuevo Lead", en: "New Lead" }, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
@@ -634,11 +635,7 @@ export default function ExternalLeadDetail() {
 
               <TabsContent value="forms" className="mt-0 space-y-4">
                 {isInterestedStatus ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {language === "es" 
-                      ? "Gestión de formatos de renta disponible aquí" 
-                      : "Rental form management available here"}
-                  </div>
+                  <LeadRentalFormsTab lead={lead} />
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     {language === "es" 

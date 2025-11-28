@@ -107,7 +107,7 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h4 className="font-medium text-sm">
-          {language === "es" ? "Propiedades Compartidas" : "Shared Properties"}
+          {language === "es" ? "Ofertas Enviadas" : "Offers Sent"}
         </h4>
         <div className="flex items-center gap-2">
           <Badge variant="outline">
