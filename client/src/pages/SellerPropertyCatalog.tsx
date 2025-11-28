@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -224,10 +224,27 @@ export default function SellerPropertyCatalog() {
     return params.toString();
   };
 
+  // Use refs to track filter changes for pagination reset
+  const prevSearchRef = useRef(search);
+  const prevFiltersRef = useRef(filters);
+  
+  // Check if filters changed (to determine if we should reset to page 1)
+  const filtersChanged = prevSearchRef.current !== search || 
+    JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
+  
+  // Update refs after check
+  if (filtersChanged) {
+    prevSearchRef.current = search;
+    prevFiltersRef.current = filters;
+  }
+  
+  // Effective page: use 1 if filters just changed, otherwise use actual page
+  const effectivePage = filtersChanged ? 1 : page;
+  
   const { data: catalogData, isLoading, isFetching } = useQuery<{ data: Unit[]; total: number }>({
-    queryKey: ["/api/external-seller/property-catalog", search, filters, page],
+    queryKey: ["/api/external-seller/property-catalog", search, filters, effectivePage],
     queryFn: async () => {
-      const qs = buildQueryString(page);
+      const qs = buildQueryString(effectivePage);
       const res = await fetch(`/api/external-seller/property-catalog?${qs}`);
       if (!res.ok) throw new Error("Failed to fetch properties");
       return res.json();
@@ -237,8 +254,10 @@ export default function SellerPropertyCatalog() {
   // Update allUnits when data changes
   useEffect(() => {
     if (catalogData?.data) {
-      if (page === 1) {
+      // If filters changed, reset to first page data
+      if (filtersChanged || effectivePage === 1) {
         setAllUnits(catalogData.data);
+        if (page !== 1) setPage(1);
       } else {
         setAllUnits(prev => {
           const existingIds = new Set(prev.map(u => u.id));
@@ -247,13 +266,7 @@ export default function SellerPropertyCatalog() {
         });
       }
     }
-  }, [catalogData?.data, page]);
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setPage(1);
-    setAllUnits([]);
-  }, [search, filters]);
+  }, [catalogData?.data, effectivePage, filtersChanged]);
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery<{ data: Lead[] }>({
     queryKey: ["/api/external-leads"],
@@ -312,17 +325,17 @@ export default function SellerPropertyCatalog() {
     },
   });
 
-  const units = allUnits;
   const totalUnits = catalogData?.total || 0;
-  const hasMore = units.length < totalUnits;
+  const hasMore = allUnits.length < totalUnits;
   const allLeads = leadsData?.data || [];
   
+  // Clear selection when allUnits changes
   useEffect(() => {
-    if (units.length !== previousDataLength) {
+    if (allUnits.length !== previousDataLength) {
       setSelectedUnits(new Set());
-      setPreviousDataLength(units.length);
+      setPreviousDataLength(allUnits.length);
     }
-  }, [units.length, previousDataLength]);
+  }, [allUnits.length, previousDataLength]);
   
   const filteredLeads = useMemo(() => {
     let result = [...allLeads];
@@ -365,6 +378,70 @@ export default function SellerPropertyCatalog() {
     setSelectedLead(null);
   };
 
+  // Calculate match score between a unit and the selected lead
+  const calculateMatchScore = (unit: Unit, lead: Lead | null): { score: number; reasons: string[] } => {
+    if (!lead) return { score: 0, reasons: [] };
+    
+    let score = 0;
+    const reasons: string[] = [];
+    
+    // Price match (max 40 points)
+    if (lead.estimatedRentCost && unit.monthlyRent) {
+      const priceDiff = Math.abs(unit.monthlyRent - lead.estimatedRentCost) / lead.estimatedRentCost;
+      if (priceDiff <= 0.10) {
+        score += 40;
+        reasons.push("Precio ideal");
+      } else if (priceDiff <= 0.20) {
+        score += 30;
+        reasons.push("Precio cercano");
+      } else if (priceDiff <= 0.30) {
+        score += 15;
+        reasons.push("Precio aceptable");
+      }
+    }
+    
+    // Bedrooms match (max 25 points)
+    if (lead.bedrooms && unit.bedrooms) {
+      if (unit.bedrooms === lead.bedrooms) {
+        score += 25;
+        reasons.push("Recámaras exactas");
+      } else if (Math.abs(unit.bedrooms - lead.bedrooms) === 1) {
+        score += 15;
+        reasons.push("Recámaras similares");
+      }
+    }
+    
+    // Zone match (max 25 points)
+    if (lead.desiredNeighborhood && unit.zone) {
+      const zoneLower = unit.zone.toLowerCase();
+      const desiredLower = lead.desiredNeighborhood.toLowerCase();
+      if (zoneLower.includes(desiredLower) || desiredLower.includes(zoneLower)) {
+        score += 25;
+        reasons.push("Zona preferida");
+      }
+    }
+    
+    // Property type match (max 10 points)
+    if (lead.desiredUnitType && unit.unitType) {
+      if (unit.unitType.toLowerCase() === lead.desiredUnitType.toLowerCase()) {
+        score += 10;
+        reasons.push("Tipo ideal");
+      }
+    }
+    
+    return { score, reasons };
+  };
+
+  // Sort units by match score when a lead is selected
+  const units = useMemo(() => {
+    if (!selectedLead) return allUnits;
+    return [...allUnits].sort((a, b) => {
+      const scoreA = calculateMatchScore(a, selectedLead).score;
+      const scoreB = calculateMatchScore(b, selectedLead).score;
+      return scoreB - scoreA; // Higher scores first
+    });
+  }, [allUnits, selectedLead]);
+
   const applyLeadFilters = (lead: Lead) => {
     // Toggle behavior: if same lead is clicked, deselect it
     if (selectedLead?.id === lead.id) {
@@ -381,20 +458,21 @@ export default function SellerPropertyCatalog() {
       status: "active",
     };
     
+    // Use wider price range for partial matching (+/- 30% instead of 15%)
     if (lead.estimatedRentCost) {
-      const variance = Math.round(lead.estimatedRentCost * 0.15);
-      newFilters.minPrice = String(lead.estimatedRentCost - variance);
+      const variance = Math.round(lead.estimatedRentCost * 0.30);
+      newFilters.minPrice = String(Math.max(0, lead.estimatedRentCost - variance));
       newFilters.maxPrice = String(lead.estimatedRentCost + variance);
     }
-    if (lead.bedrooms) {
-      newFilters.bedrooms = String(lead.bedrooms);
-    }
+    // Don't apply bedroom filter for partial matching - let them see all options
+    // Bedrooms filter will still show matching score visually
+    
+    // Zone is used as search term for partial matching, not strict filter
     if (lead.desiredNeighborhood) {
-      newFilters.zone = lead.desiredNeighborhood;
+      setSearch(lead.desiredNeighborhood);
     }
-    if (lead.desiredUnitType) {
-      newFilters.propertyType = lead.desiredUnitType;
-    }
+    // Don't apply strict propertyType filter for partial matching
+    
     setFilters(newFilters);
   };
 
@@ -993,6 +1071,22 @@ export default function SellerPropertyCatalog() {
                     >
                       {unit.status === "active" ? "Disponible" : "Rentada"}
                     </Badge>
+                    {/* Match Score Badge - shows when lead is selected */}
+                    {selectedLead && (() => {
+                      const { score, reasons } = calculateMatchScore(unit, selectedLead);
+                      if (score === 0) return null;
+                      return (
+                        <Badge 
+                          className={`absolute left-2 top-10 ${
+                            score >= 70 ? "bg-green-600" : 
+                            score >= 40 ? "bg-yellow-600" : 
+                            "bg-orange-600"
+                          } text-white border-0`}
+                        >
+                          {score}% match
+                        </Badge>
+                      );
+                    })()}
                     {/* Image count badge */}
                     {unit.images && unit.images.length > 1 && (
                       <Badge 
