@@ -317,7 +317,6 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.sellerReports", url: "/external/seller-reports", icon: BarChart3, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerCommissions", url: "/external/seller-commissions", icon: DollarSign, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerGoals", url: "/external/seller-goals", icon: Target, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerHelp", url: "/external/seller-help", icon: HelpCircle, roles: ["external_agency_seller"] },
   ];
 
   const serviceItems = [
@@ -811,7 +810,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
       <SidebarFooter>
         <div className={state === "collapsed" ? "flex flex-col items-center gap-1 p-2 border-t" : "p-2 border-t space-y-1"}>
           <RoleToggle />
-          {isExternalUser ? (
+          {isExternalUser && userRole !== "external_agency_seller" ? (
             <Link href="/external/configuration" data-testid="link-configuration">
               <Button
                 variant={state === "collapsed" ? "ghost" : "outline"}
@@ -824,7 +823,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
               </Button>
             </Link>
           ) : (
-            <Link href="/ayuda" data-testid="link-help">
+            <Link href={userRole === "external_agency_seller" ? "/external/seller-help" : "/ayuda"} data-testid="link-help">
               <Button
                 variant={state === "collapsed" ? "ghost" : "outline"}
                 size={state === "expanded" ? "default" : "icon"}
