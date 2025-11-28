@@ -177,6 +177,188 @@ Cualquier pregunta estoy a tus ordenes.`,
   }
 ];
 
+const SAMPLE_IMAGES = [
+  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
+  "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&q=80",
+  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80",
+  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80",
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80",
+  "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80",
+  "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800&q=80",
+];
+
+const SAMPLE_UNITS: Unit[] = [
+  {
+    id: "sample-1",
+    name: "Penthouse Vista Mar",
+    unitNumber: "PH-401",
+    zone: "Aldea Zama",
+    unitType: "Penthouse",
+    bedrooms: 3,
+    bathrooms: 3,
+    monthlyRent: 85000,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[0], SAMPLE_IMAGES[1]],
+    amenities: ["Pool", "Gym", "Rooftop"],
+    condominiumId: "condo-1",
+    condominiumName: "Mistiq Tulum",
+    squareMeters: 180,
+    hasFurniture: true,
+    hasParking: true,
+    petsAllowed: true,
+    description: "Espectacular penthouse con vista al mar"
+  },
+  {
+    id: "sample-2",
+    name: "Suite Ejecutiva",
+    unitNumber: "A-205",
+    zone: "Centro",
+    unitType: "Departamento",
+    bedrooms: 2,
+    bathrooms: 2,
+    monthlyRent: 35000,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[2], SAMPLE_IMAGES[3]],
+    amenities: ["Pool", "Seguridad 24/7"],
+    condominiumId: "condo-2",
+    condominiumName: "Town Center",
+    squareMeters: 95,
+    hasFurniture: true,
+    hasParking: true,
+    petsAllowed: false,
+    description: "Suite moderna en el centro de Tulum"
+  },
+  {
+    id: "sample-3",
+    name: "Villa Selvática",
+    unitNumber: "V-12",
+    zone: "La Veleta",
+    unitType: "Casa",
+    bedrooms: 4,
+    bathrooms: 4,
+    monthlyRent: 120000,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[4], SAMPLE_IMAGES[5]],
+    amenities: ["Pool privada", "Jardín", "Estudio"],
+    condominiumId: "condo-3",
+    condominiumName: "Bravo Towers",
+    squareMeters: 280,
+    hasFurniture: true,
+    hasParking: true,
+    petsAllowed: true,
+    description: "Villa de lujo rodeada de naturaleza"
+  },
+  {
+    id: "sample-4",
+    name: "Studio Minimalista",
+    unitNumber: "B-101",
+    zone: "Kukulkán",
+    unitType: "Studio",
+    bedrooms: 1,
+    bathrooms: 1,
+    monthlyRent: 18500,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[6]],
+    amenities: ["Coworking", "Rooftop"],
+    condominiumId: "condo-4",
+    condominiumName: "Azura",
+    squareMeters: 45,
+    hasFurniture: true,
+    hasParking: false,
+    petsAllowed: false,
+    description: "Studio ideal para nómadas digitales"
+  },
+  {
+    id: "sample-5",
+    name: "Loft Industrial",
+    unitNumber: "L-302",
+    zone: "Aldea Zama",
+    unitType: "Loft",
+    bedrooms: 2,
+    bathrooms: 2,
+    monthlyRent: 55000,
+    currency: "MXN",
+    status: "rented",
+    images: [SAMPLE_IMAGES[7], SAMPLE_IMAGES[0]],
+    amenities: ["Terraza", "Jacuzzi"],
+    condominiumId: "condo-5",
+    condominiumName: "Casa Santiago",
+    squareMeters: 120,
+    hasFurniture: false,
+    hasParking: true,
+    petsAllowed: true,
+    description: "Loft con diseño industrial moderno"
+  },
+  {
+    id: "sample-6",
+    name: "Departamento Familiar",
+    unitNumber: "C-508",
+    zone: "Centro",
+    unitType: "Departamento",
+    bedrooms: 3,
+    bathrooms: 2,
+    monthlyRent: 42000,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[1], SAMPLE_IMAGES[2]],
+    amenities: ["Área de juegos", "Pool", "Gym"],
+    condominiumId: "condo-6",
+    condominiumName: "Sky Tulum",
+    squareMeters: 130,
+    hasFurniture: true,
+    hasParking: true,
+    petsAllowed: true,
+    description: "Ideal para familias con áreas comunes"
+  },
+  {
+    id: "sample-7",
+    name: "Suite Premium",
+    unitNumber: "D-701",
+    zone: "La Veleta",
+    unitType: "Departamento",
+    bedrooms: 2,
+    bathrooms: 2,
+    monthlyRent: 48000,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[3], SAMPLE_IMAGES[4]],
+    amenities: ["Vista panorámica", "Smart home"],
+    condominiumId: "condo-7",
+    condominiumName: "Nader",
+    squareMeters: 105,
+    hasFurniture: true,
+    hasParking: true,
+    petsAllowed: false,
+    description: "Suite con acabados de lujo y tecnología"
+  },
+  {
+    id: "sample-8",
+    name: "Casa de Playa",
+    unitNumber: "CP-15",
+    zone: "Zona Hotelera",
+    unitType: "Casa",
+    bedrooms: 5,
+    bathrooms: 5,
+    monthlyRent: 180000,
+    currency: "MXN",
+    status: "active",
+    images: [SAMPLE_IMAGES[5], SAMPLE_IMAGES[6]],
+    amenities: ["Acceso a playa", "Pool infinity", "Chef kitchen"],
+    condominiumId: "condo-8",
+    condominiumName: "Tao",
+    squareMeters: 350,
+    hasFurniture: true,
+    hasParking: true,
+    petsAllowed: true,
+    description: "Propiedad exclusiva frente al mar"
+  }
+];
+
 export default function SellerPropertyCatalog() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -325,8 +507,13 @@ export default function SellerPropertyCatalog() {
     },
   });
 
-  const totalUnits = catalogData?.total || 0;
-  const hasMore = allUnits.length < totalUnits;
+  const displayUnits = useMemo(() => {
+    if (allUnits.length > 0) return allUnits;
+    return SAMPLE_UNITS;
+  }, [allUnits]);
+
+  const totalUnits = catalogData?.total || displayUnits.length;
+  const hasMore = allUnits.length > 0 && allUnits.length < totalUnits;
   const allLeads = leadsData?.data || [];
   
   // Clear selection when allUnits changes
@@ -434,13 +621,13 @@ export default function SellerPropertyCatalog() {
 
   // Sort units by match score when a lead is selected
   const units = useMemo(() => {
-    if (!selectedLead) return allUnits;
-    return [...allUnits].sort((a, b) => {
+    if (!selectedLead) return displayUnits;
+    return [...displayUnits].sort((a, b) => {
       const scoreA = calculateMatchScore(a, selectedLead).score;
       const scoreB = calculateMatchScore(b, selectedLead).score;
       return scoreB - scoreA; // Higher scores first
     });
-  }, [allUnits, selectedLead]);
+  }, [displayUnits, selectedLead]);
 
   const applyLeadFilters = (lead: Lead) => {
     // Toggle behavior: if same lead is clicked, deselect it
@@ -1048,340 +1235,389 @@ export default function SellerPropertyCatalog() {
               )}
             </Card>
           ) : viewMode === "grid" ? (
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {units.map((unit) => (
-                <Card key={unit.id} className="group overflow-hidden flex flex-col" data-testid={`card-property-${unit.id}`}>
-                  {/* Image Section - Compact */}
-                  <div className="relative h-28 sm:h-32 bg-muted">
-                    {unit.images && unit.images.length > 0 ? (
-                      <img
-                        src={unit.images[0]}
-                        alt={unit.name}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-                        <Home className="h-10 w-10 text-muted-foreground/30" />
-                      </div>
-                    )}
-                    {/* Match Score Badge - shows when lead is selected */}
-                    {selectedLead && (() => {
-                      const { score, reasons } = calculateMatchScore(unit, selectedLead);
-                      if (score === 0) return null;
-                      return (
-                        <Badge 
-                          className={`absolute left-1 top-1 text-[10px] px-1.5 py-0.5 ${
-                            score >= 70 ? "bg-green-600" : 
-                            score >= 40 ? "bg-yellow-600" : 
-                            "bg-orange-600"
-                          } text-white border-0`}
-                        >
-                          {score}%
-                        </Badge>
-                      );
-                    })()}
-                    {/* Image count badge */}
-                    {unit.images && unit.images.length > 1 && (
-                      <Badge 
-                        variant="secondary" 
-                        className="absolute right-1 top-1 bg-black/60 text-white border-0 text-[10px] px-1.5 py-0.5"
-                      >
-                        {unit.images.length}
-                      </Badge>
-                    )}
-                    {/* Status Badge - Bottom right of image */}
-                    <Badge
-                      className={`absolute right-1 bottom-1 text-[10px] px-1.5 py-0.5 ${
-                        unit.status === "active" 
-                          ? "bg-green-600 text-white border-0" 
-                          : "bg-red-600 text-white border-0"
-                      }`}
-                    >
-                      {unit.status === "active" ? "Disp." : "Rent."}
-                    </Badge>
-                  </div>
-
-                  <CardContent className="p-2 sm:p-3 flex-1 flex flex-col">
-                    {/* Price - Prominent */}
-                    <div className="mb-1 flex items-baseline gap-1">
-                      <span className="text-base sm:text-lg font-bold text-primary">
-                        ${unit.monthlyRent?.toLocaleString() || "—"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {unit.currency || "MXN"}
-                      </span>
-                    </div>
-
-                    {/* Condominium & Unit */}
-                    <h3 className="mb-1 line-clamp-1 text-xs sm:text-sm font-medium" data-testid={`text-unit-name-${unit.id}`}>
-                      {unit.condominiumName || "Sin condominio"}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mb-1">
-                      {unit.unitNumber ? `Unidad #${unit.unitNumber}` : unit.name}
-                    </p>
-
-                    {/* Location */}
-                    <div className="mb-2 flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                      <span className="line-clamp-1">{unit.zone || "—"}</span>
-                    </div>
-
-                    {/* Property Details - Compact Row */}
-                    <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground mb-2">
-                      <span className="flex items-center gap-0.5">
-                        <Bed className="h-3 w-3" />
-                        {unit.bedrooms || "—"}
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <Bath className="h-3 w-3" />
-                        {unit.bathrooms || "—"}
-                      </span>
-                      {unit.squareMeters && (
-                        <span className="flex items-center gap-0.5">
-                          <Maximize2 className="h-3 w-3" />
-                          {unit.squareMeters}m²
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Compact amenity icons */}
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {unit.unitType && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0">
-                          {unit.unitType}
-                        </Badge>
-                      )}
-                      {unit.hasFurniture && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0">
-                          Amue.
-                        </Badge>
-                      )}
-                      {unit.petsAllowed && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0">
-                          <PawPrint className="h-2.5 w-2.5" />
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="flex gap-1 border-t p-2 mt-auto">
-                    {selectedLead ? (
-                      <Button
-                        size="sm"
-                        className="flex-1 gap-1 h-8 text-xs"
-                        onClick={() => handleDirectWhatsApp(unit, selectedLead)}
-                        data-testid={`button-whatsapp-${unit.id}`}
-                      >
-                        <SiWhatsapp className="h-3.5 w-3.5" />
-                        <span className="truncate hidden sm:inline">WhatsApp</span>
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-1 h-8 text-xs"
-                          onClick={() => handleFindMatches(unit)}
-                          data-testid={`button-find-matches-${unit.id}`}
-                        >
-                          <Users className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Leads</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="flex-1 gap-1 h-8 text-xs"
-                          onClick={() => handleShareClick(unit)}
-                          data-testid={`button-share-${unit.id}`}
-                        >
-                          <SiWhatsapp className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Enviar</span>
-                        </Button>
-                      </>
-                    )}
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 mb-3 p-2 bg-muted/50 rounded-lg">
-                <Checkbox 
-                  checked={selectedUnits.size === units.length && units.length > 0}
-                  onCheckedChange={selectAllUnits}
-                  data-testid="checkbox-select-all"
-                />
-                <span className="text-sm font-medium">
-                  {selectedUnits.size > 0 
-                    ? `${selectedUnits.size} de ${units.length} seleccionadas` 
-                    : "Seleccionar todas"}
-                </span>
-              </div>
-              
-              {units.map((unit) => (
-                <Card 
-                  key={unit.id} 
-                  className={`overflow-hidden ${selectedUnits.has(unit.id) ? 'ring-2 ring-primary' : ''}`}
-                  data-testid={`row-property-${unit.id}`}
-                >
-                  <div className="flex items-stretch">
-                    {/* Checkbox */}
-                    <div className="flex items-center px-3 border-r">
-                      <Checkbox 
-                        checked={selectedUnits.has(unit.id)}
-                        onCheckedChange={() => toggleUnitSelection(unit.id)}
-                        data-testid={`checkbox-unit-${unit.id}`}
-                      />
-                    </div>
-                    
-                    {/* Image */}
-                    <div className="w-24 h-20 sm:w-32 sm:h-24 flex-shrink-0 bg-muted relative">
+            /* ============================================
+               PROFESSIONAL CARD GRID VIEW
+               ============================================ */
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {units.map((unit) => {
+                const matchInfo = selectedLead ? calculateMatchScore(unit, selectedLead) : { score: 0, reasons: [] };
+                return (
+                  <Card 
+                    key={unit.id} 
+                    className="group overflow-hidden flex flex-col bg-card hover-elevate transition-all duration-200" 
+                    data-testid={`card-property-${unit.id}`}
+                  >
+                    {/* Image Section with Overlay */}
+                    <div className="relative aspect-[16/10] bg-muted overflow-hidden">
                       {unit.images && unit.images.length > 0 ? (
                         <img
                           src={unit.images[0]}
                           alt={unit.name}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <Home className="h-8 w-8 text-muted-foreground/30" />
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/20">
+                          <Home className="h-12 w-12 text-muted-foreground/40" />
                         </div>
                       )}
-                      {/* Status badge on image */}
-                      <Badge
-                        className={`absolute right-1 bottom-1 text-[9px] px-1 py-0 ${
-                          unit.status === "active" 
-                            ? "bg-green-600 text-white border-0" 
-                            : "bg-red-600 text-white border-0"
-                        }`}
-                      >
-                        {unit.status === "active" ? "Disp." : "Rent."}
-                      </Badge>
-                      {/* Match score */}
-                      {selectedLead && (() => {
-                        const { score } = calculateMatchScore(unit, selectedLead);
-                        if (score === 0) return null;
-                        return (
-                          <Badge 
-                            className={`absolute left-1 top-1 text-[9px] px-1 py-0 ${
-                              score >= 70 ? "bg-green-600" : 
-                              score >= 40 ? "bg-yellow-600" : 
-                              "bg-orange-600"
-                            } text-white border-0`}
-                          >
-                            {score}%
-                          </Badge>
-                        );
-                      })()}
+                      
+                      {/* Gradient Overlay for better text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      
+                      {/* Top Left: Match Score */}
+                      {matchInfo.score > 0 && (
+                        <div className={`absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-white ${
+                          matchInfo.score >= 70 ? "bg-green-600" : 
+                          matchInfo.score >= 40 ? "bg-amber-500" : 
+                          "bg-orange-500"
+                        }`}>
+                          <Target className="h-3 w-3" />
+                          {matchInfo.score}%
+                        </div>
+                      )}
+                      
+                      {/* Top Right: Image Count */}
+                      {unit.images && unit.images.length > 1 && (
+                        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white">
+                          <Maximize2 className="h-3 w-3" />
+                          {unit.images.length}
+                        </div>
+                      )}
+                      
+                      {/* Bottom: Price Badge on Image */}
+                      <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
+                        <div className="bg-primary text-primary-foreground rounded-lg px-3 py-1.5 shadow-lg">
+                          <span className="text-lg font-bold">
+                            ${unit.monthlyRent?.toLocaleString() || "—"}
+                          </span>
+                          <span className="text-xs ml-1 opacity-90">
+                            {unit.currency || "MXN"}/mes
+                          </span>
+                        </div>
+                        
+                        {/* Status Badge */}
+                        <Badge
+                          className={`text-xs px-2 py-1 ${
+                            unit.status === "active" 
+                              ? "bg-green-600 hover:bg-green-700 text-white border-0" 
+                              : "bg-red-600 hover:bg-red-700 text-white border-0"
+                          }`}
+                        >
+                          {unit.status === "active" ? "Disponible" : "Rentada"}
+                        </Badge>
+                      </div>
                     </div>
-                    
-                    {/* Main Info */}
-                    <div className="flex-1 p-3 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {/* Column 1: Name & Location */}
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-sm line-clamp-1">
-                          {unit.condominiumName || "Sin condominio"}
+
+                    {/* Content Section */}
+                    <CardContent className="p-4 flex-1 flex flex-col gap-3">
+                      {/* Property Title & Location */}
+                      <div>
+                        <h3 className="font-semibold text-base line-clamp-1 mb-1" data-testid={`text-unit-name-${unit.id}`}>
+                          {unit.condominiumName || unit.name}
                         </h3>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {unit.unitNumber ? `Unidad #${unit.unitNumber}` : unit.name}
-                        </p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3 flex-shrink-0" />
-                          <span className="line-clamp-1">{unit.zone || "—"}</span>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          {unit.unitNumber && (
+                            <span className="font-medium text-foreground">#{unit.unitNumber}</span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {unit.zone || "Sin zona"}
+                          </span>
                         </div>
                       </div>
-                      
-                      {/* Column 2: Details */}
-                      <div className="hidden sm:flex flex-wrap items-center gap-2 text-xs">
-                        <span className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                          <Bed className="h-3 w-3" />
-                          {unit.bedrooms || "—"} rec
-                        </span>
-                        <span className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                          <Bath className="h-3 w-3" />
-                          {unit.bathrooms || "—"} baños
-                        </span>
+
+                      {/* Property Specs Row */}
+                      <div className="flex items-center gap-3 py-2 border-y border-border/50">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Bed className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{unit.bedrooms || 0}</span>
+                          <span className="text-muted-foreground text-xs">rec</span>
+                        </div>
+                        <Separator orientation="vertical" className="h-4" />
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Bath className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{unit.bathrooms || 0}</span>
+                          <span className="text-muted-foreground text-xs">baños</span>
+                        </div>
                         {unit.squareMeters && (
-                          <span className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                            <Maximize2 className="h-3 w-3" />
-                            {unit.squareMeters}m²
-                          </span>
+                          <>
+                            <Separator orientation="vertical" className="h-4" />
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Square className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{unit.squareMeters}</span>
+                              <span className="text-muted-foreground text-xs">m²</span>
+                            </div>
+                          </>
                         )}
+                      </div>
+
+                      {/* Property Features */}
+                      <div className="flex flex-wrap gap-1.5">
                         {unit.unitType && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="secondary" className="text-xs font-normal">
                             {unit.unitType}
                           </Badge>
                         )}
                         {unit.hasFurniture && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="secondary" className="text-xs font-normal">
                             Amueblado
                           </Badge>
                         )}
                         {unit.petsAllowed && (
-                          <Badge variant="outline" className="text-[10px]">
-                            <PawPrint className="h-2.5 w-2.5 mr-0.5" />
-                            Mascotas
+                          <Badge variant="secondary" className="text-xs font-normal gap-1">
+                            <PawPrint className="h-3 w-3" />
+                            Mascotas OK
+                          </Badge>
+                        )}
+                        {unit.hasParking && (
+                          <Badge variant="secondary" className="text-xs font-normal">
+                            Estacionamiento
                           </Badge>
                         )}
                       </div>
-                      
-                      {/* Column 3: Price (visible on mobile too) */}
-                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1">
-                        <div className="text-right">
-                          <p className="font-bold text-primary text-base sm:text-lg">
-                            ${unit.monthlyRent?.toLocaleString() || "—"}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">{unit.currency || "MXN"}/mes</p>
-                        </div>
-                        {/* Mobile: show basic details */}
-                        <div className="flex sm:hidden items-center gap-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-0.5">
-                            <Bed className="h-3 w-3" />
-                            {unit.bedrooms || "—"}
-                          </span>
-                          <span className="flex items-center gap-0.5">
-                            <Bath className="h-3 w-3" />
-                            {unit.bathrooms || "—"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Actions */}
-                    <div className="flex-shrink-0 flex items-center gap-1 px-3 border-l bg-muted/30">
+                    </CardContent>
+
+                    {/* Action Footer */}
+                    <CardFooter className="p-3 pt-0 gap-2 mt-auto">
                       {selectedLead ? (
                         <Button
-                          size="icon"
-                          className="h-11 w-11"
+                          className="flex-1 h-11 gap-2 text-sm font-medium"
                           onClick={() => handleDirectWhatsApp(unit, selectedLead)}
-                          data-testid={`button-whatsapp-table-${unit.id}`}
+                          data-testid={`button-whatsapp-${unit.id}`}
                         >
-                          <SiWhatsapp className="h-5 w-5" />
+                          <SiWhatsapp className="h-4 w-4" />
+                          Enviar a {selectedLead.firstName}
                         </Button>
                       ) : (
                         <>
                           <Button
                             variant="outline"
-                            size="icon"
-                            className="h-11 w-11"
+                            className="flex-1 h-11 gap-2 text-sm"
                             onClick={() => handleFindMatches(unit)}
-                            data-testid={`button-find-matches-table-${unit.id}`}
+                            data-testid={`button-find-matches-${unit.id}`}
                           >
                             <Users className="h-4 w-4" />
+                            Buscar Leads
                           </Button>
                           <Button
-                            size="icon"
-                            className="h-11 w-11"
+                            className="flex-1 h-11 gap-2 text-sm font-medium"
                             onClick={() => handleShareClick(unit)}
-                            data-testid={`button-share-table-${unit.id}`}
+                            data-testid={`button-share-${unit.id}`}
                           >
-                            <SiWhatsapp className="h-5 w-5" />
+                            <SiWhatsapp className="h-4 w-4" />
+                            Compartir
                           </Button>
                         </>
                       )}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            /* ============================================
+               PROFESSIONAL TABLE/LIST VIEW
+               ============================================ */
+            <div className="space-y-3">
+              {/* Header Row */}
+              <div className="flex items-center gap-3 px-4 py-2 bg-muted/50 rounded-lg sticky top-0 z-10">
+                <Checkbox 
+                  checked={selectedUnits.size === units.length && units.length > 0}
+                  onCheckedChange={selectAllUnits}
+                  className="h-5 w-5"
+                  data-testid="checkbox-select-all"
+                />
+                <span className="text-sm font-medium flex-1">
+                  {selectedUnits.size > 0 
+                    ? `${selectedUnits.size} de ${units.length} propiedades seleccionadas` 
+                    : "Seleccionar todas las propiedades"}
+                </span>
+                {selectedUnits.size > 0 && selectedLead && (
+                  <Button 
+                    size="sm"
+                    className="gap-2 h-9"
+                    onClick={handleOpenBulkShare}
+                  >
+                    <SiWhatsapp className="h-4 w-4" />
+                    Enviar selección
+                  </Button>
+                )}
+              </div>
+              
+              {/* Property Rows */}
+              {units.map((unit) => {
+                const matchInfo = selectedLead ? calculateMatchScore(unit, selectedLead) : { score: 0, reasons: [] };
+                const isSelected = selectedUnits.has(unit.id);
+                
+                return (
+                  <Card 
+                    key={unit.id} 
+                    className={`overflow-hidden transition-all duration-200 ${
+                      isSelected ? 'ring-2 ring-primary shadow-md' : 'hover-elevate'
+                    }`}
+                    data-testid={`row-property-${unit.id}`}
+                  >
+                    <div className="flex items-stretch min-h-[120px]">
+                      {/* Checkbox Column */}
+                      <div 
+                        className="flex items-center justify-center w-12 sm:w-14 border-r bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleUnitSelection(unit.id)}
+                      >
+                        <Checkbox 
+                          checked={isSelected}
+                          onCheckedChange={() => toggleUnitSelection(unit.id)}
+                          className="h-5 w-5"
+                          data-testid={`checkbox-unit-${unit.id}`}
+                        />
+                      </div>
+                      
+                      {/* Image Column */}
+                      <div className="w-32 sm:w-40 flex-shrink-0 relative bg-muted">
+                        {unit.images && unit.images.length > 0 ? (
+                          <img
+                            src={unit.images[0]}
+                            alt={unit.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/20">
+                            <Home className="h-10 w-10 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        
+                        {/* Status Badge */}
+                        <Badge
+                          className={`absolute left-2 bottom-2 text-xs ${
+                            unit.status === "active" 
+                              ? "bg-green-600 text-white border-0" 
+                              : "bg-red-600 text-white border-0"
+                          }`}
+                        >
+                          {unit.status === "active" ? "Disponible" : "Rentada"}
+                        </Badge>
+                        
+                        {/* Match Score */}
+                        {matchInfo.score > 0 && (
+                          <div className={`absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold text-white ${
+                            matchInfo.score >= 70 ? "bg-green-600" : 
+                            matchInfo.score >= 40 ? "bg-amber-500" : 
+                            "bg-orange-500"
+                          }`}>
+                            {matchInfo.score}%
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Main Content */}
+                      <div className="flex-1 p-4 flex flex-col sm:flex-row gap-4">
+                        {/* Left: Property Info */}
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div>
+                            <h3 className="font-semibold text-base line-clamp-1">
+                              {unit.condominiumName || unit.name}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
+                              {unit.unitNumber && (
+                                <span className="font-medium text-foreground">#{unit.unitNumber}</span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {unit.zone || "Sin zona"}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Specs Row */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            <span className="flex items-center gap-1.5">
+                              <Bed className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{unit.bedrooms || 0}</span>
+                              <span className="text-muted-foreground">rec</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Bath className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{unit.bathrooms || 0}</span>
+                              <span className="text-muted-foreground">baños</span>
+                            </span>
+                            {unit.squareMeters && (
+                              <span className="flex items-center gap-1.5">
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">{unit.squareMeters}</span>
+                                <span className="text-muted-foreground">m²</span>
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Features */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {unit.unitType && (
+                              <Badge variant="outline" className="text-xs">
+                                {unit.unitType}
+                              </Badge>
+                            )}
+                            {unit.hasFurniture && (
+                              <Badge variant="outline" className="text-xs">
+                                Amueblado
+                              </Badge>
+                            )}
+                            {unit.petsAllowed && (
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <PawPrint className="h-3 w-3" />
+                                Mascotas
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Right: Price */}
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:min-w-[140px]">
+                          <div className="text-right">
+                            <p className="text-xl sm:text-2xl font-bold text-primary">
+                              ${unit.monthlyRent?.toLocaleString() || "—"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{unit.currency || "MXN"}/mes</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Actions Column */}
+                      <div className="flex flex-col justify-center gap-2 p-3 border-l bg-muted/20">
+                        {selectedLead ? (
+                          <Button
+                            className="h-11 w-11 p-0"
+                            onClick={() => handleDirectWhatsApp(unit, selectedLead)}
+                            data-testid={`button-whatsapp-table-${unit.id}`}
+                          >
+                            <SiWhatsapp className="h-5 w-5" />
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-11 w-11"
+                              onClick={() => handleFindMatches(unit)}
+                              data-testid={`button-find-matches-table-${unit.id}`}
+                              title="Buscar leads compatibles"
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              className="h-11 w-11"
+                              onClick={() => handleShareClick(unit)}
+                              data-testid={`button-share-table-${unit.id}`}
+                              title="Compartir por WhatsApp"
+                            >
+                              <SiWhatsapp className="h-5 w-5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
 
