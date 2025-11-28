@@ -106,6 +106,7 @@ import {
   Save,
   ArrowLeftCircle,
 } from "lucide-react";
+import { SiWhatsapp } from "react-icons/si";
 import * as XLSX from "xlsx";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -2776,6 +2777,20 @@ export default function ExternalClients() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                {lead.phone && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                    onClick={() => {
+                                      const phone = lead.phone?.replace(/\D/g, '');
+                                      window.open(`https://wa.me/${phone}`, '_blank');
+                                    }}
+                                    data-testid={`button-whatsapp-lead-${lead.id}`}
+                                  >
+                                    <SiWhatsapp className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -2833,6 +2848,20 @@ export default function ExternalClients() {
                             </div>
                           </div>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            {lead.phone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                onClick={() => {
+                                  const phone = lead.phone?.replace(/\D/g, '');
+                                  window.open(`https://wa.me/${phone}`, '_blank');
+                                }}
+                                data-testid={`button-whatsapp-lead-card-${lead.id}`}
+                              >
+                                <SiWhatsapp className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
