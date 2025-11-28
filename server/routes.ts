@@ -156,6 +156,7 @@ import {
   externalClients,
   externalLeads,
   externalLeadShowings,
+  externalLeadActivities,
   insertExternalLeadSchema,
   updateExternalLeadSchema,
   insertExternalLeadRegistrationTokenSchema,
@@ -25140,6 +25141,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(summary);
     } catch (error: any) {
       console.error("Error fetching dashboard summary:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // Seller Dashboard Summary - optimized endpoint for seller-specific statistics
+  app.get("/api/external-dashboard/seller-summary", isAuthenticated, requireRole(['external_agency_seller', 'master', 'admin']), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      // Get today's date boundaries
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      const next7Days = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
+
+      // Parallel queries for seller statistics
+      const [
+        totalLeads,
+        leadsByStatus,
+        todayShowings,
+        upcomingShowings,
+        recentActivities,
+        convertedLeads,
+        thisMonthLeads
+      ] = await Promise.all([
+        // Total leads assigned to this seller
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId)
+          ))
+          .then(r => r[0]?.count || 0),
+        
+        // Leads by status
+        db.select({
+          status: externalLeads.status,
+          count: sql<number>`count(*)::int`
+        })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId)
+          ))
+          .groupBy(externalLeads.status)
+          .then(rows => {
+            const statusCounts: Record<string, number> = {};
+            rows.forEach(r => { statusCounts[r.status] = r.count; });
+            return statusCounts;
+          }),
+        
+        // Today's showings
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeadShowings)
+          .innerJoin(externalLeads, eq(externalLeadShowings.leadId, externalLeads.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`${externalLeadShowings.scheduledAt} >= ${startOfDay}`,
+            sql`${externalLeadShowings.scheduledAt} < ${endOfDay}`
+          ))
+          .then(r => r[0]?.count || 0),
+        
+        // Upcoming showings (next 7 days)
+        db.select({
+          id: externalLeadShowings.id,
+          scheduledAt: externalLeadShowings.scheduledAt,
+          status: externalLeadShowings.status,
+          leadName: sql<string>`concat(${externalLeads.firstName}, ' ', ${externalLeads.lastName})`,
+          propertyName: externalUnits.name,
+        })
+          .from(externalLeadShowings)
+          .innerJoin(externalLeads, eq(externalLeadShowings.leadId, externalLeads.id))
+          .leftJoin(externalUnits, eq(externalLeadShowings.unitId, externalUnits.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`${externalLeadShowings.scheduledAt} >= ${startOfDay}`,
+            sql`${externalLeadShowings.scheduledAt} < ${next7Days}`,
+            eq(externalLeadShowings.status, 'scheduled')
+          ))
+          .orderBy(asc(externalLeadShowings.scheduledAt))
+          .limit(10),
+        
+        // Recent activities (last 10)
+        db.select({
+          id: externalLeadActivities.id,
+          type: externalLeadActivities.type,
+          notes: externalLeadActivities.notes,
+          createdAt: externalLeadActivities.createdAt,
+          leadName: sql<string>`concat(${externalLeads.firstName}, ' ', ${externalLeads.lastName})`,
+        })
+          .from(externalLeadActivities)
+          .innerJoin(externalLeads, eq(externalLeadActivities.leadId, externalLeads.id))
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId)
+          ))
+          .orderBy(desc(externalLeadActivities.createdAt))
+          .limit(10),
+        
+        // Converted leads (with convertedToClientId not null)
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            isNotNull(externalLeads.convertedToClientId)
+          ))
+          .then(r => r[0]?.count || 0),
+        
+        // Leads this month
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(externalLeads)
+          .where(and(
+            eq(externalLeads.agencyId, agencyId),
+            eq(externalLeads.sellerId, userId),
+            sql`${externalLeads.createdAt} >= ${new Date(today.getFullYear(), today.getMonth(), 1)}`
+          ))
+          .then(r => r[0]?.count || 0),
+      ]);
+
+      // Calculate conversion rate
+      const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+      res.json({
+        totalLeads,
+        leadsByStatus,
+        todayShowings,
+        upcomingShowings,
+        recentActivities,
+        convertedLeads,
+        thisMonthLeads,
+        conversionRate,
+      });
+    } catch (error: any) {
+      console.error("Error fetching seller dashboard summary:", error);
       handleGenericError(res, error);
     }
   });

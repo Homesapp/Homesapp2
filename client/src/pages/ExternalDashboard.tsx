@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -13,10 +13,24 @@ import {
   ScrollText, 
   UserCircle2, 
   Users,
-  Key
+  Key,
+  Target,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Percent,
+  UserPlus,
+  Activity
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
+import { format } from "date-fns";
+import { es, enUS } from "date-fns/locale";
 
 type DashboardSummary = {
   totalCondominiums: number;
@@ -36,7 +50,378 @@ type DashboardSummary = {
   occupancyRate: number;
 };
 
-export default function ExternalDashboard() {
+type SellerDashboardSummary = {
+  totalLeads: number;
+  leadsByStatus: Record<string, number>;
+  todayShowings: number;
+  upcomingShowings: Array<{
+    id: string;
+    scheduledAt: string;
+    status: string;
+    leadName: string;
+    propertyName: string | null;
+  }>;
+  recentActivities: Array<{
+    id: string;
+    type: string;
+    notes: string | null;
+    createdAt: string;
+    leadName: string;
+  }>;
+  convertedLeads: number;
+  thisMonthLeads: number;
+  conversionRate: number;
+};
+
+const LEAD_STATUS_LABELS: Record<string, Record<string, string>> = {
+  es: {
+    nuevo: "Nuevo",
+    contactado: "Contactado",
+    cita_agendada: "Cita Agendada",
+    mostrado: "Mostrado",
+    negociando: "Negociando",
+    convertido: "Convertido",
+    perdido: "Perdido",
+    no_calificado: "No Calificado",
+  },
+  en: {
+    nuevo: "New",
+    contactado: "Contacted",
+    cita_agendada: "Appointment Scheduled",
+    mostrado: "Shown",
+    negociando: "Negotiating",
+    convertido: "Converted",
+    perdido: "Lost",
+    no_calificado: "Not Qualified",
+  },
+};
+
+const ACTIVITY_TYPE_ICONS: Record<string, typeof Phone> = {
+  call: Phone,
+  email: Mail,
+  meeting: Users,
+  whatsapp: Phone,
+  showing: MapPin,
+  note: FileText,
+};
+
+function SellerDashboard() {
+  const { language } = useLanguage();
+  const dateLocale = language === "es" ? es : enUS;
+
+  const { data: summary, isLoading } = useQuery<SellerDashboardSummary>({
+    queryKey: ['/api/external-dashboard/seller-summary'],
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const stats = summary || {
+    totalLeads: 0,
+    leadsByStatus: {},
+    todayShowings: 0,
+    upcomingShowings: [],
+    recentActivities: [],
+    convertedLeads: 0,
+    thisMonthLeads: 0,
+    conversionRate: 0,
+  };
+
+  const quickActions = [
+    {
+      title: language === "es" ? "Mis Leads" : "My Leads",
+      description: language === "es" ? "Gestionar prospectos asignados" : "Manage assigned prospects",
+      icon: UserPlus,
+      href: "/external/clients",
+      color: "text-blue-600",
+      count: stats.totalLeads,
+    },
+    {
+      title: language === "es" ? "Propiedades" : "Properties",
+      description: language === "es" ? "Catálogo de propiedades" : "Property catalog",
+      icon: Building2,
+      href: "/external/condominiums",
+      color: "text-indigo-600",
+    },
+    {
+      title: language === "es" ? "Calendario" : "Calendar",
+      description: language === "es" ? "Ver citas y visitas" : "View appointments and showings",
+      icon: Calendar,
+      href: "/external/calendar",
+      color: "text-purple-600",
+      count: stats.todayShowings,
+    },
+    {
+      title: language === "es" ? "Citas" : "Appointments",
+      description: language === "es" ? "Gestionar citas" : "Manage appointments",
+      icon: Clock,
+      href: "/external-appointments",
+      color: "text-green-600",
+    },
+  ];
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold" data-testid="text-page-title">
+          {language === "es" ? "Mi Dashboard de Ventas" : "My Sales Dashboard"}
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          {language === "es" 
+            ? "Resumen de tus leads, visitas y actividades"
+            : "Summary of your leads, showings and activities"}
+        </p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card data-testid="card-total-leads">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Leads Asignados" : "Assigned Leads"}
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-total-leads">
+                {stats.totalLeads}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.thisMonthLeads > 0 && (
+                <span className="text-green-600">
+                  +{stats.thisMonthLeads} {language === "es" ? "este mes" : "this month"}
+                </span>
+              )}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-conversion-rate">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Tasa de Conversión" : "Conversion Rate"}
+            </CardTitle>
+            <Percent className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold" data-testid="text-conversion-rate">
+                  {stats.conversionRate}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.convertedLeads} {language === "es" ? "convertidos" : "converted"}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-today-showings">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Visitas Hoy" : "Today's Showings"}
+            </CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold" data-testid="text-today-showings">
+                  {stats.todayShowings}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === "es" ? "Programadas para hoy" : "Scheduled for today"}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-upcoming-showings">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {language === "es" ? "Próximas Visitas" : "Upcoming Showings"}
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold" data-testid="text-upcoming-showings">
+                  {stats.upcomingShowings.length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === "es" ? "Próximos 7 días" : "Next 7 days"}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lead Status Distribution */}
+      {Object.keys(stats.leadsByStatus).length > 0 && (
+        <Card data-testid="card-lead-status">
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {language === "es" ? "Estado de Leads" : "Lead Status"}
+            </CardTitle>
+            <CardDescription>
+              {language === "es" ? "Distribución por estado" : "Distribution by status"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(stats.leadsByStatus).map(([status, count]) => (
+                <Badge 
+                  key={status} 
+                  variant="outline" 
+                  className="text-sm py-1 px-3"
+                  data-testid={`badge-status-${status}`}
+                >
+                  {LEAD_STATUS_LABELS[language]?.[status] || status}: {count}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">{language === "es" ? "Acceso Rápido" : "Quick Access"}</h2>
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          {quickActions.map((action, idx) => (
+            <Link key={idx} href={action.href}>
+              <Card className="hover-elevate cursor-pointer transition-all h-full" data-testid={`quick-action-${idx}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <action.icon className={`h-5 w-5 ${action.color}`} />
+                    {action.count !== undefined && action.count > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {action.count}
+                      </Badge>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1">{action.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Upcoming Showings */}
+        <Card data-testid="card-upcoming-showings-list">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              {language === "es" ? "Próximas Visitas" : "Upcoming Showings"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : stats.upcomingShowings.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {language === "es" ? "No hay visitas programadas" : "No scheduled showings"}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.upcomingShowings.map((showing) => (
+                  <div 
+                    key={showing.id} 
+                    className="flex items-start gap-3 p-3 rounded-lg border"
+                    data-testid={`showing-item-${showing.id}`}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <MapPin className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{showing.leadName}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {showing.propertyName || (language === "es" ? "Propiedad no especificada" : "Property not specified")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(showing.scheduledAt), "PPp", { locale: dateLocale })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Activities */}
+        <Card data-testid="card-recent-activities">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              {language === "es" ? "Actividades Recientes" : "Recent Activities"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : stats.recentActivities.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {language === "es" ? "No hay actividades recientes" : "No recent activities"}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentActivities.map((activity) => {
+                  const ActivityIcon = ACTIVITY_TYPE_ICONS[activity.type] || FileText;
+                  return (
+                    <div 
+                      key={activity.id} 
+                      className="flex items-start gap-3 p-3 rounded-lg border"
+                      data-testid={`activity-item-${activity.id}`}
+                    >
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <ActivityIcon className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{activity.leadName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {activity.notes || activity.type}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {format(new Date(activity.createdAt), "PPp", { locale: dateLocale })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard() {
   const { language } = useLanguage();
 
   const { data: summary, isLoading } = useQuery<DashboardSummary>({
@@ -291,4 +676,16 @@ export default function ExternalDashboard() {
       </div>
     </div>
   );
+}
+
+export default function ExternalDashboard() {
+  const { user } = useAuth();
+  
+  // Show seller dashboard for external_agency_seller role
+  if (user?.role === 'external_agency_seller') {
+    return <SellerDashboard />;
+  }
+  
+  // Show admin dashboard for other roles
+  return <AdminDashboard />;
 }
