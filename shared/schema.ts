@@ -6370,8 +6370,10 @@ export const externalLeads = pgTable("external_leads", {
   checkInDate: timestamp("check_in_date"), // Fecha deseada de entrada (timestamp)
   checkInDateText: varchar("check_in_date_text", { length: 100 }), // Fecha de mudanza como texto (ej: "Noviembre", "Inmediato")
   hasPets: varchar("has_pets", { length: 100 }), // "Sí", "No", "1 Gato", "2 perros", etc.
-  estimatedRentCost: integer("estimated_rent_cost"), // Presupuesto del cliente (número)
-  estimatedRentCostText: varchar("estimated_rent_cost_text", { length: 50 }), // Presupuesto como texto (ej: "25-35mil")
+  budgetMin: decimal("budget_min", { precision: 12, scale: 2 }), // Presupuesto mínimo del cliente
+  budgetMax: decimal("budget_max", { precision: 12, scale: 2 }), // Presupuesto máximo del cliente
+  estimatedRentCost: integer("estimated_rent_cost"), // [DEPRECATED] Usar budgetMin/budgetMax
+  estimatedRentCostText: varchar("estimated_rent_cost_text", { length: 50 }), // [DEPRECATED] Usar budgetMin/budgetMax
   bedrooms: integer("bedrooms"), // Número de recámaras deseadas (número)
   bedroomsText: varchar("bedrooms_text", { length: 20 }), // Recámaras como texto (ej: "1/2", "1-2", "2/3")
   desiredUnitType: varchar("desired_unit_type", { length: 100 }), // Casa, Departamento, etc.

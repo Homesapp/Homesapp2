@@ -495,8 +495,8 @@ export default function ExternalClients() {
       contractDuration: "",
       checkInDate: undefined,
       hasPets: "",
-      estimatedRentCost: undefined,
-      estimatedRentCostText: "",
+      budgetMin: undefined,
+      budgetMax: undefined,
       bedrooms: undefined,
       bedroomsText: "",
       desiredUnitType: "",
@@ -541,8 +541,9 @@ export default function ExternalClients() {
       const processedData = {
         ...data,
         checkInDate: data.checkInDate ? new Date(data.checkInDate).toISOString() : undefined,
-        // Use explicit numeric value if provided, otherwise derive from text
-        estimatedRentCost: data.estimatedRentCost || parseBudgetText(data.estimatedRentCostText),
+        // Budget values are now direct numeric inputs
+        budgetMin: data.budgetMin,
+        budgetMax: data.budgetMax,
         bedrooms: data.bedrooms || parseBedroomsText(data.bedroomsText),
       };
       // For master/admin users, include the selected agencyId
@@ -2805,7 +2806,9 @@ export default function ExternalClients() {
                               {lead.sellerName || (lead.sellerId && sellers.find(s => s.id === lead.sellerId)?.firstName ? `${sellers.find(s => s.id === lead.sellerId)?.firstName} ${sellers.find(s => s.id === lead.sellerId)?.lastName || ""}`.trim() : "-")}
                             </TableCell>
                             <TableCell className="text-sm">
-                              {lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-")}
+                              {lead.budgetMin || lead.budgetMax 
+                                ? `$${lead.budgetMin ? Number(lead.budgetMin).toLocaleString() : '0'} - $${lead.budgetMax ? Number(lead.budgetMax).toLocaleString() : '∞'}`
+                                : (lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-"))}
                             </TableCell>
                             <TableCell className="text-sm">
                               {lead.desiredUnitType || "-"}
@@ -2991,7 +2994,9 @@ export default function ExternalClients() {
                           <div className="flex items-center gap-1.5">
                             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-muted-foreground">{language === "es" ? "Presup.:" : "Budget:"}</span>
-                            <span className="font-medium">{lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-")}</span>
+                            <span className="font-medium">{lead.budgetMin || lead.budgetMax 
+                              ? `$${lead.budgetMin ? Number(lead.budgetMin).toLocaleString() : '0'} - $${lead.budgetMax ? Number(lead.budgetMax).toLocaleString() : '∞'}`
+                              : (lead.estimatedRentCostText || (lead.estimatedRentCost ? `$${lead.estimatedRentCost.toLocaleString()}` : "-"))}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Home className="h-3.5 w-3.5 text-muted-foreground" />
@@ -3238,27 +3243,53 @@ export default function ExternalClients() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={leadForm.control}
-                    name="estimatedRentCostText"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                          {language === "es" ? "Presupuesto (MXN)" : "Budget (MXN)"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            value={field.value || ""} 
-                            placeholder={language === "es" ? "Ej: 18-25 mil" : "E.g: 18-25k"}
-                            data-testid="input-create-lead-budget" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-2">
+                    <FormLabel className="flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                      {language === "es" ? "Presupuesto (MXN)" : "Budget (MXN)"}
+                    </FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={leadForm.control}
+                        name="budgetMin"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number"
+                                value={field.value || ""} 
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                placeholder={language === "es" ? "Mín" : "Min"}
+                                data-testid="input-create-lead-budget-min" 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <FormField
+                        control={leadForm.control}
+                        name="budgetMax"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number"
+                                value={field.value || ""} 
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                placeholder={language === "es" ? "Máx" : "Max"}
+                                data-testid="input-create-lead-budget-max" 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
                   <FormField
                     control={leadForm.control}
                     name="bedroomsText"
@@ -4379,11 +4410,13 @@ export default function ExternalClients() {
                   </h3>
                   <div className="bg-muted/30 rounded-lg p-4 space-y-3">
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      {(selectedLead.estimatedRentCost || selectedLead.estimatedRentCostText) && (
+                      {(selectedLead.budgetMin || selectedLead.budgetMax || selectedLead.estimatedRentCost || selectedLead.estimatedRentCostText) && (
                         <div>
                           <span className="text-muted-foreground text-xs">{language === "es" ? "Presupuesto" : "Budget"}</span>
                           <p className="font-medium text-green-600">
-                            {selectedLead.estimatedRentCostText || (selectedLead.estimatedRentCost ? `$${selectedLead.estimatedRentCost.toLocaleString()}` : "-")}
+                            {selectedLead.budgetMin || selectedLead.budgetMax 
+                              ? `$${selectedLead.budgetMin ? Number(selectedLead.budgetMin).toLocaleString() : '0'} - $${selectedLead.budgetMax ? Number(selectedLead.budgetMax).toLocaleString() : '∞'}`
+                              : (selectedLead.estimatedRentCostText || (selectedLead.estimatedRentCost ? `$${selectedLead.estimatedRentCost.toLocaleString()}` : "-"))}
                           </p>
                         </div>
                       )}
