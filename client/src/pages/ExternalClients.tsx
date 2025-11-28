@@ -4029,29 +4029,53 @@ export default function ExternalClients() {
                   {language === "es" ? "Preferencias de Propiedad" : "Property Preferences"}
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={editLeadForm.control}
-                    name="estimatedRentCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                          {language === "es" ? "Presupuesto (MXN)" : "Budget (MXN)"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number"
-                            value={field.value || ""} 
-                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                            placeholder="25000"
-                            data-testid="input-edit-lead-budget" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-2">
+                    <FormLabel className="flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                      {language === "es" ? "Presupuesto (MXN)" : "Budget (MXN)"}
+                    </FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={editLeadForm.control}
+                        name="budgetMin"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number"
+                                value={field.value || ""} 
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                placeholder={language === "es" ? "Mín" : "Min"}
+                                data-testid="input-edit-lead-budget-min" 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <FormField
+                        control={editLeadForm.control}
+                        name="budgetMax"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number"
+                                value={field.value || ""} 
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                placeholder={language === "es" ? "Máx" : "Max"}
+                                data-testid="input-edit-lead-budget-max" 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
                   <FormField
                     control={editLeadForm.control}
                     name="desiredUnitType"
