@@ -68,6 +68,7 @@ import {
   CheckCircle2,
   Loader2,
   Plus,
+  Bell,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -80,6 +81,7 @@ import LeadOffersSection from "@/components/external/LeadOffersSection";
 import LeadActivitiesTab from "@/components/external/LeadActivitiesTab";
 import LeadShowingsTab from "@/components/external/LeadShowingsTab";
 import LeadStatusHistoryTab from "@/components/external/LeadStatusHistoryTab";
+import LeadRemindersTab from "@/components/external/LeadRemindersTab";
 import LeadRentalFormsTab from "@/components/external/LeadRentalFormsTab";
 
 const LEAD_STATUS_OPTIONS = [
@@ -630,7 +632,7 @@ export default function ExternalLeadDetail() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           <div className="border-b px-4 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <TabsList className="grid grid-cols-6 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-7 w-full max-w-3xl">
               <TabsTrigger value="cards" className="flex items-center gap-2" data-testid="tab-cards">
                 <FileText className="h-4 w-4" />
                 <span className="hidden sm:inline">{language === "es" ? "Tarjetas" : "Cards"}</span>
@@ -659,6 +661,10 @@ export default function ExternalLeadDetail() {
               <TabsTrigger value="showings" className="flex items-center gap-2" data-testid="tab-showings">
                 <Home className="h-4 w-4" />
                 <span className="hidden sm:inline">{language === "es" ? "Visitas" : "Showings"}</span>
+              </TabsTrigger>
+              <TabsTrigger value="reminders" className="flex items-center gap-2" data-testid="tab-reminders">
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">{language === "es" ? "Recordatorios" : "Reminders"}</span>
               </TabsTrigger>
               <TabsTrigger value="history" className="flex items-center gap-2" data-testid="tab-history">
                 <History className="h-4 w-4" />
@@ -710,6 +716,10 @@ export default function ExternalLeadDetail() {
 
               <TabsContent value="showings" className="mt-0 space-y-4">
                 <LeadShowingsTab leadId={lead.id} />
+              </TabsContent>
+
+              <TabsContent value="reminders" className="mt-0 space-y-4">
+                <LeadRemindersTab leadId={lead.id} leadName={`${lead.firstName} ${lead.lastName}`} />
               </TabsContent>
 
               <TabsContent value="history" className="mt-0 space-y-4">

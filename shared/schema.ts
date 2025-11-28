@@ -6661,6 +6661,59 @@ export type InsertExternalLeadShowing = z.infer<typeof insertExternalLeadShowing
 export type UpdateExternalLeadShowing = z.infer<typeof updateExternalLeadShowingSchema>;
 export type ExternalLeadShowing = typeof externalLeadShowings.$inferSelect;
 
+// Lead Reminders - Private reminders for sellers about their leads
+export const externalLeadReminders = pgTable("external_lead_reminders", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  leadId: varchar("lead_id").notNull().references(() => externalLeads.id, { onDelete: "cascade" }),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Reminder details
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  reminderDate: timestamp("reminder_date").notNull(),
+  reminderTime: varchar("reminder_time", { length: 10 }), // HH:mm format
+  
+  // Type and priority
+  reminderType: varchar("reminder_type", { length: 50 }).notNull().default("follow_up"), // follow_up, call, meeting, deadline, other
+  priority: varchar("priority", { length: 20 }).default("medium"), // low, medium, high, urgent
+  
+  // Status
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, completed, dismissed
+  completedAt: timestamp("completed_at"),
+  
+  // Notification settings
+  notifyBefore: integer("notify_before").default(30), // minutes before to notify
+  isNotified: boolean("is_notified").default(false),
+  
+  // Privacy - only visible to the seller who created it
+  isPrivate: boolean("is_private").default(true),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_lead_reminders_lead").on(table.leadId),
+  index("idx_lead_reminders_seller").on(table.sellerId),
+  index("idx_lead_reminders_agency").on(table.agencyId),
+  index("idx_lead_reminders_date").on(table.reminderDate),
+  index("idx_lead_reminders_status").on(table.status),
+]);
+
+export const insertExternalLeadReminderSchema = createInsertSchema(externalLeadReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  reminderDate: z.coerce.date(),
+});
+
+export const updateExternalLeadReminderSchema = insertExternalLeadReminderSchema.partial();
+
+export type InsertExternalLeadReminder = z.infer<typeof insertExternalLeadReminderSchema>;
+export type UpdateExternalLeadReminder = z.infer<typeof updateExternalLeadReminderSchema>;
+export type ExternalLeadReminder = typeof externalLeadReminders.$inferSelect;
+
 // Lead Property Sent - Track properties sent/shared with leads
 export const externalLeadPropertySent = pgTable("external_lead_property_sent", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

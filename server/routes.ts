@@ -156,6 +156,7 @@ import {
   externalClients,
   externalLeads,
   externalLeadShowings,
+  externalLeadReminders,
   externalLeadActivities,
   insertExternalLeadSchema,
   updateExternalLeadSchema,
@@ -163,6 +164,8 @@ import {
   insertExternalLeadActivitySchema,
   insertExternalLeadShowingSchema,
   updateExternalLeadShowingSchema,
+  insertExternalLeadReminderSchema,
+  updateExternalLeadReminderSchema,
   insertExternalClientActivitySchema,
   insertExternalClientPropertyHistorySchema,
   createLeadRegistrationLinkSchema,
@@ -30344,6 +30347,225 @@ ${{precio}}/mes
   });
 
   // ================== LEAD PROPERTY SENT ENDPOINTS ==================
+
+  // ================== LEAD REMINDERS ENDPOINTS ==================
+  
+  // GET /api/external-leads/:id/reminders - Get all reminders for a lead
+  app.get("/api/external-leads/:id/reminders", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const lead = await storage.getExternalLead(id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      const sellerId = req.user?.claims?.sub || req.user?.id;
+      
+      // Get reminders - sellers only see their own reminders (private)
+      const reminders = await db.select()
+        .from(externalLeadReminders)
+        .where(and(
+          eq(externalLeadReminders.leadId, id),
+          eq(externalLeadReminders.sellerId, sellerId)
+        ))
+        .orderBy(desc(externalLeadReminders.reminderDate));
+      
+      res.json(reminders);
+    } catch (error: any) {
+      console.error("Error fetching lead reminders:", error);
+      handleGenericError(res, error);
+    }
+  });
+  
+  // POST /api/external-leads/:id/reminders - Create a reminder for a lead
+  app.post("/api/external-leads/:id/reminders", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const lead = await storage.getExternalLead(id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      const sellerId = req.user?.claims?.sub || req.user?.id;
+      
+      // Validate input - only allow safe fields, strip any sensitive fields
+      const allowedFields = insertExternalLeadReminderSchema.omit({
+        id: true,
+        leadId: true,
+        agencyId: true,
+        sellerId: true,
+        isPrivate: true,
+        isNotified: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      });
+      
+      const validatedData = allowedFields.parse(req.body);
+      
+      const reminderData = {
+        ...validatedData,
+        leadId: id,
+        agencyId: lead.agencyId,
+        sellerId: sellerId,
+        isPrivate: true,
+      };
+      
+      const [reminder] = await db.insert(externalLeadReminders)
+        .values(reminderData)
+        .returning();
+      
+      await createAuditLog(req, "create", "external_lead_reminder", reminder.id, `Created reminder for lead ${lead.firstName} ${lead.lastName}`);
+      
+      res.status(201).json(reminder);
+    } catch (error: any) {
+      console.error("Error creating lead reminder:", error);
+      handleGenericError(res, error);
+    }
+  });
+  
+  // PATCH /api/external-lead-reminders/:id - Update a reminder
+  app.patch("/api/external-lead-reminders/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const sellerId = req.user?.claims?.sub || req.user?.id;
+      
+      const [existing] = await db.select()
+        .from(externalLeadReminders)
+        .where(eq(externalLeadReminders.id, id));
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+      
+      // Sellers can only update their own reminders
+      if (existing.sellerId !== sellerId) {
+        return res.status(403).json({ message: "You can only update your own reminders" });
+      }
+      
+      // Validate input - only allow safe fields, strip sensitive fields
+      const allowedUpdateFields = updateExternalLeadReminderSchema.omit({
+        id: true,
+        leadId: true,
+        agencyId: true,
+        sellerId: true,
+        isPrivate: true,
+        isNotified: true,
+        createdAt: true,
+      });
+      
+      const validatedData = allowedUpdateFields.parse(req.body);
+      
+      const updateData: any = {
+        ...validatedData,
+        updatedAt: new Date(),
+      };
+      
+      // If marking as completed, set completedAt
+      if (validatedData.status === 'completed' && existing.status !== 'completed') {
+        updateData.completedAt = new Date();
+      }
+      
+      const [updated] = await db.update(externalLeadReminders)
+        .set(updateData)
+        .where(eq(externalLeadReminders.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating lead reminder:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external-lead-reminders/:id - Delete a reminder
+  app.delete("/api/external-lead-reminders/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const sellerId = req.user?.claims?.sub || req.user?.id;
+      
+      const [existing] = await db.select()
+        .from(externalLeadReminders)
+        .where(eq(externalLeadReminders.id, id));
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+      
+      // Sellers can only delete their own reminders
+      if (existing.sellerId !== sellerId) {
+        return res.status(403).json({ message: "You can only delete your own reminders" });
+      }
+      
+      await db.delete(externalLeadReminders)
+        .where(eq(externalLeadReminders.id, id));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting lead reminder:", error);
+      handleGenericError(res, error);
+    }
+  });
+  
+  // GET /api/external-seller/reminders - Get all reminders for the seller (for calendar)
+  app.get("/api/external-seller/reminders", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const sellerId = req.user?.claims?.sub || req.user?.id;
+      const agencyId = await getUserAgencyId(req);
+      
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { status, from, to } = req.query;
+      
+      let conditions = [
+        eq(externalLeadReminders.sellerId, sellerId),
+        eq(externalLeadReminders.agencyId, agencyId)
+      ];
+      
+      if (status && status !== 'all') {
+        conditions.push(eq(externalLeadReminders.status, status as string));
+      }
+      
+      if (from) {
+        conditions.push(gte(externalLeadReminders.reminderDate, new Date(from as string)));
+      }
+      
+      if (to) {
+        conditions.push(lte(externalLeadReminders.reminderDate, new Date(to as string)));
+      }
+      
+      const reminders = await db.select({
+        reminder: externalLeadReminders,
+        lead: {
+          id: externalLeads.id,
+          firstName: externalLeads.firstName,
+          lastName: externalLeads.lastName,
+          phone: externalLeads.phone,
+          email: externalLeads.email,
+        }
+      })
+        .from(externalLeadReminders)
+        .leftJoin(externalLeads, eq(externalLeadReminders.leadId, externalLeads.id))
+        .where(and(...conditions))
+        .orderBy(asc(externalLeadReminders.reminderDate));
+      
+      res.json(reminders);
+    } catch (error: any) {
+      console.error("Error fetching seller reminders:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   
   // GET /api/external-leads/:id/properties-sent - Get all properties sent to a lead
   app.get("/api/external-leads/:id/properties-sent", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {

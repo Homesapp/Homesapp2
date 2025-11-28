@@ -28,6 +28,14 @@ The External Management System now includes comprehensive CRM functionality for 
 - Client blacklist management with warning and blacklisted statuses
 - Lead-to-client conversion with sourceLeadId/convertedToClientId linking
 - Improved duplicate detection for lead-to-client conversion errors
+- Lead reminder system with private seller reminders:
+  - CRUD endpoints: GET/POST /api/external-leads/:id/reminders, PATCH/DELETE /api/external-lead-reminders/:id
+  - Seller-specific reminders endpoint: GET /api/external-seller/reminders (for calendar integration)
+  - Reminder types: follow_up, call, whatsapp, email, meeting, document, other
+  - Priority levels: low, medium, high, urgent
+  - Date-based filtering with overdue/today/tomorrow visual indicators
+  - Reminders are private to each seller (multi-tenant isolation)
+  - "Recordatorios" tab in lead detail view with full CRUD interface
 
 ## Notifications System
 The External Management System features a dedicated notification system separate from the main HomesApp notifications:
