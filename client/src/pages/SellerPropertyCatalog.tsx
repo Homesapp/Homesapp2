@@ -982,7 +982,7 @@ export default function SellerPropertyCatalog() {
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-1 text-xs mb-2">
+                          <div className="flex items-center justify-between gap-1 text-xs mb-1">
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Wallet className="h-3 w-3" />
                               <span className="font-medium text-foreground truncate">
@@ -991,31 +991,42 @@ export default function SellerPropertyCatalog() {
                                   : "—"}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Bed className="h-3 w-3" />
-                              <span className="font-medium text-foreground">
-                                {lead.bedrooms || "—"} rec.
-                              </span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Bed className="h-3 w-3" />
+                                <span className="font-medium text-foreground">
+                                  {lead.bedrooms || "—"}
+                                </span>
+                              </div>
+                              {lead.hasPets === "yes" || lead.hasPets === "si" || lead.hasPets === "sí" || lead.hasPets === true || lead.hasPets === "true" ? (
+                                <PawPrint className="h-3 w-3 text-amber-500" />
+                              ) : null}
                             </div>
                           </div>
                           
-                          <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center justify-between gap-2">
                             <Badge className={`text-xs ${getStatusColor(lead.status)}`}>
                               {getStatusLabel(lead.status)}
                             </Badge>
-                            {lead.hasPets && lead.hasPets !== "no" && (
-                              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                                <PawPrint className="h-3 w-3" />
-                                <span>Mascota</span>
-                              </div>
-                            )}
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                applyLeadFilters(lead);
+                              }}
+                            >
+                              <Target className="h-3 w-3" />
+                              Filtrar
+                            </Button>
                           </div>
                           
                           {isExpanded && (
-                            <div className="mt-2 pt-2 border-t space-y-1.5 text-xs">
+                            <div className="mt-2 pt-2 border-t grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <Calendar className="h-3 w-3" />
-                                <span>Ingreso: <span className="text-foreground">{formatDate(lead.createdAt)}</span></span>
+                                <span className="text-foreground truncate">{formatDate(lead.createdAt)}</span>
                               </div>
                               {lead.desiredNeighborhood && (
                                 <div className="flex items-center gap-1 text-muted-foreground">
@@ -1026,37 +1037,22 @@ export default function SellerPropertyCatalog() {
                               {lead.desiredUnitType && (
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <Home className="h-3 w-3" />
-                                  <span className="text-foreground">{lead.desiredUnitType}</span>
+                                  <span className="text-foreground truncate">{lead.desiredUnitType}</span>
                                 </div>
                               )}
                               {lead.contractDuration && (
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <FileText className="h-3 w-3" />
-                                  <span className="text-foreground">{lead.contractDuration}</span>
+                                  <span className="text-foreground truncate">{lead.contractDuration}</span>
                                 </div>
                               )}
                               {lead.email && (
-                                <div className="flex items-center gap-1 text-muted-foreground truncate">
+                                <div className="flex items-center gap-1 text-muted-foreground col-span-2">
                                   <span className="text-foreground truncate">{lead.email}</span>
                                 </div>
                               )}
                             </div>
                           )}
-                          
-                          <div className="flex items-center justify-end gap-1 mt-2">
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="h-8 gap-1 px-2 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                applyLeadFilters(lead);
-                              }}
-                            >
-                              <Target className="h-3 w-3" />
-                              Filtrar
-                            </Button>
-                          </div>
                         </CardContent>
                       </Card>
                     );
