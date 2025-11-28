@@ -49,6 +49,7 @@ import {
   Send,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   Loader2,
   Maximize2,
   Square
@@ -387,9 +388,7 @@ export default function SellerPropertyCatalog() {
   const [selectedBulkTemplateId, setSelectedBulkTemplateId] = useState<string>("multi-1");
   const [leadsPanelExpanded, setLeadsPanelExpanded] = useState(true);
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
-  const [previousDataLength, setPreviousDataLength] = useState<number>(0);
   const [page, setPage] = useState(1);
-  const [allUnits, setAllUnits] = useState<Unit[]>([]);
   const ITEMS_PER_PAGE = 50;
 
   const buildQueryString = (pageNum: number = page) => {
@@ -406,49 +405,29 @@ export default function SellerPropertyCatalog() {
     return params.toString();
   };
 
-  // Use refs to track filter changes for pagination reset
-  const prevSearchRef = useRef(search);
-  const prevFiltersRef = useRef(filters);
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, filters]);
   
-  // Check if filters changed (to determine if we should reset to page 1)
-  const filtersChanged = prevSearchRef.current !== search || 
-    JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
-  
-  // Update refs after check
-  if (filtersChanged) {
-    prevSearchRef.current = search;
-    prevFiltersRef.current = filters;
-  }
-  
-  // Effective page: use 1 if filters just changed, otherwise use actual page
-  const effectivePage = filtersChanged ? 1 : page;
-  
-  const { data: catalogData, isLoading, isFetching } = useQuery<{ data: Unit[]; total: number }>({
-    queryKey: ["/api/external-seller/property-catalog", search, filters, effectivePage],
+  const { data: catalogData, isLoading, isFetching } = useQuery<{ data: any[]; total: number }>({
+    queryKey: ["/api/external-seller/property-catalog", search, filters, page],
     queryFn: async () => {
-      const qs = buildQueryString(effectivePage);
+      const qs = buildQueryString(page);
       const res = await fetch(`/api/external-seller/property-catalog?${qs}`);
       if (!res.ok) throw new Error("Failed to fetch properties");
       return res.json();
     },
   });
 
-  // Update allUnits when data changes
-  useEffect(() => {
-    if (catalogData?.data) {
-      // If filters changed, reset to first page data
-      if (filtersChanged || effectivePage === 1) {
-        setAllUnits(catalogData.data);
-        if (page !== 1) setPage(1);
-      } else {
-        setAllUnits(prev => {
-          const existingIds = new Set(prev.map(u => u.id));
-          const newUnits = catalogData.data.filter(u => !existingIds.has(u.id));
-          return [...prev, ...newUnits];
-        });
-      }
-    }
-  }, [catalogData?.data, effectivePage, filtersChanged]);
+  // Map backend data to frontend Unit interface
+  const mappedUnits: Unit[] = useMemo(() => {
+    if (!catalogData?.data) return [];
+    return catalogData.data.map((u: any) => ({
+      ...u,
+      status: u.isActive ? 'active' : 'rented',
+    }));
+  }, [catalogData?.data]);
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery<{ data: Lead[] }>({
     queryKey: ["/api/external-leads"],
@@ -508,21 +487,18 @@ export default function SellerPropertyCatalog() {
   });
 
   const displayUnits = useMemo(() => {
-    if (allUnits.length > 0) return allUnits;
+    if (mappedUnits.length > 0) return mappedUnits;
     return SAMPLE_UNITS;
-  }, [allUnits]);
+  }, [mappedUnits]);
 
-  const totalUnits = catalogData?.total || displayUnits.length;
-  const hasMore = allUnits.length > 0 && allUnits.length < totalUnits;
+  const totalUnits = catalogData?.total || 0;
+  const totalPages = Math.ceil(totalUnits / ITEMS_PER_PAGE);
   const allLeads = leadsData?.data || [];
   
-  // Clear selection when allUnits changes
+  // Clear selection when page changes
   useEffect(() => {
-    if (allUnits.length !== previousDataLength) {
-      setSelectedUnits(new Set());
-      setPreviousDataLength(allUnits.length);
-    }
-  }, [allUnits.length, previousDataLength]);
+    setSelectedUnits(new Set());
+  }, [page]);
   
   const filteredLeads = useMemo(() => {
     let result = [...allLeads];
@@ -1680,28 +1656,81 @@ export default function SellerPropertyCatalog() {
             </div>
           )}
 
-          {/* Load More Button */}
-          {hasMore && !isLoading && (
-            <div className="flex justify-center py-6">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setPage(p => p + 1)}
-                disabled={isFetching}
-                className="gap-2 min-w-[200px] h-12"
-                data-testid="button-load-more"
-              >
-                {isFetching ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Cargando...
-                  </>
-                ) : (
-                  <>
-                    Cargar más ({units.length} de {totalUnits})
-                  </>
-                )}
-              </Button>
+          {/* Pagination Controls */}
+          {totalPages > 1 && !isLoading && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 px-2">
+              <span className="text-sm text-muted-foreground">
+                Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(page * ITEMS_PER_PAGE, totalUnits)} de {totalUnits} propiedades
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1 || isFetching}
+                  className="h-10 px-3"
+                  data-testid="button-first-page"
+                >
+                  Primera
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1 || isFetching}
+                  className="h-10 w-10"
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1 px-2">
+                  {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = idx + 1;
+                    } else if (page <= 3) {
+                      pageNum = idx + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + idx;
+                    } else {
+                      pageNum = page - 2 + idx;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(pageNum)}
+                        disabled={isFetching}
+                        className="h-10 w-10"
+                        data-testid={`button-page-${pageNum}`}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages || isFetching}
+                  className="h-10 w-10"
+                  data-testid="button-next-page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages || isFetching}
+                  className="h-10 px-3"
+                  data-testid="button-last-page"
+                >
+                  Última
+                </Button>
+              </div>
             </div>
           )}
         </ScrollArea>
