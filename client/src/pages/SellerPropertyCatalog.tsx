@@ -1048,11 +1048,11 @@ export default function SellerPropertyCatalog() {
               )}
             </Card>
           ) : viewMode === "grid" ? (
-            <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {units.map((unit) => (
                 <Card key={unit.id} className="group overflow-hidden flex flex-col" data-testid={`card-property-${unit.id}`}>
-                  {/* Image Section - Larger */}
-                  <div className="relative h-48 sm:h-56 bg-muted">
+                  {/* Image Section - Compact */}
+                  <div className="relative h-28 sm:h-32 bg-muted">
                     {unit.images && unit.images.length > 0 ? (
                       <img
                         src={unit.images[0]}
@@ -1061,29 +1061,22 @@ export default function SellerPropertyCatalog() {
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-                        <Home className="h-16 w-16 text-muted-foreground/30" />
+                        <Home className="h-10 w-10 text-muted-foreground/30" />
                       </div>
                     )}
-                    {/* Status Badge */}
-                    <Badge
-                      className="absolute left-2 top-2"
-                      variant={unit.status === "active" ? "default" : "secondary"}
-                    >
-                      {unit.status === "active" ? "Disponible" : "Rentada"}
-                    </Badge>
                     {/* Match Score Badge - shows when lead is selected */}
                     {selectedLead && (() => {
                       const { score, reasons } = calculateMatchScore(unit, selectedLead);
                       if (score === 0) return null;
                       return (
                         <Badge 
-                          className={`absolute left-2 top-10 ${
+                          className={`absolute left-1 top-1 text-[10px] px-1.5 py-0.5 ${
                             score >= 70 ? "bg-green-600" : 
                             score >= 40 ? "bg-yellow-600" : 
                             "bg-orange-600"
                           } text-white border-0`}
                         >
-                          {score}% match
+                          {score}%
                         </Badge>
                       );
                     })()}
@@ -1091,124 +1084,117 @@ export default function SellerPropertyCatalog() {
                     {unit.images && unit.images.length > 1 && (
                       <Badge 
                         variant="secondary" 
-                        className="absolute right-2 top-2 bg-black/60 text-white border-0"
+                        className="absolute right-1 top-1 bg-black/60 text-white border-0 text-[10px] px-1.5 py-0.5"
                       >
-                        {unit.images.length} fotos
+                        {unit.images.length}
                       </Badge>
                     )}
+                    {/* Status Badge - Bottom right of image */}
+                    <Badge
+                      className={`absolute right-1 bottom-1 text-[10px] px-1.5 py-0.5 ${
+                        unit.status === "active" 
+                          ? "bg-green-600 text-white border-0" 
+                          : "bg-red-600 text-white border-0"
+                      }`}
+                    >
+                      {unit.status === "active" ? "Disp." : "Rent."}
+                    </Badge>
                   </div>
 
-                  <CardContent className="p-4 flex-1 flex flex-col">
+                  <CardContent className="p-2 sm:p-3 flex-1 flex flex-col">
                     {/* Price - Prominent */}
-                    <div className="mb-3 flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-primary">
+                    <div className="mb-1 flex items-baseline gap-1">
+                      <span className="text-base sm:text-lg font-bold text-primary">
                         ${unit.monthlyRent?.toLocaleString() || "—"}
                       </span>
-                      <span className="text-sm text-muted-foreground">
-                        {unit.currency || "MXN"}/mes
+                      <span className="text-[10px] text-muted-foreground">
+                        {unit.currency || "MXN"}
                       </span>
                     </div>
 
-                    {/* Condominium */}
-                    <div className="mb-2 flex items-center gap-2">
-                      <Building2 className="h-4 w-4 flex-shrink-0 text-primary" />
-                      <span className="font-medium line-clamp-1">
-                        {unit.condominiumName || "Sin condominio"}
-                      </span>
-                    </div>
-
-                    {/* Unit Name/Number */}
-                    <h3 className="mb-2 line-clamp-1 text-base font-semibold" data-testid={`text-unit-name-${unit.id}`}>
-                      {unit.unitNumber ? `Unidad ${unit.unitNumber}` : unit.name}
+                    {/* Condominium & Unit */}
+                    <h3 className="mb-1 line-clamp-1 text-xs sm:text-sm font-medium" data-testid={`text-unit-name-${unit.id}`}>
+                      {unit.condominiumName || "Sin condominio"}
                     </h3>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mb-1">
+                      {unit.unitNumber ? `Unidad #${unit.unitNumber}` : unit.name}
+                    </p>
 
                     {/* Location */}
-                    <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4 flex-shrink-0" />
-                      <span className="line-clamp-1">{unit.zone || "Sin zona"}</span>
+                    <div className="mb-2 flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="line-clamp-1">{unit.zone || "—"}</span>
                     </div>
 
-                    {/* Property Details Grid */}
-                    <div className="mb-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-lg bg-muted/50 p-2">
-                        <Bed className="mx-auto h-4 w-4 text-muted-foreground mb-1" />
-                        <p className="text-sm font-medium">{unit.bedrooms || "—"}</p>
-                        <p className="text-xs text-muted-foreground">Recámaras</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/50 p-2">
-                        <Bath className="mx-auto h-4 w-4 text-muted-foreground mb-1" />
-                        <p className="text-sm font-medium">{unit.bathrooms || "—"}</p>
-                        <p className="text-xs text-muted-foreground">Baños</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/50 p-2">
-                        <Maximize2 className="mx-auto h-4 w-4 text-muted-foreground mb-1" />
-                        <p className="text-sm font-medium">{unit.squareMeters ? `${unit.squareMeters}` : "—"}</p>
-                        <p className="text-xs text-muted-foreground">m²</p>
-                      </div>
+                    {/* Property Details - Compact Row */}
+                    <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground mb-2">
+                      <span className="flex items-center gap-0.5">
+                        <Bed className="h-3 w-3" />
+                        {unit.bedrooms || "—"}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Bath className="h-3 w-3" />
+                        {unit.bathrooms || "—"}
+                      </span>
+                      {unit.squareMeters && (
+                        <span className="flex items-center gap-0.5">
+                          <Maximize2 className="h-3 w-3" />
+                          {unit.squareMeters}m²
+                        </span>
+                      )}
                     </div>
 
-                    {/* Property Type & Amenities */}
-                    <div className="mb-3 flex flex-wrap gap-1.5">
+                    {/* Compact amenity icons */}
+                    <div className="flex flex-wrap gap-1 mb-2">
                       {unit.unitType && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          <Home className="h-3 w-3" />
+                        <Badge variant="outline" className="text-[9px] px-1 py-0">
                           {unit.unitType}
                         </Badge>
                       )}
                       {unit.hasFurniture && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          Amueblado
-                        </Badge>
-                      )}
-                      {unit.hasParking && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          Estacionamiento
+                        <Badge variant="outline" className="text-[9px] px-1 py-0">
+                          Amue.
                         </Badge>
                       )}
                       {unit.petsAllowed && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          <PawPrint className="h-3 w-3" />
-                          Mascotas
+                        <Badge variant="outline" className="text-[9px] px-1 py-0">
+                          <PawPrint className="h-2.5 w-2.5" />
                         </Badge>
                       )}
                     </div>
-
-                    {/* Description Preview */}
-                    {unit.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-                        {unit.description}
-                      </p>
-                    )}
                   </CardContent>
 
-                  <CardFooter className="flex gap-2 border-t p-3 mt-auto">
+                  <CardFooter className="flex gap-1 border-t p-2 mt-auto">
                     {selectedLead ? (
                       <Button
-                        className="flex-1 gap-2 h-11"
+                        size="sm"
+                        className="flex-1 gap-1 h-8 text-xs"
                         onClick={() => handleDirectWhatsApp(unit, selectedLead)}
                         data-testid={`button-whatsapp-${unit.id}`}
                       >
-                        <SiWhatsapp className="h-4 w-4" />
-                        <span className="truncate">WhatsApp a {selectedLead.firstName}</span>
+                        <SiWhatsapp className="h-3.5 w-3.5" />
+                        <span className="truncate hidden sm:inline">WhatsApp</span>
                       </Button>
                     ) : (
                       <>
                         <Button
                           variant="outline"
-                          className="flex-1 gap-2 h-11"
+                          size="sm"
+                          className="flex-1 gap-1 h-8 text-xs"
                           onClick={() => handleFindMatches(unit)}
                           data-testid={`button-find-matches-${unit.id}`}
                         >
-                          <Users className="h-4 w-4" />
-                          Leads
+                          <Users className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Leads</span>
                         </Button>
                         <Button
-                          className="flex-1 gap-2 h-11"
+                          size="sm"
+                          className="flex-1 gap-1 h-8 text-xs"
                           onClick={() => handleShareClick(unit)}
                           data-testid={`button-share-${unit.id}`}
                         >
-                          <SiWhatsapp className="h-4 w-4" />
-                          Compartir
+                          <SiWhatsapp className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Enviar</span>
                         </Button>
                       </>
                     )}
@@ -1237,14 +1223,18 @@ export default function SellerPropertyCatalog() {
                   className={`overflow-hidden ${selectedUnits.has(unit.id) ? 'ring-2 ring-primary' : ''}`}
                   data-testid={`row-property-${unit.id}`}
                 >
-                  <div className="flex items-center p-3 gap-3">
-                    <Checkbox 
-                      checked={selectedUnits.has(unit.id)}
-                      onCheckedChange={() => toggleUnitSelection(unit.id)}
-                      data-testid={`checkbox-unit-${unit.id}`}
-                    />
+                  <div className="flex items-stretch">
+                    {/* Checkbox */}
+                    <div className="flex items-center px-3 border-r">
+                      <Checkbox 
+                        checked={selectedUnits.has(unit.id)}
+                        onCheckedChange={() => toggleUnitSelection(unit.id)}
+                        data-testid={`checkbox-unit-${unit.id}`}
+                      />
+                    </div>
                     
-                    <div className="w-16 h-12 sm:w-20 sm:h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
+                    {/* Image */}
+                    <div className="w-24 h-20 sm:w-32 sm:h-24 flex-shrink-0 bg-muted relative">
                       {unit.images && unit.images.length > 0 ? (
                         <img
                           src={unit.images[0]}
@@ -1253,52 +1243,126 @@ export default function SellerPropertyCatalog() {
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
-                          <Home className="h-6 w-6 text-muted-foreground/30" />
+                          <Home className="h-8 w-8 text-muted-foreground/30" />
                         </div>
                       )}
+                      {/* Status badge on image */}
+                      <Badge
+                        className={`absolute right-1 bottom-1 text-[9px] px-1 py-0 ${
+                          unit.status === "active" 
+                            ? "bg-green-600 text-white border-0" 
+                            : "bg-red-600 text-white border-0"
+                        }`}
+                      >
+                        {unit.status === "active" ? "Disp." : "Rent."}
+                      </Badge>
+                      {/* Match score */}
+                      {selectedLead && (() => {
+                        const { score } = calculateMatchScore(unit, selectedLead);
+                        if (score === 0) return null;
+                        return (
+                          <Badge 
+                            className={`absolute left-1 top-1 text-[9px] px-1 py-0 ${
+                              score >= 70 ? "bg-green-600" : 
+                              score >= 40 ? "bg-yellow-600" : 
+                              "bg-orange-600"
+                            } text-white border-0`}
+                          >
+                            {score}%
+                          </Badge>
+                        );
+                      })()}
                     </div>
                     
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm line-clamp-1">{unit.name}</h3>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {unit.zone || "—"}
-                        </span>
-                        <span className="flex items-center gap-1">
+                    {/* Main Info */}
+                    <div className="flex-1 p-3 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {/* Column 1: Name & Location */}
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm line-clamp-1">
+                          {unit.condominiumName || "Sin condominio"}
+                        </h3>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {unit.unitNumber ? `Unidad #${unit.unitNumber}` : unit.name}
+                        </p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="line-clamp-1">{unit.zone || "—"}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Column 2: Details */}
+                      <div className="hidden sm:flex flex-wrap items-center gap-2 text-xs">
+                        <span className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
                           <Bed className="h-3 w-3" />
-                          {unit.bedrooms || "—"}
+                          {unit.bedrooms || "—"} rec
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
                           <Bath className="h-3 w-3" />
-                          {unit.bathrooms || "—"}
+                          {unit.bathrooms || "—"} baños
                         </span>
+                        {unit.squareMeters && (
+                          <span className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
+                            <Maximize2 className="h-3 w-3" />
+                            {unit.squareMeters}m²
+                          </span>
+                        )}
+                        {unit.unitType && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {unit.unitType}
+                          </Badge>
+                        )}
+                        {unit.hasFurniture && (
+                          <Badge variant="outline" className="text-[10px]">
+                            Amueblado
+                          </Badge>
+                        )}
+                        {unit.petsAllowed && (
+                          <Badge variant="outline" className="text-[10px]">
+                            <PawPrint className="h-2.5 w-2.5 mr-0.5" />
+                            Mascotas
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Column 3: Price (visible on mobile too) */}
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1">
+                        <div className="text-right">
+                          <p className="font-bold text-primary text-base sm:text-lg">
+                            ${unit.monthlyRent?.toLocaleString() || "—"}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">{unit.currency || "MXN"}/mes</p>
+                        </div>
+                        {/* Mobile: show basic details */}
+                        <div className="flex sm:hidden items-center gap-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-0.5">
+                            <Bed className="h-3 w-3" />
+                            {unit.bedrooms || "—"}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <Bath className="h-3 w-3" />
+                            {unit.bathrooms || "—"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex-shrink-0 text-right">
-                      <p className="font-bold text-primary">
-                        ${unit.monthlyRent?.toLocaleString() || "—"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{unit.currency || "MXN"}/mes</p>
-                    </div>
-                    
-                    <div className="flex-shrink-0 flex gap-1">
+                    {/* Actions */}
+                    <div className="flex-shrink-0 flex items-center gap-1 px-3 border-l bg-muted/30">
                       {selectedLead ? (
                         <Button
                           size="icon"
-                          className="h-10 w-10"
+                          className="h-11 w-11"
                           onClick={() => handleDirectWhatsApp(unit, selectedLead)}
                           data-testid={`button-whatsapp-table-${unit.id}`}
                         >
-                          <SiWhatsapp className="h-4 w-4" />
+                          <SiWhatsapp className="h-5 w-5" />
                         </Button>
                       ) : (
                         <>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-10 w-10"
+                            className="h-11 w-11"
                             onClick={() => handleFindMatches(unit)}
                             data-testid={`button-find-matches-table-${unit.id}`}
                           >
@@ -1306,11 +1370,11 @@ export default function SellerPropertyCatalog() {
                           </Button>
                           <Button
                             size="icon"
-                            className="h-10 w-10"
+                            className="h-11 w-11"
                             onClick={() => handleShareClick(unit)}
                             data-testid={`button-share-table-${unit.id}`}
                           >
-                            <SiWhatsapp className="h-4 w-4" />
+                            <SiWhatsapp className="h-5 w-5" />
                           </Button>
                         </>
                       )}
