@@ -466,10 +466,10 @@ export default function PropertySearch() {
                   >
                     <Heart className={`h-4 w-4 ${favoriteIds.has(property.id) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
                   </button>
-                  {property.rating && (
+                  {property.rating != null && (
                     <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-background/80 backdrop-blur rounded-full px-2 py-0.5">
                       <Star className="h-3 w-3 fill-foreground" />
-                      <span className="text-xs font-medium">{property.rating.toFixed(1)}</span>
+                      <span className="text-xs font-medium">{Number(property.rating).toFixed(1)}</span>
                     </div>
                   )}
                 </div>

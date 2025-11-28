@@ -4638,6 +4638,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/properties/by-slug/:slug", async (req: any, res) => {
+    try {
+      const { slug } = req.params;
+      const property = await storage.getPropertyBySlug(slug);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      const isUserAuthenticated = req.user || (req.session && (req.session.adminUser || req.session.userId));
+      if (!isUserAuthenticated && !["approved", "published"].includes(property.approvalStatus)) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      res.json(property);
+    } catch (error) {
+      console.error("Error fetching property by slug:", error);
+      res.status(500).json({ message: "Failed to fetch property" });
+    }
+  });
+
   app.post("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

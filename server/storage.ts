@@ -550,6 +550,7 @@ export interface IStorage {
   // Property operations
   getProperty(id: string): Promise<Property | undefined>;
   getProperties(filters?: { status?: string; ownerId?: string; active?: boolean }): Promise<Property[]>;
+  getPropertyBySlug(slug: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty): Promise<Property>;
   updateProperty(id: string, updates: Partial<InsertProperty>): Promise<Property>;
   deleteProperty(id: string): Promise<void>;
@@ -2303,8 +2304,11 @@ export class DatabaseStorage implements IStorage {
     return property;
   }
 
+  async getPropertyBySlug(slug: string): Promise<Property | undefined> {
+    const [property] = await db.select().from(properties).where(eq(properties.slug, slug));
+    return property;
+  }
   async getProperties(filters?: { status?: string; ownerId?: string; active?: boolean }): Promise<Property[]> {
-    let query = db.select().from(properties);
     const conditions = [];
 
     if (filters?.status) {

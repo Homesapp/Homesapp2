@@ -1161,6 +1161,7 @@ export const properties = pgTable("properties", {
   externalAgencyId: varchar("external_agency_id"), // ID de la agencia externa origen
   externalAgencyName: varchar("external_agency_name", { length: 255 }), // Nombre de la agencia para mostrar en UI
   externalAgencyLogoUrl: text("external_agency_logo_url"), // Logo de la agencia para mostrar en UI
+  slug: text("slug").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -1175,6 +1176,7 @@ export const properties = pgTable("properties", {
   index("idx_properties_colony_name").on(table.colonyName),
   index("idx_properties_condo_name").on(table.condoName),
   index("idx_properties_property_type").on(table.propertyType),
+  index("idx_properties_slug").on(table.slug),
   // Composite indexes for common query patterns
   index("idx_properties_active_status").on(table.active, table.status),
   index("idx_properties_active_published").on(table.active, table.published),
@@ -1321,6 +1323,7 @@ export type Colony = typeof colonies.$inferSelect;
 export const condominiums = pgTable("condominiums", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
+  slug: text("slug").unique(),
   colonyId: varchar("colony_id").references(() => colonies.id),
   zone: text("zone"),
   address: text("address"),
