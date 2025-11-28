@@ -1077,14 +1077,29 @@ export default function ExternalClients() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">
-            {language === "es" ? "Clientes" : "Clients"}
+            {isSeller 
+              ? (language === "es" ? "Mis Leads" : "My Leads")
+              : (language === "es" ? "Clientes" : "Clients")}
           </h1>
           <p className="text-muted-foreground">
-            {language === "es" 
-              ? "Gestiona el registro de clientes e inquilinos"
-              : "Manage client and tenant registration"}
+            {isSeller
+              ? (language === "es" 
+                  ? "Gestiona tus prospectos y da seguimiento a tus oportunidades"
+                  : "Manage your prospects and track your opportunities")
+              : (language === "es" 
+                  ? "Gestiona el registro de clientes e inquilinos"
+                  : "Manage client and tenant registration")}
           </p>
         </div>
+        {isSeller && (
+          <Button 
+            onClick={() => setIsCreateLeadDialogOpen(true)}
+            data-testid="button-create-lead-header"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {language === "es" ? "Nuevo Lead" : "New Lead"}
+          </Button>
+        )}
       </div>
 
       {/* Public Registration Links Section - Hide for sellers */}
@@ -1217,25 +1232,23 @@ export default function ExternalClients() {
               {language === "es" ? "Nuevo Cliente" : "New Client"}
             </Button>
           )}
-          {activeTab === "leads" && (
+          {activeTab === "leads" && !isSeller && (
             <div className="flex items-center gap-2">
-              {!isSeller && (
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setIsImportDialogOpen(true);
-                    setImportStep("upload");
-                    setImportFile(null);
-                    setImportData([]);
-                    setImportPreview([]);
-                    setImportResults(null);
-                  }}
-                  data-testid="button-import-leads"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {language === "es" ? "Importar" : "Import"}
-                </Button>
-              )}
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setIsImportDialogOpen(true);
+                  setImportStep("upload");
+                  setImportFile(null);
+                  setImportData([]);
+                  setImportPreview([]);
+                  setImportResults(null);
+                }}
+                data-testid="button-import-leads"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {language === "es" ? "Importar" : "Import"}
+              </Button>
               <Button 
                 onClick={() => setIsCreateLeadDialogOpen(true)}
                 data-testid="button-create-lead"
