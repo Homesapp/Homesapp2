@@ -172,140 +172,149 @@ export default function SellerDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">
-              {language === "es" ? "Leads Asignados" : "Assigned Leads"}
+      <div className="grid grid-cols-5 gap-2 sm:gap-3">
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
+              {language === "es" ? "Leads" : "Leads"}
             </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-3 w-3 sm:h-4 sm:w-4 text-primary shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold" data-testid="text-total-leads">{totalLeads}</div>
-            <p className="text-xs text-muted-foreground">
-              {summary?.thisMonthLeads || 0} {language === "es" ? "este mes" : "this month"}
+          <CardContent className="p-2 sm:p-3 pt-0">
+            <div className="text-lg sm:text-2xl font-bold" data-testid="text-total-leads">{totalLeads}</div>
+            <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
+              +{summary?.thisMonthLeads || 0} {language === "es" ? "mes" : "month"}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">
-              {language === "es" ? "Tasa de Conversión" : "Conversion Rate"}
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
+              {language === "es" ? "Conversión" : "Conversion"}
             </CardTitle>
-            <Percent className="h-4 w-4 text-green-500" />
+            <Percent className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold" data-testid="text-conversion-rate">{conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              {summary?.convertedLeads || 0} {language === "es" ? "convertidos" : "converted"}
+          <CardContent className="p-2 sm:p-3 pt-0">
+            <div className="text-lg sm:text-2xl font-bold" data-testid="text-conversion-rate">{conversionRate}%</div>
+            <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
+              {summary?.convertedLeads || 0} {language === "es" ? "cerrados" : "closed"}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">
-              {language === "es" ? "Visitas Hoy" : "Today's Visits"}
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
+              {language === "es" ? "Visitas" : "Visits"}
             </CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold" data-testid="text-today-showings">{todayShowings}</div>
-            <p className="text-xs text-muted-foreground">
-              {language === "es" ? "Programadas para hoy" : "Scheduled for today"}
+          <CardContent className="p-2 sm:p-3 pt-0">
+            <div className="text-lg sm:text-2xl font-bold" data-testid="text-today-showings">{todayShowings}</div>
+            <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
+              {language === "es" ? "hoy" : "today"}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">
-              {language === "es" ? "Propiedades Enviadas" : "Properties Sent"}
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
+              {language === "es" ? "Enviadas" : "Sent"}
             </CardTitle>
-            <Send className="h-4 w-4 text-purple-500" />
+            <Send className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold" data-testid="text-properties-sent">{propertiesSent}</div>
-            <p className="text-xs text-muted-foreground">
-              {language === "es" ? "Este mes" : "This month"}
+          <CardContent className="p-2 sm:p-3 pt-0">
+            <div className="text-lg sm:text-2xl font-bold" data-testid="text-properties-sent">{propertiesSent}</div>
+            <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
+              {language === "es" ? "propiedades" : "properties"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className={followUpCount > 0 ? "border-amber-300 dark:border-amber-700" : ""}>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">
-              {language === "es" ? "Seguimientos" : "Follow-ups"}
+        <Card className={`min-w-0 ${followUpCount > 0 ? "border-amber-300 dark:border-amber-700" : ""}`}>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
+              {language === "es" ? "Pendientes" : "Pending"}
             </CardTitle>
-            <Bell className={`h-4 w-4 ${followUpCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+            <Bell className={`h-3 w-3 sm:h-4 sm:w-4 shrink-0 ${followUpCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
           </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold" data-testid="text-follow-ups">{followUpCount}</div>
-            <p className="text-xs text-muted-foreground">
-              {followUps?.overdueCount || 0} {language === "es" ? "pendientes de contactar" : "pending contact"}
+          <CardContent className="p-2 sm:p-3 pt-0">
+            <div className="text-lg sm:text-2xl font-bold" data-testid="text-follow-ups">{followUpCount}</div>
+            <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
+              {followUps?.overdueCount || 0} {language === "es" ? "vencidos" : "overdue"}
             </p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base sm:text-lg">
             {language === "es" ? "Acceso Rápido" : "Quick Access"}
           </CardTitle>
-          <CardDescription>
-            {language === "es" ? "Gestiona tus leads y actividades" : "Manage your leads and activities"}
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-10 gap-2">
             <Link href="/external/leads">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-my-leads">
-                <Users className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Mis Leads" : "My Leads"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-my-leads">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Leads" : "Leads"}</span>
               </Button>
             </Link>
             <Link href="/external/catalog">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-catalog">
-                <Building2 className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Catálogo" : "Catalog"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-catalog">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Catálogo" : "Catalog"}</span>
               </Button>
             </Link>
             <Link href="/external/calendar">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-calendar">
-                <Calendar className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Mi Calendario" : "My Calendar"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-calendar">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Calendario" : "Calendar"}</span>
               </Button>
             </Link>
             <Link href="/external/templates">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-templates">
-                <FileText className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Plantillas" : "Templates"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-templates">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Plantillas" : "Templates"}</span>
               </Button>
             </Link>
             <Link href="/external/reports">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-reports">
-                <TrendingUp className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Mis Reportes" : "My Reports"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-reports">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Reportes" : "Reports"}</span>
               </Button>
             </Link>
             <Link href="/external/commissions">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-commissions">
-                <DollarSign className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Mis Comisiones" : "My Commissions"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-commissions">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Comisiones" : "Commissions"}</span>
               </Button>
             </Link>
             <Link href="/external/goals">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3" data-testid="button-goals">
-                <Target className="h-5 w-5" />
-                <span className="text-xs">{language === "es" ? "Mis Metas" : "My Goals"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-goals">
+                <Target className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Metas" : "Goals"}</span>
               </Button>
             </Link>
             <Link href="/external/leads">
-              <Button variant="outline" className="w-full h-auto min-h-[56px] flex-col gap-1 py-3 border-green-200 dark:border-green-800" data-testid="button-whatsapp-send">
-                <SiWhatsapp className="h-5 w-5 text-green-500" />
-                <span className="text-xs">{language === "es" ? "Enviar WhatsApp" : "Send WhatsApp"}</span>
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-reminders">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "Recordatorios" : "Reminders"}</span>
+              </Button>
+            </Link>
+            <Link href="/external/catalog">
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1 border-green-200 dark:border-green-800" data-testid="button-whatsapp-send">
+                <SiWhatsapp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "WhatsApp" : "WhatsApp"}</span>
+              </Button>
+            </Link>
+            <Link href="/external/leads">
+              <Button variant="outline" className="w-full h-auto min-h-[52px] flex-col gap-0.5 py-2 px-1" data-testid="button-add-lead">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                <span className="text-[10px] sm:text-xs">{language === "es" ? "+ Lead" : "+ Lead"}</span>
               </Button>
             </Link>
           </div>
