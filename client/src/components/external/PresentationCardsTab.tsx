@@ -71,6 +71,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalPresentationCard } from "@shared/schema";
 
 interface LeadPreferences {
+  budgetMin?: number | string | null;
+  budgetMax?: number | string | null;
   estimatedRentCost?: number | null;
   estimatedRentCostText?: string | null;
   bedrooms?: number | null;
@@ -340,6 +342,8 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
   };
 
   const hasPreferences = leadPreferences && (
+    leadPreferences.budgetMin ||
+    leadPreferences.budgetMax ||
     leadPreferences.estimatedRentCost || 
     leadPreferences.estimatedRentCostText || 
     leadPreferences.bedrooms || 
@@ -349,13 +353,15 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
 
   const initFormFromPreferences = () => {
     if (!leadPreferences) return;
+    const budgetMinNum = leadPreferences.budgetMin ? Number(leadPreferences.budgetMin) : null;
+    const budgetMaxNum = leadPreferences.budgetMax ? Number(leadPreferences.budgetMax) : null;
     setFormData({
       ...defaultFormData,
       title: `${language === "es" ? "Búsqueda de" : "Search for"} ${personName}`,
       propertyType: leadPreferences.desiredUnitType?.toLowerCase() || "",
-      budgetText: leadPreferences.estimatedRentCostText || "",
-      minBudget: leadPreferences.estimatedRentCost ? String(Math.round(leadPreferences.estimatedRentCost * 0.85)) : "",
-      maxBudget: leadPreferences.estimatedRentCost ? String(Math.round(leadPreferences.estimatedRentCost * 1.15)) : "",
+      budgetText: "",
+      minBudget: budgetMinNum ? String(budgetMinNum) : (leadPreferences.estimatedRentCost ? String(Math.round(leadPreferences.estimatedRentCost * 0.85)) : ""),
+      maxBudget: budgetMaxNum ? String(budgetMaxNum) : (leadPreferences.estimatedRentCost ? String(Math.round(leadPreferences.estimatedRentCost * 1.15)) : ""),
       bedrooms: leadPreferences.bedrooms ? String(leadPreferences.bedrooms) : "",
       bedroomsText: leadPreferences.bedroomsText || "",
       preferredZone: leadPreferences.desiredNeighborhood || "",
@@ -579,14 +585,16 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                {(leadPreferences?.estimatedRentCost || leadPreferences?.estimatedRentCostText) && (
+                {(leadPreferences?.budgetMin || leadPreferences?.budgetMax || leadPreferences?.estimatedRentCost || leadPreferences?.estimatedRentCostText) && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-green-600" />
                     <div>
                       <span className="text-muted-foreground text-xs block">{language === "es" ? "Presupuesto" : "Budget"}</span>
                       <span className="font-medium">
-                        {leadPreferences?.estimatedRentCostText || 
-                          (leadPreferences?.estimatedRentCost ? `$${leadPreferences.estimatedRentCost.toLocaleString()}` : "-")}
+                        {leadPreferences?.budgetMin || leadPreferences?.budgetMax 
+                          ? `$${leadPreferences.budgetMin ? Number(leadPreferences.budgetMin).toLocaleString() : '0'} - $${leadPreferences.budgetMax ? Number(leadPreferences.budgetMax).toLocaleString() : '∞'}`
+                          : (leadPreferences?.estimatedRentCostText || 
+                            (leadPreferences?.estimatedRentCost ? `$${leadPreferences.estimatedRentCost.toLocaleString()}` : "-"))}
                       </span>
                     </div>
                   </div>

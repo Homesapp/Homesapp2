@@ -424,6 +424,8 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
             leadId={lead.id} 
             personName={`${lead.firstName} ${lead.lastName}`}
             leadPreferences={{
+              budgetMin: lead.budgetMin,
+              budgetMax: lead.budgetMax,
               estimatedRentCost: lead.estimatedRentCost,
               estimatedRentCostText: lead.estimatedRentCostText,
               bedrooms: lead.bedrooms,
