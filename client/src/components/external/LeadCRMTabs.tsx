@@ -136,9 +136,9 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
   });
 
   const { data: propertyOffers, isLoading: offersLoading } = useQuery<any[]>({
-    queryKey: ["/api/external-seller/lead", lead.id, "property-offers"],
+    queryKey: ["/api/external-leads", lead.id, "properties-sent"],
     queryFn: async () => {
-      const response = await fetch(`/api/external-seller/lead/${lead.id}/property-offers`, { credentials: 'include' });
+      const response = await fetch(`/api/external-leads/${lead.id}/properties-sent`, { credentials: 'include' });
       if (!response.ok) return [];
       return response.json();
     },
@@ -259,9 +259,25 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
             <h4 className="font-medium text-sm">
               {language === "es" ? "Propiedades Compartidas" : "Shared Properties"}
             </h4>
-            <Badge variant="outline">
-              {propertyOffers?.length || 0} {language === "es" ? "enviadas" : "sent"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {propertyOffers?.length || 0} {language === "es" ? "enviadas" : "sent"}
+              </Badge>
+              {lead.phone && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    const phone = lead.phone?.replace(/\D/g, '');
+                    window.open(`https://wa.me/${phone}`, '_blank');
+                  }}
+                  data-testid="button-whatsapp-lead"
+                >
+                  <SiWhatsapp className="h-4 w-4 mr-1" />
+                  WhatsApp
+                </Button>
+              )}
+            </div>
           </div>
 
           {offersLoading ? (
@@ -271,59 +287,67 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
             </div>
           ) : propertyOffers && propertyOffers.length > 0 ? (
             <div className="space-y-3 max-h-64 overflow-y-auto">
-              {propertyOffers.map((offer: any) => (
-                <Card key={offer.id} className="hover-elevate">
-                  <CardContent className="p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                        <SiWhatsapp className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">{offer.unitName || language === "es" ? "Propiedad" : "Property"}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {offer.isViewed && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Eye className="h-3 w-3" />
-                                {language === "es" ? "Vista" : "Viewed"}
+              {propertyOffers.map((offer: any) => {
+                const getResponseBadge = () => {
+                  if (offer.leadResponse === 'interested') return { variant: "default" as const, label: language === "es" ? "Interesado" : "Interested", icon: ThumbsUp };
+                  if (offer.leadResponse === 'not_interested') return { variant: "destructive" as const, label: language === "es" ? "No interesado" : "Not Interested", icon: XCircle };
+                  if (offer.leadResponse === 'visited') return { variant: "secondary" as const, label: language === "es" ? "Visitó" : "Visited", icon: Eye };
+                  return null;
+                };
+                const responseBadge = getResponseBadge();
+                return (
+                  <Card key={offer.id} className="hover-elevate">
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                          <SiWhatsapp className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium text-sm">
+                                {offer.propertyName || (language === "es" ? "Propiedad" : "Property")}
+                                {offer.unitNumber && ` - ${offer.unitNumber}`}
+                              </span>
+                            </div>
+                            {responseBadge && (
+                              <Badge variant={responseBadge.variant} className="text-xs gap-1">
+                                <responseBadge.icon className="h-3 w-3" />
+                                {responseBadge.label}
                               </Badge>
                             )}
-                            {offer.isInterested && (
-                              <Badge variant="default" className="text-xs gap-1">
-                                <ThumbsUp className="h-3 w-3" />
-                                {language === "es" ? "Interesado" : "Interested"}
-                              </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                            {offer.zone && (
+                              <span>{offer.zone}</span>
+                            )}
+                            {offer.rentPrice && (
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                ${Number(offer.rentPrice).toLocaleString()} {offer.currency || 'MXN'}
+                              </span>
+                            )}
+                            {offer.bedrooms && (
+                              <span>{offer.bedrooms} {language === "es" ? "rec" : "bd"}</span>
                             )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                          {offer.unitZone && (
-                            <span>{offer.unitZone}</span>
-                          )}
-                          {offer.unitPrice && (
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              ${Number(offer.unitPrice).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(offer.sentAt), "d MMM yyyy HH:mm", { locale: language === "es" ? es : enUS })}
-                          {offer.sellerName && (
+                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(offer.sentAt), "d MMM yyyy HH:mm", { locale: language === "es" ? es : enUS })}
                             <span className="text-muted-foreground">
-                              • {language === "es" ? "por" : "by"} {offer.sellerName}
+                              • {offer.sharedVia === 'whatsapp' ? 'WhatsApp' : offer.sharedVia === 'email' ? 'Email' : offer.sharedVia}
                             </span>
+                          </div>
+                          {offer.message && (
+                            <p className="text-xs text-muted-foreground mt-2 italic line-clamp-2">"{offer.message}"</p>
                           )}
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -331,8 +355,8 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
               <p>{language === "es" ? "No se han compartido propiedades" : "No properties shared yet"}</p>
               <p className="text-xs mt-1">
                 {language === "es" 
-                  ? "Las propiedades compartidas vía WhatsApp aparecerán aquí" 
-                  : "Properties shared via WhatsApp will appear here"}
+                  ? "Envía propiedades desde el catálogo para verlas aquí" 
+                  : "Send properties from the catalog to see them here"}
               </p>
             </div>
           )}
