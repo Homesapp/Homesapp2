@@ -46,6 +46,7 @@ import AdminBusinessHours from "@/pages/AdminBusinessHours";
 import AdminPropertyAssignment from "@/pages/AdminPropertyAssignment";
 import AdminAppointmentManagement from "@/pages/AdminAppointmentManagement";
 import AdminSellerManagement from "@/pages/AdminSellerManagement";
+import AdminSellerGoals from "@/pages/AdminSellerGoals";
 import AdminPropertyManagement from "@/pages/AdminPropertyManagement";
 import AdminContactImport from "@/pages/AdminContactImport";
 import AdminTaskManagement from "@/pages/AdminTaskManagement";
@@ -407,6 +408,7 @@ function AuthenticatedApp() {
               <Route path="/owner/hoa" component={OwnerHoaPortal} />
               <Route path="/admin/appointments" component={AdminAppointmentManagement} />
               <Route path="/admin/sellers" component={AdminSellerManagement} />
+              <Route path="/admin/seller-goals" component={AdminSellerGoals} />
               <Route path="/admin/properties" component={AdminPropertyManagement} />
               <Route path="/admin/property-invitations" component={PropertyInvitations} />
               <Route path="/admin/import-contacts" component={AdminContactImport} />
