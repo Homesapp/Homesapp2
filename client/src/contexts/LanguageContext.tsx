@@ -138,6 +138,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Login Page
     "login.title": "Iniciar Sesión",
     "login.subtitle": "Ingresa con tu cuenta de HomesApp",
+    "login.backToHome": "Inicio",
     "login.email": "Email",
     "login.password": "Contraseña",
     "login.submit": "Entrar",
@@ -1139,6 +1140,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Login Page
     "login.title": "Login",
     "login.subtitle": "Enter your HomesApp account",
+    "login.backToHome": "Home",
     "login.email": "Email",
     "login.password": "Password",
     "login.submit": "Login",
