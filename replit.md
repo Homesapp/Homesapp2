@@ -97,6 +97,18 @@ Commission system for property referrals (exclusive to Tulum Rental Homes):
 - Automatic commission type change when adding/removing referrer
 - Referral network page showing all units with referrers
 
+## SEO-Friendly URLs
+The system implements SEO-friendly URLs for offer and rental form links:
+- Offer links: `/:agencySlug/oferta/:unitSlug` (e.g., `/tulumrentalhomes/oferta/departamento-d1-105`)
+- Rental form links: `/:agencySlug/formato-renta/:unitSlug` (e.g., `/tulumrentalhomes/formato-renta/departamento-d1-105`)
+- Public resolver endpoints:
+  - GET /api/public/resolve-offer-token/:agencySlug/:unitSlug
+  - GET /api/public/resolve-rental-form-token/:agencySlug/:unitSlug
+- Fallback to token-based URLs (`/offer/:token`, `/public-rental-form/:token`) when slugs are unavailable
+- Unit slugs are auto-generated from unit number and stored in `external_units.slug`
+- Agency slugs are stored in `external_agencies.slug` (e.g., "tulumrentalhomes")
+- Token creation endpoints return `agencySlug` and `unitSlug` in response for frontend URL generation
+
 ## External Dependencies
 *   Google Calendar API
 *   Google OAuth 2.0
