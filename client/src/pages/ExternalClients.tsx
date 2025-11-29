@@ -3302,16 +3302,18 @@ export default function ExternalClients() {
         </TabsContent>
       </Tabs>
 
-      {/* Mobile FAB for New Lead - Only visible on mobile for leads tab */}
+      {/* Mobile FAB for New Lead - Fixed position, always visible when scrolling */}
       {isMobile && activeTab === "leads" && (
-        <Button
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
-          size="icon"
-          onClick={() => setIsCreateLeadDialogOpen(true)}
-          data-testid="fab-create-lead"
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
+        <div className="fixed bottom-6 right-6 z-[9999]">
+          <Button
+            className="h-14 w-14 rounded-full shadow-xl"
+            size="icon"
+            onClick={() => setIsCreateLeadDialogOpen(true)}
+            data-testid="fab-create-lead"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+        </div>
       )}
 
       {/* Create Lead Dialog - Full screen on mobile */}
