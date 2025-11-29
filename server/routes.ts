@@ -29327,6 +29327,160 @@ ${{precio}}/mes
     }
   });
 
+
+  // External Unit Legal Documents Routes
+  // GET /api/external-unit-documents/by-unit/:unitId - Get all documents for a unit
+  app.get("/api/external-unit-documents/by-unit/:unitId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { unitId } = req.params;
+      
+      // Verify unit exists and user has access
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      const documents = await storage.getExternalUnitDocumentsByUnit(unitId);
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching unit documents:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-unit-documents/:id - Get a single document by ID
+  app.get("/api/external-unit-documents/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const document = await storage.getExternalUnitDocument(id);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify ownership through unit
+      const unit = await storage.getExternalUnit(document.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error fetching unit document:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/external-unit-documents - Create a new document
+  app.post("/api/external-unit-documents", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { unitId, documentType, documentName, documentUrl, description, expirationDate } = req.body;
+      
+      if (!unitId || !documentType || !documentName || !documentUrl) {
+        return res.status(400).json({ message: "Unit ID, document type, name, and URL are required" });
+      }
+      
+      // Verify unit exists and user has access
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      const document = await storage.createExternalUnitDocument({
+        unitId,
+        agencyId: unit.agencyId,
+        documentType,
+        documentName,
+        documentUrl,
+        description: description || null,
+        expirationDate: expirationDate ? new Date(expirationDate) : null,
+        uploadedBy: req.user?.id || null,
+      });
+      
+      await createAuditLog(req, "create", "external_unit_document", document.id, "Created unit document: " + documentName);
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error("Error creating unit document:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-unit-documents/:id - Update a document
+  app.patch("/api/external-unit-documents/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getExternalUnitDocument(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify ownership through unit
+      const unit = await storage.getExternalUnit(existing.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      const { documentType, documentName, documentUrl, description, expirationDate, isActive } = req.body;
+      
+      const updates: any = {};
+      if (documentType !== undefined) updates.documentType = documentType;
+      if (documentName !== undefined) updates.documentName = documentName;
+      if (documentUrl !== undefined) updates.documentUrl = documentUrl;
+      if (description !== undefined) updates.description = description;
+      if (expirationDate !== undefined) updates.expirationDate = expirationDate ? new Date(expirationDate) : null;
+      if (isActive !== undefined) updates.isActive = isActive;
+      
+      const document = await storage.updateExternalUnitDocument(id, updates);
+      
+      await createAuditLog(req, "update", "external_unit_document", id, "Updated unit document");
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error updating unit document:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // DELETE /api/external-unit-documents/:id - Delete a document
+  app.delete("/api/external-unit-documents/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getExternalUnitDocument(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify ownership through unit
+      const unit = await storage.getExternalUnit(existing.unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Associated unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      await storage.deleteExternalUnitDocument(id);
+      
+      await createAuditLog(req, "delete", "external_unit_document", id, "Deleted unit document");
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting unit document:", error);
+      handleGenericError(res, error);
+    }
+  });
   // External Check-Out Reports Routes
   // GET /api/external-checkout-reports/:contractId - Get checkout report by contract
   app.get("/api/external-checkout-reports/contract/:contractId", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
