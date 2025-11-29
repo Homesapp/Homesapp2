@@ -78,7 +78,7 @@ export default function ExternalMessages() {
         {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content: data.response,
+          content: data.message,
           timestamp: new Date()
         }
       ]);
