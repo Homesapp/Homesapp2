@@ -4764,64 +4764,82 @@ export default function ExternalClients() {
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       <Home className="h-3.5 w-3.5 text-muted-foreground" />
-                      {language === "es" ? "Tipo de Propiedad (múltiple)" : "Property Type (multiple)"}
+                      {language === "es" ? "Tipo de Propiedad" : "Property Type"}
                     </FormLabel>
-                    <div className="flex flex-wrap gap-1.5" data-testid="multiselect-edit-lead-unittype">
-                      {(activePropertyTypes.length > 0 ? activePropertyTypes : [
-                        { id: "dept", name: language === "es" ? "Departamento" : "Apartment" },
-                        { id: "casa", name: language === "es" ? "Casa" : "House" },
-                        { id: "estudio", name: language === "es" ? "Estudio" : "Studio" },
-                        { id: "ph", name: "PH / Penthouse" },
-                        { id: "villa", name: "Villa" },
-                      ]).map((pt) => (
-                        <Badge
-                          key={pt.id}
-                          variant={selectedEditPropertyTypes.includes(pt.name) ? "default" : "outline"}
-                          className="cursor-pointer min-h-[32px] px-3"
-                          onClick={() => {
-                            setSelectedEditPropertyTypes(prev => 
-                              prev.includes(pt.name) 
-                                ? prev.filter(t => t !== pt.name) 
-                                : [...prev, pt.name]
-                            );
-                          }}
-                          data-testid={`badge-edit-propertytype-${pt.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
-                        >
-                          {pt.name}
-                        </Badge>
-                      ))}
-                    </div>
-                    {selectedEditPropertyTypes.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {selectedEditPropertyTypes.length} {language === "es" ? "seleccionado(s)" : "selected"}
-                      </p>
-                    )}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between" data-testid="multiselect-edit-lead-unittype">
+                          {selectedEditPropertyTypes.length > 0 
+                            ? `${selectedEditPropertyTypes.length} ${language === "es" ? "seleccionado(s)" : "selected"}`
+                            : (language === "es" ? "Seleccionar tipos..." : "Select types...")}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[250px] p-2" align="start">
+                        <div className="space-y-1">
+                          {(activePropertyTypes.length > 0 ? activePropertyTypes : [
+                            { id: "dept", name: language === "es" ? "Departamento" : "Apartment" },
+                            { id: "casa", name: language === "es" ? "Casa" : "House" },
+                            { id: "estudio", name: language === "es" ? "Estudio" : "Studio" },
+                            { id: "ph", name: "PH / Penthouse" },
+                            { id: "villa", name: "Villa" },
+                          ]).map((pt) => (
+                            <div
+                              key={pt.id}
+                              className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                              onClick={() => {
+                                setSelectedEditPropertyTypes(prev => 
+                                  prev.includes(pt.name) 
+                                    ? prev.filter(t => t !== pt.name) 
+                                    : [...prev, pt.name]
+                                );
+                              }}
+                              data-testid={`checkbox-edit-propertytype-${pt.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
+                            >
+                              <div className={cn("h-4 w-4 rounded border flex items-center justify-center", selectedEditPropertyTypes.includes(pt.name) ? "bg-primary border-primary" : "border-input")}>
+                                {selectedEditPropertyTypes.includes(pt.name) && <Check className="h-3 w-3 text-primary-foreground" />}
+                              </div>
+                              <span className="text-sm">{pt.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </FormItem>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      {language === "es" ? "Zona / Colonia (múltiple)" : "Area (multiple)"}
+                      {language === "es" ? "Zona / Colonia" : "Area"}
                     </FormLabel>
-                    <div className="flex flex-wrap gap-1.5" data-testid="multiselect-edit-lead-neighborhood">
-                      {(activeZones.length > 0 ? activeZones : [
-                        { id: "aldea", name: "Aldea Zama" },
-                        { id: "veleta", name: "La Veleta" },
-                        { id: "centro", name: "Centro" },
-                        { id: "otro", name: language === "es" ? "Otro" : "Other" },
-                      ]).map((zone) => (
-                        <Badge
-                          key={zone.id}
-                          variant={selectedEditZones.includes(zone.name) ? "default" : "outline"}
-                          className="cursor-pointer min-h-[32px] px-3"
-                          onClick={() => {
-                            setSelectedEditZones(prev => 
-                              prev.includes(zone.name) 
-                                ? prev.filter(z => z !== zone.name) 
-                                : [...prev, zone.name]
-                            );
-                          }}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between" data-testid="multiselect-edit-lead-neighborhood">
+                          {selectedEditZones.length > 0 
+                            ? `${selectedEditZones.length} ${language === "es" ? "seleccionado(s)" : "selected"}`
+                            : (language === "es" ? "Seleccionar zonas..." : "Select areas...")}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[250px] p-2" align="start">
+                        <div className="space-y-1">
+                          {(activeZones.length > 0 ? activeZones : [
+                            { id: "aldea", name: "Aldea Zama" },
+                            { id: "veleta", name: "La Veleta" },
+                            { id: "centro", name: "Centro" },
+                            { id: "otro", name: language === "es" ? "Otro" : "Other" },
+                          ]).map((zone) => (
+                            <div
+                              key={zone.id}
+                              className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                              onClick={() => {
+                                setSelectedEditZones(prev => 
+                                  prev.includes(zone.name) 
+                                    ? prev.filter(z => z !== zone.name) 
+                                    : [...prev, zone.name]
+                                );
+                              }}
                           data-testid={`badge-edit-zone-${zone.name.toLowerCase().replace(/[^a-z]/g, '-')}`}
                         >
                           {zone.name}
