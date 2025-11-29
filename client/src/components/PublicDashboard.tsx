@@ -335,29 +335,29 @@ export default function PublicDashboard() {
           </div>
         )}
 
-        {/* Popular Now - Grid */}
-        <div className="mb-8 sm:mb-10">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-semibold">{t("public.explore.title") || "Propiedades Destacadas"}</h2>
+        {/* Explora Propiedades - Responsive Grid */}
+        <div className="mb-6 sm:mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg sm:text-2xl font-semibold">{t("public.explore.title") || "Explora Propiedades"}</h2>
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground gap-1"
+              className="text-muted-foreground gap-1 text-xs sm:text-sm"
               onClick={() => setLocation("/buscar-propiedades")}
               data-testid="button-view-all-properties"
             >
-              Ver todas <ChevronRight className="h-4 w-4" />
+              Ver todas <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
             </Button>
           </div>
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-5 grid-cols-2 lg:grid-cols-3">
             {popularProperties.map((property) => (
               <div
                 key={property.id}
-                className="group cursor-pointer rounded-2xl overflow-hidden border bg-card hover-elevate"
+                className="group cursor-pointer rounded-xl sm:rounded-2xl overflow-hidden border bg-card hover-elevate"
                 onClick={() => setLocation(property.isExternal ? `/propiedad-externa/${property.id}` : `/propiedad/${property.id}/completo`)}
                 data-testid={`card-all-property-${property.id}`}
               >
-                <div className="relative aspect-video overflow-hidden bg-muted">
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                   {property.primaryImages && property.primaryImages[0] ? (
                     <img
                       src={property.primaryImages[0]}
@@ -367,37 +367,35 @@ export default function PublicDashboard() {
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center bg-muted">
-                      <Building2 className="h-12 w-12 text-muted-foreground" />
+                      <Building2 className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
                     </div>
                   )}
-                  <Badge className="absolute top-3 left-3 bg-foreground text-background text-[10px] rounded-full px-2">
+                  <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-foreground text-background text-[9px] sm:text-[10px] rounded-full px-1.5 sm:px-2">
                     {property.status === "rent" ? "Renta" : "Venta"}
                   </Badge>
                   <button 
-                    className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
+                    className="absolute top-2 right-2 sm:top-3 sm:right-3 h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Heart className="h-4 w-4 text-muted-foreground" />
+                    <Heart className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                   </button>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="font-medium truncate" data-testid={`text-all-title-${property.id}`}>
-                      {property.title || "Propiedad"}
-                    </h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3 truncate flex items-center gap-1" data-testid={`text-all-location-${property.id}`}>
-                    <MapPin className="h-3 w-3 shrink-0" />
+                <div className="p-2.5 sm:p-4">
+                  <h3 className="font-medium text-xs sm:text-base truncate mb-0.5 sm:mb-1" data-testid={`text-all-title-${property.id}`}>
+                    {property.title || "Propiedad"}
+                  </h3>
+                  <p className="text-[10px] sm:text-sm text-muted-foreground mb-2 sm:mb-3 truncate flex items-center gap-0.5 sm:gap-1" data-testid={`text-all-location-${property.id}`}>
+                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                     {property.location}
                   </p>
-                  <div className="flex items-center justify-between pt-3 border-t">
-                    <p className="font-bold" data-testid={`text-all-price-${property.id}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-2 sm:pt-3 border-t gap-1">
+                    <p className="font-semibold text-xs sm:text-base" data-testid={`text-all-price-${property.id}`}>
                       ${(property.price || 0).toLocaleString()} 
-                      <span className="font-normal text-sm text-muted-foreground ml-1">
+                      <span className="font-normal text-[9px] sm:text-sm text-muted-foreground ml-0.5 sm:ml-1">
                         USD{property.status === "rent" ? "/mes" : ""}
                       </span>
                     </p>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-[9px] sm:text-sm text-muted-foreground">
                       {property.bedrooms || 0} rec · {property.bathrooms || 0} baños
                     </div>
                   </div>
@@ -408,28 +406,25 @@ export default function PublicDashboard() {
         </div>
 
         {/* Stats - Clean and Simple */}
-        <div className="py-8 sm:py-12 border-t border-b">
-          <div className="flex items-center justify-center gap-8 sm:gap-16 flex-wrap">
-            <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold">200+</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">Propiedades</p>
+        <div className="py-6 sm:py-10 border-t border-b">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 text-center">
+            <div>
+              <p className="text-xl sm:text-2xl font-bold">1000+</p>
+              <p className="text-xs text-muted-foreground">Propiedades</p>
             </div>
-            <div className="w-px h-10 bg-border hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold flex items-center justify-center gap-1">
-                4.9 <Star className="h-4 w-4 sm:h-5 sm:w-5 fill-foreground" />
+            <div>
+              <p className="text-xl sm:text-2xl font-bold flex items-center justify-center gap-1">
+                4.9 <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-foreground" />
               </p>
-              <p className="text-xs sm:text-sm text-muted-foreground">Calificación</p>
+              <p className="text-xs text-muted-foreground">Calificación</p>
             </div>
-            <div className="w-px h-10 bg-border hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold">24h</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">Respuesta</p>
+            <div>
+              <p className="text-xl sm:text-2xl font-bold">24h</p>
+              <p className="text-xs text-muted-foreground">Respuesta</p>
             </div>
-            <div className="w-px h-10 bg-border hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold">50+</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">Agentes</p>
+            <div>
+              <p className="text-xl sm:text-2xl font-bold">10+</p>
+              <p className="text-xs text-muted-foreground">Agentes</p>
             </div>
           </div>
         </div>
@@ -496,83 +491,88 @@ export default function PublicDashboard() {
         </div>
       </div>
 
-      {/* Footer - Minimalist */}
+      {/* Footer - Minimalist Mobile-First */}
       <footer className="border-t bg-muted/30">
-        <div className="container mx-auto px-4 py-10 sm:py-14">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {/* Brand */}
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => setLocation("/")}>
-                <img src={logoIcon} alt="HomesApp" className="h-8 w-auto" data-testid="img-logo-footer" />
+        <div className="container mx-auto px-4 py-8 sm:py-12">
+          {/* Mobile: Stack vertically, Desktop: Grid */}
+          <div className="flex flex-col space-y-6 sm:space-y-0 sm:grid sm:grid-cols-4 sm:gap-8">
+            {/* Brand - Full width on mobile */}
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mb-3 cursor-pointer" onClick={() => setLocation("/")}>
+                <img src={logoIcon} alt="HomesApp" className="h-7 w-auto" data-testid="img-logo-footer" />
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground max-w-[200px] mx-auto sm:mx-0">
                 La mejor plataforma inmobiliaria en Tulum, Riviera Maya.
               </p>
             </div>
 
-            {/* Links */}
-            <div>
-              <h4 className="font-medium mb-4 text-sm">Explorar</h4>
-              <div className="space-y-2 text-sm">
-                <button 
-                  onClick={() => setLocation("/buscar-propiedades")}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Propiedades
-                </button>
-                <button 
-                  onClick={() => setLocation("/buscar-propiedades?status=rent")}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  En Renta
-                </button>
-                <button 
-                  onClick={() => setLocation("/buscar-propiedades?status=sale")}
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  En Venta
-                </button>
+            {/* Mobile: 3 columns for links, Desktop: individual columns */}
+            <div className="grid grid-cols-3 gap-4 sm:contents">
+              {/* Links */}
+              <div className="text-center sm:text-left">
+                <h4 className="font-medium mb-2 sm:mb-3 text-xs sm:text-sm">Explorar</h4>
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                  <button 
+                    onClick={() => setLocation("/buscar-propiedades")}
+                    className="block w-full text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Propiedades
+                  </button>
+                  <button 
+                    onClick={() => setLocation("/buscar-propiedades?status=rent")}
+                    className="block w-full text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    En Renta
+                  </button>
+                  <button 
+                    onClick={() => setLocation("/buscar-propiedades?status=sale")}
+                    className="block w-full text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    En Venta
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Contact */}
-            <div>
-              <h4 className="font-medium mb-4 text-sm">Contacto</h4>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>+52 984 321 3385</p>
-                <p className="text-xs">administracion@tulumrentalhomes.com.mx</p>
+              {/* Contact */}
+              <div className="text-center sm:text-left">
+                <h4 className="font-medium mb-2 sm:mb-3 text-xs sm:text-sm">Contacto</h4>
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
+                  <p>+52 984 321 3385</p>
+                  <p className="break-all text-[10px] sm:text-xs">admin@trh.mx</p>
+                </div>
               </div>
-            </div>
 
-            {/* Social & Legal */}
-            <div>
-              <h4 className="font-medium mb-4 text-sm">Síguenos</h4>
-              <div className="space-y-2 text-sm">
-                <a 
-                  href="https://www.facebook.com/share/1B5kd6EAnQ/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Facebook
-                </a>
-                <a 
-                  href="https://www.instagram.com/tulum.rental.homes" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Instagram
-                </a>
+              {/* Social */}
+              <div className="text-center sm:text-left">
+                <h4 className="font-medium mb-2 sm:mb-3 text-xs sm:text-sm">Síguenos</h4>
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                  <a 
+                    href="https://www.facebook.com/share/1B5kd6EAnQ/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Facebook
+                  </a>
+                  <a 
+                    href="https://www.instagram.com/tulum.rental.homes" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Instagram
+                  </a>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-10 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Tulum Rental Homes. Todos los derechos reservados.
+          {/* Bottom bar */}
+          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3">
+            <p className="text-[10px] sm:text-xs text-muted-foreground text-center">
+              © {new Date().getFullYear()} Tulum Rental Homes
             </p>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-4 text-[10px] sm:text-xs">
               <button 
                 onClick={() => setLocation("/terminos")}
                 className="text-muted-foreground hover:text-foreground transition-colors"
