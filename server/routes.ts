@@ -28421,10 +28421,10 @@ ${{precio}}/mes
       
       await createAuditLog(
         req, 
-        "import", 
+        "update", 
         "external_unit", 
         null, 
-        `Imported ${imported} units, updated ${updated} units from Google Sheets`
+        `Sheet sync: Imported ${imported} units, updated ${updated} units from Google Sheets`
       );
       
       res.json({
