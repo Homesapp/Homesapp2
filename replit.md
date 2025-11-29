@@ -109,6 +109,14 @@ The system implements SEO-friendly URLs for offer and rental form links:
 - Agency slugs are stored in `external_agencies.slug` (e.g., "tulumrentalhomes")
 - Token creation endpoints return `agencySlug` and `unitSlug` in response for frontend URL generation
 
+## Searchable Dropdown Components
+The system includes reusable searchable dropdown components for improved UX:
+- `SearchableSelect`: Single-selection dropdown with type-to-search filtering
+- `SearchableMultiSelect`: Multi-selection dropdown with search, count badges, and clear-all functionality
+- Used in lead registration forms for: Property Type, Zone/Area, Contract Duration, Pets, Lead Status, Source, Assigned Seller, Characteristics, and Amenities
+- All dropdowns support bilingual placeholders and messages (Spanish/English)
+- Components located at: `client/src/components/ui/searchable-select.tsx` and `client/src/components/ui/searchable-multi-select.tsx`
+
 ## External Dependencies
 *   Google Calendar API
 *   Google OAuth 2.0
