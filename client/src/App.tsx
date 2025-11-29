@@ -247,7 +247,6 @@ function AuthenticatedApp() {
         <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
         <Route path="/unidad/:id" component={PublicUnitDetail} />
         <Route path="/propiedad-externa/:id" component={PublicUnitDetail} />
-        <Route path="/:agencySlug/:unitSlug" component={PublicUnitDetail} />
         <Route path="/propiedad/:id" component={PropertyDetails} />
         <Route path="/favoritos" component={Favorites} />
         <Route path="/terminos" component={Terms} />
@@ -281,6 +280,7 @@ function AuthenticatedApp() {
             </PortalAuthProvider>
           )}
         </Route>
+        <Route path="/:agencySlug/:unitSlug" component={PublicUnitDetail} />
         <Route path="/" component={PublicDashboard} />
         <Route component={PublicDashboard} />
       </Switch>
@@ -547,6 +547,7 @@ function AuthenticatedApp() {
               <Route path="/ayuda" component={Help} />
               <Route path="/terminos" component={Terms} />
               <Route path="/privacidad" component={Privacy} />
+              <Route path="/:agencySlug/:unitSlug" component={PublicUnitDetail} />
               <Route component={NotFound} />
             </Switch>
           </main>
