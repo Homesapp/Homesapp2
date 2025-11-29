@@ -64,6 +64,22 @@ The External Management System includes an internal listing verification system 
 - Publish status badges (Published/Pending Approval/Rejected) shown alongside verification status
 - Quick actions for viewing public listing and copying public link when unit is approved
 
+## Publication Management
+The External Management System includes publication controls:
+- "Quitar Publicación" (Unpublish) button visible when listing is published
+- Confirmation dialog before unpublishing with warning message
+- Unpublishing sets publishToMain=false (server handles status transition)
+- Listing is immediately removed from public site after unpublishing
+
+## Owner Intake Link System
+Private link system for property owners to fill in property information:
+- "Link Propietario" button in unit detail header generates private intake links
+- Select owner from registered owners list before generating link
+- Uses existing rental form token system with recipientType='owner'
+- Links expire after 24 hours
+- Copy link button for easy sharing via WhatsApp or email
+- Displays owner contact information (email, phone) for reference
+
 ## External Dependencies
 *   Google Calendar API
 *   Google OAuth 2.0
