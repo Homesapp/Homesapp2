@@ -33029,10 +33029,10 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         tokens.map(async (token: any) => {
           let dualFormStatus = null;
           
-          if (token.linkedTokenId) {
+          if (token.rentalFormGroupId) {
             // Find the companion form by linkedTokenId
             const companionForm = await db.query.tenantRentalFormTokens.findFirst({
-              where: eq(tenantRentalFormTokens.id, token.linkedTokenId),
+              where: eq(tenantRentalFormTokens.id, token.rentalFormGroupId),
             });
             
             if (companionForm) {
@@ -34159,9 +34159,9 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const rentalFormsWithDual = await Promise.all(
         rentalForms.map(async (form: any) => {
           let dualFormStatus = null;
-          if (form.linkedTokenId) {
+          if (form.rentalFormGroupId) {
             const companion = await db.query.tenantRentalFormTokens.findFirst({
-              where: eq(tenantRentalFormTokens.id, form.linkedTokenId),
+              where: eq(tenantRentalFormTokens.id, form.rentalFormGroupId),
             });
             if (companion) {
               dualFormStatus = {
