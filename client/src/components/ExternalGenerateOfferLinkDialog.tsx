@@ -95,7 +95,7 @@ export default function ExternalGenerateOfferLinkDialog({
       .map(condo => ({
         id: condo.id,
         name: condo.name,
-        unitCount: condo.unitCount || 0
+        unitCount: condo.totalUnits || condo.unitCount || 0
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [condominiumsResponse]);

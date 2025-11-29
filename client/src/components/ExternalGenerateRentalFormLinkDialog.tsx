@@ -100,7 +100,7 @@ export default function ExternalGenerateRentalFormLinkDialog({
       .map(condo => ({
         id: condo.id,
         name: condo.name,
-        unitCount: condo.unitCount || 0
+        unitCount: condo.totalUnits || condo.unitCount || 0
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [condominiumsResponse]);
@@ -356,7 +356,7 @@ export default function ExternalGenerateRentalFormLinkDialog({
 
   const getWhatsAppMessage = () => {
     if (!generatedToken) return "";
-    const selectedUnit = units?.find((u) => String(u.id) === selectedUnitId);
+    const selectedUnit = filteredUnits?.find((u) => String(u.id) === selectedUnitId);
     const unitTitle = selectedUnit 
       ? `${selectedUnit.condominium?.name} - ${selectedUnit.unitNumber}`
       : "unidad";
@@ -411,7 +411,7 @@ Need help? I'm available for any questions! 😊`;
     sendEmailMutation.mutate(data);
   };
 
-  const selectedUnit = units?.find((u) => String(u.id) === selectedUnitId);
+  const selectedUnit = filteredUnits?.find((u) => String(u.id) === selectedUnitId);
   const selectedClient = clients?.find((c) => String(c.id) === selectedClientId) || 
     (clientInfo && { firstName: clientInfo.name.split(" ")[0], lastName: clientInfo.name.split(" ").slice(1).join(" ") || "" });
   const selectedOwner = unitOwners?.find((o) => String(o.id) === selectedOwnerId);
