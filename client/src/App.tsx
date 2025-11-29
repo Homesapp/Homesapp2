@@ -192,7 +192,7 @@ function AuthenticatedApp() {
     },
     onSuccess: () => {
       queryClient.clear();
-      setLocation("/admin-login");
+      setLocation("/");
     },
   });
   
