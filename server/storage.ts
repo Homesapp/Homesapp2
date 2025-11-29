@@ -11087,6 +11087,8 @@ export class DatabaseStorage implements IStorage {
   // Optimized: Get all rental form token summaries with unit, condo, client, creator
   // Uses two separate queries for security: one for tokens with units (INNER JOINs), one for tokens without units
   async getExternalRentalFormTokenSummariesByAgency(agencyId: string): Promise<any[]> {
+    console.log("[Storage] getExternalRentalFormTokenSummariesByAgency called with agencyId:", agencyId);
+    
     // First, get the agency info for the response
     const agencyInfo = await db
       .select({
@@ -11167,9 +11169,14 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
+    console.log("[Storage] tokensWithUnits count:", tokensWithUnits.length);
+    console.log("[Storage] tokensWithoutUnits count:", tokensWithoutUnits.length);
+
     // Combine and sort by createdAt
     const allResults = [...tokensWithUnits, ...tokensWithoutUnits]
       .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    
+    console.log("[Storage] Total allResults count:", allResults.length);
 
     return allResults.map(r => ({
       id: r.id,
