@@ -99,7 +99,7 @@ const unitEditSchema = z.object({
   bedrooms: z.union([z.string(), z.number()]).transform(val => val === "" ? null : Number(val)).nullable(),
   bathrooms: z.union([z.string(), z.number()]).transform(val => val === "" ? null : String(val)).nullable(),
   area: z.union([z.string(), z.number()]).transform(val => val === "" ? null : String(val)).nullable(),
-  airbnbPhotosLink: z.string().nullable(),
+  photosDriveLink: z.string().nullable(),
   notes: z.string().nullable(),
   isActive: z.boolean().default(true),
   title: z.string().nullable(),
@@ -257,7 +257,7 @@ export default function ExternalUnitDetail() {
       bedrooms: null,
       bathrooms: null,
       area: null,
-      airbnbPhotosLink: null,
+      photosDriveLink: null,
       notes: null,
       isActive: true,
       title: null,
@@ -586,7 +586,7 @@ export default function ExternalUnitDetail() {
       bedrooms: unit.bedrooms ?? null,
       bathrooms: unit.bathrooms ?? null,
       area: unit.area ?? null,
-      airbnbPhotosLink: unit.airbnbPhotosLink ?? null,
+      photosDriveLink: unit.photosDriveLink ?? null,
       notes: unit.notes ?? null,
       isActive: unit.isActive ?? true,
       title: unit.title ?? null,
@@ -743,7 +743,7 @@ ${language === "es" ? "Unidad" : "Unit"}: ${unit.unitNumber}
     if (unit.price) info += `${language === "es" ? "Precio Mensual" : "Monthly Price"}: $${Number(unit.price).toLocaleString()} ${unit.currency || "MXN"}\n`;
     if (unit.petFriendly) info += `${language === "es" ? "Acepta Mascotas" : "Pet Friendly"}: ✓\n`;
     if (unit.description) info += `\n${language === "es" ? "Descripción" : "Description"}:\n${unit.description}\n`;
-    if (unit.airbnbPhotosLink) info += `\n${language === "es" ? "Link Fotos Airbnb" : "Airbnb Photos Link"}: ${unit.airbnbPhotosLink}\n`;
+    if (unit.photosDriveLink) info += `\n${language === "es" ? "Link Fotos" : "Photos Link"}: ${unit.photosDriveLink}\n`;
     if (unit.virtualTourUrl) info += `${language === "es" ? "Tour Virtual" : "Virtual Tour"}: ${unit.virtualTourUrl}\n`;
     if (unit.googleMapsUrl) info += `${language === "es" ? "Google Maps" : "Google Maps"}: ${unit.googleMapsUrl}\n`;
 
@@ -1214,18 +1214,18 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
               </div>
             </div>
 
-            {unit.airbnbPhotosLink && (
+            {unit.photosDriveLink && (
               <div>
                 <Label className="text-xs text-muted-foreground">
-                  {language === "es" ? "Fotos Airbnb" : "Airbnb Photos"}
+                  {language === "es" ? "Link Fotos" : "Photos Link"}
                 </Label>
                 <a 
-                  href={unit.airbnbPhotosLink} 
+                  href={unit.photosDriveLink} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-sm text-primary hover:underline block mt-1 truncate" 
-                  data-testid="link-airbnb"
-                  title={unit.airbnbPhotosLink}
+                  data-testid="link-photos"
+                  title={unit.photosDriveLink}
                 >
                   {language === "es" ? "Ver fotos →" : "View photos →"}
                 </a>
@@ -2003,12 +2003,12 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
 
               <FormField
                 control={unitEditForm.control}
-                name="airbnbPhotosLink"
+                name="photosDriveLink"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Link de Fotos Airbnb" : "Airbnb Photos Link"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Link de Fotos (Drive/Airbnb)" : "Photos Link (Drive/Airbnb)"}</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} type="url" placeholder="https://..." data-testid="input-edit-airbnb-link" />
+                      <Input {...field} value={field.value || ""} type="url" placeholder="https://drive.google.com/... o https://airbnb.com/..." data-testid="input-edit-photos-link" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

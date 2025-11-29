@@ -105,3 +105,180 @@ export async function getSpreadsheetInfo(spreadsheetId: string) {
     })),
   };
 }
+
+// TRH Sheet structure for long-term rentals
+export interface TRHSheetRow {
+  sheetRowId: string;       // Column A: ID
+  zone: string;             // Column F: Zona
+  condominiumName: string;  // Column G: Condominio
+  unitNumber: string;       // Column H: Unidad
+  floor: string;            // Column I: Piso
+  propertyType: string;     // Column J: Tipo
+  bedrooms: string;         // Column K: Recámaras
+  bathrooms: string;        // Column L: Baños
+  price: string;            // Column N: 12 meses (precio base)
+  commissionType: string;   // Column O: Comision (Completa, Referido 10%)
+  petFriendly: string;      // Column R: PetF
+  allowsSublease: string;   // Column S: Subarriendo
+  virtualTourUrl: string;   // Column Y: Tour Virtual
+  googleMapsUrl: string;    // Column Z: Ubicacion
+  photosDriveLink: string;  // Column AA: Drive
+  includesElectricity: string; // Column AB: Luz
+  includesWater: string;    // Column AC: Agua
+  includesInternet: string; // Column AD: Internet
+  includesHOA: string;      // Column AE: HOA
+  includesGas: string;      // Column AF: Gas
+}
+
+function parsePrice(priceStr: string): number | null {
+  if (!priceStr || priceStr.trim() === '') return null;
+  const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(/,/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
+function parseFloor(floorStr: string): 'planta_baja' | 'primer_piso' | 'segundo_piso' | 'tercer_piso' | 'penthouse' | null {
+  if (!floorStr) return null;
+  const lower = floorStr.toLowerCase().trim();
+  if (lower.includes('planta baja') || lower.includes('pb') || lower.includes('ground')) return 'planta_baja';
+  if (lower.includes('primer') || lower.includes('1er') || lower.includes('first')) return 'primer_piso';
+  if (lower.includes('segundo') || lower.includes('2do') || lower.includes('second')) return 'segundo_piso';
+  if (lower.includes('tercer') || lower.includes('3er') || lower.includes('third')) return 'tercer_piso';
+  if (lower.includes('penthouse') || lower.includes('ph') || lower.includes('ático')) return 'penthouse';
+  return null;
+}
+
+function parseCommissionType(commStr: string): 'completa' | 'referido' {
+  if (!commStr) return 'completa';
+  const lower = commStr.toLowerCase().trim();
+  if (lower.includes('referido') || lower.includes('referal') || lower.includes('10%') || lower.includes('20%')) return 'referido';
+  return 'completa';
+}
+
+function parseBooleanField(value: string): boolean {
+  if (!value) return false;
+  const lower = value.toLowerCase().trim();
+  return lower === 'true' || lower === 'si' || lower === 'sí' || lower === 'yes' || lower === '1';
+}
+
+function parsePetFriendly(value: string): boolean {
+  if (!value) return false;
+  const lower = value.toLowerCase().trim();
+  return lower === 'si' || lower === 'sí' || lower === 'yes' || lower === 'true';
+}
+
+function parseAllowsSublease(value: string): boolean {
+  if (!value) return false;
+  const lower = value.toLowerCase().trim();
+  if (lower.includes('no acepta') || lower.includes('no')) return false;
+  if (lower.includes('acepta') || lower.includes('si') || lower.includes('sí')) return true;
+  return false;
+}
+
+export async function readTRHUnitsFromSheet(
+  spreadsheetId: string, 
+  sheetName: string = 'Renta/Long Term',
+  startRow: number = 2,
+  limit?: number
+): Promise<TRHSheetRow[]> {
+  const sheets = await getGoogleSheetsClient();
+  
+  const endRow = limit ? startRow + limit - 1 : '';
+  const range = `'${sheetName}'!A${startRow}:AF${endRow}`;
+  
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range,
+  });
+
+  const rows = response.data.values || [];
+  
+  return rows.map(row => ({
+    sheetRowId: row[0] || '',         // A: ID
+    zone: row[5] || '',               // F: Zona
+    condominiumName: row[6] || '',    // G: Condominio
+    unitNumber: row[7] || '',         // H: Unidad
+    floor: row[8] || '',              // I: Piso
+    propertyType: row[9] || '',       // J: Tipo
+    bedrooms: row[10] || '',          // K: Recámaras
+    bathrooms: row[11] || '',         // L: Baños
+    price: row[13] || '',             // N: 12 meses (skip column M which is 6 months)
+    commissionType: row[14] || '',    // O: Comision
+    petFriendly: row[17] || '',       // R: PetF
+    allowsSublease: row[18] || '',    // S: Subarriendo
+    virtualTourUrl: row[24] || '',    // Y: Tour Virtual
+    googleMapsUrl: row[25] || '',     // Z: Ubicacion
+    photosDriveLink: row[26] || '',   // AA: Drive
+    includesElectricity: row[27] || '', // AB: Luz
+    includesWater: row[28] || '',     // AC: Agua
+    includesInternet: row[29] || '',  // AD: Internet
+    includesHOA: row[30] || '',       // AE: HOA
+    includesGas: row[31] || '',       // AF: Gas
+  }));
+}
+
+export interface ParsedTRHUnit {
+  sheetRowId: string;
+  zone: string;
+  condominiumName: string;
+  unitNumber: string;
+  floor: 'planta_baja' | 'primer_piso' | 'segundo_piso' | 'tercer_piso' | 'penthouse' | null;
+  propertyType: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  price: number | null;
+  commissionType: 'completa' | 'referido';
+  petFriendly: boolean;
+  allowsSublease: boolean;
+  virtualTourUrl: string | null;
+  googleMapsUrl: string | null;
+  photosDriveLink: string | null;
+  includedServices: {
+    water: boolean;
+    electricity: boolean;
+    internet: boolean;
+    gas: boolean;
+  };
+}
+
+export function parseTRHRow(row: TRHSheetRow): ParsedTRHUnit {
+  return {
+    sheetRowId: row.sheetRowId,
+    zone: row.zone.replace(/[()]/g, '').trim(),
+    condominiumName: row.condominiumName.replace(/[()]/g, '').trim(),
+    unitNumber: row.unitNumber.trim(),
+    floor: parseFloor(row.floor),
+    propertyType: row.propertyType || 'Departamento',
+    bedrooms: row.bedrooms ? parseInt(row.bedrooms, 10) || null : null,
+    bathrooms: row.bathrooms ? parseFloat(row.bathrooms) || null : null,
+    price: parsePrice(row.price),
+    commissionType: parseCommissionType(row.commissionType),
+    petFriendly: parsePetFriendly(row.petFriendly),
+    allowsSublease: parseAllowsSublease(row.allowsSublease),
+    virtualTourUrl: row.virtualTourUrl && !row.virtualTourUrl.toLowerCase().includes('falta') ? row.virtualTourUrl : null,
+    googleMapsUrl: row.googleMapsUrl || null,
+    photosDriveLink: row.photosDriveLink || null,
+    includedServices: {
+      water: parseBooleanField(row.includesWater),
+      electricity: parseBooleanField(row.includesElectricity),
+      internet: parseBooleanField(row.includesInternet),
+      gas: parseBooleanField(row.includesGas),
+    },
+  };
+}
+
+export async function getTRHSheetStats(spreadsheetId: string, sheetName: string = 'Renta/Long Term') {
+  const sheets = await getGoogleSheetsClient();
+  
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sheetName}'!A:A`,
+  });
+  
+  const totalRows = (response.data.values?.length || 1) - 1; // Minus header row
+  
+  return {
+    totalRows,
+    sheetName,
+  };
+}

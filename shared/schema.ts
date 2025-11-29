@@ -7091,7 +7091,7 @@ export const externalUnits = pgTable("external_units", {
   bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }),
   area: decimal("area", { precision: 10, scale: 2 }), // m²
   floor: unitFloorTypeEnum("floor"), // Piso
-  airbnbPhotosLink: text("airbnb_photos_link"), // Link de fotos de Airbnb
+  photosDriveLink: text("photos_drive_link"), // Link de fotos (Airbnb o Google Drive)
   isActive: boolean("is_active").notNull().default(true),
   notes: text("notes"),
   
@@ -7102,22 +7102,18 @@ export const externalUnits = pgTable("external_units", {
   
   // Precios
   price: decimal("price", { precision: 12, scale: 2 }), // Precio de renta mensual (12 meses)
-  price6Months: decimal("price_6_months", { precision: 12, scale: 2 }), // Precio renta 6 meses
   currency: varchar("currency", { length: 3 }).default("MXN"), // Moneda
   
   // Estado de disponibilidad y términos
-  availabilityStatus: varchar("availability_status", { length: 50 }), // Disponible, No Disponible, Baja de listing
-  minimumTerm: varchar("minimum_term", { length: 50 }), // Plazo mínimo: 6 meses, 12 meses, 6/12 meses
-  availableFrom: date("available_from"), // Disponible desde
-  checkoutDate: date("checkout_date"), // Fecha de checkout actual
+  minimumTerm: varchar("minimum_term", { length: 50 }).default("6 meses"), // Plazo mínimo: 6 meses
+  maximumTerm: varchar("maximum_term", { length: 50 }).default("5 años"), // Plazo máximo: 5 años
   allowsSublease: boolean("allows_sublease").default(false), // Acepta subarriendo
   
   // Sistema de comisiones y referidos (exclusivo para TRH)
-  commissionType: varchar("commission_type", { length: 30 }), // completa, compartida_50, referido
+  commissionType: varchar("commission_type", { length: 30 }).default("completa"), // completa (100%) o referido (80% agencia, 20% referidor)
   referrerName: varchar("referrer_name", { length: 255 }), // Nombre de quien refirió la propiedad
   referrerPhone: varchar("referrer_phone", { length: 50 }), // Teléfono del referido
   referrerEmail: varchar("referrer_email", { length: 255 }), // Email del referido
-  referrerCommissionPercent: decimal("referrer_commission_percent", { precision: 5, scale: 2 }), // % comisión para referido (ej: 20.00)
   
   // Datos de sincronización con sheet
   sheetRowId: varchar("sheet_row_id", { length: 20 }), // ID de la fila en Google Sheets para sincronización
@@ -7299,7 +7295,7 @@ export const externalUnitFormSchema = z.object({
   bathrooms: optionalString,
   area: optionalString,
   floor: z.enum(["planta_baja", "primer_piso", "segundo_piso", "tercer_piso", "penthouse"]).optional(),
-  airbnbPhotosLink: z.string().optional(),
+  photosDriveLink: z.string().optional(),
   parkingSpots: optionalNumber,
   squareMeters: optionalNumber,
 });

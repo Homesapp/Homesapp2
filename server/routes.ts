@@ -12,7 +12,7 @@ import { createGoogleMeetEvent, deleteGoogleMeetEvent, checkGoogleCalendarConnec
 import { syncMaintenanceTicketToGoogleCalendar, deleteMaintenanceTicketFromGoogleCalendar } from "./googleCalendarService";
 import { calculateRentalCommissions } from "./commissionCalculator";
 import { sendVerificationEmail, sendLeadVerificationEmail, sendDuplicateLeadNotification, sendOwnerReferralVerificationEmail, sendOwnerReferralApprovedNotification, sendOfferLinkEmail } from "./gmail";
-import { readUnitsFromSheet, getSpreadsheetInfo } from "./googleSheets";
+import { readUnitsFromSheet, getSpreadsheetInfo, readTRHUnitsFromSheet, parseTRHRow, getTRHSheetStats } from "./googleSheets";
 import { imageProcessor } from "./imageProcessor";
 import { getPropertyTitle } from "./propertyHelpers";
 import { setupGoogleAuth } from "./googleAuth";
@@ -28166,6 +28166,201 @@ ${{precio}}/mes
       handleGenericError(res, error);
     }
   });
+
+  // POST /api/external-units/import-from-sheet - Import units from Google Sheets (TRH specific)
+  app.post("/api/external-units/import-from-sheet", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = req.user.externalAgencyId;
+      if (!agencyId) {
+        return res.status(403).json({ message: "No agency access" });
+      }
+      
+      const { spreadsheetId, sheetName = 'Renta/Long Term', startRow = 2, limit = 100, dryRun = false } = req.body;
+      
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Spreadsheet ID is required" });
+      }
+      
+      // Read data from sheet
+      const rawRows = await readTRHUnitsFromSheet(spreadsheetId, sheetName, startRow, limit);
+      const parsedUnits = rawRows.map(row => parseTRHRow(row));
+      
+      // Filter out rows without valid unit numbers
+      const validUnits = parsedUnits.filter(u => u.unitNumber && u.condominiumName);
+      
+      if (dryRun) {
+        // Preview mode - return parsed data without inserting
+        return res.json({
+          success: true,
+          dryRun: true,
+          totalRows: rawRows.length,
+          validUnits: validUnits.length,
+          skippedRows: rawRows.length - validUnits.length,
+          preview: validUnits.slice(0, 10), // Show first 10 as preview
+          condominiums: [...new Set(validUnits.map(u => u.condominiumName))],
+        });
+      }
+      
+      // Get or create condominiums
+      const condominiumMap: Record<string, string> = {};
+      const uniqueCondos = [...new Set(validUnits.map(u => u.condominiumName))];
+      
+      for (const condoName of uniqueCondos) {
+        // Try to find existing condominium
+        const existingCondos = await db.select()
+          .from(externalCondominiums)
+          .where(and(
+            eq(externalCondominiums.agencyId, agencyId),
+            sql`LOWER(${externalCondominiums.name}) = LOWER(${condoName})`
+          ))
+          .limit(1);
+        
+        if (existingCondos.length > 0) {
+          condominiumMap[condoName] = existingCondos[0].id;
+        } else {
+          // Create new condominium
+          const [newCondo] = await db.insert(externalCondominiums)
+            .values({
+              agencyId,
+              name: condoName,
+              zone: validUnits.find(u => u.condominiumName === condoName)?.zone,
+              createdBy: req.user.id,
+            })
+            .returning();
+          condominiumMap[condoName] = newCondo.id;
+        }
+      }
+      
+      let imported = 0;
+      let updated = 0;
+      let errors: string[] = [];
+      
+      for (const unit of validUnits) {
+        try {
+          const condominiumId = condominiumMap[unit.condominiumName];
+          
+          // Check if unit already exists by sheetRowId
+          const existingUnit = unit.sheetRowId 
+            ? await db.select()
+                .from(externalUnits)
+                .where(and(
+                  eq(externalUnits.agencyId, agencyId),
+                  eq(externalUnits.sheetRowId, unit.sheetRowId)
+                ))
+                .limit(1)
+            : [];
+          
+          if (existingUnit.length > 0) {
+            // Update existing unit
+            await db.update(externalUnits)
+              .set({
+                condominiumId,
+                unitNumber: unit.unitNumber,
+                zone: unit.zone,
+                propertyType: unit.propertyType,
+                floor: unit.floor,
+                bedrooms: unit.bedrooms,
+                bathrooms: unit.bathrooms ? String(unit.bathrooms) : null,
+                price: unit.price ? String(unit.price) : null,
+                commissionType: unit.commissionType,
+                petFriendly: unit.petFriendly,
+                allowsSublease: unit.allowsSublease,
+                virtualTourUrl: unit.virtualTourUrl,
+                googleMapsUrl: unit.googleMapsUrl,
+                photosDriveLink: unit.photosDriveLink,
+                includedServices: unit.includedServices,
+                syncedFromSheet: true,
+                lastSheetSync: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(externalUnits.id, existingUnit[0].id));
+            updated++;
+          } else {
+            // Insert new unit
+            await db.insert(externalUnits)
+              .values({
+                agencyId,
+                condominiumId,
+                unitNumber: unit.unitNumber,
+                zone: unit.zone,
+                propertyType: unit.propertyType,
+                floor: unit.floor,
+                bedrooms: unit.bedrooms,
+                bathrooms: unit.bathrooms ? String(unit.bathrooms) : null,
+                price: unit.price ? String(unit.price) : null,
+                commissionType: unit.commissionType,
+                petFriendly: unit.petFriendly,
+                allowsSublease: unit.allowsSublease,
+                virtualTourUrl: unit.virtualTourUrl,
+                googleMapsUrl: unit.googleMapsUrl,
+                photosDriveLink: unit.photosDriveLink,
+                includedServices: unit.includedServices,
+                sheetRowId: unit.sheetRowId,
+                syncedFromSheet: true,
+                lastSheetSync: new Date(),
+                minimumTerm: '6 meses',
+                maximumTerm: '5 años',
+                createdBy: req.user.id,
+              });
+            imported++;
+          }
+        } catch (err: any) {
+          errors.push(`Row ${unit.sheetRowId || 'unknown'}: ${err.message}`);
+        }
+      }
+      
+      await logAuditAction(
+        req, 
+        "import", 
+        "external_unit", 
+        null, 
+        `Imported ${imported} units, updated ${updated} units from Google Sheets`
+      );
+      
+      res.json({
+        success: true,
+        imported,
+        updated,
+        errors: errors.length > 0 ? errors.slice(0, 10) : [],
+        totalErrors: errors.length,
+        totalProcessed: validUnits.length,
+      });
+    } catch (error: any) {
+      console.error("Error importing from sheet:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-units/sheet-preview - Preview sheet data before import
+  app.get("/api/external-units/sheet-preview", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { spreadsheetId, sheetName = 'Renta/Long Term' } = req.query;
+      
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Spreadsheet ID is required" });
+      }
+      
+      // Get sheet stats
+      const stats = await getTRHSheetStats(spreadsheetId as string, sheetName as string);
+      
+      // Get preview of first 10 rows
+      const rawRows = await readTRHUnitsFromSheet(spreadsheetId as string, sheetName as string, 2, 10);
+      const parsedUnits = rawRows.map(row => parseTRHRow(row));
+      
+      res.json({
+        success: true,
+        totalRows: stats.totalRows,
+        sheetName: stats.sheetName,
+        preview: parsedUnits,
+        condominiums: [...new Set(parsedUnits.filter(u => u.condominiumName).map(u => u.condominiumName))],
+      });
+    } catch (error: any) {
+      console.error("Error previewing sheet:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+
 
 
 

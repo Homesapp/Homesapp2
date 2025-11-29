@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, LayoutGrid, Table as TableIcon, ArrowUpDown } from "lucide-react";
+import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, LayoutGrid, Table as TableIcon, ArrowUpDown, FileSpreadsheet } from "lucide-react";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,6 +27,7 @@ import type { ExternalCondominium, ExternalUnit, ExternalRentalContract, Externa
 import { insertExternalCondominiumSchema, insertExternalUnitSchema, externalUnitFormSchema } from "@shared/schema";
 import { z } from "zod";
 import { floorOptions, formatFloor } from "@/lib/unitHelpers";
+import ExternalGoogleSheetsImportDialog from "@/components/ExternalGoogleSheetsImportDialog";
 import {
   Popover,
   PopoverContent,
@@ -63,6 +64,7 @@ export default function ExternalCondominiums() {
   
   // Legacy states for backwards compatibility with edit mode
   const [showCondoDialog, setShowCondoDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [showUnitDialog, setShowUnitDialog] = useState(false);
   
   // Unit filters state
@@ -313,7 +315,7 @@ export default function ExternalCondominiums() {
       bedrooms: undefined,
       bathrooms: undefined,
       squareMeters: undefined,
-      airbnbPhotosLink: "",
+      photosDriveLink: "",
     },
   });
 
@@ -471,7 +473,7 @@ export default function ExternalCondominiums() {
       bedrooms: undefined,
       bathrooms: undefined,
       squareMeters: undefined,
-      airbnbPhotosLink: "",
+      photosDriveLink: "",
     });
     setShowUnifiedDialog(true);
   };
@@ -518,7 +520,7 @@ export default function ExternalCondominiums() {
       bedrooms: undefined,
       bathrooms: undefined,
       squareMeters: undefined,
-      airbnbPhotosLink: "",
+      photosDriveLink: "",
     });
     setShowUnitDialog(true);
   };
@@ -533,7 +535,7 @@ export default function ExternalCondominiums() {
       bedrooms: unit.bedrooms || undefined,
       bathrooms: unit.bathrooms || undefined,
       squareMeters: unit.squareMeters || undefined,
-      airbnbPhotosLink: unit.airbnbPhotosLink || "",
+      photosDriveLink: unit.photosDriveLink || "",
     });
     setShowUnitDialog(true);
   };
@@ -904,10 +906,21 @@ export default function ExternalCondominiums() {
               : "Manage your condominiums and units"}
           </p>
         </div>
-        <Button onClick={handleOpenUnifiedDialog} data-testid="button-add-unified" className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          {language === "es" ? "Agregar" : "Add"}
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowImportDialog(true)} 
+            data-testid="button-import-sheet"
+            className="flex-1 sm:flex-none"
+          >
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            {language === "es" ? "Importar" : "Import"}
+          </Button>
+          <Button onClick={handleOpenUnifiedDialog} data-testid="button-add-unified" className="flex-1 sm:flex-none">
+            <Plus className="mr-2 h-4 w-4" />
+            {language === "es" ? "Agregar" : "Add"}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => {
@@ -3075,17 +3088,17 @@ export default function ExternalCondominiums() {
               </div>
               <FormField
                 control={unitForm.control}
-                name="airbnbPhotosLink"
+                name="photosDriveLink"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === "es" ? "Link de Fotos Airbnb" : "Airbnb Photos Link"}</FormLabel>
+                    <FormLabel>{language === "es" ? "Link de Fotos (Drive/Airbnb)" : "Photos Link (Drive/Airbnb)"}</FormLabel>
                     <FormControl>
                       <Input 
                         type="url"
-                        placeholder="https://..."
+                        placeholder="https://drive.google.com/... o https://airbnb.com/..."
                         {...field} 
                         value={field.value || ""} 
-                        data-testid="input-unit-airbnb-link" 
+                        data-testid="input-unit-photos-link" 
                       />
                     </FormControl>
                     <FormMessage />
@@ -3312,6 +3325,11 @@ export default function ExternalCondominiums() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExternalGoogleSheetsImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
     </div>
   );
 }

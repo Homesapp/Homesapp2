@@ -9696,7 +9696,7 @@ export class DatabaseStorage implements IStorage {
       bathrooms: externalUnits.bathrooms,
       area: externalUnits.area,
       floor: externalUnits.floor,
-      airbnbPhotosLink: externalUnits.airbnbPhotosLink,
+      photosDriveLink: externalUnits.photosDriveLink,
       isActive: externalUnits.isActive,
       notes: externalUnits.notes,
       createdBy: externalUnits.createdBy,
