@@ -188,6 +188,8 @@ export default function ExternalClients() {
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
   const [leadRegistrationTypeFilter, setLeadRegistrationTypeFilter] = useState<string>("all");
   const [leadSellerFilter, setLeadSellerFilter] = useState<string>("all");
+  const [leadHasPetsFilter, setLeadHasPetsFilter] = useState<string>("all");
+  const [leadFollowUpFilter, setLeadFollowUpFilter] = useState<string>("all");
   const [isLeadFilterOpen, setIsLeadFilterOpen] = useState(false);
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
   const [leadItemsPerPage, setLeadItemsPerPage] = useState(12);
@@ -256,7 +258,27 @@ export default function ExternalClients() {
 
   const leads = leadsResponse?.data || [];
   const totalLeads = leadsResponse?.total || 0;
-  const paginatedLeads = leads;
+  
+  const filteredLeads = leads.filter((lead: any) => {
+    if (leadHasPetsFilter !== "all") {
+      const hasPets = lead.hasPets && lead.hasPets !== "No" && lead.hasPets !== "no" && lead.hasPets !== "";
+      if (leadHasPetsFilter === "yes" && !hasPets) return false;
+      if (leadHasPetsFilter === "no" && hasPets) return false;
+    }
+    if (leadFollowUpFilter !== "all" && lead.followUpDate) {
+      const followUpDate = new Date(lead.followUpDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      followUpDate.setHours(0, 0, 0, 0);
+      if (leadFollowUpFilter === "overdue" && followUpDate >= today) return false;
+      if (leadFollowUpFilter === "today" && followUpDate.getTime() !== today.getTime()) return false;
+    } else if (leadFollowUpFilter !== "all" && !lead.followUpDate) {
+      return false;
+    }
+    return true;
+  });
+  
+  const paginatedLeads = filteredLeads;
   const totalLeadPages = Math.max(1, Math.ceil(totalLeads / leadItemsPerPage));
 
   // Fetch agencies for master/admin users to select when creating leads
@@ -2588,7 +2610,7 @@ export default function ExternalClients() {
                       data-testid="button-lead-filter-toggle"
                     >
                       <Filter className="h-4 w-4" />
-                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all") && (
+                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all" || leadHasPetsFilter !== "all" || leadFollowUpFilter !== "all") && (
                         <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full" />
                       )}
                     </Button>
@@ -2598,7 +2620,7 @@ export default function ExternalClients() {
                       <h4 className="font-medium text-sm">
                         {language === "es" ? "Filtrar por" : "Filter by"}
                       </h4>
-                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all") && (
+                      {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all" || leadHasPetsFilter !== "all" || leadFollowUpFilter !== "all") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -2606,6 +2628,8 @@ export default function ExternalClients() {
                             setLeadStatusFilter("all");
                             setLeadRegistrationTypeFilter("all");
                             setLeadSellerFilter("all");
+                            setLeadHasPetsFilter("all");
+                            setLeadFollowUpFilter("all");
                           }}
                           className="h-6 px-2 text-xs"
                           data-testid="button-lead-clear-filters"
@@ -2670,6 +2694,54 @@ export default function ExternalClients() {
                       </div>
                     </div>
                     
+                    {/* Has Pets Filter */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {language === "es" ? "Mascota" : "Pet"}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { value: "all", label: { es: "Todos", en: "All" } },
+                          { value: "yes", label: { es: "Con mascota", en: "With pet" } },
+                          { value: "no", label: { es: "Sin mascota", en: "No pet" } },
+                        ].map((option) => (
+                          <Badge
+                            key={option.value}
+                            variant={leadHasPetsFilter === option.value ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => setLeadHasPetsFilter(option.value)}
+                            data-testid={`button-filter-pets-${option.value}`}
+                          >
+                            {language === "es" ? option.label.es : option.label.en}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Follow-up Filter */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {language === "es" ? "Seguimiento" : "Follow-up"}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { value: "all", label: { es: "Todos", en: "All" } },
+                          { value: "overdue", label: { es: "Vencido", en: "Overdue" } },
+                          { value: "today", label: { es: "Hoy", en: "Today" } },
+                        ].map((option) => (
+                          <Badge
+                            key={option.value}
+                            variant={leadFollowUpFilter === option.value ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => setLeadFollowUpFilter(option.value)}
+                            data-testid={`button-filter-followup-${option.value}`}
+                          >
+                            {language === "es" ? option.label.es : option.label.en}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Seller Filter - Only visible for admins, not for sellers */}
                     {!isSeller && sellers.length > 0 && (
                       <div className="space-y-2">
@@ -2704,7 +2776,7 @@ export default function ExternalClients() {
               </div>
               
               {/* Active Filters Display */}
-              {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all") && (
+              {(leadStatusFilter !== "all" || leadRegistrationTypeFilter !== "all" || leadSellerFilter !== "all" || leadHasPetsFilter !== "all" || leadFollowUpFilter !== "all") && (
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-xs text-muted-foreground">
                     {language === "es" ? "Filtros activos:" : "Active filters:"}
@@ -2744,6 +2816,28 @@ export default function ExternalClients() {
                       <X 
                         className="h-3 w-3 cursor-pointer" 
                         onClick={() => setLeadSellerFilter("all")}
+                      />
+                    </Badge>
+                  )}
+                  {leadHasPetsFilter !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {leadHasPetsFilter === "yes" 
+                        ? (language === "es" ? "Con mascota" : "With pet") 
+                        : (language === "es" ? "Sin mascota" : "No pet")}
+                      <X 
+                        className="h-3 w-3 cursor-pointer" 
+                        onClick={() => setLeadHasPetsFilter("all")}
+                      />
+                    </Badge>
+                  )}
+                  {leadFollowUpFilter !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {leadFollowUpFilter === "overdue" 
+                        ? (language === "es" ? "Seg. vencido" : "Overdue") 
+                        : (language === "es" ? "Seg. hoy" : "Today")}
+                      <X 
+                        className="h-3 w-3 cursor-pointer" 
+                        onClick={() => setLeadFollowUpFilter("all")}
                       />
                     </Badge>
                   )}
