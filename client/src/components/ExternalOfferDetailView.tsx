@@ -328,12 +328,49 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
     return <CheckCircle2 className="h-4 w-4" />;
   };
   
-  const preloadImage = (src: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve();
-      img.onerror = () => reject();
-      img.src = src;
+  const convertImageToDataUrl = (src: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (src.startsWith('data:')) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+        return;
+      }
+      
+      fetch(src, { mode: 'cors' })
+        .then(response => response.blob())
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        })
+        .catch(() => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0);
+            try {
+              resolve(canvas.toDataURL('image/png'));
+            } catch {
+              resolve(null);
+            }
+          };
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
     });
   };
 
@@ -342,38 +379,60 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
     
     setIsDownloading(true);
     try {
-      if (offerData.signature) {
-        await preloadImage(offerData.signature).catch(() => {});
-      }
+      const clonedElement = contentRef.current.cloneNode(true) as HTMLElement;
+      clonedElement.style.position = 'absolute';
+      clonedElement.style.left = '-9999px';
+      clonedElement.style.top = '0';
+      clonedElement.style.width = contentRef.current.offsetWidth + 'px';
+      document.body.appendChild(clonedElement);
       
-      const canvas = await html2canvas(contentRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        imageTimeout: 5000,
-        onclone: async (clonedDoc) => {
-          const signatureImg = clonedDoc.querySelector('[data-testid="img-signature"]') as HTMLImageElement;
-          if (signatureImg && offerData.signature) {
-            const tempCanvas = document.createElement('canvas');
-            const ctx = tempCanvas.getContext('2d');
-            const img = new Image();
-            
+      if (offerData.signature) {
+        const signatureImg = clonedElement.querySelector('[data-testid="img-signature"]') as HTMLImageElement;
+        if (signatureImg) {
+          const processedSrc = await convertImageToDataUrl(offerData.signature);
+          if (processedSrc) {
+            signatureImg.src = processedSrc;
             await new Promise<void>((resolve) => {
-              img.onload = () => {
-                tempCanvas.width = img.width;
-                tempCanvas.height = img.height;
-                ctx?.drawImage(img, 0, 0);
-                signatureImg.src = tempCanvas.toDataURL('image/png');
+              if (signatureImg.complete) {
                 resolve();
-              };
-              img.onerror = () => resolve();
-              img.src = offerData.signature!;
+              } else {
+                signatureImg.onload = () => resolve();
+                signatureImg.onerror = () => resolve();
+              }
             });
           }
-        },
+        }
+      }
+      
+      if (offer.agencyLogoUrl) {
+        const agencyLogoImg = clonedElement.querySelector('[data-testid="img-agency-logo"]') as HTMLImageElement;
+        if (agencyLogoImg) {
+          const processedSrc = await convertImageToDataUrl(offer.agencyLogoUrl);
+          if (processedSrc) {
+            agencyLogoImg.src = processedSrc;
+            await new Promise<void>((resolve) => {
+              if (agencyLogoImg.complete) {
+                resolve();
+              } else {
+                agencyLogoImg.onload = () => resolve();
+                agencyLogoImg.onerror = () => resolve();
+              }
+            });
+          }
+        }
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const canvas = await html2canvas(clonedElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        imageTimeout: 10000,
       });
+      
+      document.body.removeChild(clonedElement);
       
       const link = document.createElement("a");
       link.download = `oferta-${offer.unitNumber || offer.id}.png`;
@@ -432,14 +491,20 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
               <div className="flex items-start gap-6">
                 {/* HomesApp Logo + Slogan */}
                 <div className="flex flex-col items-center">
-                  <img src={logoPath} alt="HomesApp" className="h-16 object-contain" />
+                  <img src={logoPath} alt="HomesApp" className="h-16 object-contain" crossOrigin="anonymous" />
                   <p className="text-[10px] text-muted-foreground mt-1 italic">Smart Real Estate</p>
                 </div>
                 
                 {/* Agency Logo + Name */}
                 {offer.agencyLogoUrl && (
                   <div className="flex flex-col items-center">
-                    <img src={offer.agencyLogoUrl} alt={agencyName} className="h-16 object-contain" />
+                    <img 
+                      src={offer.agencyLogoUrl} 
+                      alt={agencyName} 
+                      className="h-16 object-contain" 
+                      crossOrigin="anonymous"
+                      data-testid="img-agency-logo"
+                    />
                     <p className="text-[10px] text-muted-foreground mt-1 font-medium">{agencyName}</p>
                   </div>
                 )}
@@ -623,6 +688,7 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
                       src={offerData.signature} 
                       alt="Signature" 
                       className="h-16 object-contain mx-auto"
+                      crossOrigin="anonymous"
                       data-testid="img-signature"
                     />
                   </div>
