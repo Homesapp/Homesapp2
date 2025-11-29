@@ -27465,6 +27465,31 @@ ${{precio}}/mes
     }
   });
 
+  // POST get units by IDs (for hydrating lead form edit state)
+  app.post("/api/external-units/by-ids", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const userRole = req.user?.cachedRole || req.user?.role || req.session?.adminUser?.role;
+      const agencyId = await getUserAgencyId(req);
+      
+      // Non-admin users must have an agency
+      if (userRole !== 'master' && userRole !== 'admin' && !agencyId) {
+        return res.status(403).json({ message: "Access denied: No agency association" });
+      }
+      
+      
+      const { unitIds } = req.body;
+      if (!Array.isArray(unitIds)) {
+        return res.status(400).json({ message: "unitIds must be an array" });
+      }
+      
+      const units = await storage.getExternalUnitsByIds(agencyId, unitIds);
+      res.json(units);
+    } catch (error: any) {
+      console.error("Error fetching units by IDs:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // Atomic creation of condominium with units in a transaction
   app.post("/api/external-condominiums/with-units", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {

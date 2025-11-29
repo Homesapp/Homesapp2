@@ -469,49 +469,37 @@ export default function ExternalClients() {
     
     const selections: PropertySelection[] = [];
     
-    // If there are unit IDs, fetch their details to get unit numbers
-    const unitDetailsMap: Map<string, { unitNumber: string; condominiumId: string }> = new Map();
-    
-    if (unitIds.length > 0) {
-      // Fetch unit details for all condos that might contain these units
-      for (const condoId of condoIds) {
-        try {
-          const response = await fetch(`/api/external-condominiums/${condoId}/units`, { credentials: 'include' });
-          if (response.ok) {
-            const units = await response.json();
-            for (const unit of units) {
-              if (unitIds.includes(unit.id)) {
-                unitDetailsMap.set(unit.id, { unitNumber: unit.unitNumber, condominiumId: condoId });
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Error fetching units for hydration:', e);
-        }
-      }
-    }
-    
     // Track which condos have units already added
     const condosWithUnits = new Set<string>();
     
-    // First, add entries for specific units
-    for (const unitId of unitIds) {
-      const unitDetail = unitDetailsMap.get(unitId);
-      if (unitDetail) {
-        const condo = condominiums.find(c => c.id === unitDetail.condominiumId);
-        if (condo) {
-          selections.push({
-            condominiumId: unitDetail.condominiumId,
-            condominiumName: condo.name,
-            unitId: unitId,
-            unitNumber: unitDetail.unitNumber
-          });
-          condosWithUnits.add(unitDetail.condominiumId);
+    // If there are unit IDs, fetch their details using the dedicated endpoint
+    if (unitIds.length > 0) {
+      try {
+        const response = await fetch('/api/external-units/by-ids', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ unitIds })
+        });
+        
+        if (response.ok) {
+          const units = await response.json();
+          for (const unit of units) {
+            selections.push({
+              condominiumId: unit.condominiumId,
+              condominiumName: unit.condominiumName,
+              unitId: unit.id,
+              unitNumber: unit.unitNumber
+            });
+            condosWithUnits.add(unit.condominiumId);
+          }
         }
+      } catch (e) {
+        console.error('Error fetching units by IDs for hydration:', e);
       }
     }
     
-    // Then, add condo-only entries for condos that don't have specific units
+    // Add condo-only entries for condos that don't have specific units
     for (const condoId of condoIds) {
       if (!condosWithUnits.has(condoId)) {
         const condo = condominiums.find(c => c.id === condoId);

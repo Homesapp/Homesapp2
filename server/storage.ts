@@ -1467,6 +1467,7 @@ export interface IStorage {
 
   // External Management System - Unit operations
   getExternalUnit(id: string): Promise<ExternalUnit | undefined>;
+  getExternalUnitsByIds(agencyId: string | null, unitIds: string[]): Promise<Array<{ id: string; unitNumber: string; condominiumId: string; condominiumName: string }>>;
   getExternalUnitsByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string; search?: string; zone?: string; typology?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }): Promise<ExternalUnitWithCondominium[]>;
   getExternalUnitsCountByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string; search?: string; zone?: string; typology?: string }): Promise<number>;
   getExternalUnitsByCondominium(condominiumId: string): Promise<ExternalUnit[]>;
@@ -9713,6 +9714,27 @@ export class DatabaseStorage implements IStorage {
       .from(externalUnits)
       .where(eq(externalUnits.id, id));
     return result;
+  }
+
+
+  async getExternalUnitsByIds(agencyId: string | null, unitIds: string[]): Promise<Array<{ id: string; unitNumber: string; condominiumId: string; condominiumName: string }>> {
+    if (unitIds.length === 0) return [];
+    
+    const conditions: SQL[] = [inArray(externalUnits.id, unitIds)];
+    if (agencyId) {
+      conditions.push(eq(externalUnits.agencyId, agencyId));
+    }
+    
+    const results = await db.select({
+      id: externalUnits.id,
+      unitNumber: externalUnits.unitNumber,
+      condominiumId: externalUnits.condominiumId,
+      condominiumName: externalCondominiums.name
+    })
+      .from(externalUnits)
+      .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+      .where(and(...conditions));
+    return results;
   }
 
   async getExternalUnitsByAgency(agencyId: string, filters?: { isActive?: boolean; condominiumId?: string; search?: string; zone?: string; typology?: string; sortField?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number }): Promise<ExternalUnitWithCondominium[]> {
