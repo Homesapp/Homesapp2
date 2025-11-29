@@ -11027,7 +11027,7 @@ export class DatabaseStorage implements IStorage {
         recipientType: tenantRentalFormTokens.recipientType,
         externalUnitId: tenantRentalFormTokens.externalUnitId,
         externalClientId: tenantRentalFormTokens.externalClientId,
-        externalOwnerId: tenantRentalFormTokens.externalOwnerId,
+        externalUnitOwnerId: tenantRentalFormTokens.externalUnitOwnerId,
         linkedTokenId: tenantRentalFormTokens.linkedTokenId,
         createdBy: tenantRentalFormTokens.createdBy,
         unitNumber: externalUnits.unitNumber,
@@ -11043,7 +11043,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(externalUnits, eq(tenantRentalFormTokens.externalUnitId, externalUnits.id))
       .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
       .leftJoin(externalClients, eq(tenantRentalFormTokens.externalClientId, externalClients.id))
-      .leftJoin(externalUnitOwners, eq(tenantRentalFormTokens.externalOwnerId, externalUnitOwners.id))
+      .leftJoin(externalUnitOwners, eq(tenantRentalFormTokens.externalUnitOwnerId, externalUnitOwners.id))
       .leftJoin(users, eq(tenantRentalFormTokens.createdBy, users.id))
       .where(eq(externalCondominiums.agencyId, agencyId));
 
@@ -11059,7 +11059,7 @@ export class DatabaseStorage implements IStorage {
         recipientType: tenantRentalFormTokens.recipientType,
         externalUnitId: tenantRentalFormTokens.externalUnitId,
         externalClientId: tenantRentalFormTokens.externalClientId,
-        externalOwnerId: tenantRentalFormTokens.externalOwnerId,
+        externalUnitOwnerId: tenantRentalFormTokens.externalUnitOwnerId,
         linkedTokenId: tenantRentalFormTokens.linkedTokenId,
         createdBy: tenantRentalFormTokens.createdBy,
         unitNumber: sql<string | null>`NULL`.as('unitNumber'),
@@ -11074,7 +11074,7 @@ export class DatabaseStorage implements IStorage {
       .from(tenantRentalFormTokens)
       .innerJoin(users, eq(tenantRentalFormTokens.createdBy, users.id))
       .leftJoin(externalClients, eq(tenantRentalFormTokens.externalClientId, externalClients.id))
-      .leftJoin(externalUnitOwners, eq(tenantRentalFormTokens.externalOwnerId, externalUnitOwners.id))
+      .leftJoin(externalUnitOwners, eq(tenantRentalFormTokens.externalUnitOwnerId, externalUnitOwners.id))
       .where(
         and(
           isNull(tenantRentalFormTokens.externalUnitId),
@@ -11096,7 +11096,7 @@ export class DatabaseStorage implements IStorage {
       recipientType: r.recipientType,
       externalUnitId: r.externalUnitId,
       externalClientId: r.externalClientId,
-      externalOwnerId: r.externalOwnerId,
+      externalUnitOwnerId: r.externalUnitOwnerId,
       linkedTokenId: r.linkedTokenId,
       createdBy: r.createdBy,
       propertyTitle: r.unitNumber 

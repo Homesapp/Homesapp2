@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Copy, Check, MessageCircle, Mail, Link as LinkIcon, ExternalLink, Building2, User, FileText, AlertCircle } from "lucide-react";
+import { Loader2, Copy, Check, MessageCircle, Mail, Link as LinkIcon, ExternalLink, Building2, Home, User, FileText, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -60,16 +60,15 @@ export default function ExternalGenerateRentalFormLinkDialog({
   const { user } = useAuth();
   const agencyId = user?.externalAgencyId;
   const [recipientType, setRecipientType] = useState<"tenant" | "owner">("tenant");
+  const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("");
   const [selectedClientId, setSelectedClientId] = useState<string>(clientId?.toString() || "");
   const [generatedToken, setGeneratedToken] = useState<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
-  const [unitSearchTerm, setUnitSearchTerm] = useState<string>("");
   const [clientSearchTerm, setClientSearchTerm] = useState<string>("");
 
-  // Queries
   const { data: unitsResponse, isLoading: isLoadingUnits } = useQuery<{ data: ExternalUnitWithCondominium[], total: number }>({
     queryKey: ["/api/external-units", "for-rental-form-dialog"],
     queryFn: async () => {
@@ -81,6 +80,32 @@ export default function ExternalGenerateRentalFormLinkDialog({
     staleTime: 5 * 60 * 1000,
   });
   const units = unitsResponse?.data || [];
+
+  const condominiums = useMemo(() => {
+    const condoMap = new Map<string, { id: string; name: string; unitCount: number }>();
+    units.forEach(unit => {
+      if (unit.condominiumId && unit.condominium?.name) {
+        const existing = condoMap.get(unit.condominiumId);
+        if (existing) {
+          existing.unitCount++;
+        } else {
+          condoMap.set(unit.condominiumId, {
+            id: unit.condominiumId,
+            name: unit.condominium.name,
+            unitCount: 1
+          });
+        }
+      }
+    });
+    return Array.from(condoMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [units]);
+
+  const filteredUnits = useMemo(() => {
+    if (!selectedCondominiumId) return [];
+    return units
+      .filter(unit => unit.condominiumId === selectedCondominiumId)
+      .sort((a, b) => (a.unitNumber || '').localeCompare(b.unitNumber || '', undefined, { numeric: true }));
+  }, [units, selectedCondominiumId]);
 
   const { data: clientsResponse, isLoading: isLoadingClients } = useQuery<PaginatedResponse<ExternalClient>>({
     queryKey: ["/api/external-clients", { limit: 10000 }], // Get all clients for selection
@@ -343,13 +368,14 @@ Need help? I'm available for any questions! 😊`;
 
   const handleClose = () => {
     if (onOpenChange) onOpenChange(false);
+    setSelectedCondominiumId("");
     setSelectedUnitId("");
     setSelectedOwnerId("");
     if (!clientId) setSelectedClientId("");
     setGeneratedToken(null);
     setCopiedLink(false);
     setCopiedWhatsApp(false);
-    setUnitSearchTerm("");
+    setClientSearchTerm("");
     form.reset();
   };
 
@@ -361,14 +387,7 @@ Need help? I'm available for any questions! 😊`;
   const selectedClient = clients?.find((c) => String(c.id) === selectedClientId) || 
     (clientInfo && { firstName: clientInfo.name.split(" ")[0], lastName: clientInfo.name.split(" ").slice(1).join(" ") || "" });
   const selectedOwner = unitOwners?.find((o) => String(o.id) === selectedOwnerId);
-
-  const filteredUnits = units?.filter((unit) => {
-    if (!unitSearchTerm) return true;
-    const searchLower = unitSearchTerm.toLowerCase();
-    const condominiumName = unit.condominium?.name?.toLowerCase() || "";
-    const unitNumber = unit.unitNumber?.toLowerCase() || "";
-    return condominiumName.includes(searchLower) || unitNumber.includes(searchLower);
-  });
+  const selectedCondominium = condominiums?.find((c) => c.id === selectedCondominiumId);
 
   const filteredClients = clients?.filter((client) => {
     if (!clientSearchTerm) return true;
@@ -464,7 +483,7 @@ Need help? I'm available for any questions! 😊`;
 
             <Separator />
 
-            {/* Step 2: Select Unit */}
+            {/* Step 2: Select Condominium */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
@@ -472,76 +491,134 @@ Need help? I'm available for any questions! 😊`;
                     2
                   </div>
                   <CardTitle className="text-lg">
-                    {language === "es" ? "Selecciona la Unidad" : "Select Unit"}
+                    {language === "es" ? "Selecciona el Condominio" : "Select Condominium"}
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Input
-                  placeholder={language === "es" ? "🔍 Buscar por condominio o número de unidad..." : "🔍 Search by condominium or unit number..."}
-                  value={unitSearchTerm}
-                  onChange={(e) => setUnitSearchTerm(e.target.value)}
-                  data-testid="input-search-unit"
-                  className="h-11"
-                />
                 <Select
-                  value={selectedUnitId}
-                  onValueChange={setSelectedUnitId}
+                  value={selectedCondominiumId}
+                  onValueChange={(value) => {
+                    setSelectedCondominiumId(value);
+                    setSelectedUnitId("");
+                    setSelectedOwnerId("");
+                  }}
                 >
-                  <SelectTrigger data-testid="select-unit" className="h-12">
-                    <SelectValue placeholder={language === "es" ? "Selecciona una unidad" : "Select a unit"} />
+                  <SelectTrigger data-testid="select-rental-form-condominium" className="h-12">
+                    <SelectValue placeholder={language === "es" ? "Selecciona un condominio" : "Select a condominium"} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
                     {isLoadingUnits ? (
                       <div className="flex items-center justify-center p-8">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       </div>
-                    ) : filteredUnits && filteredUnits.length > 0 ? (
-                      filteredUnits.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id}>
+                    ) : condominiums && condominiums.length > 0 ? (
+                      condominiums.map((condo) => (
+                        <SelectItem key={condo.id} value={condo.id}>
                           <div className="flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">{unit.condominium?.name}</span>
-                            <span className="text-muted-foreground">-</span>
-                            <span>{unit.unitNumber}</span>
+                            <span className="font-medium">{condo.name}</span>
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              {condo.unitCount} {condo.unitCount === 1 ? (language === "es" ? "unidad" : "unit") : (language === "es" ? "unidades" : "units")}
+                            </Badge>
                           </div>
                         </SelectItem>
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-muted-foreground">
-                        {language === "es" ? "No se encontraron unidades" : "No units found"}
+                        {language === "es" ? "No hay condominios disponibles" : "No condominiums available"}
                       </div>
                     )}
                   </SelectContent>
                 </Select>
 
-                {selectedUnit && (
-                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                      {selectedUnit.condominium?.name} - {selectedUnit.unitNumber}
+                {selectedCondominium && (
+                  <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
+                      {selectedCondominium.name}
                     </span>
+                    <Badge variant="secondary" className="ml-auto">
+                      {selectedCondominium.unitCount} {language === "es" ? "unidades" : "units"}
+                    </Badge>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <Separator />
+            {selectedCondominiumId && (
+              <>
+                <Separator />
 
-            {/* Step 3: Select Client or Owner */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-                    3
-                  </div>
-                  <CardTitle className="text-lg">
-                    {recipientType === "tenant"
-                      ? (language === "es" ? "Selecciona el Inquilino" : "Select Tenant")
-                      : (language === "es" ? "Propietario de la Unidad" : "Unit Owner")}
-                  </CardTitle>
-                </div>
-              </CardHeader>
+                {/* Step 3: Select Unit */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                        3
+                      </div>
+                      <CardTitle className="text-lg">
+                        {language === "es" ? "Selecciona la Unidad" : "Select Unit"}
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Select
+                      value={selectedUnitId}
+                      onValueChange={setSelectedUnitId}
+                    >
+                      <SelectTrigger data-testid="select-rental-form-unit" className="h-12">
+                        <SelectValue placeholder={language === "es" ? "Selecciona una unidad" : "Select a unit"} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px] overflow-y-auto">
+                        {filteredUnits && filteredUnits.length > 0 ? (
+                          filteredUnits.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              <div className="flex items-center gap-2">
+                                <Home className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium">{unit.unitNumber}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            {language === "es" ? "No hay unidades en este condominio" : "No units in this condominium"}
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+
+                    {selectedUnit && (
+                      <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <Home className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                          {selectedCondominium?.name} - {selectedUnit.unitNumber}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {selectedUnitId && (
+              <>
+                <Separator />
+
+                {/* Step 4: Select Client or Owner */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                        4
+                      </div>
+                      <CardTitle className="text-lg">
+                        {recipientType === "tenant"
+                          ? (language === "es" ? "Selecciona el Inquilino" : "Select Tenant")
+                          : (language === "es" ? "Propietario de la Unidad" : "Unit Owner")}
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
               <CardContent className="space-y-3">
                 {recipientType === "tenant" ? (
                   // Tenant selection
@@ -561,7 +638,7 @@ Need help? I'm available for any questions! 😊`;
                         <SelectTrigger data-testid="select-client" className="h-12">
                           <SelectValue placeholder={language === "es" ? "Selecciona un inquilino" : "Select a tenant"} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-[300px] overflow-y-auto">
                           {isLoadingClients ? (
                             <div className="flex items-center justify-center p-8">
                               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -650,7 +727,7 @@ Need help? I'm available for any questions! 😊`;
                             <SelectTrigger data-testid="select-owner" className="h-12">
                               <SelectValue placeholder={language === "es" ? "Selecciona un propietario" : "Select an owner"} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-[300px] overflow-y-auto">
                               {unitOwners.map((owner) => (
                                 <SelectItem key={owner.id} value={owner.id}>
                                   <div className="flex items-center gap-2">
@@ -680,8 +757,10 @@ Need help? I'm available for any questions! 😊`;
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+              </>
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button
