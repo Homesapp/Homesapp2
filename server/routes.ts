@@ -31358,7 +31358,7 @@ ${{precio}}/mes
   app.get("/api/public/external-properties", async (req, res) => {
     try {
       const { limit = 12 } = req.query;
-      const limitNum = Math.min(parseInt(limit as string) || 12, 50);
+      const limitNum = Math.min(parseInt(limit as string) || 100, 1000);
       
       // Get approved external units that are published to main site
       const approvedUnits = await db

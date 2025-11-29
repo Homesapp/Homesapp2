@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -145,7 +146,7 @@ export function FloatingChat() {
     }
   };
 
-  return (
+  const chatContent = (
     <>
       {!isOpen && (
         <button
@@ -242,4 +243,6 @@ export function FloatingChat() {
       )}
     </>
   );
+
+  return createPortal(chatContent, document.body);
 }
