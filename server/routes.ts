@@ -31386,6 +31386,9 @@ ${{precio}}/mes
         .offset(offset);
       
       // Transform to property-like format for frontend compatibility
+      // Helper to generate slug
+const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
       const properties = await Promise.all(approvedUnits.map(async (unit) => {
         let location = "Tulum, Quintana Roo";
         if (unit.condominiumId) {
@@ -31399,6 +31402,14 @@ ${{precio}}/mes
             location = condo.zone ? `${condo.name}, ${condo.zone}` : condo.name;
           }
         }
+        
+        // Get agency info for slug
+        const agencyData = await db.select({ name: externalAgencies.name, slug: externalAgencies.slug })
+          .from(externalAgencies).where(eq(externalAgencies.id, unit.agencyId)).limit(1);
+        const agency = agencyData[0];
+        const agencySlug = agency?.slug || generateSlug(agency?.name || 'agency');
+        const unitTitle = unit.title || `${unit.propertyType || 'propiedad'}-${unit.unitNumber}`;
+        const unitSlug = generateSlug(unitTitle);
         
         return {
           id: unit.id,
@@ -31414,6 +31425,8 @@ ${{precio}}/mes
           featured: false,
           isExternal: true,
           propertyType: unit.propertyType,
+          agencySlug: agencySlug,
+          unitSlug: unitSlug,
         };
       }));
       
@@ -38288,5 +38301,62 @@ ${{precio}}/mes
     });
   });
   
+
+  // GET /api/public/property/:agencySlug/:unitSlug - Resolve friendly URL to property
+  app.get("/api/public/property/:agencySlug/:unitSlug", async (req, res) => {
+    try {
+      const { agencySlug, unitSlug } = req.params;
+      
+      // Helper to generate slug from string
+      const generateSlug = (str: string) => {
+        return str
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+      };
+      
+      // Find agency by slug or generated slug from name
+      const agencies = await db
+        .select()
+        .from(externalAgencies)
+        .where(eq(externalAgencies.isActive, true));
+      
+      const matchedAgency = agencies.find(a => {
+        const slug = a.slug || generateSlug(a.name);
+        return slug === agencySlug;
+      });
+      
+      if (!matchedAgency) {
+        return res.status(404).json({ error: "Agency not found" });
+      }
+      
+      // Find unit by slug or generated slug
+      const units = await db
+        .select()
+        .from(externalUnits)
+        .where(and(
+          eq(externalUnits.agencyId, matchedAgency.id),
+          eq(externalUnits.isActive, true),
+          eq(externalUnits.publishStatus, "approved")
+        ));
+      
+      const matchedUnit = units.find(u => {
+        const unitTitle = u.title || `\${u.propertyType || 'propiedad'}-\${u.unitNumber}`;
+        const slug = u.slug || generateSlug(unitTitle);
+        return slug === unitSlug;
+      });
+      
+      if (!matchedUnit) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+      
+      res.json({ unitId: matchedUnit.id });
+    } catch (error: any) {
+      console.error("Error resolving property URL:", error);
+      res.status(500).json({ error: error.message || "Error resolving property URL" });
+    }
+  });
   return httpServer;
 }

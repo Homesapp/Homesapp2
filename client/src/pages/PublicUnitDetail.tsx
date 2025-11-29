@@ -39,13 +39,25 @@ import type { ExternalUnit } from "@shared/schema";
 export default function PublicUnitDetail() {
   const [matchUnidad, paramsUnidad] = useRoute("/unidad/:id");
   const [matchPropiedad, paramsPropiedad] = useRoute("/propiedad-externa/:id");
+  const [matchFriendly, paramsFriendly] = useRoute("/:agencySlug/:unitSlug");
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const [showAllPhotosDialog, setShowAllPhotosDialog] = useState(false);
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
 
-  const unitId = paramsUnidad?.id || paramsPropiedad?.id;
+  const directUnitId = paramsUnidad?.id || paramsPropiedad?.id;
+  const agencySlug = paramsFriendly?.agencySlug;
+  const unitSlug = paramsFriendly?.unitSlug;
+  const hasFriendlyUrl = !!(agencySlug && unitSlug && !directUnitId);
+
+  // Resolve friendly URL to unit ID
+  const { data: resolvedData } = useQuery<{ unitId: string }>({
+    queryKey: ["/api/public/property", agencySlug, unitSlug],
+    enabled: hasFriendlyUrl,
+  });
+
+  const unitId = directUnitId || resolvedData?.unitId;
 
   const { data: unit, isLoading, error } = useQuery<ExternalUnit>({
     queryKey: ["/api/public/external-units", unitId],

@@ -247,6 +247,7 @@ function AuthenticatedApp() {
         <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
         <Route path="/unidad/:id" component={PublicUnitDetail} />
         <Route path="/propiedad-externa/:id" component={PublicUnitDetail} />
+        <Route path="/:agencySlug/:unitSlug" component={PublicUnitDetail} />
         <Route path="/propiedad/:id" component={PropertyDetails} />
         <Route path="/favoritos" component={Favorites} />
         <Route path="/terminos" component={Terms} />

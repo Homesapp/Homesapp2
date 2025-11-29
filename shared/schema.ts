@@ -5009,6 +5009,7 @@ export type PropertyOwnerTerms = typeof propertyOwnerTerms.$inferSelect;
 export const externalAgencies = pgTable("external_agencies", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: varchar("name", { length: 255 }).notNull(), // Nombre de la agencia
+  slug: varchar("slug", { length: 100 }), // URL-friendly slug (e.g., tulumrentalhomes)
   description: text("description"), // Descripción
   agencyLogoUrl: text("agency_logo_url"), // Logo de la agencia
   pdfTemplateStyle: varchar("pdf_template_style", { length: 50 }).default('professional'), // Estilo de plantilla PDF: 'professional', 'modern', 'elegant'
@@ -7080,6 +7081,7 @@ export const externalUnits = pgTable("external_units", {
   id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
   condominiumId: varchar("condominium_id").references(() => externalCondominiums.id, { onDelete: "cascade" }), // Null si es propiedad independiente
+  slug: varchar("slug", { length: 150 }), // URL-friendly slug (e.g., departamento-d1-105)
   unitNumber: varchar("unit_number", { length: 50 }).notNull(), // Número de unidad/apartamento
   zone: varchar("zone", { length: 100 }), // Zona/colonia donde se ubica la unidad
   city: varchar("city", { length: 100 }), // Ciudad

@@ -15,6 +15,14 @@ type ChatAction = {
   data?: Record<string, unknown>;
 };
 
+const chatPrompts = [
+  "Hola, escríbeme",
+  "¿Buscas propiedad?",
+  "Te ayudo a encontrar",
+  "Agenda una cita",
+  "¿Tienes dudas?",
+];
+
 export function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,6 +31,8 @@ export function FloatingChat() {
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [isMounted, setIsMounted] = useState(false);
+  const [showBubble, setShowBubble] = useState(true);
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +40,21 @@ export function FloatingChat() {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  // Rotate prompts and show/hide bubble
+  useEffect(() => {
+    if (isOpen) return;
+    
+    const interval = setInterval(() => {
+      setShowBubble(false);
+      setTimeout(() => {
+        setCurrentPromptIndex((prev) => (prev + 1) % chatPrompts.length);
+        setShowBubble(true);
+      }, 500);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,11 +185,12 @@ export function FloatingChat() {
         <div className="relative">
           {/* Speech bubble with animation */}
           <div 
-            className="absolute bottom-full right-0 mb-2 animate-bounce-gentle"
-            style={{ animationDuration: '2s' }}
+            className={`absolute bottom-full right-0 mb-2 transition-all duration-300 ${
+              showBubble ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+            }`}
           >
-            <div className="bg-white dark:bg-gray-800 text-foreground px-3 py-2 rounded-lg shadow-lg text-sm whitespace-nowrap border">
-              <span>Hola, escríbeme</span>
+            <div className="bg-white dark:bg-gray-800 text-foreground px-3 py-2 rounded-lg shadow-lg text-sm whitespace-nowrap border animate-bounce-gentle">
+              <span>{chatPrompts[currentPromptIndex]}</span>
               {/* Triangle pointer */}
               <div className="absolute top-full right-5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white dark:border-t-gray-800" />
             </div>

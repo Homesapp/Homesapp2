@@ -295,7 +295,11 @@ export default function PublicDashboard() {
                 <div
                   key={property.id}
                   className="group cursor-pointer rounded-2xl overflow-hidden border bg-card hover-elevate"
-                  onClick={() => setLocation(property.isExternal ? `/propiedad-externa/${property.id}` : `/propiedad/${property.id}/completo`)}
+                  onClick={() => setLocation(property.isExternal && property.agencySlug && property.unitSlug 
+                    ? `/${property.agencySlug}/${property.unitSlug}` 
+                    : property.isExternal 
+                      ? `/propiedad-externa/${property.id}` 
+                      : `/propiedad/${property.id}/completo`)}
                   data-testid={`card-property-${property.id}`}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -368,7 +372,11 @@ export default function PublicDashboard() {
               <div
                 key={property.id}
                 className="group cursor-pointer rounded-xl sm:rounded-2xl overflow-hidden border bg-card hover-elevate"
-                onClick={() => setLocation(property.isExternal ? `/propiedad-externa/${property.id}` : `/propiedad/${property.id}/completo`)}
+                onClick={() => setLocation(property.isExternal && property.agencySlug && property.unitSlug 
+                  ? `/${property.agencySlug}/${property.unitSlug}` 
+                  : property.isExternal 
+                    ? `/propiedad-externa/${property.id}` 
+                    : `/propiedad/${property.id}/completo`)}
                 data-testid={`card-all-property-${property.id}`}
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-muted">
