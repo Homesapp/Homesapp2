@@ -455,6 +455,9 @@ import {
   externalPortalChatMessages,
   type ExternalPortalChatMessage,
   type InsertExternalPortalChatMessage,
+  publicChatbotConversations,
+  type PublicChatbotConversation,
+  type InsertPublicChatbotConversation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray } from "drizzle-orm";
@@ -1697,6 +1700,22 @@ export interface IStorage {
   // Portal Access System - Chat Messages
   getExternalPortalChatMessages(contractId: string, role: string): Promise<ExternalPortalChatMessage[]>;
   createExternalPortalChatMessage(message: InsertExternalPortalChatMessage): Promise<ExternalPortalChatMessage>;
+
+  // Public Chatbot Conversations
+  getPublicChatbotConversation(id: string): Promise<PublicChatbotConversation | undefined>;
+  getPublicChatbotConversationBySession(agencyId: string, sessionId: string): Promise<PublicChatbotConversation | undefined>;
+  createPublicChatbotConversation(data: InsertPublicChatbotConversation): Promise<PublicChatbotConversation>;
+  updatePublicChatbotConversation(id: string, updates: Partial<InsertPublicChatbotConversation>): Promise<PublicChatbotConversation>;
+
+  // External Units for public listing
+  getExternalUnits(filters: {
+    agencyId: string;
+    status?: string;
+    publishToMain?: boolean;
+    publishStatus?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: ExternalUnit[]; total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -12181,6 +12200,87 @@ export class DatabaseStorage implements IStorage {
       .values(message)
       .returning();
     return result;
+  }
+
+  // Public Chatbot Conversations
+  async getPublicChatbotConversation(id: string): Promise<PublicChatbotConversation | undefined> {
+    const [result] = await db
+      .select()
+      .from(publicChatbotConversations)
+      .where(eq(publicChatbotConversations.id, id))
+      .limit(1);
+    return result;
+  }
+
+  async getPublicChatbotConversationBySession(agencyId: string, sessionId: string): Promise<PublicChatbotConversation | undefined> {
+    const [result] = await db
+      .select()
+      .from(publicChatbotConversations)
+      .where(and(
+        eq(publicChatbotConversations.agencyId, agencyId),
+        eq(publicChatbotConversations.sessionId, sessionId),
+        eq(publicChatbotConversations.status, "active")
+      ))
+      .orderBy(desc(publicChatbotConversations.createdAt))
+      .limit(1);
+    return result;
+  }
+
+  async createPublicChatbotConversation(data: InsertPublicChatbotConversation): Promise<PublicChatbotConversation> {
+    const [result] = await db
+      .insert(publicChatbotConversations)
+      .values(data)
+      .returning();
+    return result;
+  }
+
+  async updatePublicChatbotConversation(id: string, updates: Partial<InsertPublicChatbotConversation>): Promise<PublicChatbotConversation> {
+    const [result] = await db
+      .update(publicChatbotConversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(publicChatbotConversations.id, id))
+      .returning();
+    return result;
+  }
+
+  // External Units for public listing
+  async getExternalUnits(filters: {
+    agencyId: string;
+    status?: string;
+    publishToMain?: boolean;
+    publishStatus?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: ExternalUnit[]; total: number }> {
+    const conditions: any[] = [eq(externalUnits.agencyId, filters.agencyId)];
+    
+    if (filters.status) {
+      conditions.push(eq(externalUnits.status, filters.status as any));
+    }
+    if (filters.publishToMain !== undefined) {
+      conditions.push(eq(externalUnits.publishToMain, filters.publishToMain));
+    }
+    if (filters.publishStatus) {
+      conditions.push(eq(externalUnits.publishStatus, filters.publishStatus as any));
+    }
+
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(externalUnits)
+      .where(and(...conditions));
+
+    const data = await db
+      .select()
+      .from(externalUnits)
+      .where(and(...conditions))
+      .orderBy(desc(externalUnits.createdAt))
+      .limit(filters.limit || 10)
+      .offset(filters.offset || 0);
+
+    return {
+      data,
+      total: Number(countResult?.count) || 0
+    };
   }
 }
 

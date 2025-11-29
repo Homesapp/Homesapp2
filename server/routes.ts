@@ -31413,6 +31413,72 @@ ${{precio}}/mes
   });
 
 
+  // =============================================================================
+  // PUBLIC CHATBOT ENDPOINTS - AI assistant for homepage
+  // =============================================================================
+
+  // POST /api/public/chat/start - Start a new chatbot conversation
+  app.post("/api/public/chat/start", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      // Get the first external agency (Tulum Rental Homes)
+      const agencies = await storage.getExternalAgencies();
+      if (!agencies || agencies.length === 0) {
+        return res.status(404).json({ message: "No agency configured" });
+      }
+      const agencyId = agencies[0].id;
+
+      // Check if there's an existing active conversation for this session
+      let conversation = await storage.getPublicChatbotConversationBySession(agencyId, sessionId);
+      
+      if (!conversation) {
+        // Create new conversation with welcome message
+        const { createPublicChatConversation } = await import("./services/publicChatbot");
+        conversation = await createPublicChatConversation(agencyId, sessionId);
+      }
+
+      res.json({
+        conversationId: conversation.id,
+        messages: conversation.messages,
+      });
+    } catch (error: any) {
+      console.error("Error starting chatbot conversation:", error);
+      res.status(500).json({ message: "Error al iniciar conversación" });
+    }
+  });
+
+  // POST /api/public/chat/message - Send a message to the chatbot
+  app.post("/api/public/chat/message", async (req, res) => {
+    try {
+      const { conversationId, message } = req.body;
+
+      if (!conversationId || !message) {
+        return res.status(400).json({ message: "Conversation ID and message are required" });
+      }
+
+      // Get the first external agency (Tulum Rental Homes)
+      const agencies = await storage.getExternalAgencies();
+      if (!agencies || agencies.length === 0) {
+        return res.status(404).json({ message: "No agency configured" });
+      }
+      const agencyId = agencies[0].id;
+
+      const { processPublicChatMessage } = await import("./services/publicChatbot");
+      const response = await processPublicChatMessage(conversationId, message, agencyId);
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Error processing chatbot message:", error);
+      res.status(500).json({ message: "Error al procesar mensaje" });
+    }
+  });
+
+
   // GET /api/public/condominiums - Public list of condominiums for lead registration
   app.get("/api/public/condominiums", async (req, res) => {
     try {
