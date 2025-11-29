@@ -6452,6 +6452,14 @@ const baseExternalLeadSchema = createInsertSchema(externalLeads).omit({
   updatedAt: true,
   validUntil: true, // Se calcula automáticamente (3 meses desde registro)
   originalCreatedAt: true, // Solo para importaciones
+}).extend({
+  // Override budgetMin/budgetMax to accept both numbers and strings (decimals from DB come as numbers)
+  budgetMin: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
+  budgetMax: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
 });
 
 export const insertExternalLeadSchema = baseExternalLeadSchema.refine((data) => {
