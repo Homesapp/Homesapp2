@@ -328,17 +328,51 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
     return <CheckCircle2 className="h-4 w-4" />;
   };
   
+  const preloadImage = (src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => reject();
+      img.src = src;
+    });
+  };
+
   const handleDownloadImage = async () => {
     if (!contentRef.current) return;
     
     setIsDownloading(true);
     try {
+      if (offerData.signature) {
+        await preloadImage(offerData.signature).catch(() => {});
+      }
+      
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
         logging: false,
+        imageTimeout: 5000,
+        onclone: async (clonedDoc) => {
+          const signatureImg = clonedDoc.querySelector('[data-testid="img-signature"]') as HTMLImageElement;
+          if (signatureImg && offerData.signature) {
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            const img = new Image();
+            
+            await new Promise<void>((resolve) => {
+              img.onload = () => {
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                ctx?.drawImage(img, 0, 0);
+                signatureImg.src = tempCanvas.toDataURL('image/png');
+                resolve();
+              };
+              img.onerror = () => resolve();
+              img.src = offerData.signature!;
+            });
+          }
+        },
       });
       
       const link = document.createElement("a");
@@ -394,11 +428,20 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
           <div ref={contentRef} className="bg-white p-8" data-testid="offer-detail-content">
             {/* PDF-Style Header */}
             <div className="flex items-start justify-between mb-6">
-              {/* Left: Logos */}
-              <div className="flex items-center gap-3">
-                <img src={logoPath} alt="HomesApp" className="h-12 object-contain" />
+              {/* Left: Logos with names */}
+              <div className="flex items-start gap-6">
+                {/* HomesApp Logo + Slogan */}
+                <div className="flex flex-col items-center">
+                  <img src={logoPath} alt="HomesApp" className="h-16 object-contain" />
+                  <p className="text-[10px] text-muted-foreground mt-1 italic">Smart Real Estate</p>
+                </div>
+                
+                {/* Agency Logo + Name */}
                 {offer.agencyLogoUrl && (
-                  <img src={offer.agencyLogoUrl} alt={agencyName} className="h-12 object-contain" />
+                  <div className="flex flex-col items-center">
+                    <img src={offer.agencyLogoUrl} alt={agencyName} className="h-16 object-contain" />
+                    <p className="text-[10px] text-muted-foreground mt-1 font-medium">{agencyName}</p>
+                  </div>
                 )}
               </div>
               
