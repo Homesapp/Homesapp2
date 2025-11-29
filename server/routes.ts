@@ -31622,6 +31622,111 @@ ${{precio}}/mes
   });
 
   // GET /api/public/sellers - Get public list of sellers for lead registration dropdown
+  // GET /api/public/resolve-offer-token/:agencySlug/:unitSlug - Resolve offer token by slugs
+  app.get("/api/public/resolve-offer-token/:agencySlug/:unitSlug", async (req, res) => {
+    try {
+      const { agencySlug, unitSlug } = req.params;
+      
+      // Find agency by slug
+      const agency = await db.select()
+        .from(externalAgencies)
+        .where(and(
+          eq(externalAgencies.slug, agencySlug),
+          eq(externalAgencies.isActive, true)
+        ))
+        .limit(1);
+      
+      if (!agency.length) {
+        return res.status(404).json({ message: "Agencia no encontrada" });
+      }
+      
+      // Find unit by slug and agency
+      const unit = await db.select()
+        .from(externalUnits)
+        .where(and(
+          eq(externalUnits.slug, unitSlug),
+          eq(externalUnits.agencyId, agency[0].id)
+        ))
+        .limit(1);
+      
+      if (!unit.length) {
+        return res.status(404).json({ message: "Unidad no encontrada" });
+      }
+      
+      // Find active offer token for this unit
+      const token = await db.select()
+        .from(offerTokens)
+        .where(and(
+          eq(offerTokens.externalUnitId, unit[0].id),
+          eq(offerTokens.status, "active")
+        ))
+        .orderBy(desc(offerTokens.createdAt))
+        .limit(1);
+      
+      if (!token.length) {
+        return res.status(404).json({ message: "No hay oferta activa para esta propiedad" });
+      }
+      
+      res.json({ token: token[0].token });
+    } catch (error: any) {
+      console.error("Error resolving offer token:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // GET /api/public/resolve-rental-form-token/:agencySlug/:unitSlug - Resolve rental form token by slugs
+  app.get("/api/public/resolve-rental-form-token/:agencySlug/:unitSlug", async (req, res) => {
+    try {
+      const { agencySlug, unitSlug } = req.params;
+      
+      // Find agency by slug
+      const agency = await db.select()
+        .from(externalAgencies)
+        .where(and(
+          eq(externalAgencies.slug, agencySlug),
+          eq(externalAgencies.isActive, true)
+        ))
+        .limit(1);
+      
+      if (!agency.length) {
+        return res.status(404).json({ message: "Agencia no encontrada" });
+      }
+      
+      // Find unit by slug and agency
+      const unit = await db.select()
+        .from(externalUnits)
+        .where(and(
+          eq(externalUnits.slug, unitSlug),
+          eq(externalUnits.agencyId, agency[0].id)
+        ))
+        .limit(1);
+      
+      if (!unit.length) {
+        return res.status(404).json({ message: "Unidad no encontrada" });
+      }
+      
+      // Find active rental form token for this unit (recipient type 'tenant')
+      const token = await db.select()
+        .from(rentalFormTokens)
+        .where(and(
+          eq(rentalFormTokens.externalUnitId, unit[0].id),
+          eq(rentalFormTokens.status, "active"),
+          eq(rentalFormTokens.recipientType, "tenant")
+        ))
+        .orderBy(desc(rentalFormTokens.createdAt))
+        .limit(1);
+      
+      if (!token.length) {
+        return res.status(404).json({ message: "No hay formato de renta activo para esta propiedad" });
+      }
+      
+      res.json({ token: token[0].token });
+    } catch (error: any) {
+      console.error("Error resolving rental form token:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   app.get("/api/public/sellers", async (req, res) => {
     try {
       const agencies = await storage.getExternalAgencies({ isActive: true });
