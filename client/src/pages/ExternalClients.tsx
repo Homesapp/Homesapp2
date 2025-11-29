@@ -3318,7 +3318,7 @@ export default function ExternalClients() {
 
       {/* Create Lead Dialog - Full screen on mobile */}
       <Dialog open={isCreateLeadDialogOpen} onOpenChange={setIsCreateLeadDialogOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto w-full h-full sm:h-auto sm:w-auto fixed sm:relative inset-0 sm:inset-auto rounded-none sm:rounded-lg">
+        <DialogContent className="sm:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto max-sm:!left-0 max-sm:!top-0 max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!w-full max-sm:!h-full max-sm:!max-w-none max-sm:!rounded-none">
           <DialogHeader className="pb-4 border-b">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -4081,7 +4081,7 @@ export default function ExternalClients() {
           setSelectedEditAmenities([]);
         }
       }}>
-        <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto w-full h-full sm:h-auto sm:w-auto fixed sm:relative inset-0 sm:inset-auto rounded-none sm:rounded-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto max-sm:!left-0 max-sm:!top-0 max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!w-full max-sm:!h-full max-sm:!max-w-none max-sm:!rounded-none">
           <DialogHeader className="pb-4 border-b">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
