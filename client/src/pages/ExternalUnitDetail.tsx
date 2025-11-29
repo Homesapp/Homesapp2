@@ -183,6 +183,7 @@ export default function ExternalUnitDetail() {
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showOwnerLinkDialog, setShowOwnerLinkDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
+  const [showReferrerDialog, setShowReferrerDialog] = useState(false);
   const [editingOwner, setEditingOwner] = useState<ExternalUnitOwner | null>(null);
   const [editingAccess, setEditingAccess] = useState<ExternalUnitAccessControl | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
@@ -1543,8 +1544,8 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
         </Card>
       </div>
 
-      {/* Row 2: Owner + Referrer (if applicable) + Access Control */}
-      <div className={`grid grid-cols-1 gap-4 ${unit?.commissionType === 'referido' ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+      {/* Row 2: Owner + Referrer + Access Control */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Owner Information */}
         <Card data-testid="card-owner-info">
           <CardHeader className="pb-3">
@@ -1638,47 +1639,57 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
           </CardContent>
         </Card>
 
-        {/* Referrer Information - Only show if commission type is 'referido' */}
-        {unit?.commissionType === 'referido' && (
-          <Card data-testid="card-referrer-info">
-            <CardHeader className="pb-3">
+        {/* Referrer Information - Always show with option to add/edit */}
+        <Card data-testid="card-referrer-info">
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-center gap-2">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 {language === "es" ? "Referido" : "Referrer"}
               </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {unit?.referrerName ? (
-                <div className="p-2.5 rounded-lg border border-primary/30 bg-primary/5">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium" data-testid="text-referrer-name">
-                        {unit.referrerName}
-                      </p>
-                      <Badge variant="secondary" className="h-5 text-[10px]">
-                        20%
-                      </Badge>
-                    </div>
-                    {unit.referrerEmail && (
-                      <p className="text-xs text-muted-foreground" data-testid="text-referrer-email">
-                        {unit.referrerEmail}
-                      </p>
-                    )}
-                    {unit.referrerPhone && (
-                      <p className="text-xs text-muted-foreground" data-testid="text-referrer-phone">
-                        {unit.referrerPhone}
-                      </p>
-                    )}
+              <Button
+                size="sm"
+                variant={unit?.referrerName ? "ghost" : "default"}
+                onClick={() => setShowReferrerDialog(true)}
+                disabled={isLoadingAuth || !user}
+                data-testid="button-edit-referrer"
+              >
+                {unit?.referrerName ? <Edit className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {unit?.referrerName ? (
+              <div className="p-2.5 rounded-lg border border-primary/30 bg-primary/5">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium" data-testid="text-referrer-name">
+                      {unit.referrerName}
+                    </p>
+                    <Badge variant="outline" className="h-5 text-[10px]" data-testid="badge-referrer-commission">
+                      20%
+                    </Badge>
                   </div>
+                  {unit.referrerEmail && (
+                    <p className="text-xs text-muted-foreground" data-testid="text-referrer-email">
+                      {unit.referrerEmail}
+                    </p>
+                  )}
+                  {unit.referrerPhone && (
+                    <p className="text-xs text-muted-foreground" data-testid="text-referrer-phone">
+                      {unit.referrerPhone}
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground text-sm" data-testid="text-no-referrer">
-                  {language === "es" ? "Sin información del referido" : "No referrer information"}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground text-sm" data-testid="text-no-referrer">
+                {language === "es" ? "Sin referido asignado" : "No referrer assigned"}
+                <p className="text-xs mt-1">{language === "es" ? "Haz clic en + para agregar" : "Click + to add"}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Access Control */}
         <Card data-testid="card-access-controls">
@@ -3317,6 +3328,120 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
               {language === "es" ? "Cerrar" : "Close"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Referrer Edit Dialog */}
+      <Dialog open={showReferrerDialog} onOpenChange={setShowReferrerDialog}>
+        <DialogContent className="max-w-md" data-testid="dialog-referrer">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {unit?.referrerName 
+                ? (language === "es" ? "Editar Referido" : "Edit Referrer")
+                : (language === "es" ? "Agregar Referido" : "Add Referrer")
+              }
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Ingresa la información del referido. La comisión se dividirá 80% agencia y 20% referido."
+                : "Enter the referrer information. The commission will be split 80% agency and 20% referrer."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const referrerName = formData.get('referrerName') as string;
+              const referrerEmail = formData.get('referrerEmail') as string;
+              const referrerPhone = formData.get('referrerPhone') as string;
+              
+              updateUnitMutation.mutate({
+                referrerName: referrerName || null,
+                referrerPhone: referrerPhone || null,
+                referrerEmail: referrerEmail || null,
+                commissionType: referrerName ? 'referido' : 'completa',
+              });
+              setShowReferrerDialog(false);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="referrerName">{language === "es" ? "Nombre del Referido *" : "Referrer Name *"}</Label>
+              <Input
+                id="referrerName"
+                name="referrerName"
+                defaultValue={unit?.referrerName || ''}
+                placeholder={language === "es" ? "Nombre completo" : "Full name"}
+                className="min-h-[44px]"
+                data-testid="input-referrer-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="referrerEmail">{language === "es" ? "Email" : "Email"}</Label>
+              <Input
+                id="referrerEmail"
+                name="referrerEmail"
+                type="email"
+                defaultValue={unit?.referrerEmail || ''}
+                placeholder="email@ejemplo.com"
+                className="min-h-[44px]"
+                data-testid="input-referrer-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="referrerPhone">{language === "es" ? "Teléfono" : "Phone"}</Label>
+              <Input
+                id="referrerPhone"
+                name="referrerPhone"
+                defaultValue={unit?.referrerPhone || ''}
+                placeholder="+52 998 123 4567"
+                className="min-h-[44px]"
+                data-testid="input-referrer-phone"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              {unit?.referrerName && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => {
+                    updateUnitMutation.mutate({
+                      referrerName: null,
+                      referrerPhone: null,
+                      referrerEmail: null,
+                      commissionType: 'completa',
+                    });
+                    setShowReferrerDialog(false);
+                  }}
+                  disabled={updateUnitMutation.isPending}
+                  data-testid="button-remove-referrer"
+                >
+                  {language === "es" ? "Eliminar Referido" : "Remove Referrer"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowReferrerDialog(false)}
+                data-testid="button-cancel-referrer"
+              >
+                {language === "es" ? "Cancelar" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateUnitMutation.isPending}
+                data-testid="button-save-referrer"
+              >
+                {updateUnitMutation.isPending
+                  ? (language === "es" ? "Guardando..." : "Saving...")
+                  : (language === "es" ? "Guardar" : "Save")
+                }
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
