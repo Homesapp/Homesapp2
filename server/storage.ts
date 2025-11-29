@@ -11015,7 +11015,7 @@ export class DatabaseStorage implements IStorage {
   // Optimized: Get all rental form token summaries with unit, condo, client, creator
   // Uses two separate queries for security: one for tokens with units (INNER JOINs), one for tokens without units
   async getExternalRentalFormTokenSummariesByAgency(agencyId: string): Promise<any[]> {
-    // Query 1: Tokens WITH units - use INNER JOINs for strict agency filtering via condo
+    // Query 1: Tokens WITH units - filter by unit's agencyId directly (handles units with or without condo)
     const tokensWithUnits = await db
       .select({
         id: tenantRentalFormTokens.id,
@@ -11041,11 +11041,11 @@ export class DatabaseStorage implements IStorage {
       })
       .from(tenantRentalFormTokens)
       .innerJoin(externalUnits, eq(tenantRentalFormTokens.externalUnitId, externalUnits.id))
-      .innerJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+      .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
       .leftJoin(externalClients, eq(tenantRentalFormTokens.externalClientId, externalClients.id))
       .leftJoin(externalUnitOwners, eq(tenantRentalFormTokens.externalUnitOwnerId, externalUnitOwners.id))
       .leftJoin(users, eq(tenantRentalFormTokens.createdBy, users.id))
-      .where(eq(externalCondominiums.agencyId, agencyId));
+      .where(eq(externalUnits.agencyId, agencyId));
 
     // Query 2: Tokens WITHOUT units - filter by creator's agency
     const tokensWithoutUnits = await db
