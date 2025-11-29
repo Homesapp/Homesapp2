@@ -310,6 +310,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.externalAppointments", url: "/external-appointments", icon: CalendarCheck, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalOwners", url: "/external/owners/portfolio", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalClients", url: "/external/clients", icon: UserCircle2, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge"] },
+    { titleKey: "sidebar.externalMessages", url: "/external/messages", icon: MessagesSquare, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer", "external_agency_seller"] },
     { titleKey: "sidebar.sellerLeads", url: "/external/clients", icon: Users, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerCalendar", url: "/external/seller-calendar", icon: Calendar, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.sellerCatalog", url: "/external/seller-catalog", icon: Home, roles: ["external_agency_seller"] },

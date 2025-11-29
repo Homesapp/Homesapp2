@@ -163,6 +163,7 @@ import ExternalOwners from "@/pages/ExternalOwners";
 import ExternalOwnerPortfolio from "@/pages/ExternalOwnerPortfolio";
 import ExternalMaintenanceWorkers from "@/pages/ExternalMaintenanceWorkers";
 import ExternalClients from "@/pages/ExternalClients";
+import ExternalMessages from "@/pages/ExternalMessages";
 import ExternalLeadDetail from "@/pages/ExternalLeadDetail";
 import ExternalClientEdit from "@/pages/ExternalClientEdit";
 import ExternalContracts from "@/pages/ExternalContracts";
@@ -536,6 +537,7 @@ function AuthenticatedApp() {
               <Route path="/external/leads/:id" component={ExternalLeadDetail} />
               <Route path="/external/clients/:id" component={ExternalClientEdit} />
               <Route path="/external/clients" component={ExternalClients} />
+              <Route path="/external/messages" component={ExternalMessages} />
               <Route path="/external/contracts" component={ExternalContracts} />
               <Route path="/external/users">
                 {() => (
