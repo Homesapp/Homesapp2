@@ -18,6 +18,7 @@ import { getPropertyTitle } from "./propertyHelpers";
 import { setupGoogleAuth } from "./googleAuth";
 import { generateOfferPDF, generateRentalFormPDF, generateOwnerFormPDF, generateQuotationPDF } from "./pdfGenerator";
 import { processChatbotMessage, generatePropertyRecommendations } from "./chatbot";
+import { processExternalChatbotMessage } from "./externalChatbot";
 import { authLimiter, registrationLimiter, emailVerificationLimiter, chatbotLimiter, propertySubmissionLimiter, publicLeadRegistrationLimiter, tokenRegenerationLimiter } from "./rateLimiters";
 import { encrypt, decrypt } from "./encryption";
 import { 
@@ -35435,7 +35436,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
     }
   });
 
-  // External Agency Chatbot - AI assistant for testing
+  // External Agency Chatbot - AI assistant with property search and appointment scheduling
   app.post("/api/external/chatbot/message", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
@@ -35443,65 +35444,21 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         return res.status(400).json({ message: "No agency assigned to user" });
       }
 
-      const { message, conversationHistory } = req.body;
+      const { message, conversationHistory, clientInfo } = req.body;
 
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+      const responseText = await processExternalChatbotMessage({
+        agencyId,
+        message,
+        conversationHistory,
+        clientInfo
       });
-
-      // Get agency info for context
-      const agency = await storage.getExternalAgency(agencyId);
-
-      // Build system prompt for external agency assistant
-      const systemPrompt = `Eres el asistente virtual de HomesApp, una plataforma de gestión inmobiliaria. Estás ayudando a un usuario de la agencia "${agency?.name || 'Agencia'}".
-
-Tu rol es:
-1. Responder preguntas sobre el uso del sistema
-2. Ayudar con consultas sobre propiedades, clientes, leads y contratos
-3. Proporcionar orientación sobre las funcionalidades del sistema
-4. Ofrecer consejos sobre gestión inmobiliaria
-
-Características del sistema que puedes explicar:
-- Dashboard con métricas y estadísticas
-- Gestión de propiedades y unidades
-- Sistema de leads y clientes con CRM
-- Contratos y documentos digitales
-- Calendario y citas
-- Reportes financieros
-- Marketplace de servicios
-
-Reglas:
-- Responde siempre en español
-- Sé conciso pero informativo
-- Si no sabes algo específico, sugiere contactar al soporte técnico
-- Mantén un tono profesional y amigable`;
-
-      const messages: any[] = [
-        { role: "system", content: systemPrompt },
-        ...(conversationHistory || []).map((m: any) => ({
-          role: m.role,
-          content: m.content
-        })),
-        { role: "user", content: message }
-      ];
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        max_tokens: 500,
-        temperature: 0.7,
-      });
-
-      const assistantMessage = completion.choices[0]?.message?.content || "Lo siento, no pude procesar tu mensaje. Por favor, intenta de nuevo.";
 
       res.json({
-        message: assistantMessage,
+        message: responseText,
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
