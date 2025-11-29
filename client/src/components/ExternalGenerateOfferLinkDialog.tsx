@@ -338,7 +338,7 @@ Any questions? I'm here to help.`;
                     <SelectTrigger className="min-h-[44px]" data-testid="select-client">
                       <SelectValue placeholder={language === "es" ? "Selecciona un cliente..." : "Select a client..."} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px]">
                       {isLoadingClients ? (
                         <div className="flex items-center justify-center p-4">
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -374,7 +374,7 @@ Any questions? I'm here to help.`;
                   <SelectTrigger className="min-h-[44px]" data-testid="select-condominium">
                     <SelectValue placeholder={language === "es" ? "Selecciona un condominio..." : "Select a condominium..."} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px]">
                     {isLoadingUnits ? (
                       <div className="flex items-center justify-center p-4">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -414,7 +414,7 @@ Any questions? I'm here to help.`;
                         : (language === "es" ? "Selecciona una unidad..." : "Select a unit...")
                     } />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px]">
                     {filteredUnits.length === 0 ? (
                       <div className="p-4 text-center text-sm text-muted-foreground">
                         {language === "es" ? "No hay unidades en este condominio" : "No units in this condominium"}
