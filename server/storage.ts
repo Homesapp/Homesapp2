@@ -10912,6 +10912,19 @@ export class DatabaseStorage implements IStorage {
   // Optimized: Get all offer token summaries with unit, condo, client, creator
   // Uses two separate queries for security: one for tokens with units (INNER JOINs), one for tokens without units
   async getExternalOfferTokenSummariesByAgency(agencyId: string): Promise<any[]> {
+    // First, get the agency info for the response
+    const agencyInfo = await db
+      .select({
+        name: externalAgencies.name,
+        logoUrl: externalAgencies.agencyLogoUrl,
+      })
+      .from(externalAgencies)
+      .where(eq(externalAgencies.id, agencyId))
+      .limit(1);
+    
+    const agencyName = agencyInfo[0]?.name || null;
+    const agencyLogoUrl = agencyInfo[0]?.logoUrl || null;
+
     // Query 1: Tokens WITH units - use INNER JOINs for strict agency filtering via condo
     const tokensWithUnits = await db
       .select({
@@ -10988,6 +11001,8 @@ export class DatabaseStorage implements IStorage {
         : 'Sin unidad asignada',
       clientName: r.clientFirstName ? `${r.clientFirstName} ${r.clientLastName || ''}`.trim() : '',
       creatorName: r.creatorFirstName ? `${r.creatorFirstName} ${r.creatorLastName || ''}`.trim() : '',
+      agencyName,
+      agencyLogoUrl,
     }));
   }
 

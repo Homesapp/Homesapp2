@@ -54,6 +54,8 @@ export default function ExternalOfferLinks({ searchTerm, statusFilter, viewMode 
       clientName: token.clientName,
       isUsed: token.isUsed,
       expiresAt: token.expiresAt,
+      agencyName: token.agencyName,
+      agencyLogoUrl: token.agencyLogoUrl,
     });
     setViewDetailOpen(true);
   };
