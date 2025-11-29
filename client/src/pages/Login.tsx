@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
 import { userLoginSchema } from "@shared/schema";
 import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -18,9 +19,32 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
+  const searchString = useSearch();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const error = params.get("error");
+    const message = params.get("message");
+    
+    if (error || message) {
+      let errorMessage = "Ocurrió un error durante la autenticación.";
+      
+      if (message?.toLowerCase().includes("timed out") || message?.toLowerCase().includes("timeout")) {
+        errorMessage = "La autenticación tardó demasiado. Por favor intenta de nuevo.";
+      } else if (error === "google_auth_failed") {
+        errorMessage = "No se pudo iniciar sesión con Google. Por favor intenta de nuevo.";
+      } else if (message) {
+        errorMessage = message;
+      }
+      
+      setAuthError(errorMessage);
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [searchString]);
 
   type FormData = z.infer<typeof userLoginSchema>;
 
@@ -106,6 +130,12 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {authError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t("login.email")}</Label>
