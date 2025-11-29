@@ -173,23 +173,47 @@ export default function SellerCalendar() {
   const units = unitsResponse?.data || [];
 
   // Fetch all condominiums directly from API
-  const { data: condominiumsResponse } = useQuery<{ data: Condominium[] }>({
+  const { data: condominiumsResponse, isLoading: isLoadingCondos } = useQuery<{ data: Condominium[] }>({
     queryKey: ["/api/external-condominiums"],
     queryFn: async () => {
-      const response = await fetch('/api/external-condominiums?limit=500', { credentials: 'include' });
+      const response = await fetch('/api/external-condominiums?limit=1000', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch condominiums');
       return response.json();
     },
+    staleTime: 0,
   });
   const condominiums = useMemo(() => {
     const data = condominiumsResponse?.data || [];
+    console.log("[SellerCalendar] Condominiums loaded:", data.length);
     return data.sort((a, b) => a.name.localeCompare(b.name));
   }, [condominiumsResponse]);
+  
+  // State for condominium search filter
+  const [condoSearchQuery, setCondoSearchQuery] = useState("");
   
   // State for condominium popover search
   const [condoPopoverOpen, setCondoPopoverOpen] = useState(false);
   const [tourCondoPopoverOpen, setTourCondoPopoverOpen] = useState<number | null>(null);
+  const [tourCondoSearchQuery, setTourCondoSearchQuery] = useState("");
+  
+  // Filter condominiums for tour mode (case-insensitive)
+  const filteredTourCondominiums = useMemo(() => {
+    if (!tourCondoSearchQuery.trim()) return condominiums;
+    const query = tourCondoSearchQuery.toLowerCase().trim();
+    return condominiums.filter(c => 
+      c.name.toLowerCase().includes(query)
+    );
+  }, [condominiums, tourCondoSearchQuery]);
 
+  // Filter condominiums by search query (case-insensitive)
+  const filteredCondominiums = useMemo(() => {
+    if (!condoSearchQuery.trim()) return condominiums;
+    const query = condoSearchQuery.toLowerCase().trim();
+    return condominiums.filter(c => 
+      c.name.toLowerCase().includes(query)
+    );
+  }, [condominiums, condoSearchQuery]);
+  
   // Filter units by selected condominium
   const filteredUnits = useMemo(() => {
     if (!formData.condominiumId) return [];
@@ -942,37 +966,64 @@ export default function SellerCalendar() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command>
+                      <Command shouldFilter={false}>
                         <CommandInput 
-                          placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."} 
+                          placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."}
+                          value={condoSearchQuery}
+                          onValueChange={setCondoSearchQuery}
                         />
                         <CommandList>
-                          <CommandEmpty>
-                            {language === "es" ? "No se encontraron condominios" : "No condominiums found"}
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {condominiums.map(condo => (
-                              <CommandItem
-                                key={condo.id}
-                                value={condo.name}
-                                onSelect={() => {
-                                  setFormData(prev => ({ 
-                                    ...prev, 
-                                    condominiumId: condo.id,
-                                    unitId: ''
-                                  }));
-                                  setCondoPopoverOpen(false);
-                                }}
-                                className="min-h-[44px]"
-                              >
-                                <Building2 className="mr-2 h-4 w-4" />
-                                {condo.name}
-                                {formData.condominiumId === condo.id && (
-                                  <Check className="ml-auto h-4 w-4" />
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                          {isLoadingCondos ? (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              <span className="text-sm text-muted-foreground">
+                                {language === "es" ? "Cargando..." : "Loading..."}
+                              </span>
+                            </div>
+                          ) : filteredCondominiums.length === 0 ? (
+                            <CommandEmpty>
+                              {language === "es" ? "No se encontraron condominios" : "No condominiums found"}
+                              {condoSearchQuery && (
+                                <span className="block text-xs mt-1">
+                                  {language === "es" 
+                                    ? `Buscando: "${condoSearchQuery}"`
+                                    : `Searching: "${condoSearchQuery}"`
+                                  }
+                                </span>
+                              )}
+                            </CommandEmpty>
+                          ) : (
+                            <CommandGroup heading={
+                              language === "es" 
+                                ? `${filteredCondominiums.length} condominio(s)` 
+                                : `${filteredCondominiums.length} condominium(s)`
+                            }>
+                              <ScrollArea className="h-[200px]">
+                                {filteredCondominiums.map(condo => (
+                                  <CommandItem
+                                    key={condo.id}
+                                    value={condo.id}
+                                    onSelect={() => {
+                                      setFormData(prev => ({ 
+                                        ...prev, 
+                                        condominiumId: condo.id,
+                                        unitId: ''
+                                      }));
+                                      setCondoSearchQuery("");
+                                      setCondoPopoverOpen(false);
+                                    }}
+                                    className="min-h-[44px]"
+                                  >
+                                    <Building2 className="mr-2 h-4 w-4" />
+                                    {condo.name}
+                                    {formData.condominiumId === condo.id && (
+                                      <Check className="ml-auto h-4 w-4" />
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              </ScrollArea>
+                            </CommandGroup>
+                          )}
                         </CommandList>
                       </Command>
                     </PopoverContent>
@@ -1096,33 +1147,48 @@ export default function SellerCalendar() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[280px] p-0" align="start">
-                            <Command>
+                            <Command shouldFilter={false}>
                               <CommandInput 
-                                placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."} 
+                                placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."}
+                                value={tourCondoSearchQuery}
+                                onValueChange={setTourCondoSearchQuery}
                               />
                               <CommandList>
-                                <CommandEmpty>
-                                  {language === "es" ? "No se encontraron condominios" : "No condominiums found"}
-                                </CommandEmpty>
-                                <CommandGroup>
-                                  {condominiums.map(condo => (
-                                    <CommandItem
-                                      key={condo.id}
-                                      value={condo.name}
-                                      onSelect={() => {
-                                        updateTourStop(index, 'condominiumId', condo.id);
-                                        setTourCondoPopoverOpen(null);
-                                      }}
-                                      className="min-h-[44px]"
-                                    >
-                                      <Building2 className="mr-2 h-4 w-4" />
-                                      {condo.name}
-                                      {stop.condominiumId === condo.id && (
-                                        <Check className="ml-auto h-4 w-4" />
-                                      )}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
+                                {isLoadingCondos ? (
+                                  <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    <span className="text-sm text-muted-foreground">
+                                      {language === "es" ? "Cargando..." : "Loading..."}
+                                    </span>
+                                  </div>
+                                ) : filteredTourCondominiums.length === 0 ? (
+                                  <CommandEmpty>
+                                    {language === "es" ? "No se encontraron condominios" : "No condominiums found"}
+                                  </CommandEmpty>
+                                ) : (
+                                  <CommandGroup heading={`${filteredTourCondominiums.length} condominio(s)`}>
+                                    <ScrollArea className="h-[200px]">
+                                      {filteredTourCondominiums.map(condo => (
+                                        <CommandItem
+                                          key={condo.id}
+                                          value={condo.id}
+                                          onSelect={() => {
+                                            updateTourStop(index, 'condominiumId', condo.id);
+                                            setTourCondoSearchQuery("");
+                                            setTourCondoPopoverOpen(null);
+                                          }}
+                                          className="min-h-[44px]"
+                                        >
+                                          <Building2 className="mr-2 h-4 w-4" />
+                                          {condo.name}
+                                          {stop.condominiumId === condo.id && (
+                                            <Check className="ml-auto h-4 w-4" />
+                                          )}
+                                        </CommandItem>
+                                      ))}
+                                    </ScrollArea>
+                                  </CommandGroup>
+                                )}
                               </CommandList>
                             </Command>
                           </PopoverContent>
