@@ -114,7 +114,7 @@ export default function PublicDashboard() {
       </header>
 
       {/* Hero Section - Ultra Clean */}
-      <div className="bg-gradient-to-b from-muted/30 to-background py-12 sm:py-16 md:py-20">
+      <div className="bg-gradient-to-b from-muted/30 to-background py-8 sm:py-12 md:py-14">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">
             {t("public.hero.title") || "Tu próximo hogar"}
@@ -247,12 +247,12 @@ export default function PublicDashboard() {
               </div>
             )}
             
-            {/* Popular Zones - Horizontal Scroll */}
-            <div className="mt-3 overflow-x-auto scrollbar-hide pb-2">
-              <div className="flex gap-2 justify-center min-w-max px-4">
-                {popularZones.map((zone) => (
+            {/* Popular Zones - Auto-scrolling on mobile */}
+            <div className="mt-3 overflow-hidden pb-2">
+              <div className="flex gap-2 justify-center sm:justify-center px-4 animate-scroll-mobile sm:animate-none overflow-x-auto sm:overflow-visible scrollbar-hide">
+                {[...popularZones, ...popularZones].map((zone, index) => (
                   <Badge
-                    key={zone.name}
+                    key={`${zone.name}-${index}`}
                     variant="secondary"
                     className="rounded-full px-3 py-1.5 text-xs cursor-pointer hover-elevate flex-shrink-0 whitespace-nowrap"
                     onClick={() => setLocation(`/buscar-propiedades?location=${encodeURIComponent(zone.query)}`)}
@@ -266,7 +266,7 @@ export default function PublicDashboard() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-6">
         {/* Featured Properties - Clean Cards */}
         {featuredProperties.length > 0 && (
           <div className="mb-10 sm:mb-14">
