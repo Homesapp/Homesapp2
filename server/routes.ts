@@ -6,7 +6,7 @@ import multer from "multer";
 import path from "path";
 import { storage, NotFoundError } from "./storage";
 import { openAIService } from "./services/openai";
-import { setupAuth, isAuthenticated, requireRole, getSession } from "./replitAuth";
+import { setupAuth, isAuthenticated, requireRole, getSession, initializeSession } from "./replitAuth";
 import { requireResourceOwnership } from "./middleware/resourceOwnership";
 import { createGoogleMeetEvent, deleteGoogleMeetEvent, checkGoogleCalendarConnection, listEvents, createCalendarEvent } from "./googleCalendar";
 import { syncMaintenanceTicketToGoogleCalendar, deleteMaintenanceTicketFromGoogleCalendar } from "./googleCalendarService";
@@ -574,6 +574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Initialize session store (warm up database connection)
+  await initializeSession();
+  
   // Auth middleware
   await setupAuth(app);
   

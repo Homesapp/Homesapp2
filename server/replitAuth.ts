@@ -3,9 +3,12 @@ import { Strategy, type VerifyFunction } from "openid-client/passport";
 
 import passport from "passport";
 import session from "express-session";
+import MemoryStore from "memorystore";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
+import pg from "pg";
+const { Pool } = pg;
 import { storage } from "./storage";
 
 // Replit Auth is optional - only enabled when REPLIT_DOMAINS is available
@@ -21,16 +24,97 @@ const getOidcConfig = memoize(
   { maxAge: 3600 * 1000 }
 );
 
+// Create a connection pool with higher timeout for Neon cold starts
+const sessionPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 45000, // 45 seconds for Neon cold starts
+  idleTimeoutMillis: 60000, // Keep connections alive longer
+  max: 10,
+  keepAlive: true, // Enable keepAlive to prevent connections from being dropped
+  keepAliveInitialDelayMillis: 10000,
+});
+
+// Track pool health
+let poolHealthy = true;
+
+// Handle pool errors gracefully
+sessionPool.on('error', (err) => {
+  console.error('Session pool error:', err);
+  poolHealthy = false;
+});
+
+sessionPool.on('connect', () => {
+  poolHealthy = true;
+});
+
+// Warm up the database connection on startup
+async function warmUpConnection(retries = 3): Promise<boolean> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`[Session] Warming up database connection (attempt ${i + 1}/${retries})...`);
+      const client = await sessionPool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      console.log('[Session] Database connection warm-up successful');
+      poolHealthy = true;
+      return true;
+    } catch (error) {
+      console.error(`[Session] Warm-up attempt ${i + 1} failed:`, error);
+      if (i < retries - 1) {
+        // Exponential backoff: 2s, 4s, 8s
+        const delay = Math.pow(2, i + 1) * 1000;
+        console.log(`[Session] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  console.warn('[Session] All warm-up attempts failed, using fallback memory store');
+  poolHealthy = false;
+  return false;
+}
+
+let sessionMiddlewareInstance: ReturnType<typeof session> | null = null;
+
+export async function initializeSession(): Promise<void> {
+  await warmUpConnection();
+}
+
 export function getSession() {
+  if (sessionMiddlewareInstance) {
+    return sessionMiddlewareInstance;
+  }
+  
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
-  const sessionMiddleware = session({
+  
+  let sessionStore: session.Store;
+  
+  if (poolHealthy) {
+    // Use PostgreSQL store
+    const pgStore = connectPg(session);
+    sessionStore = new pgStore({
+      pool: sessionPool,
+      createTableIfMissing: false,
+      ttl: sessionTtl,
+      tableName: "sessions",
+      errorLog: (err: Error) => {
+        console.error('[Session Store Error]', err);
+        // If we get connection errors, mark pool as unhealthy
+        if (err.message?.includes('timeout') || err.message?.includes('Connection terminated')) {
+          poolHealthy = false;
+        }
+      },
+    });
+    console.log('[Session] Using PostgreSQL session store');
+  } else {
+    // Fallback to memory store
+    const MemStore = MemoryStore(session);
+    sessionStore = new MemStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
+    console.warn('[Session] Using memory session store (fallback mode)');
+  }
+  
+  sessionMiddlewareInstance = session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
@@ -47,9 +131,9 @@ export function getSession() {
   });
   
   // Expose store for WebSocket authentication
-  (sessionMiddleware as any).store = sessionStore;
+  (sessionMiddlewareInstance as any).store = sessionStore;
   
-  return sessionMiddleware;
+  return sessionMiddlewareInstance;
 }
 
 function updateUserSession(
