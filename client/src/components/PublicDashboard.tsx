@@ -327,7 +327,7 @@ export default function PublicDashboard() {
                       <p className="font-semibold text-sm sm:text-base" data-testid={`text-price-${property.id}`}>
                         ${(property.price || 0).toLocaleString()} 
                         <span className="font-normal text-xs text-muted-foreground ml-1">
-                          USD{property.status === "rent" ? "/mes" : ""}
+                          MXN{property.status === "rent" ? "/mes" : ""}
                         </span>
                       </p>
                       <div className="text-xs text-muted-foreground">
@@ -398,7 +398,7 @@ export default function PublicDashboard() {
                     <p className="font-semibold text-xs sm:text-base" data-testid={`text-all-price-${property.id}`}>
                       ${(property.price || 0).toLocaleString()} 
                       <span className="font-normal text-[9px] sm:text-sm text-muted-foreground ml-0.5 sm:ml-1">
-                        USD{property.status === "rent" ? "/mes" : ""}
+                        MXN{property.status === "rent" ? "/mes" : ""}
                       </span>
                     </p>
                     <div className="text-[9px] sm:text-sm text-muted-foreground">
