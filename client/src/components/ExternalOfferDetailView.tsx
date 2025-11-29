@@ -328,115 +328,71 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
     return <CheckCircle2 className="h-4 w-4" />;
   };
   
-  const convertImageToDataUrl = (src: string): Promise<string | null> => {
-    return new Promise((resolve) => {
-      if (src.startsWith('data:')) {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => resolve(null);
-        img.src = src;
-        return;
-      }
-      
-      fetch(src, { mode: 'cors' })
-        .then(response => response.blob())
-        .then(blob => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        })
-        .catch(() => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0);
-            try {
-              resolve(canvas.toDataURL('image/png'));
-            } catch {
-              resolve(null);
-            }
-          };
-          img.onerror = () => resolve(null);
-          img.src = src;
-        });
-    });
-  };
-
   const handleDownloadImage = async () => {
     if (!contentRef.current) return;
     
     setIsDownloading(true);
     try {
-      const clonedElement = contentRef.current.cloneNode(true) as HTMLElement;
-      clonedElement.style.position = 'absolute';
-      clonedElement.style.left = '-9999px';
-      clonedElement.style.top = '0';
-      clonedElement.style.width = contentRef.current.offsetWidth + 'px';
-      document.body.appendChild(clonedElement);
-      
-      if (offerData.signature) {
-        const signatureImg = clonedElement.querySelector('[data-testid="img-signature"]') as HTMLImageElement;
-        if (signatureImg) {
-          const processedSrc = await convertImageToDataUrl(offerData.signature);
-          if (processedSrc) {
-            signatureImg.src = processedSrc;
-            await new Promise<void>((resolve) => {
-              if (signatureImg.complete) {
-                resolve();
-              } else {
-                signatureImg.onload = () => resolve();
-                signatureImg.onerror = () => resolve();
-              }
-            });
-          }
-        }
-      }
-      
-      if (offer.agencyLogoUrl) {
-        const agencyLogoImg = clonedElement.querySelector('[data-testid="img-agency-logo"]') as HTMLImageElement;
-        if (agencyLogoImg) {
-          const processedSrc = await convertImageToDataUrl(offer.agencyLogoUrl);
-          if (processedSrc) {
-            agencyLogoImg.src = processedSrc;
-            await new Promise<void>((resolve) => {
-              if (agencyLogoImg.complete) {
-                resolve();
-              } else {
-                agencyLogoImg.onload = () => resolve();
-                agencyLogoImg.onerror = () => resolve();
-              }
-            });
-          }
-        }
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const canvas = await html2canvas(clonedElement, {
+      const mainCanvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
-        imageTimeout: 10000,
+        imageTimeout: 15000,
       });
       
-      document.body.removeChild(clonedElement);
+      const ctx = mainCanvas.getContext('2d');
+      
+      if (ctx && offerData.signature) {
+        const signatureImg = contentRef.current.querySelector('[data-testid="img-signature"]') as HTMLImageElement;
+        if (signatureImg) {
+          const rect = signatureImg.getBoundingClientRect();
+          const containerRect = contentRef.current.getBoundingClientRect();
+          
+          const x = (rect.left - containerRect.left) * 2;
+          const y = (rect.top - containerRect.top) * 2;
+          const width = rect.width * 2;
+          const height = rect.height * 2;
+          
+          const img = new Image();
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              ctx.drawImage(img, x, y, width, height);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = offerData.signature!;
+          });
+        }
+      }
+      
+      if (ctx && offer.agencyLogoUrl) {
+        const agencyLogoImg = contentRef.current.querySelector('[data-testid="img-agency-logo"]') as HTMLImageElement;
+        if (agencyLogoImg) {
+          const rect = agencyLogoImg.getBoundingClientRect();
+          const containerRect = contentRef.current.getBoundingClientRect();
+          
+          const x = (rect.left - containerRect.left) * 2;
+          const y = (rect.top - containerRect.top) * 2;
+          const width = rect.width * 2;
+          const height = rect.height * 2;
+          
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              ctx.drawImage(img, x, y, width, height);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = offer.agencyLogoUrl!;
+          });
+        }
+      }
       
       const link = document.createElement("a");
       link.download = `oferta-${offer.unitNumber || offer.id}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = mainCanvas.toDataURL("image/png");
       link.click();
       
       toast({
@@ -444,6 +400,7 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
         description: `oferta-${offer.unitNumber || offer.id}.png`,
       });
     } catch (error) {
+      console.error('Download error:', error);
       toast({
         title: t.downloadError,
         variant: "destructive",
@@ -496,8 +453,8 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
                 </div>
                 
                 {/* Agency Logo + Name */}
-                {offer.agencyLogoUrl && (
-                  <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center">
+                  {offer.agencyLogoUrl ? (
                     <img 
                       src={offer.agencyLogoUrl} 
                       alt={agencyName} 
@@ -505,9 +462,13 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
                       crossOrigin="anonymous"
                       data-testid="img-agency-logo"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-1 font-medium">{agencyName}</p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="h-16 flex items-center justify-center px-4 border rounded-lg bg-gray-50">
+                      <p className="text-sm font-semibold text-gray-700">{agencyName}</p>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1 font-medium">{agencyName}</p>
+                </div>
               </div>
               
               {/* Right: Date and Property */}
@@ -530,7 +491,7 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
             </div>
 
             {/* Two-Column Layout: Client Profile | Offer Details */}
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               {/* Left Column: Client Profile */}
               <div data-testid="section-client-profile">
                 <h2 className="text-sm font-bold text-primary mb-3 uppercase tracking-wide border-b pb-1">{t.clientProfileSection}</h2>
@@ -678,22 +639,22 @@ export default function ExternalOfferDetailView({ open, onOpenChange, offer }: E
             </div>
 
             {/* Signature and Closing */}
-            <div className="grid md:grid-cols-2 gap-6 items-end">
+            <div className="grid grid-cols-2 gap-6 items-end">
               {/* Left: Signature */}
               <div className="text-center" data-testid="section-signature">
                 <p className="text-xs text-muted-foreground mb-2">{t.clientSignature}</p>
                 {offerData.signature ? (
-                  <div className="border-2 border-gray-300 rounded-lg p-4 bg-white inline-block min-w-[200px]">
+                  <div className="border-2 border-gray-300 rounded-lg p-4 bg-white inline-block w-[200px] h-[80px] flex items-center justify-center">
                     <img 
                       src={offerData.signature} 
                       alt="Signature" 
-                      className="h-16 object-contain mx-auto"
+                      className="max-h-[64px] max-w-full object-contain"
                       crossOrigin="anonymous"
                       data-testid="img-signature"
                     />
                   </div>
                 ) : (
-                  <div className="border-b-2 border-gray-400 w-48 mx-auto h-16"></div>
+                  <div className="border-b-2 border-gray-400 w-[200px] mx-auto h-[80px]"></div>
                 )}
               </div>
 
