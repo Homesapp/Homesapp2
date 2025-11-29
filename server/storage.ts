@@ -11121,8 +11121,7 @@ export class DatabaseStorage implements IStorage {
         condoName: externalCondominiums.name,
         clientFirstName: externalClients.firstName,
         clientLastName: externalClients.lastName,
-        ownerFirstName: externalUnitOwners.firstName,
-        ownerLastName: externalUnitOwners.lastName,
+        ownerName: externalUnitOwners.ownerName,
         creatorFirstName: users.firstName,
         creatorLastName: users.lastName,
       })
@@ -11153,8 +11152,7 @@ export class DatabaseStorage implements IStorage {
         condoName: sql<string | null>`NULL`.as('condoName'),
         clientFirstName: externalClients.firstName,
         clientLastName: externalClients.lastName,
-        ownerFirstName: externalUnitOwners.firstName,
-        ownerLastName: externalUnitOwners.lastName,
+        ownerName: externalUnitOwners.ownerName,
         creatorFirstName: users.firstName,
         creatorLastName: users.lastName,
       })
@@ -11195,15 +11193,14 @@ export class DatabaseStorage implements IStorage {
       condoName: r.condoName,
       clientFirstName: r.clientFirstName,
       clientLastName: r.clientLastName,
-      ownerFirstName: r.ownerFirstName,
-      ownerLastName: r.ownerLastName,
+      ownerName: r.ownerName,
       creatorFirstName: r.creatorFirstName,
       creatorLastName: r.creatorLastName,
       propertyTitle: r.unitNumber 
         ? (r.condoName ? `${r.condoName} - Unidad ${r.unitNumber}` : `Unidad ${r.unitNumber}`)
         : 'Sin unidad asignada',
       clientName: r.clientFirstName ? `${r.clientFirstName} ${r.clientLastName || ''}`.trim() : 
-                  (r.ownerFirstName ? `${r.ownerFirstName} ${r.ownerLastName || ''}`.trim() : ''),
+                  (r.ownerName || ''),
       creatorName: r.creatorFirstName ? `${r.creatorFirstName} ${r.creatorLastName || ''}`.trim() : '',
       agencyName,
       agencyLogoUrl,
