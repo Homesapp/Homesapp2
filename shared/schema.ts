@@ -7217,6 +7217,60 @@ export type InsertExternalUnit = z.infer<typeof insertExternalUnitSchema>;
 export type UpdateExternalUnit = z.infer<typeof updateExternalUnitSchema>;
 export type ExternalUnit = typeof externalUnits.$inferSelect;
 
+// External Unit Legal Documents - Documentos legales de propiedades
+export const externalUnitDocumentTypeEnum = pgEnum("external_unit_document_type", [
+  "escritura",           // Property deed
+  "titulo_propiedad",    // Property title
+  "predial",             // Property tax
+  "agua",                // Water bill/certificate
+  "luz",                 // Electricity bill
+  "contrato_arrendamiento", // Lease agreement
+  "permiso_uso_suelo",   // Land use permit
+  "licencia_construccion", // Construction license
+  "avaluo",              // Property appraisal
+  "certificado_libertad_gravamen", // Lien-free certificate
+  "reglamento_condominio", // Condo bylaws
+  "poliza_seguro",       // Insurance policy
+  "identificacion_propietario", // Owner ID
+  "comprobante_domicilio", // Proof of address
+  "otro",                // Other
+]);
+
+export const externalUnitDocuments = pgTable("external_unit_documents", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  unitId: varchar("unit_id").notNull().references(() => externalUnits.id, { onDelete: "cascade" }),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  documentType: externalUnitDocumentTypeEnum("document_type").notNull(),
+  documentName: varchar("document_name", { length: 255 }).notNull(), // User-friendly name
+  fileName: varchar("file_name", { length: 500 }).notNull(), // Original file name
+  fileUrl: text("file_url").notNull(), // Storage URL
+  fileSize: integer("file_size"), // Size in bytes
+  mimeType: varchar("mime_type", { length: 100 }),
+  expirationDate: timestamp("expiration_date"), // For documents that expire
+  notes: text("notes"), // Additional notes
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_external_unit_docs_unit").on(table.unitId),
+  index("idx_external_unit_docs_agency").on(table.agencyId),
+  index("idx_external_unit_docs_type").on(table.documentType),
+]);
+
+export const insertExternalUnitDocumentSchema = createInsertSchema(externalUnitDocuments).omit({
+  id: true,
+  agencyId: true,
+  uploadedBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateExternalUnitDocumentSchema = insertExternalUnitDocumentSchema.partial();
+
+export type InsertExternalUnitDocument = z.infer<typeof insertExternalUnitDocumentSchema>;
+export type UpdateExternalUnitDocument = z.infer<typeof updateExternalUnitDocumentSchema>;
+export type ExternalUnitDocument = typeof externalUnitDocuments.$inferSelect;
+
 // Extended type for units with condominium data (used when joining with condominium table)
 export type ExternalUnitWithCondominium = ExternalUnit & {
   condominium: {

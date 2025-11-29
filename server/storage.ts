@@ -352,6 +352,9 @@ import {
   externalUnitAccessControls,
   type ExternalUnitAccessControl,
   type InsertExternalUnitAccessControl,
+  externalUnitDocuments,
+  type ExternalUnitDocument,
+  type InsertExternalUnitDocument,
   externalCheckoutReports,
   type ExternalCheckoutReport,
   type InsertExternalCheckoutReport,
@@ -1487,6 +1490,13 @@ export interface IStorage {
   createExternalUnitAccessControl(control: InsertExternalUnitAccessControl): Promise<ExternalUnitAccessControl>;
   updateExternalUnitAccessControl(id: string, updates: Partial<InsertExternalUnitAccessControl>): Promise<ExternalUnitAccessControl>;
   deleteExternalUnitAccessControl(id: string): Promise<void>;
+
+  // External Management System - Unit Legal Documents operations
+  getExternalUnitDocument(id: string): Promise<ExternalUnitDocument | undefined>;
+  getExternalUnitDocumentsByUnit(unitId: string): Promise<ExternalUnitDocument[]>;
+  createExternalUnitDocument(doc: InsertExternalUnitDocument & { agencyId: string; uploadedBy?: string }): Promise<ExternalUnitDocument>;
+  updateExternalUnitDocument(id: string, updates: Partial<InsertExternalUnitDocument>): Promise<ExternalUnitDocument>;
+  deleteExternalUnitDocument(id: string): Promise<void>;
 
   // External Management System - Check-Out Report operations
   getExternalCheckoutReport(id: string): Promise<ExternalCheckoutReport | undefined>;
@@ -9986,6 +9996,45 @@ export class DatabaseStorage implements IStorage {
   async deleteExternalUnitAccessControl(id: string): Promise<void> {
     await db.delete(externalUnitAccessControls)
       .where(eq(externalUnitAccessControls.id, id));
+  }
+
+  // External Management System - Unit Legal Documents operations
+  async getExternalUnitDocument(id: string): Promise<ExternalUnitDocument | undefined> {
+    const [doc] = await db.select()
+      .from(externalUnitDocuments)
+      .where(eq(externalUnitDocuments.id, id))
+      .limit(1);
+    return doc;
+  }
+
+  async getExternalUnitDocumentsByUnit(unitId: string): Promise<ExternalUnitDocument[]> {
+    return await db.select()
+      .from(externalUnitDocuments)
+      .where(eq(externalUnitDocuments.unitId, unitId))
+      .orderBy(desc(externalUnitDocuments.createdAt));
+  }
+
+  async createExternalUnitDocument(doc: InsertExternalUnitDocument & { agencyId: string; uploadedBy?: string }): Promise<ExternalUnitDocument> {
+    const [result] = await db.insert(externalUnitDocuments)
+      .values({
+        ...doc,
+        id: crypto.randomUUID(),
+      })
+      .returning();
+    return result;
+  }
+
+  async updateExternalUnitDocument(id: string, updates: Partial<InsertExternalUnitDocument>): Promise<ExternalUnitDocument> {
+    const [result] = await db.update(externalUnitDocuments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalUnitDocuments.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExternalUnitDocument(id: string): Promise<void> {
+    await db.delete(externalUnitDocuments)
+      .where(eq(externalUnitDocuments.id, id));
   }
 
   // External Management System - Check-Out Report operations
