@@ -27868,6 +27868,36 @@ ${{precio}}/mes
     }
   });
 
+  // GET /api/external-units/sheet-preview - Preview sheet data before import
+  // NOTE: This route must be defined BEFORE the /:id route to avoid being caught by it
+  app.get("/api/external-units/sheet-preview", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { spreadsheetId, sheetName = 'Renta/Long Term' } = req.query;
+      
+      if (!spreadsheetId) {
+        return res.status(400).json({ message: "Spreadsheet ID is required" });
+      }
+      
+      // Get sheet stats
+      const stats = await getTRHSheetStats(spreadsheetId as string, sheetName as string);
+      
+      // Get preview of first 10 rows
+      const rawRows = await readTRHUnitsFromSheet(spreadsheetId as string, sheetName as string, 2, 10);
+      const parsedUnits = rawRows.map(row => parseTRHRow(row));
+      
+      res.json({
+        success: true,
+        totalRows: stats.totalRows,
+        sheetName: stats.sheetName,
+        preview: parsedUnits,
+        condominiums: [...new Set(parsedUnits.filter(u => u.condominiumName).map(u => u.condominiumName))],
+      });
+    } catch (error: any) {
+      console.error("Error previewing sheet:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   app.get("/api/external-units/:id", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -28410,38 +28440,6 @@ ${{precio}}/mes
       handleGenericError(res, error);
     }
   });
-
-  // GET /api/external-units/sheet-preview - Preview sheet data before import
-  app.get("/api/external-units/sheet-preview", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
-    try {
-      const { spreadsheetId, sheetName = 'Renta/Long Term' } = req.query;
-      
-      if (!spreadsheetId) {
-        return res.status(400).json({ message: "Spreadsheet ID is required" });
-      }
-      
-      // Get sheet stats
-      const stats = await getTRHSheetStats(spreadsheetId as string, sheetName as string);
-      
-      // Get preview of first 10 rows
-      const rawRows = await readTRHUnitsFromSheet(spreadsheetId as string, sheetName as string, 2, 10);
-      const parsedUnits = rawRows.map(row => parseTRHRow(row));
-      
-      res.json({
-        success: true,
-        totalRows: stats.totalRows,
-        sheetName: stats.sheetName,
-        preview: parsedUnits,
-        condominiums: [...new Set(parsedUnits.filter(u => u.condominiumName).map(u => u.condominiumName))],
-      });
-    } catch (error: any) {
-      console.error("Error previewing sheet:", error);
-      handleGenericError(res, error);
-    }
-  });
-
-
-
 
 
   // Configure multer for external unit image uploads
