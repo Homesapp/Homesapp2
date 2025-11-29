@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload, Clock, Calendar, Wrench, Users, MapPin } from "lucide-react";
+import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload, Clock, Calendar, Wrench, Users, MapPin, Shield, ShieldCheck, ShieldX, ExternalLink, Link2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -180,11 +180,15 @@ export default function ExternalUnitDetail() {
   const [showRentalDialog, setShowRentalDialog] = useState(false);
   const [showUnitEditDialog, setShowUnitEditDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showOwnerLinkDialog, setShowOwnerLinkDialog] = useState(false);
   const [editingOwner, setEditingOwner] = useState<ExternalUnitOwner | null>(null);
   const [editingAccess, setEditingAccess] = useState<ExternalUnitAccessControl | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [copiedUnitInfo, setCopiedUnitInfo] = useState(false);
   const [copiedAccessInfo, setCopiedAccessInfo] = useState(false);
+  const [copiedPublicLink, setCopiedPublicLink] = useState(false);
+  const [copiedOwnerLink, setCopiedOwnerLink] = useState(false);
 
   const { data: overviewData, isLoading: overviewLoading } = useQuery<UnitOverviewResponse>({
     queryKey: ['/api/external-units', id, 'overview'],
@@ -300,6 +304,27 @@ export default function ExternalUnitDetail() {
       toast({
         title: language === "es" ? "Unidad actualizada" : "Unit updated",
         description: language === "es" ? "La unidad se actualizó exitosamente" : "The unit was updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateVerificationMutation = useMutation({
+    mutationFn: async (data: { verificationStatus: string; verificationNotes?: string }) => {
+      return await apiRequest('PATCH', `/api/external-units/${id}/verification`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external-units', id, 'overview'] });
+      setShowVerificationDialog(false);
+      toast({
+        title: language === "es" ? "Estado de verificación actualizado" : "Verification status updated",
+        description: language === "es" ? "El estado de verificación se actualizó exitosamente" : "Verification status was updated successfully",
       });
     },
     onError: (error: Error) => {
@@ -795,6 +820,102 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
     );
   }
 
+  const getVerificationBadge = () => {
+    const status = unit.verificationStatus || 'unverified';
+    switch (status) {
+      case 'verified':
+        return (
+          <Badge 
+            variant="default" 
+            className="bg-green-600 dark:bg-green-700 cursor-pointer" 
+            onClick={() => setShowVerificationDialog(true)}
+            data-testid="badge-verified"
+          >
+            <ShieldCheck className="mr-1 h-3 w-3" />
+            {language === "es" ? "Verificado" : "Verified"}
+          </Badge>
+        );
+      case 'pending_review':
+        return (
+          <Badge 
+            variant="secondary" 
+            className="bg-yellow-500 dark:bg-yellow-600 text-white cursor-pointer"
+            onClick={() => setShowVerificationDialog(true)}
+            data-testid="badge-pending-review"
+          >
+            <Shield className="mr-1 h-3 w-3" />
+            {language === "es" ? "En Revisión" : "Pending Review"}
+          </Badge>
+        );
+      default:
+        return (
+          <Badge 
+            variant="outline" 
+            className="cursor-pointer"
+            onClick={() => setShowVerificationDialog(true)}
+            data-testid="badge-unverified"
+          >
+            <ShieldX className="mr-1 h-3 w-3" />
+            {language === "es" ? "Sin Verificar" : "Unverified"}
+          </Badge>
+        );
+    }
+  };
+
+  const getPublishStatusBadge = () => {
+    const status = unit.publishStatus || 'draft';
+    switch (status) {
+      case 'approved':
+        return (
+          <Badge variant="default" className="bg-blue-600 dark:bg-blue-700" data-testid="badge-published">
+            {language === "es" ? "Publicado" : "Published"}
+          </Badge>
+        );
+      case 'pending':
+        return (
+          <Badge variant="secondary" className="bg-orange-500 dark:bg-orange-600 text-white" data-testid="badge-pending-publish">
+            {language === "es" ? "Pendiente Aprobación" : "Pending Approval"}
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge variant="destructive" data-testid="badge-rejected">
+            {language === "es" ? "Rechazado" : "Rejected"}
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const copyPublicLink = async () => {
+    if (!unit.slug || unit.publishStatus !== 'approved') return;
+    const agencySlug = user?.externalAgencySlug || '';
+    const publicUrl = `${window.location.origin}/${agencySlug}/${unit.slug}`;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopiedPublicLink(true);
+      setTimeout(() => setCopiedPublicLink(false), 2000);
+      toast({
+        title: language === "es" ? "Enlace copiado" : "Link copied",
+        description: language === "es" ? "El enlace público se copió al portapapeles" : "Public link copied to clipboard",
+      });
+    } catch (err) {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: language === "es" ? "No se pudo copiar el enlace" : "Could not copy link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const viewPublicListing = () => {
+    if (!unit.slug || unit.publishStatus !== 'approved') return;
+    const agencySlug = user?.externalAgencySlug || '';
+    const publicUrl = `${window.location.origin}/${agencySlug}/${unit.slug}`;
+    window.open(publicUrl, '_blank');
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-3">
@@ -808,15 +929,40 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">
-              {language === "es" ? "Detalle de Unidad" : "Unit Details"}
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-3xl font-bold" data-testid="text-page-title">
+                {language === "es" ? "Detalle de Unidad" : "Unit Details"}
+              </h1>
+              {getVerificationBadge()}
+              {getPublishStatusBadge()}
+            </div>
             <p className="text-muted-foreground" data-testid="text-unit-info">
               {condominium?.name || ""} - {language === "es" ? "Unidad" : "Unit"} {unit.unitNumber}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {unit.publishStatus === 'approved' && unit.slug && (
+            <>
+              <Button
+                variant="outline"
+                onClick={viewPublicListing}
+                data-testid="button-view-public-listing"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                {language === "es" ? "Ver Publicación" : "View Listing"}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={copyPublicLink}
+                title={language === "es" ? "Copiar enlace público" : "Copy public link"}
+                data-testid="button-copy-public-link"
+              >
+                {copiedPublicLink ? <Check className="h-4 w-4 text-green-600" /> : <Link2 className="h-4 w-4" />}
+              </Button>
+            </>
+          )}
           {activeContract && (
             <>
               <Badge variant="default" className="bg-green-600 dark:bg-green-700" data-testid="badge-active-rental">
@@ -2812,6 +2958,77 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
         condominiumName={condominium?.name}
         language={language}
       />
+
+      {/* Verification Status Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="max-w-md" data-testid="dialog-verification">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              {language === "es" ? "Verificación del Listing" : "Listing Verification"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Actualiza el estado de verificación interna para control de calidad"
+                : "Update internal verification status for quality control"
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{language === "es" ? "Estado de Verificación" : "Verification Status"}</Label>
+              <Select
+                value={unit.verificationStatus || 'unverified'}
+                onValueChange={(value) => {
+                  updateVerificationMutation.mutate({
+                    verificationStatus: value,
+                    verificationNotes: unit.verificationNotes || undefined,
+                  });
+                }}
+                data-testid="select-verification-status"
+              >
+                <SelectTrigger className="min-h-[44px]" data-testid="trigger-verification-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unverified" data-testid="option-unverified">
+                    <div className="flex items-center gap-2">
+                      <ShieldX className="h-4 w-4 text-muted-foreground" />
+                      {language === "es" ? "Sin Verificar" : "Unverified"}
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="pending_review" data-testid="option-pending-review">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-yellow-500" />
+                      {language === "es" ? "En Revisión" : "Pending Review"}
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="verified" data-testid="option-verified">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-green-500" />
+                      {language === "es" ? "Verificado" : "Verified"}
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {unit.verifiedAt && (
+              <div className="text-sm text-muted-foreground">
+                {language === "es" ? "Verificado el" : "Verified on"}: {new Date(unit.verifiedAt).toLocaleDateString(language === "es" ? "es-MX" : "en-US")}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowVerificationDialog(false)}
+              data-testid="button-close-verification"
+            >
+              {language === "es" ? "Cerrar" : "Close"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

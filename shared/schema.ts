@@ -7129,6 +7129,12 @@ export const externalUnits = pgTable("external_units", {
   publishStatus: varchar("publish_status", { length: 20 }).default("draft"), // draft, pending, approved, rejected
   publishedAt: timestamp("published_at"), // Fecha de publicación
   
+  // Verificación interna del listing (control de calidad)
+  verificationStatus: varchar("verification_status", { length: 20 }).default("unverified"), // unverified, pending_review, verified
+  verifiedAt: timestamp("verified_at"), // Fecha de verificación
+  verifiedBy: varchar("verified_by").references(() => users.id), // Quién verificó
+  verificationNotes: text("verification_notes"), // Notas de verificación
+  
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -7177,6 +7183,8 @@ export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
 
 export const updateExternalUnitSchema = insertExternalUnitSchema.partial().extend({
   isActive: z.boolean().optional(),
+  verificationStatus: z.enum(["unverified", "pending_review", "verified"]).optional(),
+  verificationNotes: z.string().optional().nullable(),
 });
 
 export type InsertExternalUnit = z.infer<typeof insertExternalUnitSchema>;

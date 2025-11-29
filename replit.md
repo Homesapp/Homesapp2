@@ -54,6 +54,16 @@ The system includes dedicated portal access for tenants and owners:
 - Contract-scoped permissions for secure data isolation
 - Portal access includes payment tracking, maintenance reporting, document viewing, and AI chat support
 
+## Listing Verification System
+The External Management System includes an internal listing verification system for QA control:
+- Three verification statuses: unverified, pending_review, verified
+- Visual badges displayed in unit detail header (ShieldCheck/Shield/ShieldX icons)
+- Verification endpoint: PATCH /api/external-units/:id/verification
+- Tracks verifiedAt timestamp and verifiedBy user when status changes to verified
+- Optional verificationNotes field for QA comments
+- Publish status badges (Published/Pending Approval/Rejected) shown alongside verification status
+- Quick actions for viewing public listing and copying public link when unit is approved
+
 ## External Dependencies
 *   Google Calendar API
 *   Google OAuth 2.0

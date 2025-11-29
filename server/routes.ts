@@ -28112,6 +28112,61 @@ ${{precio}}/mes
     }
   });
 
+  // Update verification status for external unit (internal QA control)
+  app.patch("/api/external-units/:id/verification", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { verificationStatus, verificationNotes } = req.body;
+      
+      // Validate verification status
+      if (!['unverified', 'pending_review', 'verified'].includes(verificationStatus)) {
+        return res.status(400).json({ message: "Invalid verification status" });
+      }
+      
+      // Verify unit exists
+      const existing = await storage.getExternalUnit(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      const userId = req.user?.claims?.sub || req.user?.id;
+      
+      // Build update data
+      const updateData: any = {
+        verificationStatus,
+        verificationNotes: verificationNotes || null,
+      };
+      
+      // Set verification timestamp and user if status is 'verified'
+      if (verificationStatus === 'verified') {
+        updateData.verifiedAt = new Date();
+        updateData.verifiedBy = userId;
+      } else if (verificationStatus === 'unverified') {
+        updateData.verifiedAt = null;
+        updateData.verifiedBy = null;
+      }
+      
+      const unit = await storage.updateExternalUnit(id, updateData);
+      
+      await createAuditLog(
+        req, 
+        "update", 
+        "external_unit", 
+        id, 
+        `Updated verification status to ${verificationStatus}`
+      );
+      
+      res.json(unit);
+    } catch (error: any) {
+      console.error("Error updating verification status:", error);
+      handleGenericError(res, error);
+    }
+  });
+
 
 
   // Configure multer for external unit image uploads
