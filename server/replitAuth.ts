@@ -192,6 +192,13 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
+  const reqPath = req.path;
+  const isExternalRentalFormTokens = reqPath === "/api/external/rental-form-tokens";
+  
+  if (isExternalRentalFormTokens) {
+    console.log("[Auth Debug] rental-form-tokens: session exists?", !!req.session, "adminUser?", !!req.session?.adminUser, "userId?", !!req.session?.userId);
+  }
+  
   // Check if admin is authenticated via local session
   if (req.session && req.session.adminUser) {
     // Normalize admin identity into req.user for consistent downstream access
@@ -294,6 +301,9 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
 
   // Check if user is authenticated via Replit Auth
   if (!req.isAuthenticated() || !user?.expires_at) {
+    if (isExternalRentalFormTokens) {
+      console.log("[Auth Debug] rental-form-tokens: Returning 401 - isAuthenticated:", req.isAuthenticated(), "expires_at:", user?.expires_at);
+    }
     return res.status(401).json({ message: "Unauthorized" });
   }
 
