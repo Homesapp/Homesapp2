@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, X, Heart, PawPrint, Home, Building2, ChevronRight, Star, ChevronLeft } from "lucide-react";
+import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, X, Heart, PawPrint, Home, Building2, ChevronRight, Star, ChevronLeft, Sofa } from "lucide-react";
 import { type Property } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -451,7 +451,15 @@ export default function PropertySearch() {
               <div
                 key={property.id}
                 className="group cursor-pointer rounded-2xl overflow-hidden border bg-card hover-elevate"
-                onClick={() => setLocation(property.slug ? `/p/${property.slug}` : `/propiedad/${property.id}/completo`)}
+                onClick={() => {
+                  if (property.isExternal && property.agencySlug && property.unitSlug) {
+                    setLocation(`/${property.agencySlug}/${property.unitSlug}`);
+                  } else if (property.isExternal) {
+                    setLocation(`/propiedad-externa/${property.id}`);
+                  } else {
+                    setLocation(property.slug ? `/p/${property.slug}` : `/propiedad/${property.id}/completo`);
+                  }
+                }}
                 data-testid={`card-property-${property.id}`}
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -493,15 +501,32 @@ export default function PropertySearch() {
                   <h3 className="font-medium text-sm sm:text-base truncate mb-1" data-testid={`text-title-${property.id}`}>
                     {getPropertyTitle(property)}
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-2 truncate flex items-center gap-1" data-testid={`text-location-${property.id}`}>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1.5 truncate flex items-center gap-1" data-testid={`text-location-${property.id}`}>
                     <MapPin className="h-3 w-3 shrink-0" />
                     {property.location}
                   </p>
+                  {property.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2" data-testid={`text-desc-${property.id}`}>
+                      {property.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {property.hasFurniture && (
+                      <Badge variant="secondary" className="text-[9px] h-5 rounded-full">
+                        <Sofa className="h-3 w-3 mr-0.5" /> Amueblado
+                      </Badge>
+                    )}
+                    {property.petsAllowed && (
+                      <Badge variant="secondary" className="text-[9px] h-5 rounded-full">
+                        <PawPrint className="h-3 w-3 mr-0.5" /> Mascotas
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <p className="font-semibold text-sm sm:text-base" data-testid={`text-price-${property.id}`}>
                       ${property.price.toLocaleString()}
                       <span className="font-normal text-xs text-muted-foreground ml-1">
-                        MXN{property.status === "rent" ? "/mes" : ""}
+                        {property.currency || 'MXN'}{property.status === "rent" ? "/mes" : ""}
                       </span>
                     </p>
                     <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -513,7 +538,7 @@ export default function PropertySearch() {
                         <Bath className="h-3 w-3" />
                         {property.bathrooms}
                       </span>
-                      {property.area && (
+                      {property.area > 0 && (
                         <span className="flex items-center gap-0.5">
                           <Square className="h-3 w-3" />
                           {property.area}m²

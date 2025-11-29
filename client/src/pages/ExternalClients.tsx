@@ -311,11 +311,11 @@ export default function ExternalClients() {
   });
   const sellers = sellersData || [];
 
-  // Fetch condominiums for property interest selection in leads
+  // Fetch condominiums for property interest selection in leads (get all, no limit)
   const { data: condominiumsData } = useQuery<{ data: { id: string; name: string; neighborhood?: string }[] }>({
-    queryKey: ["/api/external-condominiums"],
+    queryKey: ["/api/external-condominiums", "all"],
     queryFn: async () => {
-      const response = await fetch(`/api/external-condominiums`, { credentials: 'include' });
+      const response = await fetch(`/api/external-condominiums?limit=1000`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch condominiums');
       return response.json();
     },

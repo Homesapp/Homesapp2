@@ -27357,7 +27357,7 @@ ${{precio}}/mes
       // Always use pagination for performance - defaults: limit=50, offset=0
       const limitNum = limit ? parseInt(limit as string, 10) : 50;
       const offsetNum = offset ? parseInt(offset as string, 10) : 0;
-      const parsedLimit = Number.isFinite(limitNum) ? Math.min(Math.max(1, limitNum), 100) : 50;
+      const parsedLimit = Number.isFinite(limitNum) ? Math.min(Math.max(1, limitNum), 1000) : 50;
       const parsedOffset = Number.isFinite(offsetNum) ? Math.max(0, offsetNum) : 0;
       
       // Build filters
@@ -32030,12 +32030,15 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         return {
           id: unit.id,
           title: unit.title || `${unit.propertyType || 'Propiedad'} ${unit.unitNumber}`,
+          description: unit.description || null,
           location: location,
           price: parseFloat(unit.price || '0') || 0,
-          status: unit.price ? 'rent' : 'sale',
+          salePrice: unit.salePrice ? parseFloat(unit.salePrice) : null,
+          status: unit.listingType === 'sale' ? 'sale' : unit.listingType === 'both' ? 'both' : 'rent',
+          listingType: unit.listingType || 'rent',
           bedrooms: unit.bedrooms || 0,
           bathrooms: unit.bathrooms || 0,
-          area: unit.area || 0,
+          area: unit.area ? parseFloat(unit.area) : 0,
           primaryImages: unit.primaryImages || [],
           amenities: unit.amenities || [],
           featured: false,
@@ -32043,6 +32046,13 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           propertyType: unit.propertyType,
           agencySlug: agencySlug,
           unitSlug: unitSlug,
+          currency: unit.currency || 'MXN',
+          minimumTerm: unit.minimumTerm,
+          hasFurniture: unit.hasFurniture,
+          hasParking: unit.hasParking,
+          petsAllowed: unit.petsAllowed,
+          zone: unit.zone,
+          condominiumId: unit.condominiumId,
         };
       }));
       
