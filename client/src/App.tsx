@@ -246,6 +246,7 @@ function AuthenticatedApp() {
         <Route path="/p/:slug" component={PropertyFullDetails} />
         <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
         <Route path="/unidad/:id" component={PublicUnitDetail} />
+        <Route path="/propiedad-externa/:id" component={PublicUnitDetail} />
         <Route path="/propiedad/:id" component={PropertyDetails} />
         <Route path="/favoritos" component={Favorites} />
         <Route path="/terminos" component={Terms} />
@@ -388,6 +389,7 @@ function AuthenticatedApp() {
               <Route path="/p/:slug" component={PropertyFullDetails} />
         <Route path="/propiedad/:id/completo" component={PropertyFullDetails} />
               <Route path="/unidad/:id" component={PublicUnitDetail} />
+              <Route path="/propiedad-externa/:id" component={PublicUnitDetail} />
               <Route path="/propiedad/:id" component={PropertyDetails} />
               <Route path="/favoritos" component={Favorites} />
               <Route path="/mis-oportunidades" component={MyOpportunities} />

@@ -37,14 +37,15 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import type { ExternalUnit } from "@shared/schema";
 
 export default function PublicUnitDetail() {
-  const [matchId, params] = useRoute("/unidad/:id");
+  const [matchUnidad, paramsUnidad] = useRoute("/unidad/:id");
+  const [matchPropiedad, paramsPropiedad] = useRoute("/propiedad-externa/:id");
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const [showAllPhotosDialog, setShowAllPhotosDialog] = useState(false);
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
 
-  const unitId = params?.id;
+  const unitId = paramsUnidad?.id || paramsPropiedad?.id;
 
   const { data: unit, isLoading, error } = useQuery<ExternalUnit>({
     queryKey: ["/api/public/external-units", unitId],
