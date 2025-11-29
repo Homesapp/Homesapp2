@@ -76,11 +76,8 @@ export default function PublicDashboard() {
       {/* Minimalist Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-foreground flex items-center justify-center">
-              <Home className="h-4 w-4 text-background" />
-            </div>
-            <span className="font-semibold text-lg hidden sm:block">homes</span>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setLocation("/")}>
+            <img src={logoIcon} alt="HomesApp" className="h-8 w-auto" data-testid="img-logo-header" />
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <span 
@@ -506,11 +503,8 @@ export default function PublicDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-full bg-foreground flex items-center justify-center">
-                  <Home className="h-4 w-4 text-background" />
-                </div>
-                <span className="font-semibold">homes</span>
+              <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => setLocation("/")}>
+                <img src={logoIcon} alt="HomesApp" className="h-8 w-auto" data-testid="img-logo-footer" />
               </div>
               <p className="text-sm text-muted-foreground">
                 La mejor plataforma inmobiliaria en Tulum, Riviera Maya.

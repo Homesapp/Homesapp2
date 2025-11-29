@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
+import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
 
 interface SearchFilters {
   query?: string;
@@ -174,13 +175,10 @@ export default function PropertySearch() {
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
             <div 
-              className="flex items-center gap-3 cursor-pointer" 
+              className="flex items-center gap-2 cursor-pointer" 
               onClick={() => setLocation("/")}
             >
-              <div className="h-9 w-9 rounded-full bg-foreground flex items-center justify-center">
-                <Home className="h-4 w-4 text-background" />
-              </div>
-              <span className="font-semibold text-lg hidden sm:block">homes</span>
+              <img src={logoIcon} alt="HomesApp" className="h-8 w-auto" data-testid="img-logo-header" />
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               <LanguageToggle />
