@@ -114,27 +114,49 @@ export default function PropertySearch() {
   const { data: properties = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/public/external-properties", filters, selectedAmenities],
     queryFn: async () => {
-      const response = await fetch(`/api/public/external-properties?limit=50`);
+      const response = await fetch(`/api/public/external-properties?limit=100`);
       if (!response.ok) {
         throw new Error("Error al buscar propiedades");
       }
       const allProperties = await response.json();
       
       return allProperties.filter((prop: any) => {
+        if (filters.query) {
+          const searchQuery = filters.query.toLowerCase();
+          const title = (prop.title || "").toLowerCase();
+          const description = (prop.description || "").toLowerCase();
+          const location = (prop.location || "").toLowerCase();
+          if (!title.includes(searchQuery) && !description.includes(searchQuery) && !location.includes(searchQuery)) {
+            return false;
+          }
+        }
         if (filters.status && filters.status !== "all") {
           if (filters.status === "rent" && prop.status !== "rent") return false;
           if (filters.status === "sale" && prop.status !== "sale") return false;
+        }
+        if (filters.propertyType && filters.propertyType !== "all") {
+          if (prop.propertyType?.toLowerCase() !== filters.propertyType.toLowerCase()) return false;
         }
         if (filters.minPrice && prop.price < filters.minPrice) return false;
         if (filters.maxPrice && prop.price > filters.maxPrice) return false;
         if (filters.bedrooms && prop.bedrooms < filters.bedrooms) return false;
         if (filters.bathrooms && prop.bathrooms < filters.bathrooms) return false;
+        if (filters.minArea && prop.area && prop.area < filters.minArea) return false;
+        if (filters.maxArea && prop.area && prop.area > filters.maxArea) return false;
         if (filters.location) {
           const searchLocation = filters.location.toLowerCase();
           const propLocation = (prop.location || "").toLowerCase();
-          if (!propLocation.includes(searchLocation)) return false;
+          const propTitle = (prop.title || "").toLowerCase();
+          if (!propLocation.includes(searchLocation) && !propTitle.includes(searchLocation)) return false;
+        }
+        if (filters.colonyName) {
+          const searchColony = filters.colonyName.toLowerCase();
+          const propLocation = (prop.location || "").toLowerCase();
+          if (!propLocation.includes(searchColony)) return false;
         }
         if (filters.petFriendly && !prop.amenities?.includes("Mascotas permitidas")) return false;
+        if (filters.featured && !prop.featured) return false;
+        if (filters.minRating && prop.rating && prop.rating < filters.minRating) return false;
         if (selectedAmenities.length > 0) {
           const propAmenities = prop.amenities || [];
           if (!selectedAmenities.every(a => propAmenities.includes(a))) return false;
