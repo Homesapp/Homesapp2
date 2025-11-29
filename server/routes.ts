@@ -28419,7 +28419,7 @@ ${{precio}}/mes
         }
       }
       
-      await logAuditAction(
+      await createAuditLog(
         req, 
         "import", 
         "external_unit", 
