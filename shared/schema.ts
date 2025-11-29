@@ -6379,6 +6379,7 @@ export const externalLeads = pgTable("external_leads", {
   checkInDate: timestamp("check_in_date"), // Fecha deseada de entrada (timestamp)
   checkInDateText: varchar("check_in_date_text", { length: 100 }), // Fecha de mudanza como texto (ej: "Noviembre", "Inmediato")
   hasPets: varchar("has_pets", { length: 100 }), // "Sí", "No", "1 Gato", "2 perros", etc.
+  petQuantity: integer("pet_quantity"), // Cantidad de mascotas
   budgetMin: decimal("budget_min", { precision: 12, scale: 2 }), // Presupuesto mínimo del cliente
   budgetMax: decimal("budget_max", { precision: 12, scale: 2 }), // Presupuesto máximo del cliente
   estimatedRentCost: integer("estimated_rent_cost"), // [DEPRECATED] Usar budgetMin/budgetMax
@@ -6390,8 +6391,10 @@ export const externalLeads = pgTable("external_leads", {
   desiredNeighborhood: varchar("desired_neighborhood", { length: 200 }), // Colonia preferida (ej: "La veleta", "Aldea zama")
   
   // Propiedad de interés (vinculada a propiedades existentes)
-  interestedCondominiumId: varchar("interested_condominium_id"), // Condominio de interés (ID de externalCondominiums)
-  interestedUnitId: varchar("interested_unit_id"), // Unidad específica de interés (ID de externalUnits)
+  interestedCondominiumId: varchar("interested_condominium_id"), // Condominio de interés (ID de externalCondominiums) - deprecated, usar array
+  interestedUnitId: varchar("interested_unit_id"), // Unidad específica de interés (ID de externalUnits) - deprecated, usar array
+  interestedCondominiumIds: text("interested_condominium_ids").array(), // Condominios de interés (múltiple selección)
+  interestedUnitIds: text("interested_unit_ids").array(), // Unidades específicas de interés (múltiple selección)
   
   // Preferencias de características y amenidades
   desiredCharacteristics: text("desired_characteristics").array(), // IDs de características deseadas
