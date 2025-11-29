@@ -32269,8 +32269,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           u.referrer_name as "referrerName",
           u.referrer_phone as "referrerPhone",
           u.referrer_email as "referrerEmail",
-          u.monthly_rent_12 as "monthlyRent12",
-          u.status,
+          u.price as "monthlyRent12",
+          COALESCE(u.publish_status, 'draft') as status,
           c.name as "condominiumName"
         FROM external_units u
         LEFT JOIN external_condominiums c ON u.condominium_id = c.id
@@ -35322,7 +35322,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       });
 
       // Get agency info for context
-      const agency = await storage.getExternalAgencyById(agencyId);
+      const agency = await storage.getExternalAgency(agencyId);
 
       // Build system prompt for external agency assistant
       const systemPrompt = `Eres el asistente virtual de HomesApp, una plataforma de gestión inmobiliaria. Estás ayudando a un usuario de la agencia "${agency?.name || 'Agencia'}".
@@ -36979,7 +36979,7 @@ Reglas:
             last_name: u.lastName || '',
             phone: u.phone || '',
             role: u.role || '',
-            status: u.status || 'active',
+            status: COALESCE(u.publish_status, 'draft') as status || 'active',
             maintenance_specialty: u.maintenanceSpecialty || '',
             is_suspended: u.isSuspended ? 'true' : 'false',
             created_at: u.createdAt?.toISOString() || '',
