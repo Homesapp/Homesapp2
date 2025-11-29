@@ -39428,8 +39428,27 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         }
       }
 
+      // Map goalType to bilingual names
+      const goalTypeNames: Record<string, { es: string, en: string }> = {
+        leads: { es: "Leads", en: "Leads" },
+        conversions: { es: "Conversiones", en: "Conversions" },
+        revenue: { es: "Ingresos", en: "Revenue" },
+        showings: { es: "Visitas", en: "Showings" },
+        contracts: { es: "Contratos", en: "Contracts" }
+      };
+      
+      const goalNames = goalTypeNames[parsed.data.goalType] || { es: "Meta", en: "Goal" };
+      
       const goal = await storage.createSellerGoal({
-        ...parsed.data,
+        sellerId: parsed.data.sellerId,
+        goalType: parsed.data.goalType as any,
+        target: parsed.data.target,
+        startDate: new Date(parsed.data.startDate),
+        endDate: new Date(parsed.data.endDate),
+        isActive: parsed.data.isActive ?? true,
+        period: "monthly",
+        nameEs: goalNames.es,
+        nameEn: goalNames.en,
         agencyId,
         createdBy: req.user?.id
       });
