@@ -146,6 +146,15 @@ export default function ExternalLeadDetail() {
   const [isActivitiesDialogOpen, setIsActivitiesDialogOpen] = useState(false);
   const [isShowingsDialogOpen, setIsShowingsDialogOpen] = useState(false);
   const [isRemindersDialogOpen, setIsRemindersDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    source: "",
+    notes: "",
+  });
 
   const { data: lead, isLoading, error } = useQuery<ExternalLead>({
     queryKey: ["/api/external-leads", leadId],
@@ -214,6 +223,72 @@ export default function ExternalLeadDetail() {
       navigate("/external/leads");
     },
   });
+
+  const updateLeadMutation = useMutation({
+    mutationFn: async (data: typeof editFormData) => {
+      const res = await apiRequest("PATCH", `/api/external-leads/${leadId}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+      toast({
+        title: language === "es" ? "Lead actualizado" : "Lead updated",
+        description: language === "es" ? "Los datos se guardaron correctamente" : "Data saved successfully",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "No se pudo actualizar el lead" : "Could not update lead"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenEditDialog = () => {
+    if (lead) {
+      setEditFormData({
+        firstName: lead.firstName || "",
+        lastName: lead.lastName || "",
+        phone: lead.phone || "",
+        email: lead.email || "",
+        source: lead.source || "",
+        notes: lead.notes || "",
+      });
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    // Only include fields that have values to avoid overwriting with empty strings
+    const updateData: Record<string, string> = {};
+    
+    // Required fields - always include
+    if (editFormData.firstName.trim()) updateData.firstName = editFormData.firstName.trim();
+    if (editFormData.lastName.trim()) updateData.lastName = editFormData.lastName.trim();
+    if (editFormData.phone.trim()) updateData.phone = editFormData.phone.trim();
+    
+    // Optional fields - only include if they have a value
+    if (editFormData.email.trim()) updateData.email = editFormData.email.trim();
+    if (editFormData.source.trim()) updateData.source = editFormData.source.trim();
+    if (editFormData.notes.trim()) updateData.notes = editFormData.notes.trim();
+    
+    // Validate required fields
+    if (!updateData.firstName || !updateData.lastName || !updateData.phone) {
+      toast({
+        title: language === "es" ? "Campos requeridos" : "Required fields",
+        description: language === "es" 
+          ? "Nombre, apellido y teléfono son obligatorios" 
+          : "First name, last name and phone are required",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    updateLeadMutation.mutate(updateData as typeof editFormData);
+  };
 
   const createCardFromPreferencesMutation = useMutation({
     mutationFn: async () => {
@@ -394,7 +469,7 @@ export default function ExternalLeadDetail() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate(`/external/clients?edit=${lead.id}`)}>
+              <DropdownMenuItem onClick={handleOpenEditDialog} data-testid="button-edit-lead">
                 <Edit2 className="h-4 w-4 mr-2" />
                 {language === "es" ? "Editar" : "Edit"}
               </DropdownMenuItem>
@@ -822,7 +897,7 @@ export default function ExternalLeadDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate(`/external/clients?edit=${lead.id}`)}>
+                <DropdownMenuItem onClick={handleOpenEditDialog} data-testid="button-edit-lead-mobile">
                   <Edit2 className="h-4 w-4 mr-2" />
                   {language === "es" ? "Editar" : "Edit"}
                 </DropdownMenuItem>
@@ -1051,6 +1126,128 @@ export default function ExternalLeadDetail() {
               {deleteMutation.isPending 
                 ? (language === "es" ? "Eliminando..." : "Deleting...")
                 : (language === "es" ? "Eliminar" : "Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Lead Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "es" ? "Editar Lead" : "Edit Lead"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Actualiza los datos de contacto del lead"
+                : "Update the lead's contact information"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {language === "es" ? "Nombre *" : "First Name *"}
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  value={editFormData.firstName}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                  data-testid="input-edit-firstname"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {language === "es" ? "Apellido *" : "Last Name *"}
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  value={editFormData.lastName}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                  data-testid="input-edit-lastname"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Teléfono *" : "Phone *"}
+              </label>
+              <input
+                type="tel"
+                className="w-full px-3 py-2 border rounded-md bg-background"
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+52 984 123 4567"
+                data-testid="input-edit-phone"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Email" : "Email"}
+              </label>
+              <input
+                type="email"
+                className="w-full px-3 py-2 border rounded-md bg-background"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="email@ejemplo.com"
+                data-testid="input-edit-email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Origen" : "Source"}
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-md bg-background"
+                value={editFormData.source}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, source: e.target.value }))}
+                placeholder={language === "es" ? "Ej: Instagram, Referido" : "E.g. Instagram, Referral"}
+                data-testid="input-edit-source"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === "es" ? "Notas" : "Notes"}
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border rounded-md bg-background min-h-[80px] resize-none"
+                value={editFormData.notes}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder={language === "es" ? "Notas adicionales..." : "Additional notes..."}
+                data-testid="input-edit-notes"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={updateLeadMutation.isPending}
+            >
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateLeadMutation.isPending || !editFormData.firstName.trim() || !editFormData.lastName.trim() || !editFormData.phone.trim()}
+              data-testid="button-save-edit"
+            >
+              {updateLeadMutation.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {updateLeadMutation.isPending 
+                ? (language === "es" ? "Guardando..." : "Saving...")
+                : (language === "es" ? "Guardar" : "Save")}
             </Button>
           </DialogFooter>
         </DialogContent>
