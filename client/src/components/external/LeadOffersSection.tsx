@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -11,15 +11,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   Send,
   Building2,
@@ -29,12 +24,14 @@ import {
   ExternalLink,
   Plus,
   Loader2,
+  Home,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { ExternalLead } from "@shared/schema";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import type { ExternalLead, ExternalUnitWithCondominium } from "@shared/schema";
 
 interface LeadOffersSectionProps {
   lead: ExternalLead;
@@ -44,6 +41,7 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
+  const [selectedCondominiumId, setSelectedCondominiumId] = useState("");
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [generatedOffer, setGeneratedOffer] = useState<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -57,14 +55,83 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
     },
   });
 
-  const { data: units } = useQuery<{ data: any[] }>({
-    queryKey: ["/api/external-units"],
+  // Load all condominiums
+  const { data: condominiumsResponse, isLoading: isLoadingCondominiums } = useQuery<{ data: any[], total: number }>({
+    queryKey: ["/api/external-condominiums", "for-offer-dialog"],
     queryFn: async () => {
-      const res = await fetch("/api/external-units?status=disponible&limit=100", { credentials: 'include' });
-      if (!res.ok) return { data: [] };
-      return res.json();
+      let allCondos: any[] = [];
+      let offset = 0;
+      const batchSize = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(`/api/external-condominiums?limit=${batchSize}&offset=${offset}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch condominiums');
+        const result = await response.json();
+        allCondos = [...allCondos, ...(result.data || [])];
+        hasMore = result.data?.length === batchSize;
+        offset += batchSize;
+      }
+      
+      return { data: allCondos, total: allCondos.length };
     },
+    staleTime: 5 * 60 * 1000,
   });
+
+  const condominiumOptions = useMemo(() => {
+    const condos = condominiumsResponse?.data || [];
+    return condos
+      .map(condo => ({
+        value: String(condo.id),
+        label: condo.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [condominiumsResponse]);
+
+  // Load units for selected condominium
+  const { data: unitsResponse, isLoading: isLoadingUnits } = useQuery<{ data: ExternalUnitWithCondominium[], total: number }>({
+    queryKey: ["/api/external-units", "by-condominium-for-offer", selectedCondominiumId],
+    queryFn: async () => {
+      let allUnits: ExternalUnitWithCondominium[] = [];
+      let offset = 0;
+      const batchSize = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(`/api/external-units?condominiumId=${selectedCondominiumId}&status=disponible&limit=${batchSize}&offset=${offset}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch units');
+        const result = await response.json();
+        allUnits = [...allUnits, ...(result.data || [])];
+        hasMore = result.data?.length === batchSize;
+        offset += batchSize;
+      }
+      
+      return { data: allUnits, total: allUnits.length };
+    },
+    enabled: !!selectedCondominiumId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const unitOptions = useMemo(() => {
+    if (!selectedCondominiumId || !unitsResponse?.data) return [];
+    return unitsResponse.data
+      .sort((a, b) => (a.unitNumber || '').localeCompare(b.unitNumber || '', undefined, { numeric: true }))
+      .map(unit => ({
+        value: String(unit.id),
+        label: `${unit.unitNumber}${unit.price ? ` - $${Number(unit.price).toLocaleString()}/mes` : ''}`,
+        description: unit.typology || undefined,
+      }));
+  }, [unitsResponse, selectedCondominiumId]);
+
+  const selectedUnit = useMemo(() => {
+    if (!selectedUnitId || !unitsResponse?.data) return null;
+    return unitsResponse.data.find(u => String(u.id) === selectedUnitId);
+  }, [selectedUnitId, unitsResponse]);
+
+  const handleCondominiumChange = (value: string) => {
+    setSelectedCondominiumId(value);
+    setSelectedUnitId("");
+  };
 
   const generateOfferMutation = useMutation({
     mutationFn: async (unitId: string) => {
@@ -177,36 +244,101 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
       )}
 
       {/* Generate Offer Dialog */}
-      <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
-        <DialogContent>
+      <Dialog open={isOfferDialogOpen} onOpenChange={(open) => {
+        setIsOfferDialogOpen(open);
+        if (!open) {
+          setSelectedCondominiumId("");
+          setSelectedUnitId("");
+          setGeneratedOffer(null);
+        }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
               {language === "es" ? "Generar Oferta de Propiedad" : "Generate Property Offer"}
             </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Selecciona un condominio y unidad para enviar una oferta a este lead" 
+                : "Select a condominium and unit to send an offer to this lead"}
+            </DialogDescription>
           </DialogHeader>
 
           {!generatedOffer ? (
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">
-                  {language === "es" ? "Seleccionar Unidad" : "Select Unit"}
-                </label>
-                <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-                  <SelectTrigger data-testid="select-unit-for-offer">
-                    <SelectValue placeholder={language === "es" ? "Selecciona una unidad" : "Select a unit"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units?.data?.map((unit: any) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.unitNumber} - {unit.condoName}
-                        {unit.rentPrice && ` ($${Number(unit.rentPrice).toLocaleString()})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Condominium Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  {language === "es" ? "Condominio" : "Condominium"}
+                </Label>
+                <SearchableSelect
+                  value={selectedCondominiumId}
+                  onValueChange={handleCondominiumChange}
+                  options={condominiumOptions}
+                  placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."}
+                  searchPlaceholder={language === "es" ? "Escriba para buscar..." : "Type to search..."}
+                  emptyMessage={language === "es" ? "No se encontraron condominios" : "No condominiums found"}
+                  disabled={isLoadingCondominiums}
+                  data-testid="select-condominium-for-offer"
+                />
               </div>
 
-              <DialogFooter>
+              {/* Unit Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                  {language === "es" ? "Unidad" : "Unit"}
+                </Label>
+                <SearchableSelect
+                  value={selectedUnitId}
+                  onValueChange={setSelectedUnitId}
+                  options={unitOptions}
+                  placeholder={
+                    !selectedCondominiumId 
+                      ? (language === "es" ? "Primero selecciona un condominio" : "First select a condominium")
+                      : isLoadingUnits
+                        ? (language === "es" ? "Cargando unidades..." : "Loading units...")
+                        : (language === "es" ? "Buscar unidad..." : "Search unit...")
+                  }
+                  searchPlaceholder={language === "es" ? "Escriba para buscar..." : "Type to search..."}
+                  emptyMessage={language === "es" ? "No hay unidades disponibles" : "No available units"}
+                  disabled={!selectedCondominiumId || isLoadingUnits}
+                  data-testid="select-unit-for-offer"
+                />
+              </div>
+
+              {/* Selected Unit Preview */}
+              {selectedUnit && (
+                <Card className="bg-muted/50">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Home className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {selectedUnit.unitNumber}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {selectedUnit.condominium?.name || condominiumOptions.find(c => c.value === selectedCondominiumId)?.label}
+                        </p>
+                      </div>
+                      {selectedUnit.price && (
+                        <div className="text-right">
+                          <p className="font-medium text-sm text-primary">
+                            ${Number(selectedUnit.price).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">/mes</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" onClick={() => setIsOfferDialogOpen(false)}>
                   {language === "es" ? "Cancelar" : "Cancel"}
                 </Button>
@@ -220,7 +352,7 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
                   ) : (
                     <Send className="h-4 w-4 mr-2" />
                   )}
-                  {language === "es" ? "Generar" : "Generate"}
+                  {language === "es" ? "Generar Oferta" : "Generate Offer"}
                 </Button>
               </DialogFooter>
             </div>
@@ -255,6 +387,7 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
                 <Button onClick={() => {
                   setIsOfferDialogOpen(false);
                   setGeneratedOffer(null);
+                  setSelectedCondominiumId("");
                   setSelectedUnitId("");
                 }}>
                   {language === "es" ? "Cerrar" : "Close"}
