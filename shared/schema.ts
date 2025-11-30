@@ -8736,3 +8736,243 @@ export const insertExternalPropertyActivityHistorySchema = createInsertSchema(ex
 });
 export type InsertExternalPropertyActivityHistory = z.infer<typeof insertExternalPropertyActivityHistorySchema>;
 export type ExternalPropertyActivityHistory = typeof externalPropertyActivityHistory.$inferSelect;
+
+// ==========================================
+// PROPERTY RECRUITMENT SYSTEM
+// Sistema de Reclutamiento de Propiedades para Vendedores
+// ==========================================
+
+// Estados del prospecto de propiedad en el pipeline de reclutamiento
+export const propertyProspectStatusEnum = pgEnum("property_prospect_status", [
+  "identified",        // Propiedad identificada
+  "contacted",         // Propietario contactado
+  "documentation",     // Recopilando documentación
+  "inspection_scheduled", // Inspección agendada
+  "inspection_completed", // Inspección completada
+  "owner_invited",     // Invitación enviada al propietario
+  "owner_registered",  // Propietario registrado
+  "property_approved", // Propiedad aprobada y publicada
+  "rejected",          // Rechazada
+  "cancelled"          // Cancelada
+]);
+
+// Tipos de propiedad prospecto
+export const propertyProspectTypeEnum = pgEnum("property_prospect_type", [
+  "casa",
+  "departamento", 
+  "penthouse",
+  "estudio",
+  "villa",
+  "terreno",
+  "local_comercial",
+  "oficina",
+  "otro"
+]);
+
+// Estados de confianza del propietario
+export const ownerTrustStatusEnum = pgEnum("owner_trust_status", [
+  "pending",           // Pendiente de verificación
+  "documents_requested", // Documentos solicitados
+  "documents_submitted", // Documentos enviados
+  "verified",          // Verificado
+  "trusted"            // Confiable (historial positivo)
+]);
+
+// Prospectos de propiedades para reclutamiento
+export const externalPropertyProspects = pgTable("external_property_prospects", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Vendedor que recluta la propiedad (referidor)
+  sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sellerName: varchar("seller_name", { length: 255 }),
+  
+  // Información de la propiedad
+  propertyName: varchar("property_name", { length: 255 }), // Nombre/referencia de la propiedad
+  propertyType: propertyProspectTypeEnum("property_type"),
+  
+  // Ubicación
+  address: varchar("address", { length: 500 }),
+  neighborhood: varchar("neighborhood", { length: 200 }), // Colonia/Zona
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  googleMapsUrl: varchar("google_maps_url", { length: 500 }),
+  
+  // Características
+  bedrooms: integer("bedrooms"),
+  bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }), // Permite 2.5 baños
+  squareMeters: decimal("square_meters", { precision: 10, scale: 2 }),
+  parkingSpaces: integer("parking_spaces"),
+  floors: integer("floors"),
+  yearBuilt: integer("year_built"),
+  
+  // Estimaciones de renta/venta
+  estimatedRentPrice: decimal("estimated_rent_price", { precision: 12, scale: 2 }),
+  estimatedSalePrice: decimal("estimated_sale_price", { precision: 14, scale: 2 }),
+  currency: varchar("currency", { length: 10 }).default("MXN"),
+  listingType: varchar("listing_type", { length: 20 }).default("rent"), // rent, sale, both
+  
+  // Información del propietario
+  ownerFirstName: varchar("owner_first_name", { length: 100 }),
+  ownerLastName: varchar("owner_last_name", { length: 100 }),
+  ownerEmail: varchar("owner_email", { length: 255 }),
+  ownerPhone: varchar("owner_phone", { length: 50 }),
+  ownerWhatsApp: varchar("owner_whatsapp", { length: 50 }),
+  ownerPreferredContact: varchar("owner_preferred_contact", { length: 50 }), // email, phone, whatsapp
+  
+  // Estado y verificación
+  status: propertyProspectStatusEnum("status").notNull().default("identified"),
+  ownerTrustStatus: ownerTrustStatusEnum("owner_trust_status").default("pending"),
+  
+  // Referido y comisiones
+  isReferral: boolean("is_referral").default(true), // El vendedor es referido de esta propiedad
+  referralAgreementSigned: boolean("referral_agreement_signed").default(false),
+  commissionPercentage: decimal("commission_percentage", { precision: 5, scale: 2 }), // % de comisión acordada
+  
+  // Documentación
+  hasPropertyTitle: boolean("has_property_title").default(false),
+  hasPredialReceipt: boolean("has_predial_receipt").default(false),
+  hasIdVerification: boolean("has_id_verification").default(false),
+  documentsJson: jsonb("documents_json").$type<{
+    propertyTitle?: { uploaded: boolean; url?: string; verifiedAt?: string };
+    predialReceipt?: { uploaded: boolean; url?: string; verifiedAt?: string };
+    ownerIdFront?: { uploaded: boolean; url?: string; verifiedAt?: string };
+    ownerIdBack?: { uploaded: boolean; url?: string; verifiedAt?: string };
+    otherDocuments?: Array<{ name: string; url: string; uploadedAt: string }>;
+  }>(),
+  
+  // Imágenes de la propiedad
+  images: text("images").array(),
+  
+  // Inspección
+  inspectionScheduledAt: timestamp("inspection_scheduled_at"),
+  inspectionCompletedAt: timestamp("inspection_completed_at"),
+  inspectionNotes: text("inspection_notes"),
+  inspectedBy: varchar("inspected_by").references(() => users.id),
+  
+  // Token de invitación para propietario
+  ownerInviteToken: varchar("owner_invite_token").unique(),
+  ownerInviteExpiresAt: timestamp("owner_invite_expires_at"),
+  ownerInviteSentAt: timestamp("owner_invite_sent_at"),
+  ownerInviteSentVia: varchar("owner_invite_sent_via", { length: 50 }), // email, whatsapp, sms
+  
+  // Conversión
+  convertedToUnitId: varchar("converted_to_unit_id").references(() => externalUnits.id, { onDelete: "set null" }),
+  convertedAt: timestamp("converted_at"),
+  
+  // Notas y seguimiento
+  notes: text("notes"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  lastContactDate: timestamp("last_contact_date"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_property_prospects_agency").on(table.agencyId),
+  index("idx_property_prospects_seller").on(table.sellerId),
+  index("idx_property_prospects_status").on(table.status),
+  index("idx_property_prospects_owner_email").on(table.ownerEmail),
+  index("idx_property_prospects_owner_phone").on(table.ownerPhone),
+  index("idx_property_prospects_invite_token").on(table.ownerInviteToken),
+  index("idx_property_prospects_next_followup").on(table.nextFollowUpDate),
+  index("idx_property_prospects_created").on(table.createdAt),
+]);
+
+export const insertExternalPropertyProspectSchema = createInsertSchema(externalPropertyProspects).omit({
+  id: true,
+  agencyId: true,
+  createdAt: true,
+  updatedAt: true,
+  ownerInviteToken: true,
+  ownerInviteExpiresAt: true,
+  convertedToUnitId: true,
+  convertedAt: true,
+}).extend({
+  bathrooms: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
+  squareMeters: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
+  estimatedRentPrice: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
+  estimatedSalePrice: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
+  commissionPercentage: z.union([z.string(), z.number()]).optional().nullable().transform(val => 
+    val !== null && val !== undefined ? String(val) : val
+  ),
+});
+
+export const updateExternalPropertyProspectSchema = insertExternalPropertyProspectSchema.partial();
+
+export type InsertExternalPropertyProspect = z.infer<typeof insertExternalPropertyProspectSchema>;
+export type UpdateExternalPropertyProspect = z.infer<typeof updateExternalPropertyProspectSchema>;
+export type ExternalPropertyProspect = typeof externalPropertyProspects.$inferSelect;
+
+// Historial de actividades del prospecto de propiedad
+export const propertyProspectActivityTypeEnum = pgEnum("property_prospect_activity_type", [
+  "created",           // Prospecto creado
+  "status_changed",    // Estado cambiado
+  "owner_contacted",   // Propietario contactado
+  "call_made",         // Llamada realizada
+  "whatsapp_sent",     // WhatsApp enviado
+  "email_sent",        // Email enviado
+  "meeting_scheduled", // Reunión agendada
+  "meeting_completed", // Reunión completada
+  "document_uploaded", // Documento subido
+  "document_verified", // Documento verificado
+  "inspection_scheduled", // Inspección agendada
+  "inspection_completed", // Inspección completada
+  "invite_sent",       // Invitación enviada
+  "owner_registered",  // Propietario se registró
+  "property_approved", // Propiedad aprobada
+  "note_added",        // Nota agregada
+  "followup_scheduled" // Seguimiento programado
+]);
+
+export const externalPropertyProspectActivities = pgTable("external_property_prospect_activities", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  prospectId: varchar("prospect_id").notNull().references(() => externalPropertyProspects.id, { onDelete: "cascade" }),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  activityType: propertyProspectActivityTypeEnum("activity_type").notNull(),
+  
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Estado anterior y nuevo (para cambios de estado)
+  previousStatus: propertyProspectStatusEnum("previous_status"),
+  newStatus: propertyProspectStatusEnum("new_status"),
+  
+  // Detalles adicionales
+  details: jsonb("details").$type<{
+    channel?: string;
+    outcome?: string;
+    duration?: number; // minutos
+    documentType?: string;
+    scheduledDate?: string;
+    notes?: string;
+  }>(),
+  
+  performedBy: varchar("performed_by").references(() => users.id, { onDelete: "set null" }),
+  performedByName: varchar("performed_by_name", { length: 255 }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_prospect_activities_prospect").on(table.prospectId),
+  index("idx_prospect_activities_agency").on(table.agencyId),
+  index("idx_prospect_activities_type").on(table.activityType),
+  index("idx_prospect_activities_created").on(table.createdAt),
+]);
+
+export const insertExternalPropertyProspectActivitySchema = createInsertSchema(externalPropertyProspectActivities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExternalPropertyProspectActivity = z.infer<typeof insertExternalPropertyProspectActivitySchema>;
+export type ExternalPropertyProspectActivity = typeof externalPropertyProspectActivities.$inferSelect;
