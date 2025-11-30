@@ -1106,14 +1106,16 @@ export default function SellerPropertyCatalog() {
                       <div className="flex items-center gap-1">
                         <Wallet className="h-3 w-3 text-muted-foreground" />
                         <span className="font-medium">
-                          {selectedLead.estimatedRentCost 
-                            ? `$${selectedLead.estimatedRentCost.toLocaleString()}` 
-                            : "—"}
+                          {chosenCard && (chosenCard.minBudget || chosenCard.maxBudget)
+                            ? `$${chosenCard.minBudget ? parseFloat(chosenCard.minBudget).toLocaleString() : "0"} - $${chosenCard.maxBudget ? parseFloat(chosenCard.maxBudget).toLocaleString() : "—"}`
+                            : selectedLead.estimatedRentCost 
+                              ? `$${selectedLead.estimatedRentCost.toLocaleString()}` 
+                              : "—"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Bed className="h-3 w-3 text-muted-foreground" />
-                        <span className="font-medium">{selectedLead.bedrooms || "—"}</span>
+                        <span className="font-medium">{chosenCard?.bedrooms || selectedLead.bedrooms || "—"}</span>
                       </div>
                     </div>
                     <Badge className={`text-xs ${getStatusColor(selectedLead.status)}`}>
