@@ -53,7 +53,9 @@ import {
   ChevronLeft,
   Loader2,
   Maximize2,
-  Square
+  Square,
+  Star,
+  Eye
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 
@@ -1083,7 +1085,105 @@ export default function SellerPropertyCatalog() {
               </Select>
             </div>
             
-            <ScrollArea className="h-[200px] sm:h-[calc(100vh-14rem)]">
+            {/* Selected Lead Info Section */}
+            {selectedLead && (
+              <div className="p-2 sm:p-3 border-b space-y-3 bg-background">
+                {/* Lead Info Card */}
+                <div className="rounded-lg border bg-card p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{selectedLead.firstName} {selectedLead.lastName}</p>
+                      {selectedLead.phone && (
+                        <p className="text-xs text-muted-foreground truncate">{selectedLead.phone}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1">
+                        <Wallet className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium">
+                          {selectedLead.estimatedRentCost 
+                            ? `$${selectedLead.estimatedRentCost.toLocaleString()}` 
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Bed className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium">{selectedLead.bedrooms || "—"}</span>
+                      </div>
+                    </div>
+                    <Badge className={`text-xs ${getStatusColor(selectedLead.status)}`}>
+                      {getStatusLabel(selectedLead.status)}
+                    </Badge>
+                  </div>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="w-full mt-2 gap-1"
+                    onClick={() => {}}
+                  >
+                    <Target className="h-3 w-3" />
+                    Filtrar
+                  </Button>
+                </div>
+
+                {/* Chosen Card Section */}
+                <div className="rounded-lg border bg-accent/30 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">Tarjeta Elegida</span>
+                  </div>
+                  {chosenCard ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{chosenCard.title}</span>
+                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                        {(chosenCard.propertyType || (chosenCard.propertyTypeList && chosenCard.propertyTypeList.length > 0)) && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Home className="h-3 w-3" />
+                            <span className="truncate">{chosenCard.propertyType || chosenCard.propertyTypeList?.[0]}</span>
+                          </div>
+                        )}
+                        {(chosenCard.minBudget || chosenCard.maxBudget) && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Wallet className="h-3 w-3" />
+                            <span className="truncate">
+                              ${chosenCard.minBudget ? parseFloat(chosenCard.minBudget).toLocaleString() : "0"} - ${chosenCard.maxBudget ? parseFloat(chosenCard.maxBudget).toLocaleString() : "—"}
+                            </span>
+                          </div>
+                        )}
+                        {chosenCard.bedrooms && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Bed className="h-3 w-3" />
+                            <span>{chosenCard.bedrooms} rec.</span>
+                          </div>
+                        )}
+                        {(chosenCard.preferredZone || (chosenCard.preferredZoneList && chosenCard.preferredZoneList.length > 0)) && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">{chosenCard.preferredZone || chosenCard.preferredZoneList?.[0]}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
+                        <Eye className="h-3 w-3" />
+                        <span>{chosenCard.usageCount || 0} usos</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">Sin tarjeta elegida</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <ScrollArea className={`${selectedLead ? 'h-[150px] sm:h-[calc(100vh-28rem)]' : 'h-[200px] sm:h-[calc(100vh-14rem)]'}`}>
               <div className="space-y-2 p-2 sm:p-3">
                 {leadsLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
