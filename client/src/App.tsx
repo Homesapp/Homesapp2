@@ -154,6 +154,7 @@ import ExternalMaintenanceTickets from "@/pages/ExternalMaintenanceTickets";
 import ExternalCondominiums from "@/pages/ExternalCondominiums";
 import ExternalUnitDetail from "@/pages/ExternalUnitDetail";
 import ExternalReferralNetwork from "@/pages/ExternalReferralNetwork";
+import ExternalPropertyRecruitment from "@/pages/ExternalPropertyRecruitment";
 import ExternalRentalContractDetail from "@/pages/ExternalRentalContractDetail";
 import ExternalCheckoutReport from "@/pages/ExternalCheckoutReport";
 import ExternalRentals from "@/pages/ExternalRentals";
@@ -523,6 +524,7 @@ function AuthenticatedApp() {
               <Route path="/external/tickets" component={ExternalMaintenanceTickets} />
               <Route path="/external/condominiums" component={ExternalCondominiums} />
               <Route path="/external/referral-network" component={ExternalReferralNetwork} />
+              <Route path="/external/recruitment" component={ExternalPropertyRecruitment} />
               <Route path="/external/units/:id" component={ExternalUnitDetail} />
               <Route path="/external/contracts/:id" component={ExternalRentalContractDetail} />
               <Route path="/external/checkout/:contractId" component={ExternalCheckoutReport} />

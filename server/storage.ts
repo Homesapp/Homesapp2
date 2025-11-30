@@ -473,6 +473,13 @@ import {
   sellerGoals,
   type SellerGoal,
   type InsertSellerGoal,
+  externalPropertyProspects,
+  type ExternalPropertyProspect,
+  type InsertExternalPropertyProspect,
+  type UpdateExternalPropertyProspect,
+  externalPropertyProspectActivities,
+  type ExternalPropertyProspectActivity,
+  type InsertExternalPropertyProspectActivity,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray, ne } from "drizzle-orm";
@@ -1782,6 +1789,32 @@ export interface IStorage {
     paidCommissions: number;
     unpaidCommissions: number;
   }>;
+
+  // Property Prospects - Recruitment system
+  getExternalPropertyProspects(agencyId: string, filters?: {
+    status?: string;
+    sellerId?: string;
+    search?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<ExternalPropertyProspect[]>;
+  getExternalPropertyProspectsCount(agencyId: string, filters?: {
+    status?: string;
+    sellerId?: string;
+    search?: string;
+  }): Promise<number>;
+  getExternalPropertyProspect(id: string): Promise<ExternalPropertyProspect | undefined>;
+  getExternalPropertyProspectByToken(token: string): Promise<ExternalPropertyProspect | undefined>;
+  createExternalPropertyProspect(prospect: InsertExternalPropertyProspect & { agencyId: string }): Promise<ExternalPropertyProspect>;
+  updateExternalPropertyProspect(id: string, updates: UpdateExternalPropertyProspect): Promise<ExternalPropertyProspect>;
+  deleteExternalPropertyProspect(id: string): Promise<void>;
+  generateOwnerInviteToken(prospectId: string, expiresInHours?: number): Promise<string>;
+
+  // Property Prospect Activities
+  getExternalPropertyProspectActivities(prospectId: string): Promise<ExternalPropertyProspectActivity[]>;
+  createExternalPropertyProspectActivity(activity: InsertExternalPropertyProspectActivity): Promise<ExternalPropertyProspectActivity>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -12747,6 +12780,188 @@ export class DatabaseStorage implements IStorage {
       paidCommissions,
       unpaidCommissions: totalCommissions - paidCommissions
     };
+  }
+
+  // Property Prospects - Recruitment System
+  async getExternalPropertyProspects(
+    agencyId: string,
+    filters?: {
+      status?: string;
+      sellerId?: string;
+      search?: string;
+      sortField?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<ExternalPropertyProspect[]> {
+    const conditions: SQL[] = [eq(externalPropertyProspects.agencyId, agencyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(externalPropertyProspects.status, filters.status as any));
+    }
+    if (filters?.sellerId) {
+      conditions.push(eq(externalPropertyProspects.sellerId, filters.sellerId));
+    }
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          ilike(externalPropertyProspects.propertyName, searchTerm),
+          ilike(externalPropertyProspects.address, searchTerm),
+          ilike(externalPropertyProspects.neighborhood, searchTerm),
+          ilike(externalPropertyProspects.ownerFirstName, searchTerm),
+          ilike(externalPropertyProspects.ownerLastName, searchTerm),
+          ilike(externalPropertyProspects.ownerEmail, searchTerm),
+          ilike(externalPropertyProspects.ownerPhone, searchTerm)
+        )!
+      );
+    }
+
+    let query = db.select()
+      .from(externalPropertyProspects)
+      .where(and(...conditions));
+
+    const sortField = filters?.sortField || 'createdAt';
+    const sortOrder = filters?.sortOrder || 'desc';
+    
+    const sortColumn = {
+      createdAt: externalPropertyProspects.createdAt,
+      propertyName: externalPropertyProspects.propertyName,
+      status: externalPropertyProspects.status,
+      nextFollowUpDate: externalPropertyProspects.nextFollowUpDate,
+    }[sortField] || externalPropertyProspects.createdAt;
+
+    if (sortOrder === 'asc') {
+      query = query.orderBy(asc(sortColumn)) as any;
+    } else {
+      query = query.orderBy(desc(sortColumn)) as any;
+    }
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+
+    return await query;
+  }
+
+  async getExternalPropertyProspectsCount(
+    agencyId: string,
+    filters?: {
+      status?: string;
+      sellerId?: string;
+      search?: string;
+    }
+  ): Promise<number> {
+    const conditions: SQL[] = [eq(externalPropertyProspects.agencyId, agencyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(externalPropertyProspects.status, filters.status as any));
+    }
+    if (filters?.sellerId) {
+      conditions.push(eq(externalPropertyProspects.sellerId, filters.sellerId));
+    }
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          ilike(externalPropertyProspects.propertyName, searchTerm),
+          ilike(externalPropertyProspects.address, searchTerm),
+          ilike(externalPropertyProspects.neighborhood, searchTerm),
+          ilike(externalPropertyProspects.ownerFirstName, searchTerm),
+          ilike(externalPropertyProspects.ownerLastName, searchTerm)
+        )!
+      );
+    }
+
+    const [result] = await db.select({ count: sql<number>`count(*)` })
+      .from(externalPropertyProspects)
+      .where(and(...conditions));
+
+    return Number(result?.count) || 0;
+  }
+
+  async getExternalPropertyProspect(id: string): Promise<ExternalPropertyProspect | undefined> {
+    const [prospect] = await db.select()
+      .from(externalPropertyProspects)
+      .where(eq(externalPropertyProspects.id, id));
+    return prospect;
+  }
+
+  async getExternalPropertyProspectByToken(token: string): Promise<ExternalPropertyProspect | undefined> {
+    const [prospect] = await db.select()
+      .from(externalPropertyProspects)
+      .where(
+        and(
+          eq(externalPropertyProspects.ownerInviteToken, token),
+          gte(externalPropertyProspects.ownerInviteExpiresAt, new Date())
+        )
+      );
+    return prospect;
+  }
+
+  async createExternalPropertyProspect(
+    prospect: InsertExternalPropertyProspect & { agencyId: string }
+  ): Promise<ExternalPropertyProspect> {
+    const [created] = await db.insert(externalPropertyProspects)
+      .values(prospect)
+      .returning();
+    return created;
+  }
+
+  async updateExternalPropertyProspect(
+    id: string,
+    updates: UpdateExternalPropertyProspect
+  ): Promise<ExternalPropertyProspect> {
+    const [updated] = await db.update(externalPropertyProspects)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalPropertyProspects.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new NotFoundError(`Property prospect with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteExternalPropertyProspect(id: string): Promise<void> {
+    await db.delete(externalPropertyProspects)
+      .where(eq(externalPropertyProspects.id, id));
+  }
+
+  async generateOwnerInviteToken(prospectId: string, expiresInHours: number = 48): Promise<string> {
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+
+    await db.update(externalPropertyProspects)
+      .set({
+        ownerInviteToken: token,
+        ownerInviteExpiresAt: expiresAt,
+        updatedAt: new Date()
+      })
+      .where(eq(externalPropertyProspects.id, prospectId));
+
+    return token;
+  }
+
+  // Property Prospect Activities
+  async getExternalPropertyProspectActivities(prospectId: string): Promise<ExternalPropertyProspectActivity[]> {
+    return await db.select()
+      .from(externalPropertyProspectActivities)
+      .where(eq(externalPropertyProspectActivities.prospectId, prospectId))
+      .orderBy(desc(externalPropertyProspectActivities.createdAt));
+  }
+
+  async createExternalPropertyProspectActivity(
+    activity: InsertExternalPropertyProspectActivity
+  ): Promise<ExternalPropertyProspectActivity> {
+    const [created] = await db.insert(externalPropertyProspectActivities)
+      .values(activity)
+      .returning();
+    return created;
   }
 }
 

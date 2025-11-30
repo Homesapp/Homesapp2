@@ -40222,5 +40222,320 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
   });
 
 
+  // ==========================================
+  // Property Prospects - Recruitment System
+  // ==========================================
+
+  // GET /api/external/property-prospects - Get all property prospects for agency
+  app.get("/api/external/property-prospects", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      const isSeller = userRole === 'external_agency_seller';
+
+      const filters: any = {
+        search: req.query.search as string,
+        status: req.query.status as string,
+        sellerId: isSeller ? userId : (req.query.sellerId as string),
+        sortField: req.query.sortField as string,
+        sortOrder: req.query.sortOrder as 'asc' | 'desc',
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+      };
+
+      const [prospects, total] = await Promise.all([
+        storage.getExternalPropertyProspects(agencyId, filters),
+        storage.getExternalPropertyProspectsCount(agencyId, { 
+          status: filters.status, 
+          sellerId: filters.sellerId, 
+          search: filters.search 
+        })
+      ]);
+
+      res.json({ data: prospects, total, limit: filters.limit, offset: filters.offset });
+    } catch (error: any) {
+      console.error("Error fetching property prospects:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/property-prospects/:id - Get specific property prospect
+  app.get("/api/external/property-prospects/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const prospect = await storage.getExternalPropertyProspect(req.params.id);
+      if (!prospect || prospect.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Prospecto no encontrado" });
+      }
+
+      // Sellers can only view their own prospects
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      if (userRole === 'external_agency_seller' && prospect.sellerId !== userId) {
+        return res.status(403).json({ message: "No tienes acceso a este prospecto" });
+      }
+
+      res.json(prospect);
+    } catch (error: any) {
+      console.error("Error fetching property prospect:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/property-prospects - Create new property prospect
+  app.post("/api/external/property-prospects", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      const sellerName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+
+      const prospectData = {
+        ...req.body,
+        agencyId,
+        sellerId: userId,
+        sellerName,
+      };
+
+      const prospect = await storage.createExternalPropertyProspect(prospectData);
+
+      // Create initial activity
+      await storage.createExternalPropertyProspectActivity({
+        prospectId: prospect.id,
+        agencyId,
+        activityType: 'created',
+        title: 'Prospecto creado',
+        description: `Propiedad prospecto registrada por ${sellerName || 'usuario'}`,
+        performedBy: userId,
+        performedByName: sellerName,
+      });
+
+      res.status(201).json(prospect);
+    } catch (error: any) {
+      console.error("Error creating property prospect:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/external/property-prospects/:id - Update property prospect
+  app.patch("/api/external/property-prospects/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const prospect = await storage.getExternalPropertyProspect(req.params.id);
+      if (!prospect || prospect.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Prospecto no encontrado" });
+      }
+
+      // Sellers can only update their own prospects
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      if (userRole === 'external_agency_seller' && prospect.sellerId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para editar este prospecto" });
+      }
+
+      const previousStatus = prospect.status;
+      const updated = await storage.updateExternalPropertyProspect(req.params.id, req.body);
+
+      // Log status change if status was updated
+      if (req.body.status && req.body.status !== previousStatus) {
+        const user = await storage.getUser(userId);
+        const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+        
+        await storage.createExternalPropertyProspectActivity({
+          prospectId: prospect.id,
+          agencyId,
+          activityType: 'status_changed',
+          title: 'Estado actualizado',
+          description: `Estado cambiado de "${previousStatus}" a "${req.body.status}"`,
+          previousStatus: previousStatus as any,
+          newStatus: req.body.status,
+          performedBy: userId,
+          performedByName: userName,
+        });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating property prospect:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/external/property-prospects/:id - Delete property prospect
+  app.delete("/api/external/property-prospects/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const prospect = await storage.getExternalPropertyProspect(req.params.id);
+      if (!prospect || prospect.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Prospecto no encontrado" });
+      }
+
+      await storage.deleteExternalPropertyProspect(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting property prospect:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/property-prospects/:id/invite - Generate owner invite token
+  app.post("/api/external/property-prospects/:id/invite", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const prospect = await storage.getExternalPropertyProspect(req.params.id);
+      if (!prospect || prospect.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Prospecto no encontrado" });
+      }
+
+      // Sellers can only invite for their own prospects
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      if (userRole === 'external_agency_seller' && prospect.sellerId !== userId) {
+        return res.status(403).json({ message: "No tienes permiso para invitar a este propietario" });
+      }
+
+      const expiresInHours = req.body.expiresInHours || 48;
+      const sentVia = req.body.sentVia || 'whatsapp';
+      
+      const token = await storage.generateOwnerInviteToken(req.params.id, expiresInHours);
+
+      // Update sent info
+      await storage.updateExternalPropertyProspect(req.params.id, {
+        ownerInviteSentAt: new Date(),
+        ownerInviteSentVia: sentVia,
+        status: 'owner_invited',
+      });
+
+      // Log activity
+      const user = await storage.getUser(userId);
+      const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+      
+      await storage.createExternalPropertyProspectActivity({
+        prospectId: prospect.id,
+        agencyId,
+        activityType: 'invite_sent',
+        title: 'Invitación enviada',
+        description: `Link de invitación generado para propietario vía ${sentVia}`,
+        details: { channel: sentVia },
+        performedBy: userId,
+        performedByName: userName,
+      });
+
+      // Get agency for slug
+      const agency = await storage.getExternalAgency(agencyId);
+      const agencySlug = agency?.slug || agencyId;
+
+      res.json({ 
+        token,
+        url: `/${agencySlug}/owner-registration/${token}`,
+        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000)
+      });
+    } catch (error: any) {
+      console.error("Error generating owner invite:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/property-prospects/:id/activities - Get activities for a prospect
+  app.get("/api/external/property-prospects/:id/activities", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const prospect = await storage.getExternalPropertyProspect(req.params.id);
+      if (!prospect || prospect.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Prospecto no encontrado" });
+      }
+
+      const activities = await storage.getExternalPropertyProspectActivities(req.params.id);
+      res.json(activities);
+    } catch (error: any) {
+      console.error("Error fetching prospect activities:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/property-prospects/:id/activities - Add activity to a prospect
+  app.post("/api/external/property-prospects/:id/activities", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const prospect = await storage.getExternalPropertyProspect(req.params.id);
+      if (!prospect || prospect.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Prospecto no encontrado" });
+      }
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+
+      const activity = await storage.createExternalPropertyProspectActivity({
+        ...req.body,
+        prospectId: req.params.id,
+        agencyId,
+        performedBy: userId,
+        performedByName: userName,
+      });
+
+      // Update last contact date if it's a contact activity
+      const contactActivities = ['owner_contacted', 'call_made', 'whatsapp_sent', 'email_sent', 'meeting_completed'];
+      if (contactActivities.includes(req.body.activityType)) {
+        await storage.updateExternalPropertyProspect(req.params.id, {
+          lastContactDate: new Date(),
+        });
+      }
+
+      res.status(201).json(activity);
+    } catch (error: any) {
+      console.error("Error creating prospect activity:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/public/owner-registration/:token - Public endpoint to get prospect info for owner registration
+  app.get("/api/public/owner-registration/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const prospect = await storage.getExternalPropertyProspectByToken(token);
+      if (!prospect) {
+        return res.status(404).json({ message: "Link inválido o expirado" });
+      }
+
+      // Get agency info
+      const agency = await storage.getExternalAgency(prospect.agencyId);
+
+      // Return limited info for public page
+      res.json({
+        prospectId: prospect.id,
+        propertyName: prospect.propertyName,
+        propertyType: prospect.propertyType,
+        address: prospect.address,
+        neighborhood: prospect.neighborhood,
+        agencyName: agency?.name,
+        agencyLogo: agency?.logoUrl,
+        sellerName: prospect.sellerName,
+      });
+    } catch (error: any) {
+      console.error("Error fetching prospect for registration:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
   return httpServer;
 }
