@@ -38,6 +38,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   ArrowLeft,
   Mail,
   Phone,
@@ -69,6 +79,10 @@ import {
   Loader2,
   Plus,
   Bell,
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  Info,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -122,6 +136,7 @@ export default function ExternalLeadDetail() {
   
   const [activeTab, setActiveTab] = useState("cards");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
   const { data: lead, isLoading, error } = useQuery<ExternalLead>({
     queryKey: ["/api/external-leads", leadId],
@@ -285,10 +300,395 @@ export default function ExternalLeadDetail() {
 
   const statusConfig = getStatusConfig(lead.status);
 
+  // Reusable lead info content for both mobile and desktop
+  const LeadInfoContent = () => (
+    <div className="space-y-4">
+      {/* Lead Name & Status */}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-xl font-semibold">
+            {lead.firstName} {lead.lastName}
+          </h1>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid="button-lead-actions">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate(`/external/clients?edit=${lead.id}`)}>
+                <Edit2 className="h-4 w-4 mr-2" />
+                {language === "es" ? "Editar" : "Edit"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {language === "es" ? "Eliminar" : "Delete"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        {/* Registration type badge */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-xs">
+            {lead.registrationType === "vendedor" 
+              ? (language === "es" ? "Vendedor" : "Seller")
+              : (language === "es" ? "Broker" : "Broker")}
+          </Badge>
+          {lead.source && (
+            <Badge variant="secondary" className="text-xs">
+              {lead.source}
+            </Badge>
+          )}
+        </div>
+
+        {/* Status selector */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground">
+            {language === "es" ? "Estado" : "Status"}
+          </label>
+          <Select
+            value={lead.status}
+            onValueChange={(value) => updateStatusMutation.mutate(value)}
+          >
+            <SelectTrigger className="w-full" data-testid="select-lead-status">
+              <div className="flex items-center gap-2">
+                <Badge className={statusConfig.color}>
+                  {statusConfig.label[language]}
+                </Badge>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {LEAD_STATUS_OPTIONS.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  <Badge className={status.color}>
+                    {status.label[language]}
+                  </Badge>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Contact Information */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          {language === "es" ? "Contacto" : "Contact"}
+        </h3>
+        
+        <div className="space-y-2 text-sm">
+          {lead.email && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <a href={`mailto:${lead.email}`} className="hover:text-primary hover:underline truncate">
+                {lead.email}
+              </a>
+            </div>
+          )}
+          {lead.phone && (
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>{lead.phone}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => {
+                  const phone = lead.phone?.replace(/\D/g, '');
+                  window.open(`https://wa.me/${phone}`, '_blank');
+                }}
+                data-testid="button-whatsapp"
+              >
+                <SiWhatsapp className="h-4 w-4 text-green-600" />
+              </Button>
+            </div>
+          )}
+          {lead.phoneLast4 && !lead.phone && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Phone className="h-4 w-4" />
+              <span>****{lead.phoneLast4}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Move-in Date - Highlighted */}
+      {(lead.checkInDateText || lead.checkInDate) && (
+        <>
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-1">
+            <div className="text-xs text-muted-foreground font-medium">
+              {language === "es" ? "Fecha de Mudanza" : "Move-in Date"}
+            </div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+              <CalendarIcon className="h-4 w-4" />
+              <span>
+                {lead.checkInDateText || (lead.checkInDate ? format(new Date(lead.checkInDate), "PPP", { locale: language === "es" ? es : enUS }) : "")}
+              </span>
+            </div>
+          </div>
+          <Separator />
+        </>
+      )}
+
+      {/* Search Preferences */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <Home className="h-4 w-4 text-muted-foreground" />
+          {language === "es" ? "Preferencias" : "Preferences"}
+        </h3>
+        
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          {(lead.budgetMin || lead.budgetMax) && (
+            <div className="flex items-center gap-2 col-span-2">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              <span className="font-medium">
+                {formatBudgetRange(lead.budgetMin, lead.budgetMax)}
+              </span>
+            </div>
+          )}
+          {(lead.bedrooms || lead.bedroomsText) && (
+            <div className="flex items-center gap-2">
+              <BedDouble className="h-4 w-4 text-blue-600" />
+              <span>{lead.bedroomsText || lead.bedrooms}</span>
+            </div>
+          )}
+          {lead.desiredUnitType && (
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-purple-600" />
+              <span>{lead.desiredUnitType}</span>
+            </div>
+          )}
+          {lead.desiredNeighborhood && (
+            <div className="flex items-center gap-2 col-span-2">
+              <MapPin className="h-4 w-4 text-orange-600" />
+              <span>{lead.desiredNeighborhood}</span>
+            </div>
+          )}
+          {lead.contractDuration && (
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-teal-600" />
+              <span>{lead.contractDuration}</span>
+            </div>
+          )}
+          {lead.hasPets && lead.hasPets !== "No" && (
+            <div className="flex items-center gap-2">
+              <PawPrint className="h-4 w-4 text-amber-600" />
+              <span>{lead.hasPets}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Desired Characteristics */}
+        {lead.desiredCharacteristics && lead.desiredCharacteristics.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <div className="text-xs text-muted-foreground font-medium">
+              {language === "es" ? "Características Deseadas" : "Desired Features"}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {lead.desiredCharacteristics.map((charId) => (
+                <Badge key={charId} variant="secondary" className="text-xs">
+                  {getCharacteristicName(charId)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Desired Amenities */}
+        {lead.desiredAmenities && lead.desiredAmenities.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <div className="text-xs text-muted-foreground font-medium">
+              {language === "es" ? "Amenidades Deseadas" : "Desired Amenities"}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {lead.desiredAmenities.map((amenityId) => (
+                <Badge key={amenityId} variant="outline" className="text-xs">
+                  {getAmenityName(amenityId)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Assigned Seller */}
+      {lead.sellerName && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              {language === "es" ? "Vendedor Asignado" : "Assigned Seller"}
+            </h3>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{lead.sellerName}</Badge>
+            </div>
+          </div>
+        </>
+      )}
+
+      <Separator />
+
+      {/* Active Presentation Card */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          {language === "es" ? "Tarjeta Activa" : "Active Card"}
+        </h3>
+        
+        {activeCard ? (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm">{activeCard.title}</span>
+                {activeCard.isDefault && (
+                  <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                )}
+              </div>
+              {activeCard.propertyType && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Home className="h-3 w-3" />
+                  <span>{activeCard.propertyType}</span>
+                </div>
+              )}
+              {(activeCard.minBudget || activeCard.maxBudget) && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <DollarSign className="h-3 w-3" />
+                  <span>{formatBudgetRange(activeCard.minBudget, activeCard.maxBudget)}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Eye className="h-3 w-3" />
+                <span>{activeCard.usageCount || 0} {language === "es" ? "usos" : "uses"}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="text-center py-4 border rounded-lg border-dashed space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {language === "es" 
+                ? "Sin tarjeta de presentación" 
+                : "No presentation card"}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => createCardFromPreferencesMutation.mutate()}
+              disabled={createCardFromPreferencesMutation.isPending}
+              className="min-h-[44px]"
+              data-testid="button-create-card-from-preferences"
+            >
+              {createCardFromPreferencesMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              {language === "es" 
+                ? "Crear Tarjeta desde Preferencias" 
+                : "Create Card from Preferences"}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Timestamps */}
+      <Separator />
+      <div className="text-xs text-muted-foreground space-y-1">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-3 w-3" />
+          <span>
+            {language === "es" ? "Registrado: " : "Registered: "}
+            {lead.createdAt ? format(new Date(lead.createdAt), "PPp", { locale: language === "es" ? es : enUS }) : "-"}
+          </span>
+        </div>
+        {lead.updatedAt && (
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-3 w-3" />
+            <span>
+              {language === "es" ? "Actualizado: " : "Updated: "}
+              {format(new Date(lead.updatedAt), "PPp", { locale: language === "es" ? es : enUS })}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex h-full bg-background">
-      {/* Left Sidebar - Lead Info */}
-      <div className="w-80 border-r flex flex-col bg-card/50">
+    <div className="flex flex-col lg:flex-row h-full bg-background">
+      {/* Mobile Header - Visible only on mobile */}
+      <div className="lg:hidden border-b bg-card/50 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate("/external/clients")}
+              data-testid="button-back-to-leads-mobile"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold truncate">
+                {lead.firstName} {lead.lastName}
+              </h1>
+              <Badge className={`${statusConfig.color} text-xs`}>
+                {statusConfig.label[language]}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Sheet open={isMobileInfoOpen} onOpenChange={setIsMobileInfoOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" data-testid="button-show-lead-info">
+                  <Info className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[85vw] max-w-[320px] p-0">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <LeadInfoContent />
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" data-testid="button-lead-actions-mobile">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/external/clients?edit=${lead.id}`)}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Editar" : "Edit"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-destructive"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Eliminar" : "Delete"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Left Sidebar - Hidden on mobile */}
+      <div className="hidden lg:flex w-80 border-r flex-col bg-card/50">
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
             {/* Header with back button */}
@@ -306,375 +706,58 @@ export default function ExternalLeadDetail() {
               </span>
             </div>
 
-            {/* Lead Name & Status */}
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <h1 className="text-xl font-semibold">
-                  {lead.firstName} {lead.lastName}
-                </h1>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" data-testid="button-lead-actions">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => navigate(`/external/clients?edit=${lead.id}`)}>
-                      <Edit2 className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Editar" : "Edit"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className="text-destructive"
-                      onClick={() => setIsDeleteDialogOpen(true)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {language === "es" ? "Eliminar" : "Delete"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              
-              {/* Registration type badge */}
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {lead.registrationType === "vendedor" 
-                    ? (language === "es" ? "Vendedor" : "Seller")
-                    : (language === "es" ? "Broker" : "Broker")}
-                </Badge>
-                {lead.source && (
-                  <Badge variant="secondary" className="text-xs">
-                    {lead.source}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Status selector */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  {language === "es" ? "Estado" : "Status"}
-                </label>
-                <Select
-                  value={lead.status}
-                  onValueChange={(value) => updateStatusMutation.mutate(value)}
-                >
-                  <SelectTrigger className="w-full" data-testid="select-lead-status">
-                    <div className="flex items-center gap-2">
-                      <Badge className={statusConfig.color}>
-                        {statusConfig.label[language]}
-                      </Badge>
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LEAD_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        <Badge className={status.color}>
-                          {status.label[language]}
-                        </Badge>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Contact Information */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                {language === "es" ? "Contacto" : "Contact"}
-              </h3>
-              
-              <div className="space-y-2 text-sm">
-                {lead.email && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <a href={`mailto:${lead.email}`} className="hover:text-primary hover:underline">
-                      {lead.email}
-                    </a>
-                  </div>
-                )}
-                {lead.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{lead.phone}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => {
-                        const phone = lead.phone?.replace(/\D/g, '');
-                        window.open(`https://wa.me/${phone}`, '_blank');
-                      }}
-                      data-testid="button-whatsapp"
-                    >
-                      <SiWhatsapp className="h-4 w-4 text-green-600" />
-                    </Button>
-                  </div>
-                )}
-                {lead.phoneLast4 && !lead.phone && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>****{lead.phoneLast4}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Move-in Date - Highlighted */}
-            {(lead.checkInDateText || lead.checkInDate) && (
-              <>
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-1">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    {language === "es" ? "Fecha de Mudanza" : "Move-in Date"}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>
-                      {lead.checkInDateText || (lead.checkInDate ? format(new Date(lead.checkInDate), "PPP", { locale: language === "es" ? es : enUS }) : "")}
-                    </span>
-                  </div>
-                </div>
-                <Separator />
-              </>
-            )}
-
-            {/* Search Preferences */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Home className="h-4 w-4 text-muted-foreground" />
-                {language === "es" ? "Preferencias" : "Preferences"}
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {(lead.budgetMin || lead.budgetMax) && (
-                  <div className="flex items-center gap-2 col-span-2">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="font-medium">
-                      {formatBudgetRange(lead.budgetMin, lead.budgetMax)}
-                    </span>
-                  </div>
-                )}
-                {(lead.bedrooms || lead.bedroomsText) && (
-                  <div className="flex items-center gap-2">
-                    <BedDouble className="h-4 w-4 text-blue-600" />
-                    <span>{lead.bedroomsText || lead.bedrooms}</span>
-                  </div>
-                )}
-                {lead.desiredUnitType && (
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-purple-600" />
-                    <span>{lead.desiredUnitType}</span>
-                  </div>
-                )}
-                {lead.desiredNeighborhood && (
-                  <div className="flex items-center gap-2 col-span-2">
-                    <MapPin className="h-4 w-4 text-orange-600" />
-                    <span>{lead.desiredNeighborhood}</span>
-                  </div>
-                )}
-                {lead.contractDuration && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-teal-600" />
-                    <span>{lead.contractDuration}</span>
-                  </div>
-                )}
-                {lead.hasPets && lead.hasPets !== "No" && (
-                  <div className="flex items-center gap-2">
-                    <PawPrint className="h-4 w-4 text-amber-600" />
-                    <span>{lead.hasPets}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Desired Characteristics */}
-              {lead.desiredCharacteristics && lead.desiredCharacteristics.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    {language === "es" ? "Características Deseadas" : "Desired Features"}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {lead.desiredCharacteristics.map((charId) => (
-                      <Badge key={charId} variant="secondary" className="text-xs">
-                        {getCharacteristicName(charId)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Desired Amenities */}
-              {lead.desiredAmenities && lead.desiredAmenities.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    {language === "es" ? "Amenidades Deseadas" : "Desired Amenities"}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {lead.desiredAmenities.map((amenityId) => (
-                      <Badge key={amenityId} variant="outline" className="text-xs">
-                        {getAmenityName(amenityId)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Assigned Seller */}
-            {lead.sellerName && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    {language === "es" ? "Vendedor Asignado" : "Assigned Seller"}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{lead.sellerName}</Badge>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Separator />
-
-            {/* Active Presentation Card */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                {language === "es" ? "Tarjeta Activa" : "Active Card"}
-              </h3>
-              
-              {activeCard ? (
-                <Card className="border-primary/30 bg-primary/5">
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{activeCard.title}</span>
-                      {activeCard.isDefault && (
-                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                      )}
-                    </div>
-                    {activeCard.propertyType && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Home className="h-3 w-3" />
-                        <span>{activeCard.propertyType}</span>
-                      </div>
-                    )}
-                    {(activeCard.minBudget || activeCard.maxBudget) && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <DollarSign className="h-3 w-3" />
-                        <span>{formatBudgetRange(activeCard.minBudget, activeCard.maxBudget)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Eye className="h-3 w-3" />
-                      <span>{activeCard.usageCount || 0} {language === "es" ? "usos" : "uses"}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="text-center py-4 border rounded-lg border-dashed space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {language === "es" 
-                      ? "Sin tarjeta de presentación" 
-                      : "No presentation card"}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => createCardFromPreferencesMutation.mutate()}
-                    disabled={createCardFromPreferencesMutation.isPending}
-                    className="min-h-[44px]"
-                    data-testid="button-create-card-from-preferences"
-                  >
-                    {createCardFromPreferencesMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
-                    {language === "es" 
-                      ? "Crear Tarjeta desde Preferencias" 
-                      : "Create Card from Preferences"}
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Timestamps */}
-            <Separator />
-            <div className="text-xs text-muted-foreground space-y-1">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="h-3 w-3" />
-                <span>
-                  {language === "es" ? "Registrado: " : "Registered: "}
-                  {lead.createdAt ? format(new Date(lead.createdAt), "PPp", { locale: language === "es" ? es : enUS }) : "-"}
-                </span>
-              </div>
-              {lead.updatedAt && (
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="h-3 w-3" />
-                  <span>
-                    {language === "es" ? "Actualizado: " : "Updated: "}
-                    {format(new Date(lead.updatedAt), "PPp", { locale: language === "es" ? es : enUS })}
-                  </span>
-                </div>
-              )}
-            </div>
+            <LeadInfoContent />
           </div>
         </ScrollArea>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <div className="border-b px-4 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <TabsList className="grid grid-cols-7 w-full max-w-3xl">
-              <TabsTrigger value="cards" className="flex items-center gap-2" data-testid="tab-cards">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">{language === "es" ? "Tarjetas" : "Cards"}</span>
+          <div className="border-b px-2 sm:px-4 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-x-auto">
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-7 sm:w-full sm:max-w-3xl gap-0.5 sm:gap-1">
+              <TabsTrigger value="cards" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm" data-testid="tab-cards">
+                <FileText className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">{language === "es" ? "Tarjetas" : "Cards"}</span>
               </TabsTrigger>
-              <TabsTrigger value="offers" className="flex items-center gap-2" data-testid="tab-offers">
-                <Send className="h-4 w-4" />
-                <span className="hidden sm:inline">{language === "es" ? "Ofertas" : "Offers"}</span>
+              <TabsTrigger value="offers" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm" data-testid="tab-offers">
+                <Send className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">{language === "es" ? "Ofertas" : "Offers"}</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="forms" 
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm"
                 disabled={!isInterestedStatus}
                 data-testid="tab-forms"
               >
                 {isInterestedStatus ? (
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-4 w-4 shrink-0" />
                 ) : (
-                  <Lock className="h-3 w-3 text-muted-foreground" />
+                  <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
                 )}
-                <span className="hidden sm:inline">{language === "es" ? "Formatos" : "Forms"}</span>
+                <span className="hidden md:inline">{language === "es" ? "Formatos" : "Forms"}</span>
               </TabsTrigger>
-              <TabsTrigger value="activities" className="flex items-center gap-2" data-testid="tab-activities">
-                <Activity className="h-4 w-4" />
-                <span className="hidden sm:inline">{language === "es" ? "Actividades" : "Activities"}</span>
+              <TabsTrigger value="activities" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm" data-testid="tab-activities">
+                <Activity className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">{language === "es" ? "Actividades" : "Activities"}</span>
               </TabsTrigger>
-              <TabsTrigger value="showings" className="flex items-center gap-2" data-testid="tab-showings">
-                <Home className="h-4 w-4" />
-                <span className="hidden sm:inline">{language === "es" ? "Visitas" : "Showings"}</span>
+              <TabsTrigger value="showings" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm" data-testid="tab-showings">
+                <Home className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">{language === "es" ? "Visitas" : "Showings"}</span>
               </TabsTrigger>
-              <TabsTrigger value="reminders" className="flex items-center gap-2" data-testid="tab-reminders">
-                <Bell className="h-4 w-4" />
-                <span className="hidden sm:inline">{language === "es" ? "Recordatorios" : "Reminders"}</span>
+              <TabsTrigger value="reminders" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm" data-testid="tab-reminders">
+                <Bell className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">{language === "es" ? "Recordatorios" : "Reminders"}</span>
               </TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center gap-2" data-testid="tab-history">
-                <History className="h-4 w-4" />
-                <span className="hidden sm:inline">{language === "es" ? "Historial" : "History"}</span>
+              <TabsTrigger value="history" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm" data-testid="tab-history">
+                <History className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">{language === "es" ? "Historial" : "History"}</span>
               </TabsTrigger>
             </TabsList>
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-4">
+            <div className="p-2 sm:p-4">
               <TabsContent value="cards" className="mt-0 space-y-4">
                 <PresentationCardsTab 
                   leadId={lead.id} 
