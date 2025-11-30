@@ -178,6 +178,20 @@ export default function ExternalPropertyRecruitment() {
 
   const prospects = prospectsData?.data || [];
 
+  // Fetch configurable property types from catalog
+  const { data: propertyTypesConfig = [] } = useQuery<Array<{id: string; name: string; isActive: boolean; sortOrder: number}>>({
+    queryKey: ['/api/external/config/property-types'],
+    staleTime: 5 * 60 * 1000,
+  });
+  const activePropertyTypes = propertyTypesConfig.filter(pt => pt.isActive);
+
+  // Fetch configurable zones from catalog
+  const { data: zonesConfig = [] } = useQuery<Array<{id: string; name: string; isActive: boolean; sortOrder: number}>>({
+    queryKey: ['/api/external/config/zones'],
+    staleTime: 5 * 60 * 1000,
+  });
+  const activeZones = zonesConfig.filter(z => z.isActive);
+
   const form = useForm<NewProspectFormData>({
     resolver: zodResolver(newProspectFormSchema),
     defaultValues: {
@@ -705,11 +719,19 @@ export default function ExternalPropertyRecruitment() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {PROPERTY_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
+                          {activePropertyTypes.length > 0 ? (
+                            activePropertyTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.name}>
+                                {type.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            PROPERTY_TYPES.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -744,9 +766,20 @@ export default function ExternalPropertyRecruitment() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Zona/Colonia</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: La Veleta, Aldea Zamá" {...field} data-testid="input-neighborhood" />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-neighborhood">
+                            <SelectValue placeholder="Seleccionar zona" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {activeZones.map((zone) => (
+                            <SelectItem key={zone.id} value={zone.name}>
+                              {zone.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

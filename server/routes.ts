@@ -40295,6 +40295,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
     try {
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
+      const userId = req.user?.claims?.sub || req.user?.id;
 
       const user = await storage.getUser(userId);
       const sellerName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
@@ -41039,6 +41040,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
   app.get("/api/external/commissions/my-rates", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
+      const userId = req.user?.claims?.sub || req.user?.id;
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
       const user = await storage.getUser(userId);
