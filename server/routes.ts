@@ -30286,7 +30286,8 @@ ${{precio}}/mes
   // POST /api/external-leads - Create new lead
   app.post("/api/external-leads", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
     try {
-      const userRole = req.user?.role;
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
       let agencyId = await getUserAgencyId(req);
       
       // Master/admin users can specify agencyId in the body
@@ -30307,7 +30308,7 @@ ${{precio}}/mes
       // Security: Force sellerId for seller users - they can only create their own leads
       const isSeller = userRole === 'external_agency_seller';
       if (isSeller) {
-        requestData.sellerId = req.user.id;
+        requestData.sellerId = userId;
         requestData.registrationType = 'seller'; // Force seller type
       }
       
@@ -30383,12 +30384,12 @@ ${{precio}}/mes
       const lead = await storage.createExternalLead({
         ...validatedData,
         agencyId,
-        createdBy: req.user.id,
+        createdBy: userId,
       });
       
       // Create initial presentation card from lead data
       try {
-        const cardData = normalizePresentationCardFromLead(lead, agencyId, req.user.id);
+        const cardData = normalizePresentationCardFromLead(lead, agencyId, userId);
         await storage.createExternalPresentationCard(cardData);
       } catch (cardError) {
         console.error("Error creating initial presentation card:", cardError);
@@ -40234,8 +40235,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
       const isSeller = userRole === 'external_agency_seller';
 
       const filters: any = {
@@ -40276,8 +40277,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       }
 
       // Sellers can only view their own prospects
-      const userId = req.user?.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
       if (userRole === 'external_agency_seller' && prospect.sellerId !== userId) {
         return res.status(403).json({ message: "No tienes acceso a este prospecto" });
       }
@@ -40295,7 +40296,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
       const sellerName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
 
@@ -40338,8 +40338,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       }
 
       // Sellers can only update their own prospects
-      const userId = req.user?.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
       if (userRole === 'external_agency_seller' && prospect.sellerId !== userId) {
         return res.status(403).json({ message: "No tienes permiso para editar este prospecto" });
       }
@@ -40403,8 +40403,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       }
 
       // Sellers can only invite for their own prospects
-      const userId = req.user?.id;
-      const userRole = req.user?.role;
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
       if (userRole === 'external_agency_seller' && prospect.sellerId !== userId) {
         return res.status(403).json({ message: "No tienes permiso para invitar a este propietario" });
       }
@@ -40481,7 +40481,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         return res.status(404).json({ message: "Prospecto no encontrado" });
       }
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
       const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
 
@@ -40563,7 +40562,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
       const existingProfile = await storage.getExternalCommissionProfile(agencyId);
 
@@ -40627,7 +40625,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const override = await storage.createExternalCommissionRoleOverride({
@@ -40659,7 +40656,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const overrides = await storage.getExternalCommissionRoleOverrides(agencyId);
@@ -40695,7 +40691,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const overrides = await storage.getExternalCommissionRoleOverrides(agencyId);
@@ -40753,7 +40748,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const existing = await storage.getExternalCommissionUserOverride(agencyId, req.body.userId);
@@ -40790,7 +40784,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const overrides = await storage.getExternalCommissionUserOverrides(agencyId);
@@ -40826,7 +40819,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const overrides = await storage.getExternalCommissionUserOverrides(agencyId);
@@ -40902,7 +40894,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const override = await storage.createExternalCommissionLeadOverride({
@@ -40934,7 +40925,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const overrides = await storage.getExternalCommissionLeadOverrides(agencyId);
@@ -40970,7 +40960,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
 
       const overrides = await storage.getExternalCommissionLeadOverrides(agencyId);
@@ -41052,7 +41041,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
 
-      const userId = req.user?.id;
       const user = await storage.getUser(userId);
       const userRole = user?.role || 'external_agency_seller';
 
