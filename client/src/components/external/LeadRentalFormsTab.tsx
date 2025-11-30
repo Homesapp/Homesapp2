@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -32,12 +32,16 @@ import {
   Copy,
   Send,
   Loader2,
+  Home,
+  User,
+  Users,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { ExternalLead, ExternalUnit, ExternalCondominium } from "@shared/schema";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import type { ExternalLead, ExternalUnit, ExternalCondominium, ExternalUnitWithCondominium } from "@shared/schema";
 
 interface LeadRentalFormsTabProps {
   lead: ExternalLead;
@@ -67,6 +71,7 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
   const { toast } = useToast();
   const locale = language === "es" ? es : enUS;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
   const [recipientType, setRecipientType] = useState<string>("tenant");
 
@@ -79,15 +84,92 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
     },
   });
 
-  const { data: unitsResponse } = useQuery<{ data: any[], total: number }>({
-    queryKey: ["/api/external-units", "for-rental-forms-tab"],
+  // Load all condominiums (no limit)
+  const { data: condominiumsResponse, isLoading: isLoadingCondominiums } = useQuery<{ data: any[], total: number }>({
+    queryKey: ["/api/external-condominiums", "for-rental-forms-dialog"],
     queryFn: async () => {
-      const response = await fetch("/api/external-units?limit=1000", { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch units');
-      return response.json();
+      let allCondos: any[] = [];
+      let offset = 0;
+      const batchSize = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(`/api/external-condominiums?limit=${batchSize}&offset=${offset}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch condominiums');
+        const result = await response.json();
+        allCondos = [...allCondos, ...(result.data || [])];
+        hasMore = result.data?.length === batchSize;
+        offset += batchSize;
+      }
+      
+      return { data: allCondos, total: allCondos.length };
     },
+    staleTime: 5 * 60 * 1000,
   });
-  const units = unitsResponse?.data || [];
+
+  const condominiumOptions = useMemo(() => {
+    const condos = condominiumsResponse?.data || [];
+    return condos
+      .map(condo => ({
+        value: String(condo.id),
+        label: condo.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [condominiumsResponse]);
+
+  // Load units for selected condominium
+  const { data: unitsResponse, isLoading: isLoadingUnits } = useQuery<{ data: ExternalUnitWithCondominium[], total: number }>({
+    queryKey: ["/api/external-units", "by-condominium-for-rental-form", selectedCondominiumId],
+    queryFn: async () => {
+      let allUnits: ExternalUnitWithCondominium[] = [];
+      let offset = 0;
+      const batchSize = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(`/api/external-units?condominiumId=${selectedCondominiumId}&limit=${batchSize}&offset=${offset}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch units');
+        const result = await response.json();
+        allUnits = [...allUnits, ...(result.data || [])];
+        hasMore = result.data?.length === batchSize;
+        offset += batchSize;
+      }
+      
+      return { data: allUnits, total: allUnits.length };
+    },
+    enabled: !!selectedCondominiumId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const unitOptions = useMemo(() => {
+    if (!selectedCondominiumId || !unitsResponse?.data) return [];
+    return unitsResponse.data
+      .sort((a, b) => (a.unitNumber || '').localeCompare(b.unitNumber || '', undefined, { numeric: true }))
+      .map(unit => ({
+        value: String(unit.id),
+        label: `${unit.unitNumber}${unit.price ? ` - $${Number(unit.price).toLocaleString()}/mes` : ''}`,
+        description: unit.typology || undefined,
+      }));
+  }, [unitsResponse, selectedCondominiumId]);
+
+  const selectedUnit = useMemo(() => {
+    if (!selectedUnitId || !unitsResponse?.data) return null;
+    return unitsResponse.data.find(u => String(u.id) === selectedUnitId);
+  }, [selectedUnitId, unitsResponse]);
+
+  const handleCondominiumChange = (value: string) => {
+    setSelectedCondominiumId(value);
+    setSelectedUnitId("");
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedCondominiumId("");
+      setSelectedUnitId("");
+      setRecipientType("tenant");
+    }
+  };
 
   const createFormMutation = useMutation({
     mutationFn: async (data: { externalUnitId: string; recipientType: string }) => {
@@ -96,8 +178,7 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-leads", lead.id, "rental-forms"] });
-      setIsDialogOpen(false);
-      setSelectedUnitId("");
+      handleDialogClose(false);
       
       if (data.shareUrl) {
         navigator.clipboard.writeText(data.shareUrl);
@@ -291,77 +372,134 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
         </Card>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Send className="h-5 w-5 text-primary" />
+              <FileText className="h-5 w-5 text-primary" />
               {language === "es" ? "Enviar Formato de Renta" : "Send Rental Form"}
             </DialogTitle>
             <DialogDescription>
               {language === "es" 
-                ? `Selecciona una propiedad para enviar el formulario a ${lead.firstName}`
-                : `Select a property to send the form to ${lead.firstName}`}
+                ? `Selecciona una propiedad y tipo de destinatario para enviar el formulario a ${lead.firstName}`
+                : `Select a property and recipient type to send the form to ${lead.firstName}`}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
+            {/* Recipient Type Selection - First */}
             <div className="space-y-2">
-              <Label>{language === "es" ? "Propiedad" : "Property"}</Label>
-              <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-                <SelectTrigger className="min-h-[44px]" data-testid="select-unit-for-form">
-                  <SelectValue placeholder={language === "es" ? "Seleccionar unidad..." : "Select unit..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {units.map((unit: any) => (
-                    <SelectItem key={unit.id} value={unit.id} className="min-h-[44px]">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>
-                          {unit.condominium?.name 
-                            ? `${unit.condominium.name} - ${unit.unitNumber}`
-                            : unit.unitNumber}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                {language === "es" ? "Tipo de Destinatario" : "Recipient Type"}
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={recipientType === "tenant" ? "default" : "outline"}
+                  className="justify-start gap-2"
+                  onClick={() => setRecipientType("tenant")}
+                  data-testid="button-recipient-tenant"
+                >
+                  <User className="h-4 w-4" />
+                  {language === "es" ? "Inquilino" : "Tenant"}
+                </Button>
+                <Button
+                  type="button"
+                  variant={recipientType === "owner" ? "default" : "outline"}
+                  className="justify-start gap-2"
+                  onClick={() => setRecipientType("owner")}
+                  data-testid="button-recipient-owner"
+                >
+                  <Home className="h-4 w-4" />
+                  {language === "es" ? "Propietario" : "Owner"}
+                </Button>
+              </div>
             </div>
 
+            {/* Condominium Selection */}
             <div className="space-y-2">
-              <Label>{language === "es" ? "Tipo de destinatario" : "Recipient type"}</Label>
-              <Select value={recipientType} onValueChange={setRecipientType}>
-                <SelectTrigger className="min-h-[44px]" data-testid="select-recipient-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tenant" className="min-h-[44px]">
-                    {language === "es" ? "Inquilino" : "Tenant"}
-                  </SelectItem>
-                  <SelectItem value="owner" className="min-h-[44px]">
-                    {language === "es" ? "Propietario" : "Owner"}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="flex items-center gap-2">
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                {language === "es" ? "Condominio" : "Condominium"}
+              </Label>
+              <SearchableSelect
+                value={selectedCondominiumId}
+                onValueChange={handleCondominiumChange}
+                options={condominiumOptions}
+                placeholder={language === "es" ? "Buscar condominio..." : "Search condominium..."}
+                searchPlaceholder={language === "es" ? "Escriba para buscar..." : "Type to search..."}
+                emptyMessage={language === "es" ? "No se encontraron condominios" : "No condominiums found"}
+                disabled={isLoadingCondominiums}
+                data-testid="select-condominium-for-form"
+              />
             </div>
+
+            {/* Unit Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                {language === "es" ? "Unidad" : "Unit"}
+              </Label>
+              <SearchableSelect
+                value={selectedUnitId}
+                onValueChange={setSelectedUnitId}
+                options={unitOptions}
+                placeholder={
+                  !selectedCondominiumId 
+                    ? (language === "es" ? "Primero selecciona un condominio" : "First select a condominium")
+                    : isLoadingUnits
+                      ? (language === "es" ? "Cargando unidades..." : "Loading units...")
+                      : (language === "es" ? "Buscar unidad..." : "Search unit...")
+                }
+                searchPlaceholder={language === "es" ? "Escriba para buscar..." : "Type to search..."}
+                emptyMessage={language === "es" ? "No hay unidades disponibles" : "No units available"}
+                disabled={!selectedCondominiumId || isLoadingUnits}
+                data-testid="select-unit-for-form"
+              />
+            </div>
+
+            {/* Selected Unit Preview */}
+            {selectedUnit && (
+              <Card className="bg-muted/50">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Home className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {selectedUnit.unitNumber}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {selectedUnit.condominium?.name || condominiumOptions.find(c => c.value === selectedCondominiumId)?.label}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0">
+                      {recipientType === "tenant" 
+                        ? (language === "es" ? "Inquilino" : "Tenant")
+                        : (language === "es" ? "Propietario" : "Owner")}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button 
               variant="outline" 
-              onClick={() => setIsDialogOpen(false)}
-              className="min-h-[44px]"
+              onClick={() => handleDialogClose(false)}
             >
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
             <Button 
               onClick={handleSubmit}
               disabled={createFormMutation.isPending || !selectedUnitId}
-              className="min-h-[44px]"
               data-testid="button-confirm-send-form"
             >
               {createFormMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Send className="h-4 w-4 mr-2" />
               {createFormMutation.isPending 
                 ? (language === "es" ? "Enviando..." : "Sending...")
                 : (language === "es" ? "Enviar Formato" : "Send Form")}
