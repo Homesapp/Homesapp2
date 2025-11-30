@@ -10511,6 +10511,7 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count || 0;
   }
   async createExternalLead(lead: InsertExternalLead & { agencyId: string; createdBy?: string; sellerId?: string }): Promise<ExternalLead> {
+    console.log("[DEBUG] storage.createExternalLead - sellerId:", lead.sellerId, "createdBy:", lead.createdBy, "agencyId:", lead.agencyId);
     const [result] = await db.insert(externalLeads)
       .values({
         ...lead,
@@ -10520,6 +10521,7 @@ export class DatabaseStorage implements IStorage {
         sellerId: lead.sellerId || null,
       })
       .returning();
+    console.log("[DEBUG] storage.createExternalLead - result.sellerId:", result.sellerId, "result.createdBy:", result.createdBy);
     return result;
   }
 

@@ -30326,8 +30326,10 @@ ${{precio}}/mes
         delete requestData.sellerId; // Clear invalid sellerId
       }
       
+      console.log("[DEBUG] createExternalLead - requestData.sellerId:", requestData.sellerId, "isSeller:", isSeller);
       const validatedData = insertExternalLeadSchema.parse(requestData);
       
+      console.log("[DEBUG] createExternalLead - validatedData.sellerId:", validatedData.sellerId);
       // Check for duplicates before creating (with 3-month expiry logic)
       // For broker type, use phoneLast4; for seller type, extract from phone
       const phoneToCheck = validatedData.registrationType === 'broker' 
