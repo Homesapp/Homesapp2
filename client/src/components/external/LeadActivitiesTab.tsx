@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,13 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import {
   Phone,
   Mail,
   MessageSquare,
   Calendar,
   Home,
-  Plus,
   Activity,
   History,
   Loader2,
@@ -40,6 +39,8 @@ import { LeadEmptyState } from "./LeadEmptyState";
 
 interface LeadActivitiesTabProps {
   leadId: string;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
 type ActivityType = "call" | "email" | "meeting" | "whatsapp" | "showing" | "note" | "status_change";
@@ -74,12 +75,24 @@ const ACTIVITY_LABELS: Record<ActivityType, { es: string; en: string }> = {
   status_change: { es: "Cambio de estado", en: "Status change" },
 };
 
-export default function LeadActivitiesTab({ leadId }: LeadActivitiesTabProps) {
+export default function LeadActivitiesTab({ leadId, dialogOpen, onDialogOpenChange }: LeadActivitiesTabProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   const [newActivityType, setNewActivityType] = useState<ActivityType>("call");
   const [newActivityNotes, setNewActivityNotes] = useState("");
+
+  // Sync with controlled props from parent
+  useEffect(() => {
+    if (dialogOpen !== undefined) {
+      setIsAddActivityOpen(dialogOpen);
+    }
+  }, [dialogOpen]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsAddActivityOpen(open);
+    onDialogOpenChange?.(open);
+  };
 
   const { data: activities, isLoading } = useQuery({
     queryKey: ["/api/external-leads", leadId, "activities"],
@@ -100,7 +113,7 @@ export default function LeadActivitiesTab({ leadId }: LeadActivitiesTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId, "activities"] });
-      setIsAddActivityOpen(false);
+      handleDialogOpenChange(false);
       setNewActivityNotes("");
       toast({
         title: language === "es" ? "Actividad registrada" : "Activity recorded",
@@ -116,19 +129,9 @@ export default function LeadActivitiesTab({ leadId }: LeadActivitiesTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h4 className="font-medium text-sm">
-          {language === "es" ? "Historial de Actividades" : "Activity History"}
-        </h4>
-        <Button 
-          size="sm" 
-          onClick={() => setIsAddActivityOpen(true)}
-          data-testid="button-add-activity"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          {language === "es" ? "Registrar" : "Record"}
-        </Button>
-      </div>
+      <h4 className="font-medium text-sm">
+        {language === "es" ? "Historial de Actividades" : "Activity History"}
+      </h4>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -191,15 +194,12 @@ export default function LeadActivitiesTab({ leadId }: LeadActivitiesTabProps) {
           icon={Activity}
           title={language === "es" ? "No hay actividades" : "No activities"}
           description={language === "es" ? "Registra llamadas, correos y reuniones con este lead" : "Record calls, emails and meetings with this lead"}
-          actionLabel={language === "es" ? "Registrar actividad" : "Record activity"}
-          actionIcon={Plus}
-          onAction={() => setIsAddActivityOpen(true)}
-          actionTestId="button-add-first-activity"
+          showAction={false}
         />
       )}
 
       {/* Add Activity Dialog */}
-      <Dialog open={isAddActivityOpen} onOpenChange={setIsAddActivityOpen}>
+      <Dialog open={isAddActivityOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -243,7 +243,7 @@ export default function LeadActivitiesTab({ leadId }: LeadActivitiesTabProps) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddActivityOpen(false)}>
+            <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
             <Button 

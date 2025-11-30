@@ -98,6 +98,8 @@ interface PresentationCardsTabProps {
   clientId?: string;
   personName: string;
   leadPreferences?: LeadPreferences;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
 const PROPERTY_TYPES = [
@@ -184,10 +186,28 @@ const defaultFormData: FormData = {
   isDefault: false,
 };
 
-export default function PresentationCardsTab({ leadId, clientId, personName, leadPreferences }: PresentationCardsTabProps) {
+export default function PresentationCardsTab({ leadId, clientId, personName, leadPreferences, dialogOpen, onDialogOpenChange }: PresentationCardsTabProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Sync with controlled props from parent and reset form when opening from FAB
+  useEffect(() => {
+    if (dialogOpen !== undefined) {
+      setIsCreateOpen(dialogOpen);
+      if (dialogOpen) {
+        // Reset form when opening via FAB
+        setFormData(defaultFormData);
+        setSelectedPropertyTypes([]);
+        setSelectedZones([]);
+      }
+    }
+  }, [dialogOpen]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsCreateOpen(open);
+    onDialogOpenChange?.(open);
+  };
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<ExternalPresentationCard | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultFormData);
@@ -250,7 +270,7 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["presentation-cards", leadId || clientId] });
-      setIsCreateOpen(false);
+      handleDialogOpenChange(false);
       resetForm();
       toast({
         title: language === "es" ? "Tarjeta creada" : "Card created",
@@ -451,7 +471,7 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
     // Initialize multi-select state from preferences
     setSelectedPropertyTypes(leadPreferences.desiredUnitType ? leadPreferences.desiredUnitType.split(", ").filter(Boolean) : []);
     setSelectedZones(leadPreferences.desiredNeighborhood ? leadPreferences.desiredNeighborhood.split(", ").filter(Boolean) : []);
-    setIsCreateOpen(true);
+    handleDialogOpenChange(true);
   };
 
   const toggleCharacteristic = (id: string) => {
@@ -850,21 +870,10 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div>
         <h3 className="text-lg font-medium">
           {language === "es" ? "Tarjetas de Presentacion" : "Presentation Cards"}
         </h3>
-        <Button 
-          onClick={() => {
-            resetForm();
-            setIsCreateOpen(true);
-          }}
-          className="min-h-[44px]"
-          data-testid="button-add-card"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          {language === "es" ? "Nueva Tarjeta" : "New Card"}
-        </Button>
       </div>
 
       {(!cards || cards.length === 0) ? (
@@ -963,18 +972,11 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
                   ? `${personName} no tiene tarjetas de presentacion aun`
                   : `${personName} has no presentation cards yet`}
               </p>
-              <Button 
-                variant="outline" 
-                className="mt-4 min-h-[44px]"
-                onClick={() => {
-                  resetForm();
-                  setIsCreateOpen(true);
-                }}
-                data-testid="button-create-first-card"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {language === "es" ? "Crear Primera Tarjeta" : "Create First Card"}
-              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                {language === "es" 
+                  ? "Usa el boton + para crear una tarjeta"
+                  : "Use the + button to create a card"}
+              </p>
             </CardContent>
           </Card>
         )
@@ -1144,7 +1146,7 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
         </div>
       )}
 
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <Dialog open={isCreateOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1159,7 +1161,7 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
           </DialogHeader>
           {renderCardForm()}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="min-h-[44px]">
+            <Button variant="outline" onClick={() => handleDialogOpenChange(false)} className="min-h-[44px]">
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending} className="min-h-[44px]">

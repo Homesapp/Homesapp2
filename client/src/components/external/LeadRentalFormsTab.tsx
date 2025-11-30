@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -46,6 +46,8 @@ import type { ExternalLead, ExternalUnit, ExternalCondominium, ExternalUnitWithC
 
 interface LeadRentalFormsTabProps {
   lead: ExternalLead;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
 interface RentalFormToken {
@@ -67,7 +69,7 @@ interface UnitOption {
   condoName?: string;
 }
 
-export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
+export default function LeadRentalFormsTab({ lead, dialogOpen, onDialogOpenChange }: LeadRentalFormsTabProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const locale = language === "es" ? es : enUS;
@@ -75,6 +77,18 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
   const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
   const [recipientType, setRecipientType] = useState<string>("tenant");
+
+  // Sync with controlled props from parent
+  useEffect(() => {
+    if (dialogOpen !== undefined) {
+      setIsDialogOpen(dialogOpen);
+    }
+  }, [dialogOpen]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    onDialogOpenChange?.(open);
+  };
 
   const { data: rentalForms, isLoading } = useQuery<RentalFormToken[]>({
     queryKey: ["/api/external-leads", lead.id, "rental-forms"],
@@ -267,20 +281,9 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
         <h4 className="font-medium text-sm">
           {language === "es" ? "Formatos de Renta" : "Rental Forms"}
         </h4>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            {rentalForms?.length || 0} {language === "es" ? "enviados" : "sent"}
-          </Badge>
-          <Button 
-            size="sm" 
-            onClick={() => setIsDialogOpen(true)}
-            className="min-h-[44px]"
-            data-testid="button-send-rental-form"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {language === "es" ? "Enviar Formato" : "Send Form"}
-          </Button>
-        </div>
+        <Badge variant="outline">
+          {rentalForms?.length || 0} {language === "es" ? "enviados" : "sent"}
+        </Badge>
       </div>
 
       {isLoading ? (
@@ -355,10 +358,7 @@ export default function LeadRentalFormsTab({ lead }: LeadRentalFormsTabProps) {
           icon={FileText}
           title={language === "es" ? "No hay formatos" : "No forms"}
           description={language === "es" ? "Envía el formato de renta para recopilar información del inquilino" : "Send rental forms to collect tenant information"}
-          actionLabel={language === "es" ? "Enviar formato" : "Send form"}
-          actionIcon={Plus}
-          onAction={() => setIsDialogOpen(true)}
-          actionTestId="button-send-first-form"
+          showAction={false}
         />
       )}
 

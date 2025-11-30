@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, isPast, isToday, isTomorrow, addDays } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -60,6 +60,8 @@ import { LeadEmptyState } from "./LeadEmptyState";
 interface LeadRemindersTabProps {
   leadId: string;
   leadName: string;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
 const REMINDER_TYPES = [
@@ -91,13 +93,25 @@ const reminderFormSchema = z.object({
 
 type ReminderFormData = z.infer<typeof reminderFormSchema>;
 
-export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabProps) {
+export default function LeadRemindersTab({ leadId, leadName, dialogOpen, onDialogOpenChange }: LeadRemindersTabProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const locale = language === "es" ? es : enUS;
   const [showForm, setShowForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState<any | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Sync with controlled props from parent
+  useEffect(() => {
+    if (dialogOpen !== undefined) {
+      setShowForm(dialogOpen);
+    }
+  }, [dialogOpen]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setShowForm(open);
+    onDialogOpenChange?.(open);
+  };
 
   const form = useForm<ReminderFormData>({
     resolver: zodResolver(reminderFormSchema),
@@ -256,21 +270,15 @@ export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabP
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">
-            {language === "es" ? "Recordatorios" : "Reminders"}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {language === "es"
-              ? `${pendingReminders.length} pendiente${pendingReminders.length !== 1 ? "s" : ""}`
-              : `${pendingReminders.length} pending`}
-          </p>
-        </div>
-        <Button onClick={openNew} className="min-h-[44px]" data-testid="button-add-reminder">
-          <Plus className="h-4 w-4 mr-2" />
-          {language === "es" ? "Nuevo" : "New"}
-        </Button>
+      <div>
+        <h3 className="text-lg font-medium">
+          {language === "es" ? "Recordatorios" : "Reminders"}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {language === "es"
+            ? `${pendingReminders.length} pendiente${pendingReminders.length !== 1 ? "s" : ""}`
+            : `${pendingReminders.length} pending`}
+        </p>
       </div>
 
       {pendingReminders.length === 0 && completedReminders.length === 0 ? (
@@ -278,10 +286,7 @@ export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabP
           icon={Bell}
           title={language === "es" ? "No hay recordatorios" : "No reminders"}
           description={language === "es" ? "Crea recordatorios para dar seguimiento a este lead" : "Create reminders to follow up with this lead"}
-          actionLabel={language === "es" ? "Agregar recordatorio" : "Add reminder"}
-          actionIcon={Plus}
-          onAction={openNew}
-          actionTestId="button-add-first-reminder"
+          showAction={false}
         />
       ) : (
         <div className="space-y-4">
@@ -402,7 +407,7 @@ export default function LeadRemindersTab({ leadId, leadName }: LeadRemindersTabP
         </div>
       )}
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>

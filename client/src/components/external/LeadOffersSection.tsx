@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -36,9 +36,11 @@ import type { ExternalLead, ExternalUnitWithCondominium } from "@shared/schema";
 
 interface LeadOffersSectionProps {
   lead: ExternalLead;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
-export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
+export default function LeadOffersSection({ lead, dialogOpen, onDialogOpenChange }: LeadOffersSectionProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
@@ -46,6 +48,18 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [generatedOffer, setGeneratedOffer] = useState<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Sync with controlled props from parent
+  useEffect(() => {
+    if (dialogOpen !== undefined) {
+      setIsOfferDialogOpen(dialogOpen);
+    }
+  }, [dialogOpen]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsOfferDialogOpen(open);
+    onDialogOpenChange?.(open);
+  };
 
   const { data: propertyOffers, isLoading: offersLoading } = useQuery({
     queryKey: ["/api/external-leads", lead.id, "properties-sent"],
@@ -177,19 +191,9 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
         <h4 className="font-medium text-sm">
           {language === "es" ? "Ofertas Enviadas" : "Offers Sent"}
         </h4>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            {propertyOffers?.length || 0} {language === "es" ? "enviadas" : "sent"}
-          </Badge>
-          <Button 
-            size="sm" 
-            onClick={() => setIsOfferDialogOpen(true)}
-            data-testid="button-generate-offer"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {language === "es" ? "Nueva Oferta" : "New Offer"}
-          </Button>
-        </div>
+        <Badge variant="outline">
+          {propertyOffers?.length || 0} {language === "es" ? "enviadas" : "sent"}
+        </Badge>
       </div>
 
       {offersLoading ? (
@@ -242,16 +246,13 @@ export default function LeadOffersSection({ lead }: LeadOffersSectionProps) {
           icon={Send}
           title={language === "es" ? "No hay ofertas" : "No offers"}
           description={language === "es" ? "Envía propiedades a este lead para generar interés" : "Send properties to this lead to generate interest"}
-          actionLabel={language === "es" ? "Enviar oferta" : "Send offer"}
-          actionIcon={Plus}
-          onAction={() => setIsOfferDialogOpen(true)}
-          actionTestId="button-send-first-offer"
+          showAction={false}
         />
       )}
 
       {/* Generate Offer Dialog */}
       <Dialog open={isOfferDialogOpen} onOpenChange={(open) => {
-        setIsOfferDialogOpen(open);
+        handleDialogOpenChange(open);
         if (!open) {
           setSelectedCondominiumId("");
           setSelectedUnitId("");

@@ -97,6 +97,7 @@ import LeadShowingsTab from "@/components/external/LeadShowingsTab";
 import LeadStatusHistoryTab from "@/components/external/LeadStatusHistoryTab";
 import LeadRemindersTab from "@/components/external/LeadRemindersTab";
 import LeadRentalFormsTab from "@/components/external/LeadRentalFormsTab";
+import { LeadFloatingActionButton } from "@/components/external/LeadFloatingActionButton";
 
 const LEAD_STATUS_OPTIONS = [
   { value: "nuevo_lead", label: { es: "Nuevo Lead", en: "New Lead" }, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
@@ -137,6 +138,14 @@ export default function ExternalLeadDetail() {
   const [activeTab, setActiveTab] = useState("cards");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
+  
+  // Controlled dialog states for FAB
+  const [isCardsDialogOpen, setIsCardsDialogOpen] = useState(false);
+  const [isOffersDialogOpen, setIsOffersDialogOpen] = useState(false);
+  const [isFormsDialogOpen, setIsFormsDialogOpen] = useState(false);
+  const [isActivitiesDialogOpen, setIsActivitiesDialogOpen] = useState(false);
+  const [isShowingsDialogOpen, setIsShowingsDialogOpen] = useState(false);
+  const [isRemindersDialogOpen, setIsRemindersDialogOpen] = useState(false);
 
   const { data: lead, isLoading, error } = useQuery<ExternalLead>({
     queryKey: ["/api/external-leads", leadId],
@@ -255,6 +264,53 @@ export default function ExternalLeadDetail() {
     lead?.status === "formato_completado" ||
     lead?.status === "proceso_renta" || 
     lead?.status === "renta_concretada";
+
+  // FAB configuration based on active tab
+  const getFabConfig = () => {
+    switch (activeTab) {
+      case "cards":
+        return {
+          visible: true,
+          label: language === "es" ? "Nueva tarjeta" : "New card",
+          onClick: () => setIsCardsDialogOpen(true),
+        };
+      case "offers":
+        return {
+          visible: true,
+          label: language === "es" ? "Nueva oferta" : "New offer",
+          onClick: () => setIsOffersDialogOpen(true),
+        };
+      case "forms":
+        return {
+          visible: isInterestedStatus,
+          label: language === "es" ? "Enviar formato" : "Send form",
+          onClick: () => setIsFormsDialogOpen(true),
+        };
+      case "activities":
+        return {
+          visible: true,
+          label: language === "es" ? "Nueva actividad" : "New activity",
+          onClick: () => setIsActivitiesDialogOpen(true),
+        };
+      case "showings":
+        return {
+          visible: true,
+          label: language === "es" ? "Programar visita" : "Schedule showing",
+          onClick: () => setIsShowingsDialogOpen(true),
+        };
+      case "reminders":
+        return {
+          visible: true,
+          label: language === "es" ? "Nuevo recordatorio" : "New reminder",
+          onClick: () => setIsRemindersDialogOpen(true),
+        };
+      case "history":
+      default:
+        return { visible: false, label: "", onClick: () => {} };
+    }
+  };
+
+  const fabConfig = getFabConfig();
 
   if (!matched) {
     return null;
@@ -877,16 +933,26 @@ export default function ExternalLeadDetail() {
                     contractDuration: lead.contractDuration,
                     hasPets: lead.hasPets,
                   }}
+                  dialogOpen={isCardsDialogOpen}
+                  onDialogOpenChange={setIsCardsDialogOpen}
                 />
               </TabsContent>
 
               <TabsContent value="offers" className="mt-0 space-y-4">
-                <LeadOffersSection lead={lead} />
+                <LeadOffersSection 
+                  lead={lead} 
+                  dialogOpen={isOffersDialogOpen}
+                  onDialogOpenChange={setIsOffersDialogOpen}
+                />
               </TabsContent>
 
               <TabsContent value="forms" className="mt-0 space-y-4">
                 {isInterestedStatus ? (
-                  <LeadRentalFormsTab lead={lead} />
+                  <LeadRentalFormsTab 
+                    lead={lead} 
+                    dialogOpen={isFormsDialogOpen}
+                    onDialogOpenChange={setIsFormsDialogOpen}
+                  />
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     {language === "es" 
@@ -897,15 +963,28 @@ export default function ExternalLeadDetail() {
               </TabsContent>
 
               <TabsContent value="activities" className="mt-0 space-y-4">
-                <LeadActivitiesTab leadId={lead.id} />
+                <LeadActivitiesTab 
+                  leadId={lead.id} 
+                  dialogOpen={isActivitiesDialogOpen}
+                  onDialogOpenChange={setIsActivitiesDialogOpen}
+                />
               </TabsContent>
 
               <TabsContent value="showings" className="mt-0 space-y-4">
-                <LeadShowingsTab leadId={lead.id} />
+                <LeadShowingsTab 
+                  leadId={lead.id} 
+                  dialogOpen={isShowingsDialogOpen}
+                  onDialogOpenChange={setIsShowingsDialogOpen}
+                />
               </TabsContent>
 
               <TabsContent value="reminders" className="mt-0 space-y-4">
-                <LeadRemindersTab leadId={lead.id} leadName={`${lead.firstName} ${lead.lastName}`} />
+                <LeadRemindersTab 
+                  leadId={lead.id} 
+                  leadName={`${lead.firstName} ${lead.lastName}`}
+                  dialogOpen={isRemindersDialogOpen}
+                  onDialogOpenChange={setIsRemindersDialogOpen}
+                />
               </TabsContent>
 
               <TabsContent value="history" className="mt-0 space-y-4">
@@ -915,6 +994,13 @@ export default function ExternalLeadDetail() {
           </ScrollArea>
         </Tabs>
       </div>
+
+      {/* Floating Action Button */}
+      <LeadFloatingActionButton
+        visible={fabConfig.visible}
+        onClick={fabConfig.onClick}
+        label={fabConfig.label}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

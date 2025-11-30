@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import {
   Home,
-  Plus,
   Calendar,
   CheckCircle,
   XCircle,
@@ -38,6 +37,8 @@ import { LeadEmptyState } from "./LeadEmptyState";
 
 interface LeadShowingsTabProps {
   leadId: string;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
 type ShowingOutcome = "interested" | "not_interested" | "pending" | "cancelled";
@@ -56,13 +57,25 @@ const OUTCOME_LABELS: Record<ShowingOutcome, { es: string; en: string }> = {
   cancelled: { es: "Cancelada", en: "Cancelled" },
 };
 
-export default function LeadShowingsTab({ leadId }: LeadShowingsTabProps) {
+export default function LeadShowingsTab({ leadId, dialogOpen, onDialogOpenChange }: LeadShowingsTabProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isAddShowingOpen, setIsAddShowingOpen] = useState(false);
   const [newShowingProperty, setNewShowingProperty] = useState("");
   const [newShowingDate, setNewShowingDate] = useState("");
   const [newShowingNotes, setNewShowingNotes] = useState("");
+
+  // Sync with controlled props from parent
+  useEffect(() => {
+    if (dialogOpen !== undefined) {
+      setIsAddShowingOpen(dialogOpen);
+    }
+  }, [dialogOpen]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsAddShowingOpen(open);
+    onDialogOpenChange?.(open);
+  };
 
   const { data: showings, isLoading } = useQuery({
     queryKey: ["/api/external-leads", leadId, "showings"],
@@ -84,7 +97,7 @@ export default function LeadShowingsTab({ leadId }: LeadShowingsTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId, "showings"] });
-      setIsAddShowingOpen(false);
+      handleDialogOpenChange(false);
       setNewShowingProperty("");
       setNewShowingDate("");
       setNewShowingNotes("");
@@ -111,19 +124,9 @@ export default function LeadShowingsTab({ leadId }: LeadShowingsTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h4 className="font-medium text-sm">
-          {language === "es" ? "Visitas a Propiedades" : "Property Showings"}
-        </h4>
-        <Button 
-          size="sm" 
-          onClick={() => setIsAddShowingOpen(true)}
-          data-testid="button-schedule-showing"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          {language === "es" ? "Programar" : "Schedule"}
-        </Button>
-      </div>
+      <h4 className="font-medium text-sm">
+        {language === "es" ? "Visitas a Propiedades" : "Property Showings"}
+      </h4>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -176,15 +179,12 @@ export default function LeadShowingsTab({ leadId }: LeadShowingsTabProps) {
           icon={Home}
           title={language === "es" ? "No hay visitas" : "No showings"}
           description={language === "es" ? "Programa visitas a propiedades para este lead" : "Schedule property showings for this lead"}
-          actionLabel={language === "es" ? "Programar visita" : "Schedule showing"}
-          actionIcon={Plus}
-          onAction={() => setIsAddShowingOpen(true)}
-          actionTestId="button-schedule-first-showing"
+          showAction={false}
         />
       )}
 
       {/* Schedule Showing Dialog */}
-      <Dialog open={isAddShowingOpen} onOpenChange={setIsAddShowingOpen}>
+      <Dialog open={isAddShowingOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -232,7 +232,7 @@ export default function LeadShowingsTab({ leadId }: LeadShowingsTabProps) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddShowingOpen(false)}>
+            <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
             <Button 
