@@ -263,9 +263,10 @@ export default function ExternalClients() {
       return response.json();
     },
     enabled: activeTab === "leads",
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 30 * 60 * 1000,
-    keepPreviousData: true,
+    staleTime: 0, // Always refetch when invalidated
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   const leads = leadsResponse?.data || [];
