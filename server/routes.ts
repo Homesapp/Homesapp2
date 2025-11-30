@@ -31545,6 +31545,125 @@ ${{precio}}/mes
     }
   });
   
+  // POST /api/external-leads/:id/offers - Generate offer token for a lead
+  app.post("/api/external-leads/:id/offers", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id: leadId } = req.params;
+      const { externalUnitId } = req.body;
+      
+      const lead = await storage.getExternalLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, lead.agencyId);
+      if (!hasAccess) return;
+      
+      if (!externalUnitId) {
+        return res.status(400).json({ message: "externalUnitId is required" });
+      }
+      
+      const unit = await storage.getExternalUnit(externalUnitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      if (String(unit.agencyId) !== String(lead.agencyId)) {
+        return res.status(403).json({ message: "Unit does not belong to the same agency" });
+      }
+      
+      const userId = req.user.claims?.sub || req.user.id;
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const createdByName = user?.firstName && user?.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : user?.username || 'Unknown';
+      
+      const tokenValue = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
+      // Create offer token
+      const [newToken] = await db.insert(offerTokens).values({
+        token: tokenValue,
+        externalUnitId,
+        externalClientId: null,
+        leadId: null,
+        createdBy: userId,
+        expiresAt,
+        isUsed: false,
+      }).returning();
+      
+      // Get agency and unit info for URL generation
+      const [agency] = await db.select({ slug: externalAgencies.slug })
+        .from(externalAgencies)
+        .where(eq(externalAgencies.id, unit.agencyId))
+        .limit(1);
+      
+      const property = unit.propertyId ? await storage.getExternalProperty(unit.propertyId) : null;
+      const condo = unit.condominiumId ? await storage.getExternalCondominium(unit.condominiumId) : null;
+      
+      // Generate URL
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+      const host = req.get('host');
+      const offerUrl = agency?.slug && unit.slug 
+        ? `${protocol}://${host}/${agency.slug}/oferta/${unit.slug}`
+        : `${protocol}://${host}/offer/${tokenValue}`;
+      
+      // Log lead activity
+      await storage.createExternalLeadActivity({
+        leadId,
+        agencyId: lead.agencyId,
+        activityType: 'email',
+        title: `Oferta generada: ${condo?.name || 'Propiedad'} - ${unit.unitNumber || ''}`,
+        description: `Se generó oferta para ${lead.fullName}`,
+        relatedPropertyId: unit.propertyId,
+        relatedUnitId: externalUnitId,
+        createdBy: userId,
+      });
+      
+      // Log property activity
+      try {
+        await db.insert(externalPropertyActivityHistory).values({
+          agencyId: lead.agencyId,
+          unitId: externalUnitId,
+          condominiumId: unit.condominiumId || null,
+          activityType: 'offer_sent',
+          leadId: leadId,
+          leadName: lead.fullName || null,
+          clientId: null,
+          clientName: null,
+          offerTokenId: newToken.id,
+          performedBy: userId,
+          performedByName: createdByName,
+          details: {
+            recipientType: 'tenant',
+            channel: 'link',
+            notes: `Oferta generada para lead ${lead.fullName}`
+          },
+        });
+      } catch (activityError) {
+        console.error("Error logging property activity for lead offer:", activityError);
+      }
+      
+      await createAuditLog(req, "create", "offer_token", newToken.id, `Created offer for lead ${leadId}`);
+      
+      res.status(201).json({
+        ...newToken,
+        offerUrl,
+        leadName: lead.fullName,
+        propertyName: property?.name || condo?.name,
+        unitNumber: unit.unitNumber,
+        createdByName,
+        agencySlug: agency?.slug,
+        unitSlug: unit.slug,
+      });
+    } catch (error: any) {
+      console.error("Error creating offer for lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  
   // POST /api/external-leads/:id/rental-forms - Generate rental form token for a lead
   app.post("/api/external-leads/:id/rental-forms", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
     try {
