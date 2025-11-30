@@ -3883,10 +3883,16 @@ export default function ExternalClients() {
                     control={leadForm.control}
                     name="checkInDate"
                     render={({ field }) => {
+                      const today = new Date();
+                      const minYear = today.getFullYear();
+                      const maxYear = today.getFullYear() + 3;
+                      
                       const formatDateForInput = (date: Date | string | null | undefined): string => {
                         if (!date) return "";
                         const d = new Date(date);
+                        if (isNaN(d.getTime())) return "";
                         const year = d.getFullYear();
+                        if (year < minYear || year > maxYear) return "";
                         const month = String(d.getMonth() + 1).padStart(2, '0');
                         const day = String(d.getDate()).padStart(2, '0');
                         return `${year}-${month}-${day}`;
@@ -3898,9 +3904,17 @@ export default function ExternalClients() {
                           return;
                         }
                         const [year, month, day] = dateString.split('-').map(Number);
+                        if (year < minYear || year > maxYear) {
+                          return;
+                        }
                         const newDate = new Date(year, month - 1, day, 12, 0, 0);
-                        field.onChange(newDate);
+                        if (!isNaN(newDate.getTime())) {
+                          field.onChange(newDate);
+                        }
                       };
+                      
+                      const minDate = `${minYear}-01-01`;
+                      const maxDate = `${maxYear}-12-31`;
                       
                       return (
                         <FormItem>
@@ -3911,10 +3925,19 @@ export default function ExternalClients() {
                           <FormControl>
                             <Input 
                               type="date" 
-                              min={new Date().toISOString().split('T')[0]}
-                              max={new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]}
+                              min={minDate}
+                              max={maxDate}
                               value={formatDateForInput(field.value)} 
                               onChange={(e) => handleDateChange(e.target.value)}
+                              onBlur={(e) => {
+                                const val = e.target.value;
+                                if (val) {
+                                  const [year] = val.split('-').map(Number);
+                                  if (year < minYear || year > maxYear) {
+                                    field.onChange(undefined);
+                                  }
+                                }
+                              }}
                               data-testid="input-create-lead-checkin"
                             />
                           </FormControl>
@@ -4836,10 +4859,16 @@ export default function ExternalClients() {
                     control={editLeadForm.control}
                     name="checkInDate"
                     render={({ field }) => {
+                      const today = new Date();
+                      const minYear = today.getFullYear();
+                      const maxYear = today.getFullYear() + 3;
+                      
                       const formatDateForInput = (date: Date | string | null | undefined): string => {
                         if (!date) return "";
                         const d = new Date(date);
+                        if (isNaN(d.getTime())) return "";
                         const year = d.getFullYear();
+                        if (year < minYear || year > maxYear) return "";
                         const month = String(d.getMonth() + 1).padStart(2, '0');
                         const day = String(d.getDate()).padStart(2, '0');
                         return `${year}-${month}-${day}`;
@@ -4851,9 +4880,17 @@ export default function ExternalClients() {
                           return;
                         }
                         const [year, month, day] = dateString.split('-').map(Number);
+                        if (year < minYear || year > maxYear) {
+                          return;
+                        }
                         const newDate = new Date(year, month - 1, day, 12, 0, 0);
-                        field.onChange(newDate);
+                        if (!isNaN(newDate.getTime())) {
+                          field.onChange(newDate);
+                        }
                       };
+                      
+                      const minDate = `${minYear}-01-01`;
+                      const maxDate = `${maxYear}-12-31`;
                       
                       return (
                         <FormItem>
@@ -4864,10 +4901,19 @@ export default function ExternalClients() {
                           <FormControl>
                             <Input 
                               type="date" 
-                              min={new Date().toISOString().split('T')[0]}
-                              max={new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]}
+                              min={minDate}
+                              max={maxDate}
                               value={formatDateForInput(field.value)} 
                               onChange={(e) => handleDateChange(e.target.value)}
+                              onBlur={(e) => {
+                                const val = e.target.value;
+                                if (val) {
+                                  const [year] = val.split('-').map(Number);
+                                  if (year < minYear || year > maxYear) {
+                                    field.onChange(undefined);
+                                  }
+                                }
+                              }}
                               data-testid="input-edit-lead-checkin"
                             />
                           </FormControl>

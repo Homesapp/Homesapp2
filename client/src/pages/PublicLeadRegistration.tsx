@@ -471,8 +471,33 @@ export default function PublicLeadRegistration() {
                   <Input
                     id="checkInDate"
                     type="date"
+                    min={`${new Date().getFullYear()}-01-01`}
+                    max={`${new Date().getFullYear() + 3}-12-31`}
                     value={formData.checkInDate}
-                    onChange={(e) => setFormData({ ...formData, checkInDate: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        const year = parseInt(val.split('-')[0]);
+                        const minYear = new Date().getFullYear();
+                        const maxYear = minYear + 3;
+                        if (year >= minYear && year <= maxYear) {
+                          setFormData({ ...formData, checkInDate: val });
+                        }
+                      } else {
+                        setFormData({ ...formData, checkInDate: "" });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        const year = parseInt(val.split('-')[0]);
+                        const minYear = new Date().getFullYear();
+                        const maxYear = minYear + 3;
+                        if (year < minYear || year > maxYear) {
+                          setFormData({ ...formData, checkInDate: "" });
+                        }
+                      }
+                    }}
                     data-testid="input-check-in-date"
                   />
                 </div>
