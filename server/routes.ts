@@ -247,6 +247,8 @@ import {
   insertExternalLeadPropertyOfferSchema,
   sellerGoals,
   insertSellerGoalSchema,
+  externalPropertyActivityHistory,
+  insertExternalPropertyActivityHistorySchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { registerPortalRoutes } from "./portal-routes";
@@ -28677,6 +28679,130 @@ ${{precio}}/mes
       res.json(schedules);
     } catch (error: any) {
       console.error("Error fetching unit services:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+
+  // =====================================================
+  // Property Activity History - Track all activities on properties
+  // =====================================================
+
+  // GET /api/external-units/:id/activity-history - Get activity history for a unit
+  app.get("/api/external-units/:id/activity-history", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { limit = "50", offset = "0" } = req.query;
+      
+      const limitNum = Math.min(parseInt(limit as string, 10) || 50, 100);
+      const offsetNum = parseInt(offset as string, 10) || 0;
+      
+      // Verify unit exists
+      const unit = await storage.getExternalUnit(id);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Verify ownership
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+      
+      // Get activity history for this unit
+      const activities = await db.select()
+        .from(externalPropertyActivityHistory)
+        .where(eq(externalPropertyActivityHistory.unitId, id))
+        .orderBy(desc(externalPropertyActivityHistory.createdAt))
+        .limit(limitNum)
+        .offset(offsetNum);
+      
+      // Get total count
+      const countResult = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(externalPropertyActivityHistory)
+        .where(eq(externalPropertyActivityHistory.unitId, id));
+      
+      const total = Number(countResult[0]?.count || 0);
+      
+      res.json({
+        activities,
+        pagination: {
+          total,
+          limit: limitNum,
+          offset: offsetNum,
+          hasMore: offsetNum + limitNum < total
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching unit activity history:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // POST /api/property-activity - Log a property activity (internal use)
+  app.post("/api/property-activity", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency assigned to user" });
+      }
+      
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const userDetails = await storage.getUser(userId);
+      
+      const { unitId, activityType, leadId, clientId, offerTokenId, appointmentId, showingId, contractId, details } = req.body;
+      
+      if (!unitId || !activityType) {
+        return res.status(400).json({ message: "unitId and activityType are required" });
+      }
+      
+      // Verify unit exists and belongs to agency
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      if (unit.agencyId !== agencyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Get lead/client names if IDs provided
+      let leadName = null;
+      let clientName = null;
+      
+      if (leadId) {
+        const lead = await storage.getExternalLead(leadId);
+        if (lead) {
+          leadName = `\${lead.firstName || ''} \${lead.lastName || ''}`.trim() || null;
+        }
+      }
+      
+      if (clientId) {
+        const client = await storage.getExternalClient(clientId);
+        if (client) {
+          clientName = `\${client.firstName || ''} \${client.lastName || ''}`.trim() || null;
+        }
+      }
+      
+      // Create activity record
+      const [activity] = await db.insert(externalPropertyActivityHistory).values({
+        agencyId,
+        unitId,
+        condominiumId: unit.condominiumId || null,
+        activityType,
+        leadId: leadId || null,
+        leadName,
+        clientId: clientId || null,
+        clientName,
+        offerTokenId: offerTokenId || null,
+        appointmentId: appointmentId || null,
+        showingId: showingId || null,
+        contractId: contractId || null,
+        performedBy: userId,
+        performedByName: userDetails ? `\${userDetails.firstName || ''} \${userDetails.lastName || ''}`.trim() || null : null,
+        details: details || null,
+      }).returning();
+      
+      res.status(201).json(activity);
+    } catch (error: any) {
+      console.error("Error creating property activity:", error);
       handleGenericError(res, error);
     }
   });
