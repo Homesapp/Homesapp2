@@ -20,7 +20,8 @@ import { z } from "zod";
 import { useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell, CheckCheck, Settings, AlertTriangle, CreditCard, Wrench, FileText, Calendar } from "lucide-react";
+import { Bell, CheckCheck, Settings, AlertTriangle, CreditCard, Wrench, FileText, Calendar, Percent } from "lucide-react";
+import CommissionManagement from "@/components/CommissionManagement";
 
 const formSchema = insertExternalAgencySchema.extend({});
 
@@ -172,14 +173,18 @@ export default function ExternalAgencyConfig() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="config" className="flex items-center gap-2" data-testid="tab-config">
             <Settings className="h-4 w-4" />
-            {language === "es" ? "Configuración" : "Configuration"}
+            <span className="hidden sm:inline">{language === "es" ? "Configuración" : "Configuration"}</span>
+          </TabsTrigger>
+          <TabsTrigger value="commissions" className="flex items-center gap-2" data-testid="tab-commissions">
+            <Percent className="h-4 w-4" />
+            <span className="hidden sm:inline">{language === "es" ? "Comisiones" : "Commissions"}</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2" data-testid="tab-notifications">
             <Bell className="h-4 w-4" />
-            {language === "es" ? "Notificaciones" : "Notifications"}
+            <span className="hidden sm:inline">{language === "es" ? "Notificaciones" : "Notifications"}</span>
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 px-1.5">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -329,6 +334,10 @@ export default function ExternalAgencyConfig() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="commissions" className="mt-6">
+          <CommissionManagement />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6">

@@ -51,6 +51,7 @@ import { z } from "zod";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
+import CommissionRatesDisplay from "@/components/CommissionRatesDisplay";
 
 const PROSPECT_STATUSES = [
   { 
@@ -595,6 +596,7 @@ export default function ExternalPropertyRecruitment() {
         <div>
           <h1 className="text-2xl font-bold" data-testid="page-title">Reclutamiento de Propiedades</h1>
           <p className="text-muted-foreground">Gestiona prospectos de propiedades para reclutamiento</p>
+          <CommissionRatesDisplay compact className="mt-2" />
         </div>
         <Button onClick={() => setShowNewProspectDialog(true)} data-testid="button-new-prospect">
           <Plus className="h-4 w-4 mr-2" />

@@ -480,6 +480,21 @@ import {
   externalPropertyProspectActivities,
   type ExternalPropertyProspectActivity,
   type InsertExternalPropertyProspectActivity,
+  externalCommissionProfiles,
+  type ExternalCommissionProfile,
+  type InsertExternalCommissionProfile,
+  externalCommissionRoleOverrides,
+  type ExternalCommissionRoleOverride,
+  type InsertExternalCommissionRoleOverride,
+  externalCommissionUserOverrides,
+  type ExternalCommissionUserOverride,
+  type InsertExternalCommissionUserOverride,
+  externalCommissionLeadOverrides,
+  type ExternalCommissionLeadOverride,
+  type InsertExternalCommissionLeadOverride,
+  externalCommissionAuditLogs,
+  type ExternalCommissionAuditLog,
+  type InsertExternalCommissionAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray, ne } from "drizzle-orm";
@@ -1815,6 +1830,50 @@ export interface IStorage {
   // Property Prospect Activities
   getExternalPropertyProspectActivities(prospectId: string): Promise<ExternalPropertyProspectActivity[]>;
   createExternalPropertyProspectActivity(activity: InsertExternalPropertyProspectActivity): Promise<ExternalPropertyProspectActivity>;
+
+  // Commission Profiles (Agency Defaults)
+  getExternalCommissionProfile(agencyId: string): Promise<ExternalCommissionProfile | undefined>;
+  createExternalCommissionProfile(profile: InsertExternalCommissionProfile): Promise<ExternalCommissionProfile>;
+  updateExternalCommissionProfile(agencyId: string, updates: Partial<InsertExternalCommissionProfile>): Promise<ExternalCommissionProfile>;
+
+  // Commission Role Overrides
+  getExternalCommissionRoleOverrides(agencyId: string): Promise<ExternalCommissionRoleOverride[]>;
+  getExternalCommissionRoleOverride(agencyId: string, role: string): Promise<ExternalCommissionRoleOverride | undefined>;
+  createExternalCommissionRoleOverride(override: InsertExternalCommissionRoleOverride): Promise<ExternalCommissionRoleOverride>;
+  updateExternalCommissionRoleOverride(id: string, updates: Partial<InsertExternalCommissionRoleOverride>): Promise<ExternalCommissionRoleOverride>;
+  deleteExternalCommissionRoleOverride(id: string): Promise<void>;
+
+  // Commission User Overrides
+  getExternalCommissionUserOverrides(agencyId: string): Promise<ExternalCommissionUserOverride[]>;
+  getExternalCommissionUserOverride(agencyId: string, userId: string): Promise<ExternalCommissionUserOverride | undefined>;
+  createExternalCommissionUserOverride(override: InsertExternalCommissionUserOverride): Promise<ExternalCommissionUserOverride>;
+  updateExternalCommissionUserOverride(id: string, updates: Partial<InsertExternalCommissionUserOverride>): Promise<ExternalCommissionUserOverride>;
+  deleteExternalCommissionUserOverride(id: string): Promise<void>;
+
+  // Commission Lead/Prospect Overrides
+  getExternalCommissionLeadOverrides(agencyId: string, filters?: { leadId?: string; prospectId?: string; userId?: string }): Promise<ExternalCommissionLeadOverride[]>;
+  createExternalCommissionLeadOverride(override: InsertExternalCommissionLeadOverride): Promise<ExternalCommissionLeadOverride>;
+  updateExternalCommissionLeadOverride(id: string, updates: Partial<InsertExternalCommissionLeadOverride>): Promise<ExternalCommissionLeadOverride>;
+  deleteExternalCommissionLeadOverride(id: string): Promise<void>;
+
+  // Commission Audit Logs
+  getExternalCommissionAuditLogs(agencyId: string, filters?: { entityType?: string; entityId?: string; limit?: number }): Promise<ExternalCommissionAuditLog[]>;
+  createExternalCommissionAuditLog(log: InsertExternalCommissionAuditLog): Promise<ExternalCommissionAuditLog>;
+
+  // Calculate Effective Commission (hierarchy: lead-specific > user-specific > role-based > agency default)
+  calculateEffectiveCommission(params: {
+    agencyId: string;
+    userId: string;
+    userRole: string;
+    commissionType: 'rental' | 'listed_property' | 'recruited_property';
+    leadId?: string;
+    prospectId?: string;
+  }): Promise<{
+    rate: number;
+    source: 'lead_override' | 'user_override' | 'role_override' | 'agency_default';
+    sourceId?: string;
+    notes?: string;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -12962,6 +13021,310 @@ export class DatabaseStorage implements IStorage {
       .values(activity)
       .returning();
     return created;
+  }
+
+  // Commission Profiles (Agency Defaults)
+  async getExternalCommissionProfile(agencyId: string): Promise<ExternalCommissionProfile | undefined> {
+    const [profile] = await db.select()
+      .from(externalCommissionProfiles)
+      .where(eq(externalCommissionProfiles.agencyId, agencyId));
+    return profile;
+  }
+
+  async createExternalCommissionProfile(profile: InsertExternalCommissionProfile): Promise<ExternalCommissionProfile> {
+    const [created] = await db.insert(externalCommissionProfiles)
+      .values(profile)
+      .returning();
+    return created;
+  }
+
+  async updateExternalCommissionProfile(agencyId: string, updates: Partial<InsertExternalCommissionProfile>): Promise<ExternalCommissionProfile> {
+    const [updated] = await db.update(externalCommissionProfiles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalCommissionProfiles.agencyId, agencyId))
+      .returning();
+    if (!updated) {
+      throw new NotFoundError(`Commission profile for agency ${agencyId} not found`);
+    }
+    return updated;
+  }
+
+  // Commission Role Overrides
+  async getExternalCommissionRoleOverrides(agencyId: string): Promise<ExternalCommissionRoleOverride[]> {
+    return await db.select()
+      .from(externalCommissionRoleOverrides)
+      .where(eq(externalCommissionRoleOverrides.agencyId, agencyId))
+      .orderBy(asc(externalCommissionRoleOverrides.role));
+  }
+
+  async getExternalCommissionRoleOverride(agencyId: string, role: string): Promise<ExternalCommissionRoleOverride | undefined> {
+    const [override] = await db.select()
+      .from(externalCommissionRoleOverrides)
+      .where(and(
+        eq(externalCommissionRoleOverrides.agencyId, agencyId),
+        eq(externalCommissionRoleOverrides.role, role),
+        eq(externalCommissionRoleOverrides.isActive, true)
+      ));
+    return override;
+  }
+
+  async createExternalCommissionRoleOverride(override: InsertExternalCommissionRoleOverride): Promise<ExternalCommissionRoleOverride> {
+    const [created] = await db.insert(externalCommissionRoleOverrides)
+      .values(override)
+      .returning();
+    return created;
+  }
+
+  async updateExternalCommissionRoleOverride(id: string, updates: Partial<InsertExternalCommissionRoleOverride>): Promise<ExternalCommissionRoleOverride> {
+    const [updated] = await db.update(externalCommissionRoleOverrides)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalCommissionRoleOverrides.id, id))
+      .returning();
+    if (!updated) {
+      throw new NotFoundError(`Commission role override with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteExternalCommissionRoleOverride(id: string): Promise<void> {
+    await db.delete(externalCommissionRoleOverrides)
+      .where(eq(externalCommissionRoleOverrides.id, id));
+  }
+
+  // Commission User Overrides
+  async getExternalCommissionUserOverrides(agencyId: string): Promise<ExternalCommissionUserOverride[]> {
+    return await db.select()
+      .from(externalCommissionUserOverrides)
+      .where(eq(externalCommissionUserOverrides.agencyId, agencyId))
+      .orderBy(desc(externalCommissionUserOverrides.createdAt));
+  }
+
+  async getExternalCommissionUserOverride(agencyId: string, userId: string): Promise<ExternalCommissionUserOverride | undefined> {
+    const now = new Date();
+    const [override] = await db.select()
+      .from(externalCommissionUserOverrides)
+      .where(and(
+        eq(externalCommissionUserOverrides.agencyId, agencyId),
+        eq(externalCommissionUserOverrides.userId, userId),
+        eq(externalCommissionUserOverrides.isActive, true),
+        or(
+          isNull(externalCommissionUserOverrides.effectiveFrom),
+          lte(externalCommissionUserOverrides.effectiveFrom, now)
+        ),
+        or(
+          isNull(externalCommissionUserOverrides.effectiveUntil),
+          gte(externalCommissionUserOverrides.effectiveUntil, now)
+        )
+      ));
+    return override;
+  }
+
+  async createExternalCommissionUserOverride(override: InsertExternalCommissionUserOverride): Promise<ExternalCommissionUserOverride> {
+    const [created] = await db.insert(externalCommissionUserOverrides)
+      .values(override)
+      .returning();
+    return created;
+  }
+
+  async updateExternalCommissionUserOverride(id: string, updates: Partial<InsertExternalCommissionUserOverride>): Promise<ExternalCommissionUserOverride> {
+    const [updated] = await db.update(externalCommissionUserOverrides)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalCommissionUserOverrides.id, id))
+      .returning();
+    if (!updated) {
+      throw new NotFoundError(`Commission user override with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteExternalCommissionUserOverride(id: string): Promise<void> {
+    await db.delete(externalCommissionUserOverrides)
+      .where(eq(externalCommissionUserOverrides.id, id));
+  }
+
+  // Commission Lead/Prospect Overrides
+  async getExternalCommissionLeadOverrides(
+    agencyId: string, 
+    filters?: { leadId?: string; prospectId?: string; userId?: string }
+  ): Promise<ExternalCommissionLeadOverride[]> {
+    const conditions: SQL[] = [eq(externalCommissionLeadOverrides.agencyId, agencyId)];
+    
+    if (filters?.leadId) {
+      conditions.push(eq(externalCommissionLeadOverrides.leadId, filters.leadId));
+    }
+    if (filters?.prospectId) {
+      conditions.push(eq(externalCommissionLeadOverrides.prospectId, filters.prospectId));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(externalCommissionLeadOverrides.userId, filters.userId));
+    }
+    
+    return await db.select()
+      .from(externalCommissionLeadOverrides)
+      .where(and(...conditions))
+      .orderBy(desc(externalCommissionLeadOverrides.createdAt));
+  }
+
+  async createExternalCommissionLeadOverride(override: InsertExternalCommissionLeadOverride): Promise<ExternalCommissionLeadOverride> {
+    const [created] = await db.insert(externalCommissionLeadOverrides)
+      .values(override)
+      .returning();
+    return created;
+  }
+
+  async updateExternalCommissionLeadOverride(id: string, updates: Partial<InsertExternalCommissionLeadOverride>): Promise<ExternalCommissionLeadOverride> {
+    const [updated] = await db.update(externalCommissionLeadOverrides)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(externalCommissionLeadOverrides.id, id))
+      .returning();
+    if (!updated) {
+      throw new NotFoundError(`Commission lead override with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteExternalCommissionLeadOverride(id: string): Promise<void> {
+    await db.delete(externalCommissionLeadOverrides)
+      .where(eq(externalCommissionLeadOverrides.id, id));
+  }
+
+  // Commission Audit Logs
+  async getExternalCommissionAuditLogs(
+    agencyId: string,
+    filters?: { entityType?: string; entityId?: string; limit?: number }
+  ): Promise<ExternalCommissionAuditLog[]> {
+    const conditions: SQL[] = [eq(externalCommissionAuditLogs.agencyId, agencyId)];
+    
+    if (filters?.entityType) {
+      conditions.push(eq(externalCommissionAuditLogs.entityType, filters.entityType));
+    }
+    if (filters?.entityId) {
+      conditions.push(eq(externalCommissionAuditLogs.entityId, filters.entityId));
+    }
+    
+    let query = db.select()
+      .from(externalCommissionAuditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(externalCommissionAuditLogs.createdAt));
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as typeof query;
+    }
+    
+    return await query;
+  }
+
+  async createExternalCommissionAuditLog(log: InsertExternalCommissionAuditLog): Promise<ExternalCommissionAuditLog> {
+    const [created] = await db.insert(externalCommissionAuditLogs)
+      .values(log)
+      .returning();
+    return created;
+  }
+
+  // Calculate Effective Commission with Hierarchy
+  async calculateEffectiveCommission(params: {
+    agencyId: string;
+    userId: string;
+    userRole: string;
+    commissionType: 'rental' | 'listed_property' | 'recruited_property';
+    leadId?: string;
+    prospectId?: string;
+  }): Promise<{
+    rate: number;
+    source: 'lead_override' | 'user_override' | 'role_override' | 'agency_default';
+    sourceId?: string;
+    notes?: string;
+  }> {
+    const { agencyId, userId, userRole, commissionType, leadId, prospectId } = params;
+    
+    // 1. Check lead/prospect specific override first (highest priority)
+    if (leadId || prospectId) {
+      const leadOverrides = await this.getExternalCommissionLeadOverrides(agencyId, {
+        leadId,
+        prospectId,
+        userId
+      });
+      
+      const matchingOverride = leadOverrides.find(o => 
+        o.isActive && o.commissionType === commissionType
+      );
+      
+      if (matchingOverride) {
+        return {
+          rate: parseFloat(matchingOverride.commissionRate),
+          source: 'lead_override',
+          sourceId: matchingOverride.id,
+          notes: matchingOverride.reason || undefined
+        };
+      }
+    }
+    
+    // 2. Check user-specific override
+    const userOverride = await this.getExternalCommissionUserOverride(agencyId, userId);
+    if (userOverride) {
+      const rate = commissionType === 'rental' 
+        ? userOverride.rentalCommission
+        : commissionType === 'listed_property'
+          ? userOverride.listedPropertyCommission
+          : userOverride.recruitedPropertyCommission;
+      
+      if (rate !== null) {
+        return {
+          rate: parseFloat(rate),
+          source: 'user_override',
+          sourceId: userOverride.id,
+          notes: userOverride.notes || undefined
+        };
+      }
+    }
+    
+    // 3. Check role-based override
+    const roleOverride = await this.getExternalCommissionRoleOverride(agencyId, userRole);
+    if (roleOverride) {
+      const rate = commissionType === 'rental'
+        ? roleOverride.rentalCommission
+        : commissionType === 'listed_property'
+          ? roleOverride.listedPropertyCommission
+          : roleOverride.recruitedPropertyCommission;
+      
+      if (rate !== null) {
+        return {
+          rate: parseFloat(rate),
+          source: 'role_override',
+          sourceId: roleOverride.id,
+          notes: roleOverride.notes || undefined
+        };
+      }
+    }
+    
+    // 4. Fall back to agency default
+    const defaultProfile = await this.getExternalCommissionProfile(agencyId);
+    if (defaultProfile) {
+      const rate = commissionType === 'rental'
+        ? defaultProfile.defaultRentalCommission
+        : commissionType === 'listed_property'
+          ? defaultProfile.defaultListedPropertyCommission
+          : defaultProfile.defaultRecruitedPropertyCommission;
+      
+      return {
+        rate: parseFloat(rate),
+        source: 'agency_default',
+        sourceId: defaultProfile.id
+      };
+    }
+    
+    // No configuration found - return default fallback rates
+    const defaultRates = {
+      rental: 10,
+      listed_property: 5,
+      recruited_property: 20
+    };
+    
+    return {
+      rate: defaultRates[commissionType],
+      source: 'agency_default',
+      notes: 'Default system rate - no agency profile configured'
+    };
   }
 }
 

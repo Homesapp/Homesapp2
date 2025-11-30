@@ -40537,5 +40537,555 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
   });
 
 
+  // ========================================
+  // Commission Management Routes
+  // ========================================
+
+  // GET /api/external/commissions/profile - Get agency commission profile (defaults)
+  app.get("/api/external/commissions/profile", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const profile = await storage.getExternalCommissionProfile(agencyId);
+      res.json(profile || null);
+    } catch (error: any) {
+      console.error("Error fetching commission profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/commissions/profile - Create or update agency commission profile
+  app.post("/api/external/commissions/profile", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      const existingProfile = await storage.getExternalCommissionProfile(agencyId);
+
+      let profile;
+      if (existingProfile) {
+        const previousValues = { ...existingProfile };
+        profile = await storage.updateExternalCommissionProfile(agencyId, req.body);
+        
+        await storage.createExternalCommissionAuditLog({
+          agencyId,
+          entityType: 'commission_profile',
+          entityId: profile.id,
+          action: 'update',
+          previousValues,
+          newValues: profile,
+          changedBy: userId,
+          changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+        });
+      } else {
+        profile = await storage.createExternalCommissionProfile({
+          ...req.body,
+          agencyId,
+          createdBy: userId,
+        });
+        
+        await storage.createExternalCommissionAuditLog({
+          agencyId,
+          entityType: 'commission_profile',
+          entityId: profile.id,
+          action: 'create',
+          newValues: profile,
+          changedBy: userId,
+          changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+        });
+      }
+
+      res.status(existingProfile ? 200 : 201).json(profile);
+    } catch (error: any) {
+      console.error("Error saving commission profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/commissions/role-overrides - Get all role overrides
+  app.get("/api/external/commissions/role-overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const overrides = await storage.getExternalCommissionRoleOverrides(agencyId);
+      res.json(overrides);
+    } catch (error: any) {
+      console.error("Error fetching role overrides:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/commissions/role-overrides - Create role override
+  app.post("/api/external/commissions/role-overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const override = await storage.createExternalCommissionRoleOverride({
+        ...req.body,
+        agencyId,
+        createdBy: userId,
+      });
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'role_override',
+        entityId: override.id,
+        action: 'create',
+        newValues: override,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.status(201).json(override);
+    } catch (error: any) {
+      console.error("Error creating role override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/external/commissions/role-overrides/:id - Update role override
+  app.patch("/api/external/commissions/role-overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const overrides = await storage.getExternalCommissionRoleOverrides(agencyId);
+      const existing = overrides.find(o => o.id === req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Override no encontrado" });
+      }
+
+      const previousValues = { ...existing };
+      const updated = await storage.updateExternalCommissionRoleOverride(req.params.id, req.body);
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'role_override',
+        entityId: updated.id,
+        action: 'update',
+        previousValues,
+        newValues: updated,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating role override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/external/commissions/role-overrides/:id - Delete role override
+  app.delete("/api/external/commissions/role-overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const overrides = await storage.getExternalCommissionRoleOverrides(agencyId);
+      const existing = overrides.find(o => o.id === req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Override no encontrado" });
+      }
+
+      await storage.deleteExternalCommissionRoleOverride(req.params.id);
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'role_override',
+        entityId: req.params.id,
+        action: 'delete',
+        previousValues: existing,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting role override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/commissions/user-overrides - Get all user overrides
+  app.get("/api/external/commissions/user-overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const overrides = await storage.getExternalCommissionUserOverrides(agencyId);
+      
+      const enrichedOverrides = await Promise.all(overrides.map(async (o) => {
+        const user = await storage.getUser(o.userId);
+        return {
+          ...o,
+          userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Usuario desconocido',
+          userRole: user?.role,
+        };
+      }));
+      
+      res.json(enrichedOverrides);
+    } catch (error: any) {
+      console.error("Error fetching user overrides:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/commissions/user-overrides - Create user override
+  app.post("/api/external/commissions/user-overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const existing = await storage.getExternalCommissionUserOverride(agencyId, req.body.userId);
+      if (existing) {
+        return res.status(400).json({ message: "Ya existe una configuración para este usuario" });
+      }
+
+      const override = await storage.createExternalCommissionUserOverride({
+        ...req.body,
+        agencyId,
+        createdBy: userId,
+      });
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'user_override',
+        entityId: override.id,
+        action: 'create',
+        newValues: override,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.status(201).json(override);
+    } catch (error: any) {
+      console.error("Error creating user override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/external/commissions/user-overrides/:id - Update user override
+  app.patch("/api/external/commissions/user-overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const overrides = await storage.getExternalCommissionUserOverrides(agencyId);
+      const existing = overrides.find(o => o.id === req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Override no encontrado" });
+      }
+
+      const previousValues = { ...existing };
+      const updated = await storage.updateExternalCommissionUserOverride(req.params.id, req.body);
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'user_override',
+        entityId: updated.id,
+        action: 'update',
+        previousValues,
+        newValues: updated,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating user override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/external/commissions/user-overrides/:id - Delete user override
+  app.delete("/api/external/commissions/user-overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const overrides = await storage.getExternalCommissionUserOverrides(agencyId);
+      const existing = overrides.find(o => o.id === req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Override no encontrado" });
+      }
+
+      await storage.deleteExternalCommissionUserOverride(req.params.id);
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'user_override',
+        entityId: req.params.id,
+        action: 'delete',
+        previousValues: existing,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting user override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/commissions/lead-overrides - Get lead/prospect overrides
+  app.get("/api/external/commissions/lead-overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { leadId, prospectId, userId } = req.query;
+      const overrides = await storage.getExternalCommissionLeadOverrides(agencyId, {
+        leadId: leadId as string,
+        prospectId: prospectId as string,
+        userId: userId as string,
+      });
+
+      const enrichedOverrides = await Promise.all(overrides.map(async (o) => {
+        const user = await storage.getUser(o.userId);
+        let leadName = null;
+        let prospectName = null;
+        
+        if (o.leadId) {
+          const lead = await storage.getExternalLead(o.leadId);
+          leadName = lead ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim() : null;
+        }
+        if (o.prospectId) {
+          const prospect = await storage.getExternalPropertyProspect(o.prospectId);
+          prospectName = prospect?.propertyName || null;
+        }
+        
+        return {
+          ...o,
+          userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Usuario desconocido',
+          leadName,
+          prospectName,
+        };
+      }));
+
+      res.json(enrichedOverrides);
+    } catch (error: any) {
+      console.error("Error fetching lead overrides:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/commissions/lead-overrides - Create lead/prospect override
+  app.post("/api/external/commissions/lead-overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const override = await storage.createExternalCommissionLeadOverride({
+        ...req.body,
+        agencyId,
+        createdBy: userId,
+      });
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'lead_override',
+        entityId: override.id,
+        action: 'create',
+        newValues: override,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.status(201).json(override);
+    } catch (error: any) {
+      console.error("Error creating lead override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/external/commissions/lead-overrides/:id - Update lead override
+  app.patch("/api/external/commissions/lead-overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const overrides = await storage.getExternalCommissionLeadOverrides(agencyId);
+      const existing = overrides.find(o => o.id === req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Override no encontrado" });
+      }
+
+      const previousValues = { ...existing };
+      const updated = await storage.updateExternalCommissionLeadOverride(req.params.id, req.body);
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'lead_override',
+        entityId: updated.id,
+        action: 'update',
+        previousValues,
+        newValues: updated,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating lead override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/external/commissions/lead-overrides/:id - Delete lead override
+  app.delete("/api/external/commissions/lead-overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+
+      const overrides = await storage.getExternalCommissionLeadOverrides(agencyId);
+      const existing = overrides.find(o => o.id === req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: "Override no encontrado" });
+      }
+
+      await storage.deleteExternalCommissionLeadOverride(req.params.id);
+
+      await storage.createExternalCommissionAuditLog({
+        agencyId,
+        entityType: 'lead_override',
+        entityId: req.params.id,
+        action: 'delete',
+        previousValues: existing,
+        changedBy: userId,
+        changedByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      });
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting lead override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/commissions/audit-logs - Get commission audit logs
+  app.get("/api/external/commissions/audit-logs", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { entityType, entityId, limit } = req.query;
+      const logs = await storage.getExternalCommissionAuditLogs(agencyId, {
+        entityType: entityType as string,
+        entityId: entityId as string,
+        limit: limit ? parseInt(limit as string) : 50,
+      });
+
+      res.json(logs);
+    } catch (error: any) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/commissions/calculate - Calculate effective commission for a user
+  app.post("/api/external/commissions/calculate", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { userId, userRole, commissionType, leadId, prospectId } = req.body;
+
+      if (!userId || !userRole || !commissionType) {
+        return res.status(400).json({ message: "Campos requeridos: userId, userRole, commissionType" });
+      }
+
+      const result = await storage.calculateEffectiveCommission({
+        agencyId,
+        userId,
+        userRole,
+        commissionType,
+        leadId,
+        prospectId,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error calculating commission:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/commissions/my-rates - Get current user's commission rates
+  app.get("/api/external/commissions/my-rates", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      const userRole = user?.role || 'external_agency_seller';
+
+      const [rentalRate, listedRate, recruitedRate] = await Promise.all([
+        storage.calculateEffectiveCommission({
+          agencyId,
+          userId,
+          userRole,
+          commissionType: 'rental',
+        }),
+        storage.calculateEffectiveCommission({
+          agencyId,
+          userId,
+          userRole,
+          commissionType: 'listed_property',
+        }),
+        storage.calculateEffectiveCommission({
+          agencyId,
+          userId,
+          userRole,
+          commissionType: 'recruited_property',
+        }),
+      ]);
+
+      res.json({
+        rental: rentalRate,
+        listedProperty: listedRate,
+        recruitedProperty: recruitedRate,
+      });
+    } catch (error: any) {
+      console.error("Error fetching my rates:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
   return httpServer;
 }
