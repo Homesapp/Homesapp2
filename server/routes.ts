@@ -32852,7 +32852,7 @@ ${{precio}}/mes
         secondaryImages: unit.secondaryImages || [],
         videos: unit.videos || [],
         virtualTourUrl: unit.virtualTourUrl,
-        locationUrl: unit.locationUrl,
+        googleMapsUrl: unit.googleMapsUrl,
         amenities: unit.amenities,
         condominiumName,
         squareMeters: unit.squareMeters,
