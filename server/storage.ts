@@ -498,6 +498,12 @@ import {
   externalCommissionAuditLogs,
   type ExternalCommissionAuditLog,
   type InsertExternalCommissionAuditLog,
+  externalLeadEmailSources,
+  type ExternalLeadEmailSource,
+  type InsertExternalLeadEmailSource,
+  externalLeadEmailImportLogs,
+  type ExternalLeadEmailImportLog,
+  type InsertExternalLeadEmailImportLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray, ne } from "drizzle-orm";

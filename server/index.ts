@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { startEmailImportWorker } from "./emailImportWorker";
 
 const app = express();
 
@@ -77,5 +78,8 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start email import worker
+    startEmailImportWorker();
   });
 })();

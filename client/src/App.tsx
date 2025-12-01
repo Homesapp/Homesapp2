@@ -146,6 +146,7 @@ import AdminOfferManagement from "@/pages/AdminOfferManagement";
 import AdminRentalFormManagement from "@/pages/AdminRentalFormManagement";
 import ExternalDashboard from "@/pages/ExternalDashboard";
 import ExternalAgencyConfig from "@/pages/ExternalAgencyConfig";
+import EmailLeadImport from "@/pages/EmailLeadImport";
 import ExternalAccounts from "@/pages/ExternalAccounts";
 import ExternalAccesses from "@/pages/ExternalAccesses";
 import ExternalProperties from "@/pages/ExternalProperties";
@@ -517,6 +518,13 @@ function AuthenticatedApp() {
               <Route path="/admin/external-publication-requests" component={AdminExternalPublicationRequests} />
               <Route path="/external/dashboard" component={ExternalDashboard} />
               <Route path="/external/agency" component={ExternalAgencyConfig} />
+              <Route path="/external/email-import">
+                {() => (
+                  <ProtectedRoute allowedRoles={ROLE_GROUPS.externalAdmins}>
+                    <EmailLeadImport />
+                  </ProtectedRoute>
+                )}
+              </Route>
               <Route path="/external/accounts" component={ExternalAccounts} />
               <Route path="/external/accesses" component={ExternalAccesses} />
               <Route path="/external/properties" component={ExternalProperties} />

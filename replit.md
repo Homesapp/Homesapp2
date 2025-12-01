@@ -125,6 +125,27 @@ The External Management System includes a comprehensive team chat system for sel
 - Multi-tenant isolation via agency_id filtering
 - API endpoints: GET/POST /api/external/chat/messages, /api/external/chat/attachments, /api/external/chat/points/leaderboard, /api/external/chat/points/my-points
 
+## Automated Email Lead Import
+The External Management System includes automated lead import from external real estate platforms via email parsing:
+- Supported providers: Tokko Broker, EasyBroker (with pluggable parser architecture for additional providers)
+- Gmail API integration for reading lead notification emails
+- Scheduled worker polls Gmail every 5 minutes for new lead emails
+- Provider-specific parsing strategies with pattern matching by sender email and subject lines
+- Duplicate detection using normalized name and phone number comparison
+- Message ID tracking to prevent reprocessing same emails
+- Database tables: `external_lead_email_sources` (configuration), `external_lead_email_import_logs` (audit trail)
+- API endpoints:
+  - GET/POST/PATCH/DELETE /api/external/email-sources (CRUD for email sources)
+  - GET /api/external/email-import-logs (view import history)
+  - POST /api/external/email-sources/:id/sync (trigger manual import)
+  - POST /api/external/email-sources/test-gmail (test Gmail connection)
+- UI page at /external/email-import with tabs for:
+  - Sources configuration (add/edit/delete email sources)
+  - Import logs with filtering and statistics
+  - Real-time status indicators for Gmail connection and worker activity
+- Security: OAuth tokens protected, PII redacted in logs, multi-tenant isolation via agency_id
+- Note: Requires gmail.readonly scope to be added to Google OAuth configuration for full functionality
+
 ## Searchable Dropdown Components
 The system includes reusable searchable dropdown components for improved UX:
 - `SearchableSelect`: Single-selection dropdown with type-to-search filtering

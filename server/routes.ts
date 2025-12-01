@@ -156,6 +156,8 @@ import {
   updateExternalClientIncidentSchema,
   externalClients,
   externalLeads,
+  externalLeadEmailSources,
+  externalLeadEmailImportLogs,
   externalLeadShowings,
   externalLeadReminders,
   externalLeadActivities,
@@ -41949,6 +41951,246 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
     // For now, we rely on polling
     console.log(`[Chat] Broadcasting to agency ${agencyId}:`, message.type);
   }
+
+
+  // ========================================
+  // EMAIL LEAD IMPORT ROUTES
+  // ========================================
+
+  // GET /api/external/email-sources - Get all email sources for agency
+  app.get("/api/external/email-sources", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const sources = await db.select()
+        .from(externalLeadEmailSources)
+        .where(eq(externalLeadEmailSources.agencyId, agencyId))
+        .orderBy(desc(externalLeadEmailSources.createdAt));
+
+      res.json(sources);
+    } catch (error: any) {
+      console.error("Error fetching email sources:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/email-sources - Create email source
+  app.post("/api/external/email-sources", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { provider, providerName, senderEmails, subjectPatterns, defaultSellerId, defaultSource, defaultRegistrationType, isActive } = req.body;
+
+      if (!provider || !providerName || !senderEmails || !Array.isArray(senderEmails) || senderEmails.length === 0) {
+        return res.status(400).json({ message: "Provider, provider name, and sender emails are required" });
+      }
+
+      const [source] = await db.insert(externalLeadEmailSources).values({
+        agencyId,
+        provider,
+        providerName,
+        senderEmails,
+        subjectPatterns: subjectPatterns || null,
+        defaultSellerId: defaultSellerId || null,
+        defaultSource: defaultSource || 'email_import',
+        defaultRegistrationType: defaultRegistrationType || 'seller',
+        isActive: isActive !== false,
+      }).returning();
+
+      res.status(201).json(source);
+    } catch (error: any) {
+      console.error("Error creating email source:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/external/email-sources/:id - Update email source
+  app.patch("/api/external/email-sources/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { id } = req.params;
+      const updates = req.body;
+
+      const [existingSource] = await db.select()
+        .from(externalLeadEmailSources)
+        .where(and(
+          eq(externalLeadEmailSources.id, id),
+          eq(externalLeadEmailSources.agencyId, agencyId)
+        ));
+
+      if (!existingSource) {
+        return res.status(404).json({ message: "Email source not found" });
+      }
+
+      const [updatedSource] = await db.update(externalLeadEmailSources)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(externalLeadEmailSources.id, id))
+        .returning();
+
+      res.json(updatedSource);
+    } catch (error: any) {
+      console.error("Error updating email source:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/external/email-sources/:id - Delete email source
+  app.delete("/api/external/email-sources/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { id } = req.params;
+
+      const [existingSource] = await db.select()
+        .from(externalLeadEmailSources)
+        .where(and(
+          eq(externalLeadEmailSources.id, id),
+          eq(externalLeadEmailSources.agencyId, agencyId)
+        ));
+
+      if (!existingSource) {
+        return res.status(404).json({ message: "Email source not found" });
+      }
+
+      await db.delete(externalLeadEmailSources)
+        .where(eq(externalLeadEmailSources.id, id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting email source:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/email-sources/:id/sync - Trigger manual sync for email source
+  app.post("/api/external/email-sources/:id/sync", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { id } = req.params;
+
+      const [source] = await db.select()
+        .from(externalLeadEmailSources)
+        .where(and(
+          eq(externalLeadEmailSources.id, id),
+          eq(externalLeadEmailSources.agencyId, agencyId)
+        ));
+
+      if (!source) {
+        return res.status(404).json({ message: "Email source not found" });
+      }
+
+      const { processEmailsForAgency } = await import('./emailLeadImportService');
+      const result = await processEmailsForAgency(agencyId, source);
+
+      res.json({
+        success: true,
+        imported: result.imported,
+        duplicates: result.duplicates,
+        errors: result.errors,
+      });
+    } catch (error: any) {
+      console.error("Error syncing email source:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/email-import-logs - Get import logs for agency
+  app.get("/api/external/email-import-logs", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { sourceId, status, limit = 50, offset = 0 } = req.query;
+
+      const conditions: SQL<unknown>[] = [eq(externalLeadEmailImportLogs.agencyId, agencyId)];
+      
+      if (sourceId) {
+        conditions.push(eq(externalLeadEmailImportLogs.sourceId, sourceId as string));
+      }
+      
+      if (status) {
+        conditions.push(eq(externalLeadEmailImportLogs.status, status as any));
+      }
+
+      const logs = await db.select()
+        .from(externalLeadEmailImportLogs)
+        .where(and(...conditions))
+        .orderBy(desc(externalLeadEmailImportLogs.createdAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      const [countResult] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(externalLeadEmailImportLogs)
+        .where(and(...conditions));
+
+      res.json({
+        data: logs,
+        total: countResult?.count || 0,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      });
+    } catch (error: any) {
+      console.error("Error fetching import logs:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/email-import-stats - Get import statistics for agency
+  app.get("/api/external/email-import-stats", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const sources = await db.select({
+        id: externalLeadEmailSources.id,
+        providerName: externalLeadEmailSources.providerName,
+        provider: externalLeadEmailSources.provider,
+        isActive: externalLeadEmailSources.isActive,
+        lastSyncAt: externalLeadEmailSources.lastSyncAt,
+        totalImported: externalLeadEmailSources.totalImported,
+        totalDuplicates: externalLeadEmailSources.totalDuplicates,
+        totalErrors: externalLeadEmailSources.totalErrors,
+      })
+        .from(externalLeadEmailSources)
+        .where(eq(externalLeadEmailSources.agencyId, agencyId));
+
+      const totals = sources.reduce((acc, s) => ({
+        totalImported: acc.totalImported + (s.totalImported || 0),
+        totalDuplicates: acc.totalDuplicates + (s.totalDuplicates || 0),
+        totalErrors: acc.totalErrors + (s.totalErrors || 0),
+      }), { totalImported: 0, totalDuplicates: 0, totalErrors: 0 });
+
+      res.json({
+        sources,
+        totals,
+      });
+    } catch (error: any) {
+      console.error("Error fetching import stats:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/email-sources/test-gmail - Test Gmail connection
+  app.post("/api/external/email-sources/test-gmail", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { testGmailConnection } = await import('./emailLeadImportService');
+      const connected = await testGmailConnection();
+      res.json({ connected });
+    } catch (error: any) {
+      console.error("Error testing Gmail connection:", error);
+      res.status(500).json({ message: error.message, connected: false });
+    }
+  });
 
 
   return httpServer;
