@@ -719,44 +719,55 @@ export default function PublicUnitDetail() {
 
       {/* Expanded Image Dialog */}
       <Dialog open={expandedImageIndex !== null} onOpenChange={() => setExpandedImageIndex(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-0">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-background border shadow-xl">
+          {/* Close button */}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-4 top-4 z-10 text-white hover:bg-white/20 min-h-[44px] min-w-[44px]"
+            className="absolute right-4 top-4 z-20 min-h-[44px] min-w-[44px] bg-background/80 hover:bg-muted"
             onClick={() => setExpandedImageIndex(null)}
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </Button>
+          
           {expandedImageIndex !== null && (
-            <div className="relative flex items-center justify-center min-h-[70vh]">
+            <div className="relative flex items-center justify-center min-h-[70vh] px-16">
+              {/* Left navigation button */}
+              {images.length > 1 && (
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 min-h-[52px] min-w-[52px] rounded-full shadow-lg"
+                  onClick={() => setExpandedImageIndex((prev) => (prev! - 1 + images.length) % images.length)}
+                >
+                  <ChevronLeft className="h-7 w-7" />
+                </Button>
+              )}
+              
+              {/* Image */}
               <img
                 src={images[expandedImageIndex]}
                 alt={`${propertyTitle} - ${expandedImageIndex + 1}`}
-                className="max-w-full max-h-[90vh] object-contain"
+                className="max-w-full max-h-[85vh] object-contain rounded-lg"
               />
+              
+              {/* Right navigation button */}
               {images.length > 1 && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-4 text-white hover:bg-white/20 min-h-[52px] min-w-[52px]"
-                    onClick={() => setExpandedImageIndex((prev) => (prev! - 1 + images.length) % images.length)}
-                  >
-                    <ChevronLeft className="h-8 w-8" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-4 text-white hover:bg-white/20 min-h-[52px] min-w-[52px]"
-                    onClick={() => setExpandedImageIndex((prev) => (prev! + 1) % images.length)}
-                  >
-                    <ChevronRight className="h-8 w-8" />
-                  </Button>
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full">
-                    {expandedImageIndex + 1} / {images.length}
-                  </div>
-                </>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 min-h-[52px] min-w-[52px] rounded-full shadow-lg"
+                  onClick={() => setExpandedImageIndex((prev) => (prev! + 1) % images.length)}
+                >
+                  <ChevronRight className="h-7 w-7" />
+                </Button>
+              )}
+              
+              {/* Image counter */}
+              {images.length > 1 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-foreground/80 text-background px-4 py-2 rounded-full text-sm font-medium">
+                  {expandedImageIndex + 1} / {images.length}
+                </div>
               )}
             </div>
           )}
