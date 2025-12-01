@@ -84,6 +84,8 @@ export function UnitImageGallery({
       uploadSuccess: "Imagen(es) subida(s) correctamente",
       uploadError: "Error al subir imagen(es)",
       deleteSuccess: "Imagen eliminada",
+      setCover: "Poner de portada",
+      coverSet: "Portada cambiada",
     },
     en: {
       gallery: "Photo Gallery",
@@ -113,10 +115,26 @@ export function UnitImageGallery({
       uploadSuccess: "Image(s) uploaded successfully",
       uploadError: "Error uploading image(s)",
       deleteSuccess: "Image deleted",
+      setCover: "Set as cover",
+      coverSet: "Cover image changed",
     },
   };
 
   const t = texts[language];
+
+  const handleSetCover = (index: number) => {
+    if (!onUpdate || index === 0) return;
+    const newPrimaryImages = [...primaryImages];
+    const [coverImage] = newPrimaryImages.splice(index, 1);
+    newPrimaryImages.unshift(coverImage);
+    onUpdate({
+      primaryImages: newPrimaryImages,
+      secondaryImages,
+      videos,
+      virtualTourUrl,
+    });
+    toast({ title: language === "es" ? "Portada cambiada" : "Cover image changed" });
+  };
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -418,7 +436,7 @@ export function UnitImageGallery({
                   <p className="text-xs font-medium text-muted-foreground mb-2">
                     {t.primaryImages} ({primaryImages.length}/5)
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                     {primaryImages.map((url, index) => (
                       <div
                         key={`primary-${index}`}
@@ -436,24 +454,41 @@ export function UnitImageGallery({
                           }}
                         />
                         {index === 0 && (
-                          <Badge variant="default" className="absolute top-1 left-1 text-xs">
-                            <Star className="h-3 w-3 mr-0.5" />
+                          <Badge variant="default" className="absolute top-1 left-1 text-xs py-0.5 px-1">
+                            <Star className="h-2.5 w-2.5 mr-0.5" />
                             {t.cover}
                           </Badge>
                         )}
                         {!readOnly && onUpdate && (
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveMedia("primary", index);
-                            }}
-                            data-testid={`button-remove-primary-${index}`}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {index !== 0 && (
+                              <Button
+                                variant="secondary"
+                                size="icon"
+                                className="h-5 w-5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSetCover(index);
+                                }}
+                                title={t.setCover}
+                                data-testid={`button-set-cover-${index}`}
+                              >
+                                <Star className="h-2.5 w-2.5" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMedia("primary", index);
+                              }}
+                              data-testid={`button-remove-primary-${index}`}
+                            >
+                              <Trash2 className="h-2.5 w-2.5" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -466,11 +501,11 @@ export function UnitImageGallery({
                   <p className="text-xs font-medium text-muted-foreground mb-2">
                     {t.secondaryImages} ({secondaryImages.length}/20)
                   </p>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-1">
                     {secondaryImages.map((url, index) => (
                       <div
                         key={`secondary-${index}`}
-                        className="relative group aspect-square rounded-md overflow-hidden cursor-pointer border"
+                        className="relative group aspect-square rounded overflow-hidden cursor-pointer border"
                         onClick={() => openLightbox(primaryImages.length + index)}
                         data-testid={`image-secondary-${index}`}
                       >
@@ -487,14 +522,14 @@ export function UnitImageGallery({
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-0.5 right-0.5 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRemoveMedia("secondary", index);
                             }}
                             data-testid={`button-remove-secondary-${index}`}
                           >
-                            <Trash2 className="h-2.5 w-2.5" />
+                            <Trash2 className="h-2 w-2" />
                           </Button>
                         )}
                       </div>
