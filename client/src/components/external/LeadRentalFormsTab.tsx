@@ -281,9 +281,21 @@ export default function LeadRentalFormsTab({ lead, dialogOpen, onDialogOpenChang
         <h4 className="font-medium text-sm">
           {language === "es" ? "Formatos de Renta" : "Rental Forms"}
         </h4>
-        <Badge variant="outline">
-          {rentalForms?.length || 0} {language === "es" ? "enviados" : "sent"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {/* Send Form button - visible on web only (mobile uses FAB) */}
+          <Button
+            size="sm"
+            className="hidden md:flex gap-1.5"
+            onClick={() => handleDialogOpenChange(true)}
+            data-testid="button-send-rental-form"
+          >
+            <Send className="h-4 w-4" />
+            {language === "es" ? "Enviar Formato" : "Send Form"}
+          </Button>
+          <Badge variant="outline">
+            {rentalForms?.length || 0} {language === "es" ? "enviados" : "sent"}
+          </Badge>
+        </div>
       </div>
 
       {isLoading ? (

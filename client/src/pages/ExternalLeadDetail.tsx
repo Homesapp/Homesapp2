@@ -136,6 +136,9 @@ export default function ExternalLeadDetail() {
   const [matched, params] = useRoute("/external/leads/:id");
   const leadId = params?.id;
   
+  // Check if user is a seller (can only unassign, not delete)
+  const isSeller = user?.role === 'external_agency_seller';
+  
   const [activeTab, setActiveTab] = useState("cards");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
@@ -222,6 +225,31 @@ export default function ExternalLeadDetail() {
         title: language === "es" ? "Lead eliminado" : "Lead deleted",
       });
       navigate("/external/leads");
+    },
+  });
+
+  // Unassign mutation for sellers - removes seller assignment instead of deleting
+  const unassignMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/external-leads/${leadId}/unassign`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-leads", leadId] });
+      toast({
+        title: language === "es" ? "Lead desasignado" : "Lead unassigned",
+        description: language === "es" 
+          ? "El lead ha sido devuelto a la agencia" 
+          : "The lead has been returned to the agency",
+      });
+      navigate("/external/clients");
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "No se pudo desasignar el lead" : "Could not unassign lead"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -476,11 +504,20 @@ export default function ExternalLeadDetail() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                className="text-destructive"
+                className={isSeller ? "text-amber-600" : "text-destructive"}
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {language === "es" ? "Eliminar" : "Delete"}
+                {isSeller ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Desasignar Lead" : "Unassign Lead"}
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {language === "es" ? "Eliminar" : "Delete"}
+                  </>
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1045,11 +1082,20 @@ export default function ExternalLeadDetail() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  className="text-destructive"
+                  className={isSeller ? "text-amber-600" : "text-destructive"}
                   onClick={() => setIsDeleteDialogOpen(true)}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {language === "es" ? "Eliminar" : "Delete"}
+                  {isSeller ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      {language === "es" ? "Desasignar Lead" : "Unassign Lead"}
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {language === "es" ? "Eliminar" : "Delete"}
+                    </>
+                  )}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1239,17 +1285,23 @@ export default function ExternalLeadDetail() {
         label={fabConfig.label}
       />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete/Unassign Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {language === "es" ? "Eliminar Lead" : "Delete Lead"}
+              {isSeller
+                ? (language === "es" ? "Desasignar Lead" : "Unassign Lead")
+                : (language === "es" ? "Eliminar Lead" : "Delete Lead")}
             </DialogTitle>
             <DialogDescription>
-              {language === "es" 
-                ? `¿Estás seguro de que deseas eliminar a ${lead.firstName} ${lead.lastName}? Esta acción no se puede deshacer.`
-                : `Are you sure you want to delete ${lead.firstName} ${lead.lastName}? This action cannot be undone.`}
+              {isSeller
+                ? (language === "es" 
+                    ? `¿Estás seguro de que deseas desasignar a ${lead.firstName} ${lead.lastName}? El lead será devuelto a la agencia para que pueda ser asignado a otro vendedor.`
+                    : `Are you sure you want to unassign ${lead.firstName} ${lead.lastName}? The lead will be returned to the agency so it can be assigned to another seller.`)
+                : (language === "es" 
+                    ? `¿Estás seguro de que deseas eliminar a ${lead.firstName} ${lead.lastName}? Esta acción no se puede deshacer.`
+                    : `Are you sure you want to delete ${lead.firstName} ${lead.lastName}? This action cannot be undone.`)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -1259,16 +1311,30 @@ export default function ExternalLeadDetail() {
             >
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteMutation.mutate()}
-              disabled={deleteMutation.isPending}
-              data-testid="button-confirm-delete"
-            >
-              {deleteMutation.isPending 
-                ? (language === "es" ? "Eliminando..." : "Deleting...")
-                : (language === "es" ? "Eliminar" : "Delete")}
-            </Button>
+            {isSeller ? (
+              <Button
+                variant="default"
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={() => unassignMutation.mutate()}
+                disabled={unassignMutation.isPending}
+                data-testid="button-confirm-unassign"
+              >
+                {unassignMutation.isPending 
+                  ? (language === "es" ? "Desasignando..." : "Unassigning...")
+                  : (language === "es" ? "Desasignar" : "Unassign")}
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending 
+                  ? (language === "es" ? "Eliminando..." : "Deleting...")
+                  : (language === "es" ? "Eliminar" : "Delete")}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

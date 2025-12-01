@@ -187,13 +187,25 @@ export default function LeadOffersSection({ lead, dialogOpen, onDialogOpenChange
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2">
         <h4 className="font-medium text-sm">
           {language === "es" ? "Ofertas Enviadas" : "Offers Sent"}
         </h4>
-        <Badge variant="outline">
-          {propertyOffers?.length || 0} {language === "es" ? "enviadas" : "sent"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {/* Send Offer button - visible on web only (mobile uses FAB) */}
+          <Button
+            size="sm"
+            className="hidden md:flex gap-1.5"
+            onClick={() => handleDialogOpenChange(true)}
+            data-testid="button-send-offer"
+          >
+            <Send className="h-4 w-4" />
+            {language === "es" ? "Enviar Oferta" : "Send Offer"}
+          </Button>
+          <Badge variant="outline">
+            {propertyOffers?.length || 0} {language === "es" ? "enviadas" : "sent"}
+          </Badge>
+        </div>
       </div>
 
       {offersLoading ? (

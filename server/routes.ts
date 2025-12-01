@@ -30634,6 +30634,54 @@ ${{precio}}/mes
     }
   });
 
+  // POST /api/external-leads/:id/unassign - Unassign lead from seller (seller can unassign their own leads)
+  app.post("/api/external-leads/:id/unassign", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getExternalLead(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      const userRole = req.user?.cachedRole || req.user?.role;
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const isSeller = userRole === 'external_agency_seller';
+      
+      // Sellers can only unassign leads that are assigned to them
+      if (isSeller && existing.assignedSellerId !== userId) {
+        return res.status(403).json({ 
+          message: "Solo puedes desasignar leads que te están asignados" 
+        });
+      }
+      
+      // Security: Block unassigning leads in locked statuses
+      const lockedStatuses = ["proceso_renta", "renta_concretada"];
+      if (lockedStatuses.includes(existing.status)) {
+        return res.status(403).json({ 
+          message: "No puedes desasignar un lead en proceso de renta o renta concretada" 
+        });
+      }
+      
+      // Unassign the lead by setting assignedSellerId to null
+      const lead = await storage.updateExternalLead(id, { 
+        assignedSellerId: null,
+        assignedSellerName: null
+      });
+      
+      await createAuditLog(req, "unassign", "external_lead", id, 
+        `Seller ${userId} unassigned lead from themselves`);
+      
+      res.json(lead);
+    } catch (error: any) {
+      console.error("Error unassigning external lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // External Lead Registration Links Endpoints
 
   // POST /api/external-leads/import - Bulk import leads from CSV/Excel
