@@ -24794,7 +24794,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public simplified lead registration endpoints (no tokens required)
+  // Public endpoint for external properties (for main site map and search)
+  app.get("/api/public/external-properties", async (req: any, res) => {
+    try {
+      const {
+        limit = "50",
+        offset = "0",
+        hasCoordinates,
+        query,
+        propertyType,
+        minPrice,
+        maxPrice,
+        bedrooms,
+        bathrooms,
+        petFriendly,
+        featured,
+        colonyName,
+        status,
+        listingType
+      } = req.query;
+
+      // Get Tulum Rental Homes agency (the main public-facing agency)
+      const agency = await storage.getExternalAgencyBySlug("tulumrentalhomes");
+      if (!agency) {
+        return res.json({ properties: [], total: 0 });
+      }
+
+      // Build conditions for approved properties only
+      const conditions: any[] = [
+        eq(externalUnits.agencyId, agency.id),
+        eq(externalUnits.publishToMain, true),
+        eq(externalUnits.publishStatus, 'approved')
+      ];
+
+      // Optional filters
+      if (hasCoordinates === 'true') {
+        conditions.push(isNotNull(externalUnits.latitude));
+        conditions.push(isNotNull(externalUnits.longitude));
+      }
+
+      if (query) {
+        conditions.push(
+          or(
+            ilike(externalUnits.unitNumber, `%${query}%`),
+            ilike(externalUnits.description, `%${query}%`)
+          )
+        );
+      }
+
+      if (propertyType) {
+        conditions.push(eq(externalUnits.propertyType, propertyType));
+      }
+
+      if (minPrice) {
+        conditions.push(gte(externalUnits.price, parseFloat(minPrice)));
+      }
+      if (maxPrice) {
+        conditions.push(lte(externalUnits.price, parseFloat(maxPrice)));
+      }
+
+      if (bedrooms) {
+        conditions.push(eq(externalUnits.bedrooms, parseInt(bedrooms)));
+      }
+      if (bathrooms) {
+        conditions.push(eq(externalUnits.bathrooms, parseFloat(bathrooms)));
+      }
+
+      if (petFriendly === 'true') {
+        conditions.push(
+          or(
+            eq(externalUnits.petsAllowed, true),
+            ilike(sql`CAST(${externalUnits.petsAllowed} AS TEXT)`, '%Sí%')
+          )
+        );
+      }
+
+      if (featured === 'true') {
+        conditions.push(eq(externalUnits.isFeatured, true));
+      }
+
+      if (colonyName) {
+        conditions.push(ilike(externalUnits.zone, `%${colonyName}%`));
+      }
+
+      if (status) {
+        conditions.push(eq(externalUnits.status, status as any));
+      }
+
+      if (listingType && listingType !== 'all') {
+        conditions.push(eq(externalUnits.listingType, listingType));
+      }
+
+      // Count total
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(externalUnits)
+        .where(and(...conditions));
+
+      // Get properties with condominium info
+      const properties = await db
+        .select({
+          id: externalUnits.id,
+          slug: externalUnits.slug,
+          unitNumber: externalUnits.unitNumber,
+          propertyType: externalUnits.propertyType,
+          description: externalUnits.description,
+          price: externalUnits.price,
+          salePrice: externalUnits.salePrice,
+          currency: externalUnits.currency,
+          listingType: externalUnits.listingType,
+          bedrooms: externalUnits.bedrooms,
+          bathrooms: externalUnits.bathrooms,
+          area: externalUnits.area,
+          areaUnit: externalUnits.areaUnit,
+          zone: externalUnits.zone,
+          petsAllowed: externalUnits.petsAllowed,
+          amenities: externalUnits.amenities,
+          primaryImages: externalUnits.primaryImages,
+          latitude: externalUnits.latitude,
+          longitude: externalUnits.longitude,
+          isFeatured: externalUnits.isFeatured,
+          status: externalUnits.status,
+          condominiumId: externalUnits.condominiumId,
+          condominiumName: externalCondominiums.name,
+          condominiumAddress: externalCondominiums.address,
+          googleMapsUrl: externalUnits.googleMapsUrl,
+          agencyId: externalUnits.agencyId
+        })
+        .from(externalUnits)
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
+        .where(and(...conditions))
+        .orderBy(desc(externalUnits.isFeatured), desc(externalUnits.createdAt))
+        .limit(parseInt(limit))
+        .offset(parseInt(offset));
+
+      res.json({
+        properties,
+        total: Number(countResult?.count) || 0
+      });
+    } catch (error: any) {
+      console.error("Error fetching public external properties:", error);
+      res.status(500).json({ message: "Failed to fetch properties" });
+    }
+  });
+
+    // Public simplified lead registration endpoints (no tokens required)
   // POST /api/public/leads/vendedor - Public vendedor registration
   app.post("/api/public/leads/vendedor", async (req, res) => {
     try {
