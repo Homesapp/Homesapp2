@@ -10388,16 +10388,9 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalLeads.registrationType, filters.registrationType));
     }
     if (filters?.sellerId) {
-      if (filters?.sellerScope) {
-        conditions.push(
-          or(
-            eq(externalLeads.sellerId, filters.sellerId),
-            eq(externalLeads.createdBy, filters.sellerId)
-          )!
-        );
-      } else {
-        conditions.push(eq(externalLeads.sellerId, filters.sellerId));
-      }
+      // When sellerScope is true, only show leads assigned to the seller (sellerId)
+      // This ensures unassigned leads (sellerId = null) don't appear in seller's view
+      conditions.push(eq(externalLeads.sellerId, filters.sellerId));
     }
     if (filters?.expiringDays) {
       const EXPIRY_DAYS = 90;
@@ -10515,16 +10508,9 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(externalLeads.registrationType, filters.registrationType));
     }
     if (filters?.sellerId) {
-      if (filters?.sellerScope) {
-        conditions.push(
-          or(
-            eq(externalLeads.sellerId, filters.sellerId),
-            eq(externalLeads.createdBy, filters.sellerId)
-          )!
-        );
-      } else {
-        conditions.push(eq(externalLeads.sellerId, filters.sellerId));
-      }
+      // When sellerScope is true, only show leads assigned to the seller (sellerId)
+      // This ensures unassigned leads (sellerId = null) don't appear in seller's view
+      conditions.push(eq(externalLeads.sellerId, filters.sellerId));
     }
     if (filters?.expiringDays) {
       const EXPIRY_DAYS = 90;
