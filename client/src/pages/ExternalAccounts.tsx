@@ -40,6 +40,7 @@ const createUserSchema = z.object({
   phone: z.string().optional(),
   role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]),
   maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
+  commissionRate: z.enum(["10", "20", "40", "50"]).optional(),
 });
 
 const updateUserSchema = z.object({
@@ -48,6 +49,7 @@ const updateUserSchema = z.object({
   phone: z.string().optional(),
   role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]),
   maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
+  commissionRate: z.enum(["10", "20", "40", "50"]).optional(),
 });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
@@ -543,6 +545,7 @@ export default function ExternalAccounts() {
       phone: user.phone || "",
       role: user.role as any,
       maintenanceSpecialty: (user.maintenanceSpecialty || undefined) as any,
+      commissionRate: ((user as any).commissionRate || undefined) as any,
     });
     setEditUserId(user.id);
   };
@@ -1165,6 +1168,31 @@ The HomesApp Team`;
                       )}
                     />
                   )}
+                  {form.watch("role") === "external_agency_seller" && (
+                    <FormField
+                      control={form.control}
+                      name="commissionRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{language === "es" ? "Porcentaje de Comisión" : "Commission Rate"}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-commission-rate">
+                                <SelectValue placeholder={language === "es" ? "Selecciona porcentaje..." : "Select rate..."} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="50">50% - {language === "es" ? "Vendedor Senior" : "Senior Seller"}</SelectItem>
+                              <SelectItem value="40">40% - {language === "es" ? "Vendedor Intermedio" : "Mid Seller"}</SelectItem>
+                              <SelectItem value="20">20% - {language === "es" ? "Vendedor Junior" : "Junior Seller"}</SelectItem>
+                              <SelectItem value="10">10% - {language === "es" ? "Vendedor Nuevo" : "New Seller"}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 <DialogFooter className="pt-4 border-t gap-2">
@@ -1626,6 +1654,10 @@ The HomesApp Team`;
                           <Badge variant="outline" className="text-xs">
                             {SPECIALTY_LABELS[language][user.maintenanceSpecialty as keyof typeof SPECIALTY_LABELS.es]}
                           </Badge>
+                        ) : user.role === "external_agency_seller" && (user as any).commissionRate ? (
+                          <Badge variant="outline" className="text-xs">
+                            {(user as any).commissionRate}% {language === "es" ? "Comisión" : "Commission"}
+                          </Badge>
                         ) : '-'}
                       </TableCell>
                       <TableCell>
@@ -1745,6 +1777,15 @@ The HomesApp Team`;
                     <UserIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <Badge variant="outline" className="text-xs">
                       {SPECIALTY_LABELS[language][user.maintenanceSpecialty as keyof typeof SPECIALTY_LABELS.es]}
+                    </Badge>
+                  </div>
+                )}
+                
+                {user.role === "external_agency_seller" && (user as any).commissionRate && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calculator className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <Badge variant="outline" className="text-xs">
+                      {(user as any).commissionRate}% {language === "es" ? "Comisión" : "Commission"}
                     </Badge>
                   </div>
                 )}
@@ -1932,6 +1973,31 @@ The HomesApp Team`;
                           <SelectItem value="jardinero">{SPECIALTY_LABELS[language].jardinero}</SelectItem>
                           <SelectItem value="albanil">{SPECIALTY_LABELS[language].albanil}</SelectItem>
                           <SelectItem value="limpieza">{SPECIALTY_LABELS[language].limpieza}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {editForm.watch("role") === "external_agency_seller" && (
+                <FormField
+                  control={editForm.control}
+                  name="commissionRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{language === "es" ? "Porcentaje de Comisión" : "Commission Rate"}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-commission-rate">
+                            <SelectValue placeholder={language === "es" ? "Selecciona porcentaje..." : "Select rate..."} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="50">50% - {language === "es" ? "Vendedor Senior" : "Senior Seller"}</SelectItem>
+                          <SelectItem value="40">40% - {language === "es" ? "Vendedor Intermedio" : "Mid Seller"}</SelectItem>
+                          <SelectItem value="20">20% - {language === "es" ? "Vendedor Junior" : "Junior Seller"}</SelectItem>
+                          <SelectItem value="10">10% - {language === "es" ? "Vendedor Nuevo" : "New Seller"}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

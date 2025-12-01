@@ -87,6 +87,7 @@ interface LeadKanbanViewProps {
   onEdit: (lead: ExternalLeadWithActiveCard) => void;
   onDelete: (lead: ExternalLeadWithActiveCard) => void;
   onViewDetail?: (lead: ExternalLeadWithActiveCard) => void;
+  canDelete?: boolean;
 }
 
 interface KanbanColumnDef {
@@ -147,11 +148,13 @@ function DraggableLeadCard({
   onEdit,
   onDelete,
   isDragging = false,
+  canDelete = true,
 }: {
   lead: ExternalLeadWithActiveCard;
   onEdit: (lead: ExternalLeadWithActiveCard) => void;
   onDelete: (lead: ExternalLeadWithActiveCard) => void;
   isDragging?: boolean;
+  canDelete?: boolean;
 }) {
   const { language } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, isDragging: dragging } = useDraggable({
@@ -204,14 +207,16 @@ function DraggableLeadCard({
               <Pencil className="mr-2 h-4 w-4" />
               {language === "es" ? "Editar" : "Edit"}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(lead)}
-              className="text-destructive"
-              data-testid={`button-delete-lead-${lead.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {language === "es" ? "Eliminar" : "Delete"}
-            </DropdownMenuItem>
+            {canDelete && (
+              <DropdownMenuItem
+                onClick={() => onDelete(lead)}
+                className="text-destructive"
+                data-testid={`button-delete-lead-${lead.id}`}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {language === "es" ? "Eliminar" : "Delete"}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
@@ -285,11 +290,13 @@ function MobileLeadCard({
   onEdit,
   onDelete,
   onUpdateStatus,
+  canDelete = true,
 }: {
   lead: ExternalLeadWithActiveCard;
   onEdit: (lead: ExternalLeadWithActiveCard) => void;
   onDelete: (lead: ExternalLeadWithActiveCard) => void;
   onUpdateStatus: (leadId: string, newStatus: LeadStatus) => void;
+  canDelete?: boolean;
 }) {
   const { language } = useLanguage();
 
@@ -405,15 +412,17 @@ function MobileLeadCard({
           >
             <Pencil className="h-5 w-5" />
           </Button>
-          <Button
-            variant="outline"
-            className="h-11 min-w-11"
-            size="icon"
-            onClick={() => onDelete(lead)}
-            data-testid={`button-delete-mobile-${lead.id}`}
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
+          {canDelete && (
+            <Button
+              variant="outline"
+              className="h-11 min-w-11"
+              size="icon"
+              onClick={() => onDelete(lead)}
+              data-testid={`button-delete-mobile-${lead.id}`}
+            >
+              <Trash2 className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -427,6 +436,7 @@ function MobileKanbanColumn({
   onDelete,
   onUpdateStatus,
   language,
+  canDelete = true,
 }: {
   column: KanbanColumnDef;
   leads: ExternalLeadWithActiveCard[];
@@ -434,6 +444,7 @@ function MobileKanbanColumn({
   onDelete: (lead: ExternalLeadWithActiveCard) => void;
   onUpdateStatus: (leadId: string, newStatus: LeadStatus) => void;
   language: string;
+  canDelete?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(leads.length > 0);
   const label = language === "es" ? column.labelEs : column.labelEn;
@@ -468,6 +479,7 @@ function MobileKanbanColumn({
               onEdit={onEdit}
               onDelete={onDelete}
               onUpdateStatus={onUpdateStatus}
+              canDelete={canDelete}
             />
           ))
         )}
@@ -481,6 +493,7 @@ export default function LeadKanbanView({
   onUpdateStatus,
   onEdit,
   onDelete,
+  canDelete = true,
 }: LeadKanbanViewProps) {
   const { language } = useLanguage();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -534,6 +547,7 @@ export default function LeadKanbanView({
               onDelete={onDelete}
               onUpdateStatus={onUpdateStatus}
               language={language}
+              canDelete={canDelete}
             />
           );
         })}
@@ -567,6 +581,7 @@ export default function LeadKanbanView({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   isDragging={activeId === lead.id}
+                  canDelete={canDelete}
                 />
               ))}
             </DroppableColumn>
@@ -576,7 +591,7 @@ export default function LeadKanbanView({
 
       <DragOverlay>
         {activeLead ? (
-          <DraggableLeadCard lead={activeLead} onEdit={onEdit} onDelete={onDelete} isDragging />
+          <DraggableLeadCard lead={activeLead} onEdit={onEdit} onDelete={onDelete} isDragging canDelete={canDelete} />
         ) : null}
       </DragOverlay>
     </DndContext>

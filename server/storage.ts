@@ -504,6 +504,12 @@ import {
   externalLeadEmailImportLogs,
   type ExternalLeadEmailImportLog,
   type InsertExternalLeadEmailImportLog,
+  externalSellerCommissionDefaults,
+  type ExternalSellerCommissionDefault,
+  type InsertExternalSellerCommissionDefault,
+  externalSellerCommissionOverrides,
+  type ExternalSellerCommissionOverride,
+  type InsertExternalSellerCommissionOverride,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, ilike, asc, desc, sql, isNull, isNotNull, count, inArray, SQL, between, not, notInArray, ne } from "drizzle-orm";
@@ -1882,6 +1888,20 @@ export interface IStorage {
     source: 'lead_override' | 'user_override' | 'role_override' | 'agency_default';
     sourceId?: string;
     notes?: string;
+  }>;
+
+  // Seller Commission Rate Management (new payment percentage system)
+  getSellerCommissionDefaults(agencyId: string): Promise<ExternalSellerCommissionDefault[]>;
+  upsertSellerCommissionDefault(data: InsertExternalSellerCommissionDefault): Promise<ExternalSellerCommissionDefault>;
+  getSellerCommissionOverrides(agencyId: string): Promise<ExternalSellerCommissionOverride[]>;
+  createSellerCommissionOverride(data: InsertExternalSellerCommissionOverride): Promise<ExternalSellerCommissionOverride>;
+  updateSellerCommissionOverride(id: string, data: Partial<InsertExternalSellerCommissionOverride>): Promise<ExternalSellerCommissionOverride | undefined>;
+  deleteSellerCommissionOverride(id: string): Promise<void>;
+  getResolvedSellerCommissionRates(agencyId: string, userId: string, userRole: string): Promise<{
+    rentalNoReferral: { rate: number; source: string; sourceId?: string };
+    rentalWithReferral: { rate: number; source: string; sourceId?: string };
+    propertyRecruitment: { rate: number; source: string; sourceId?: string };
+    brokerReferral: { rate: number; source: string; sourceId?: string };
   }>;
 }
 
@@ -13395,6 +13415,139 @@ export class DatabaseStorage implements IStorage {
       rate: defaultRates[commissionType],
       source: 'agency_default',
       notes: 'Default system rate - no agency profile configured'
+    };
+  }
+
+  // =====================================================
+  // SELLER COMMISSION RATE MANAGEMENT (Payment Percentages)
+  // =====================================================
+
+  async getSellerCommissionDefaults(agencyId: string): Promise<ExternalSellerCommissionDefault[]> {
+    return await db.select()
+      .from(externalSellerCommissionDefaults)
+      .where(eq(externalSellerCommissionDefaults.agencyId, agencyId));
+  }
+
+  async upsertSellerCommissionDefault(data: InsertExternalSellerCommissionDefault): Promise<ExternalSellerCommissionDefault> {
+    const [result] = await db.insert(externalSellerCommissionDefaults)
+      .values({
+        ...data,
+        updatedAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: [externalSellerCommissionDefaults.agencyId, externalSellerCommissionDefaults.concept],
+        set: {
+          rate: data.rate,
+          descriptionEs: data.descriptionEs,
+          descriptionEn: data.descriptionEn,
+          updatedBy: data.updatedBy,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    return result;
+  }
+
+  async getSellerCommissionOverrides(agencyId: string): Promise<ExternalSellerCommissionOverride[]> {
+    return await db.select()
+      .from(externalSellerCommissionOverrides)
+      .where(eq(externalSellerCommissionOverrides.agencyId, agencyId))
+      .orderBy(desc(externalSellerCommissionOverrides.createdAt));
+  }
+
+  async createSellerCommissionOverride(data: InsertExternalSellerCommissionOverride): Promise<ExternalSellerCommissionOverride> {
+    const [result] = await db.insert(externalSellerCommissionOverrides)
+      .values(data)
+      .returning();
+    return result;
+  }
+
+  async updateSellerCommissionOverride(id: string, data: Partial<InsertExternalSellerCommissionOverride>): Promise<ExternalSellerCommissionOverride | undefined> {
+    const [result] = await db.update(externalSellerCommissionOverrides)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(externalSellerCommissionOverrides.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteSellerCommissionOverride(id: string): Promise<void> {
+    await db.delete(externalSellerCommissionOverrides)
+      .where(eq(externalSellerCommissionOverrides.id, id));
+  }
+
+  async getResolvedSellerCommissionRates(agencyId: string, userId: string, userRole: string): Promise<{
+    rentalNoReferral: { rate: number; source: string; sourceId?: string };
+    rentalWithReferral: { rate: number; source: string; sourceId?: string };
+    propertyRecruitment: { rate: number; source: string; sourceId?: string };
+    brokerReferral: { rate: number; source: string; sourceId?: string };
+  }> {
+    // Default rates as per user requirements
+    const defaultRates: Record<string, number> = {
+      rental_no_referral: 50,
+      rental_with_referral: 40,
+      property_recruitment: 20,
+      broker_referral: 10
+    };
+
+    // Get agency defaults
+    const agencyDefaults = await this.getSellerCommissionDefaults(agencyId);
+    const defaultsMap = new Map(agencyDefaults.map(d => [d.concept, d]));
+
+    // Get all overrides for agency
+    const overrides = await this.getSellerCommissionOverrides(agencyId);
+
+    // Helper function to resolve rate for a concept
+    const resolveRate = (concept: string): { rate: number; source: string; sourceId?: string } => {
+      // 1. Check user-specific override (highest priority)
+      const userOverride = overrides.find(o => 
+        o.concept === concept && 
+        o.overrideType === 'user' && 
+        o.userId === userId
+      );
+      if (userOverride) {
+        return { 
+          rate: parseFloat(userOverride.rate), 
+          source: 'user_override',
+          sourceId: userOverride.id
+        };
+      }
+
+      // 2. Check role-based override
+      const roleOverride = overrides.find(o => 
+        o.concept === concept && 
+        o.overrideType === 'role' && 
+        o.roleValue === userRole
+      );
+      if (roleOverride) {
+        return { 
+          rate: parseFloat(roleOverride.rate), 
+          source: 'role_override',
+          sourceId: roleOverride.id
+        };
+      }
+
+      // 3. Check agency default
+      const agencyDefault = defaultsMap.get(concept);
+      if (agencyDefault) {
+        return { 
+          rate: parseFloat(agencyDefault.rate), 
+          source: 'agency_default',
+          sourceId: agencyDefault.id
+        };
+      }
+
+      // 4. Fall back to system default
+      return { 
+        rate: defaultRates[concept] || 0, 
+        source: 'system_default' 
+      };
+    };
+
+    return {
+      rentalNoReferral: resolveRate('rental_no_referral'),
+      rentalWithReferral: resolveRate('rental_with_referral'),
+      propertyRecruitment: resolveRate('property_recruitment'),
+      brokerReferral: resolveRate('broker_referral')
     };
   }
 }

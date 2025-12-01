@@ -3165,6 +3165,7 @@ export default function ExternalClients() {
                     setIsDeleteLeadDialogOpen(true);
                   }}
                   onViewDetail={handleLeadClick}
+                  canDelete={!isSeller}
                 />
               ) : viewMode === "table" ? (
                 <Card>

@@ -23261,6 +23261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: z.string().optional(),
         role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]),
         maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional(),
+        commissionRate: z.enum(["10", "20", "40", "50"]).optional(),
       });
 
       const validatedData = createUserSchema.parse(req.body);
@@ -23342,6 +23343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: z.string().optional().nullable(),
         role: z.enum(["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_seller", "external_agency_concierge", "external_agency_lawyer"]).optional(),
         maintenanceSpecialty: z.enum(["encargado_mantenimiento", "mantenimiento_general", "electrico", "plomero", "refrigeracion", "carpintero", "pintor", "jardinero", "albanil", "limpieza"]).optional().nullable(),
+        commissionRate: z.enum(["10", "20", "40", "50"]).optional().nullable(),
       });
 
       const validatedData = updateUserSchema.parse(req.body);
@@ -41283,6 +41285,274 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       res.status(500).json({ message: error.message });
     }
   });
+
+
+  // =====================================================
+  // SELLER COMMISSION RATE MANAGEMENT (Payment Percentages)
+  // =====================================================
+
+  // GET /api/external/seller-commission-rates/defaults - Get agency default rates
+  app.get("/api/external/seller-commission-rates/defaults", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const defaults = await storage.getSellerCommissionDefaults(agencyId);
+      
+      // Return defaults with system fallbacks
+      const concepts = ['rental_no_referral', 'rental_with_referral', 'property_recruitment', 'broker_referral'];
+      const defaultRates: Record<string, number> = {
+        rental_no_referral: 50,
+        rental_with_referral: 40,
+        property_recruitment: 20,
+        broker_referral: 10
+      };
+      
+      const result = concepts.map(concept => {
+        const existing = defaults.find(d => d.concept === concept);
+        if (existing) return existing;
+        return {
+          id: null,
+          agencyId,
+          concept,
+          rate: String(defaultRates[concept]),
+          descriptionEs: null,
+          descriptionEn: null,
+          updatedBy: null,
+          createdAt: null,
+          updatedAt: null
+        };
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching commission defaults:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PUT /api/external/seller-commission-rates/defaults - Update agency default rates
+  app.put("/api/external/seller-commission-rates/defaults", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+      const userId = req.user?.claims?.sub || req.user?.id;
+
+      const { concept, rate, descriptionEs, descriptionEn } = req.body;
+      
+      if (!concept || rate === undefined) {
+        return res.status(400).json({ message: "concept and rate are required" });
+      }
+
+      const validConcepts = ['rental_no_referral', 'rental_with_referral', 'property_recruitment', 'broker_referral'];
+      if (!validConcepts.includes(concept)) {
+        return res.status(400).json({ message: "Invalid concept" });
+      }
+
+      const result = await storage.upsertSellerCommissionDefault({
+        agencyId,
+        concept,
+        rate: String(rate),
+        descriptionEs,
+        descriptionEn,
+        updatedBy: userId
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error updating commission default:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/seller-commission-rates/overrides - Get all overrides
+  app.get("/api/external/seller-commission-rates/overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const overrides = await storage.getSellerCommissionOverrides(agencyId);
+      
+      // Enrich with user data for user overrides
+      const enrichedOverrides = await Promise.all(overrides.map(async (o) => {
+        if (o.overrideType === 'user' && o.userId) {
+          const user = await storage.getUser(o.userId);
+          return {
+            ...o,
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              profileImageUrl: user.profileImageUrl
+            } : null
+          };
+        }
+        return { ...o, user: null };
+      }));
+
+      res.json(enrichedOverrides);
+    } catch (error: any) {
+      console.error("Error fetching commission overrides:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/seller-commission-rates/overrides - Create override
+  app.post("/api/external/seller-commission-rates/overrides", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+      const userId = req.user?.claims?.sub || req.user?.id;
+
+      const { concept, overrideType, roleValue, targetUserId, rate, notes } = req.body;
+      
+      if (!concept || !overrideType || rate === undefined) {
+        return res.status(400).json({ message: "concept, overrideType, and rate are required" });
+      }
+
+      const validConcepts = ['rental_no_referral', 'rental_with_referral', 'property_recruitment', 'broker_referral'];
+      if (!validConcepts.includes(concept)) {
+        return res.status(400).json({ message: "Invalid concept" });
+      }
+
+      if (overrideType === 'role' && !roleValue) {
+        return res.status(400).json({ message: "roleValue is required for role overrides" });
+      }
+
+      if (overrideType === 'user' && !targetUserId) {
+        return res.status(400).json({ message: "targetUserId is required for user overrides" });
+      }
+
+      const result = await storage.createSellerCommissionOverride({
+        agencyId,
+        concept,
+        overrideType,
+        roleValue: overrideType === 'role' ? roleValue : null,
+        userId: overrideType === 'user' ? targetUserId : null,
+        rate: String(rate),
+        notes,
+        createdBy: userId,
+        updatedBy: userId
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating commission override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/external/seller-commission-rates/overrides/:id - Update override
+  app.patch("/api/external/seller-commission-rates/overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+      const userId = req.user?.claims?.sub || req.user?.id;
+
+      const { rate, notes } = req.body;
+      
+      const result = await storage.updateSellerCommissionOverride(req.params.id, {
+        rate: rate !== undefined ? String(rate) : undefined,
+        notes,
+        updatedBy: userId
+      });
+
+      if (!result) {
+        return res.status(404).json({ message: "Override not found" });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error updating commission override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/external/seller-commission-rates/overrides/:id - Delete override
+  app.delete("/api/external/seller-commission-rates/overrides/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      await storage.deleteSellerCommissionOverride(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting commission override:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/seller-commission-rates/my-rates - Get resolved rates for current user
+  app.get("/api/external/seller-commission-rates/my-rates", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const user = await storage.getUser(userId);
+      const userRole = user?.role || 'external_agency_seller';
+
+      const rates = await storage.getResolvedSellerCommissionRates(agencyId, userId, userRole);
+      res.json(rates);
+    } catch (error: any) {
+      console.error("Error fetching my commission rates:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/seller-commission-rates/user/:userId - Get resolved rates for a specific user (admin only)
+  app.get("/api/external/seller-commission-rates/user/:userId", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const targetUser = await storage.getUser(req.params.userId);
+      if (!targetUser || targetUser.externalAgencyId !== agencyId) {
+        return res.status(404).json({ message: "User not found in this agency" });
+      }
+
+      const userRole = targetUser.role || 'external_agency_seller';
+      const rates = await storage.getResolvedSellerCommissionRates(agencyId, req.params.userId, userRole);
+      res.json(rates);
+    } catch (error: any) {
+      console.error("Error fetching user commission rates:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/external/agency-sellers - Get list of sellers in agency
+  app.get("/api/external/agency-sellers", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const sellers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        role: users.role,
+        profileImageUrl: users.profileImageUrl,
+        createdAt: users.createdAt
+      })
+      .from(users)
+      .where(and(
+        eq(users.externalAgencyId, agencyId),
+        or(
+          eq(users.role, 'external_agency_seller'),
+          eq(users.role, 'external_agency_admin')
+        )
+      ))
+      .orderBy(asc(users.firstName), asc(users.lastName));
+
+      res.json(sellers);
+    } catch (error: any) {
+      console.error("Error fetching agency sellers:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
 
 
   // EXTERNAL AGENCY TEAM CHAT SYSTEM
