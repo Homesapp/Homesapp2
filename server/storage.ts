@@ -10584,6 +10584,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteExternalLead(id: string): Promise<void> {
+    // Delete related records first (cascading deletion)
+    // 1. Delete presentation cards
+    await db.delete(externalPresentationCards)
+      .where(eq(externalPresentationCards.leadId, id));
+    
+    // 2. Delete lead activities
+    await db.delete(externalLeadActivities)
+      .where(eq(externalLeadActivities.leadId, id));
+    
+    // 3. Delete status history
+    await db.delete(externalLeadStatusHistory)
+      .where(eq(externalLeadStatusHistory.leadId, id));
+    
+    // 4. Delete lead showings
+    await db.delete(externalLeadShowings)
+      .where(eq(externalLeadShowings.leadId, id));
+    
+    // 5. Delete lead reminders
+    await db.delete(externalLeadReminders)
+      .where(eq(externalLeadReminders.leadId, id));
+    
+    // 6. Delete lead properties sent
+    await db.delete(externalLeadPropertySent)
+      .where(eq(externalLeadPropertySent.leadId, id));
+    
+    // Finally delete the lead
     await db.delete(externalLeads)
       .where(eq(externalLeads.id, id));
   }
