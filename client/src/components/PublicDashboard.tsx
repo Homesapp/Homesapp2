@@ -452,7 +452,7 @@ export default function PublicDashboard() {
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
               <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              {t("public.map.title") || "Mapa de Propiedades"}
+              Mapa de Propiedades
             </h2>
             <Button
               variant="ghost"
@@ -472,11 +472,6 @@ export default function PublicDashboard() {
               language="es"
             />
           </div>
-          {mapProperties.length === 0 && (
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              {t("public.map.noProperties") || "Pronto agregaremos ubicaciones de propiedades al mapa"}
-            </p>
-          )}
         </div>
 
         {/* Explora Propiedades - Responsive Grid */}
