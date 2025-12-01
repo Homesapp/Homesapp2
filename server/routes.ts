@@ -32817,6 +32817,23 @@ ${{precio}}/mes
         return res.status(404).json({ message: "Unit not found" });
       }
       
+      // Get condominium name if condominiumId exists
+      let condominiumName = unit.condominiumName || null;
+      if (!condominiumName && unit.condominiumId) {
+        const condoResult = await db.select({ name: externalCondominiums.name })
+          .from(externalCondominiums)
+          .where(eq(externalCondominiums.id, unit.condominiumId))
+          .limit(1);
+        condominiumName = condoResult[0]?.name || null;
+      }
+      
+      // Calculate public availability based on publication rules
+      const isPubliclyAvailable = Boolean(
+        unit.publishToMain && 
+        unit.publishStatus === 'approved' && 
+        unit.isActive !== false
+      );
+      
       // Return only public-safe information
       res.json({
         id: unit.id,
@@ -32829,6 +32846,7 @@ ${{precio}}/mes
         monthlyRent: unit.monthlyRent,
         currency: unit.currency,
         status: unit.status,
+        isPubliclyAvailable,
         images: unit.images,
         primaryImages: unit.primaryImages || [],
         secondaryImages: unit.secondaryImages || [],
@@ -32836,7 +32854,7 @@ ${{precio}}/mes
         virtualTourUrl: unit.virtualTourUrl,
         locationUrl: unit.locationUrl,
         amenities: unit.amenities,
-        condominiumName: unit.condominiumName,
+        condominiumName,
         squareMeters: unit.squareMeters,
         hasFurniture: unit.hasFurniture,
         hasParking: unit.hasParking,
