@@ -265,6 +265,8 @@ import {
   insertExternalAgencySellerPointsSchema,
   insertExternalAgencyRewardSchema,
   insertExternalAgencyRewardRedemptionSchema,
+  featuredProperties,
+  insertFeaturedPropertySchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { registerPortalRoutes } from "./portal-routes";
@@ -21836,6 +21838,261 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching unit publication requests:", error);
       res.status(500).json({ message: "Failed to fetch publication requests" });
+    }
+  });
+
+  // =========================================================================
+  // FEATURED PROPERTIES ROUTES - Admin can manage up to 30 featured properties
+  // =========================================================================
+
+  // GET /api/featured-properties - Get all featured properties with unit details
+  app.get("/api/featured-properties", async (req, res) => {
+    try {
+      // Get featured properties
+      const featured = await db
+        .select()
+        .from(featuredProperties)
+        .orderBy(asc(featuredProperties.sortOrder));
+      
+      // Fetch unit details for each featured property
+      const result = await Promise.all(featured.map(async (fp) => {
+        const unit = await storage.getExternalUnit(fp.unitId);
+        let condominiumName = null;
+        
+        if (unit?.condominiumId) {
+          const [condo] = await db.select({ name: externalCondominiums.name })
+            .from(externalCondominiums)
+            .where(eq(externalCondominiums.id, unit.condominiumId));
+          condominiumName = condo?.name || null;
+        }
+        
+        return {
+          id: fp.id,
+          unitId: fp.unitId,
+          sortOrder: fp.sortOrder,
+          addedBy: fp.addedBy,
+          createdAt: fp.createdAt,
+          // Unit details
+          unitNumber: unit?.unitNumber || null,
+          title: unit?.title || null,
+          propertyType: unit?.propertyType || null,
+          zone: unit?.zone || null,
+          price: unit?.price || null,
+          salePrice: unit?.salePrice || null,
+          listingType: unit?.listingType || null,
+          bedrooms: unit?.bedrooms || null,
+          bathrooms: unit?.bathrooms || null,
+          area: unit?.area || null,
+          condominiumId: unit?.condominiumId || null,
+          images: unit?.images || null,
+          agencyId: unit?.agencyId || null,
+          publishStatus: unit?.publishStatus || null,
+          condominiumName,
+        };
+      }));
+
+      res.json({ 
+        data: result,
+        count: result.length,
+        maxLimit: 30,
+        remainingSlots: Math.max(0, 30 - result.length)
+      });
+    } catch (error: any) {
+      console.error("Error fetching featured properties:", error);
+      res.status(500).json({ message: "Error fetching featured properties" });
+    }
+  });
+
+  // POST /api/featured-properties - Add a property to featured (admin only)
+  app.post("/api/featured-properties", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { unitId } = req.body;
+
+      if (!unitId) {
+        return res.status(400).json({ message: "unitId is required" });
+      }
+
+      // Check current count
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(featuredProperties);
+      const currentCount = Number(countResult?.count || 0);
+
+      if (currentCount >= 30) {
+        return res.status(400).json({ 
+          message: "Maximum limit of 30 featured properties reached",
+          code: "MAX_LIMIT_REACHED"
+        });
+      }
+
+      // Check if unit is already featured
+      const [existing] = await db.select()
+        .from(featuredProperties)
+        .where(eq(featuredProperties.unitId, unitId));
+
+      if (existing) {
+        return res.status(400).json({ 
+          message: "This property is already featured",
+          code: "ALREADY_FEATURED"
+        });
+      }
+
+      // Verify the unit exists and is approved
+      const unit = await storage.getExternalUnit(unitId);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      if (unit.publishStatus !== 'approved') {
+        return res.status(400).json({ 
+          message: "Only approved properties can be featured",
+          code: "NOT_APPROVED"
+        });
+      }
+
+      // Get the next sort order
+      const [maxOrder] = await db
+        .select({ maxOrder: sql<number>`COALESCE(MAX(sort_order), 0)` })
+        .from(featuredProperties);
+      const nextOrder = Number(maxOrder?.maxOrder || 0) + 1;
+
+      const userId = req.user?.claims?.sub || req.user?.id;
+      
+      const [newFeatured] = await db.insert(featuredProperties)
+        .values({
+          unitId,
+          sortOrder: nextOrder,
+          addedBy: userId,
+        })
+        .returning();
+
+      res.status(201).json(newFeatured);
+    } catch (error: any) {
+      console.error("Error adding featured property:", error);
+      res.status(500).json({ message: "Error adding featured property" });
+    }
+  });
+
+  // PATCH /api/featured-properties/reorder - Bulk reorder featured properties (admin only)
+  app.patch("/api/featured-properties/reorder", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { order } = req.body; // Array of { id, sortOrder }
+
+      if (!Array.isArray(order)) {
+        return res.status(400).json({ message: "order must be an array of { id, sortOrder }" });
+      }
+
+      // Update each featured property's sort order
+      await Promise.all(order.map(async (item: { id: string; sortOrder: number }) => {
+        await db.update(featuredProperties)
+          .set({ sortOrder: item.sortOrder })
+          .where(eq(featuredProperties.id, item.id));
+      }));
+
+      res.json({ message: "Order updated successfully" });
+    } catch (error: any) {
+      console.error("Error reordering featured properties:", error);
+      res.status(500).json({ message: "Error reordering featured properties" });
+    }
+  });
+
+  // DELETE /api/featured-properties/:id - Remove a property from featured (admin only)
+  app.delete("/api/featured-properties/:id", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const [deleted] = await db.delete(featuredProperties)
+        .where(eq(featuredProperties.id, id))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Featured property not found" });
+      }
+
+      // Re-normalize sort orders after deletion
+      const remaining = await db.select()
+        .from(featuredProperties)
+        .orderBy(asc(featuredProperties.sortOrder));
+
+      await Promise.all(remaining.map(async (fp, index) => {
+        await db.update(featuredProperties)
+          .set({ sortOrder: index + 1 })
+          .where(eq(featuredProperties.id, fp.id));
+      }));
+
+      res.json({ message: "Featured property removed", deleted });
+    } catch (error: any) {
+      console.error("Error removing featured property:", error);
+      res.status(500).json({ message: "Error removing featured property" });
+    }
+  });
+
+  // GET /api/featured-properties/available-units - Get available units to add as featured
+  app.get("/api/featured-properties/available-units", isAuthenticated, requireRole(ADMIN_ONLY), async (req: any, res) => {
+    try {
+      const { search, limit = 20 } = req.query;
+
+      // Get currently featured unit IDs
+      const featured = await db.select({ unitId: featuredProperties.unitId })
+        .from(featuredProperties);
+      const featuredIds = featured.map(f => f.unitId);
+
+      // Build query for approved units not already featured
+      let conditions = [
+        eq(externalUnits.publishStatus, 'approved'),
+        eq(externalUnits.publishToMain, true),
+        eq(externalUnits.isActive, true),
+      ];
+
+      if (featuredIds.length > 0) {
+        conditions.push(sql`${externalUnits.id} NOT IN (${sql.raw(featuredIds.map(id => `'${id}'`).join(','))})`);
+      }
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const searchTerm = `%${search.trim()}%`;
+        conditions.push(or(
+          ilike(externalUnits.title, searchTerm),
+          ilike(externalUnits.unitNumber, searchTerm),
+          ilike(externalUnits.zone, searchTerm)
+        ));
+      }
+
+      const units = await db
+        .select({
+          id: externalUnits.id,
+          unitNumber: externalUnits.unitNumber,
+          title: externalUnits.title,
+          propertyType: externalUnits.propertyType,
+          zone: externalUnits.zone,
+          price: externalUnits.price,
+          salePrice: externalUnits.salePrice,
+          listingType: externalUnits.listingType,
+          bedrooms: externalUnits.bedrooms,
+          bathrooms: externalUnits.bathrooms,
+          area: externalUnits.area,
+          condominiumId: externalUnits.condominiumId,
+          images: externalUnits.images,
+          agencyId: externalUnits.agencyId,
+        })
+        .from(externalUnits)
+        .where(and(...conditions))
+        .orderBy(desc(externalUnits.createdAt))
+        .limit(Number(limit));
+
+      // Fetch condominium names
+      const withCondos = await Promise.all(units.map(async (unit) => {
+        if (unit.condominiumId) {
+          const [condo] = await db.select({ name: externalCondominiums.name })
+            .from(externalCondominiums)
+            .where(eq(externalCondominiums.id, unit.condominiumId));
+          return { ...unit, condominiumName: condo?.name || null };
+        }
+        return { ...unit, condominiumName: null };
+      }));
+
+      res.json(withCondos);
+    } catch (error: any) {
+      console.error("Error fetching available units:", error);
+      res.status(500).json({ message: "Error fetching available units" });
     }
   });
 
