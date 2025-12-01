@@ -30,31 +30,41 @@ interface CommissionRatesResponse {
   brokerReferral: CommissionRateItem;
 }
 
-const conceptLabels: Record<string, { es: string; en: string; desc: string }> = {
+const conceptLabels: Record<string, { es: string; en: string; descEs: string; descEn: string }> = {
   rental_no_referral: { 
     es: "Renta sin referido", 
     en: "Rental without referral",
-    desc: "Comisión cuando cierras una renta sin referido externo"
+    descEs: "Comisión cuando cierras una renta sin referido externo",
+    descEn: "Commission when you close a rental without external referral"
   },
   rental_with_referral: { 
     es: "Renta con referido", 
     en: "Rental with referral",
-    desc: "Comisión cuando cierras una renta que fue referida"
+    descEs: "Comisión cuando cierras una renta que fue referida",
+    descEn: "Commission when you close a rental that was referred"
   },
   property_recruitment: { 
     es: "Reclutamiento de propiedad", 
     en: "Property recruitment",
-    desc: "Comisión por captar una nueva propiedad para el portafolio"
+    descEs: "Comisión por captar una nueva propiedad para el portafolio",
+    descEn: "Commission for recruiting a new property to the portfolio"
   },
   broker_referral: { 
     es: "Referido de broker", 
     en: "Broker referral",
-    desc: "Comisión por referir un negocio a otro agente"
+    descEs: "Comisión por referir un negocio a otro agente",
+    descEn: "Commission for referring business to another agent"
   },
 };
 
+const sourceLabels: Record<string, { es: string; en: string }> = {
+  default: { es: "Por defecto", en: "Default" },
+  role: { es: "Por rol", en: "By role" },
+  user: { es: "Personalizado", en: "Customized" }
+};
+
 export default function SellerCommissions() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const { data: commissions = [], isLoading } = useQuery<Commission[]>({
     queryKey: ["/api/external-seller/commissions"],
@@ -169,10 +179,12 @@ export default function SellerCommissions() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Percent className="h-5 w-5 text-primary" />
-            Mis Porcentajes de Comisión
+            {language === "es" ? "Mis Porcentajes de Comisión" : "My Commission Rates"}
           </CardTitle>
           <CardDescription>
-            Estos son tus porcentajes de comisión según tu rol y configuración
+            {language === "es" 
+              ? "Estos son tus porcentajes de comisión según tu rol y configuración"
+              : "These are your commission rates based on your role and settings"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -186,13 +198,21 @@ export default function SellerCommissions() {
             <div className="text-center py-8">
               <Percent className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground text-sm">
-                Los porcentajes de comisión aún no han sido configurados
+                {language === "es" 
+                  ? "Los porcentajes de comisión aún no han sido configurados"
+                  : "Commission rates have not been configured yet"}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {ratesList.map((rate) => {
                 const label = conceptLabels[rate.concept];
+                const conceptName = label ? (language === "es" ? label.es : label.en) : rate.concept;
+                const conceptDesc = label ? (language === "es" ? label.descEs : label.descEn) : 
+                  (language === "es" ? "Porcentaje de comisión" : "Commission rate");
+                const sourceLabel = sourceLabels[rate.source] || sourceLabels.default;
+                const sourceText = language === "es" ? sourceLabel.es : sourceLabel.en;
+                
                 return (
                   <div
                     key={rate.concept}
@@ -207,24 +227,24 @@ export default function SellerCommissions() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">
-                          {label?.es || rate.concept}
+                          {conceptName}
                         </span>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-xs">
-                            {label?.desc || rate.description || "Porcentaje de comisión"}
+                            {conceptDesc}
                           </TooltipContent>
                         </Tooltip>
                         {rate.source !== 'default' && (
                           <Badge variant="secondary" className="text-xs">
-                            {rate.source === 'user' ? 'Personalizado' : 'Por rol'}
+                            {sourceText}
                           </Badge>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {label?.desc || rate.description || "Porcentaje de comisión"}
+                        {conceptDesc}
                       </p>
                     </div>
                   </div>
