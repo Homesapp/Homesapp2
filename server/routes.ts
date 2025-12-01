@@ -21395,8 +21395,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const enrichedRequests = requests.map(r => ({
-        ...r,
-        condominiumName: r.condominiumId ? condoMap[r.condominiumId] : null,
+        id: r.id,
+        unitId: r.unitId,
+        agencyId: r.agencyId,
+        requestedBy: r.requestedBy,
+        reviewedBy: r.reviewedBy,
+        status: r.status,
+        adminFeedback: r.adminFeedback,
+        linkedPropertyId: r.linkedPropertyId,
+        requestedAt: r.requestedAt,
+        reviewedAt: r.reviewedAt,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        unit: {
+          unitNumber: r.unitNumber,
+          title: r.unitTitle,
+          description: r.unitDescription,
+          price: r.unitPrice,
+          currency: r.unitCurrency,
+          bedrooms: r.unitBedrooms,
+          bathrooms: r.unitBathrooms,
+          area: r.unitArea,
+          primaryImages: r.unitPrimaryImages,
+          amenities: r.unitAmenities,
+          address: r.unitAddress,
+          zone: r.unitZone,
+          propertyType: r.unitPropertyType,
+          condominium: r.condominiumId ? { name: condoMap[r.condominiumId] || null } : null,
+        },
+        agency: r.agencyName ? { name: r.agencyName } : null,
       }));
 
       res.json(enrichedRequests);
