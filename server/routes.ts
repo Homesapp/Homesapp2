@@ -33142,8 +33142,30 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           .from(externalAgencies).where(eq(externalAgencies.id, unit.agencyId)).limit(1);
         const agency = agencyData[0];
         const agencySlug = agency?.slug || generateSlug(agency?.name || 'agency');
-        const unitTitle = unit.title || `${unit.propertyType || 'propiedad'}-${unit.unitNumber}`;
-        const unitSlug = generateSlug(unitTitle);
+        
+        // Get condominium name for unique slug generation
+        let condoName = '';
+        if (unit.condominiumId) {
+          const condoForSlug = await db
+            .select({ name: externalCondominiums.name })
+            .from(externalCondominiums)
+            .where(eq(externalCondominiums.id, unit.condominiumId))
+            .limit(1);
+          condoName = condoForSlug[0]?.name || '';
+        }
+        
+        // Use stored slug if exists, otherwise generate unique slug with condominium name
+        let unitSlug: string;
+        if (unit.slug) {
+          unitSlug = unit.slug;
+        } else if (condoName) {
+          // Include condominium name in slug for uniqueness
+          unitSlug = generateSlug(`${condoName}-${unit.unitNumber}`);
+        } else {
+          // Fallback: use property type + unit number + partial ID for uniqueness
+          const unitTitle = unit.title || `${unit.propertyType || 'propiedad'}-${unit.unitNumber}`;
+          unitSlug = generateSlug(`${unitTitle}-${unit.id.substring(0, 8)}`);
+        }
         
         return {
           id: unit.id,
