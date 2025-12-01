@@ -36,6 +36,7 @@ import type {
 import { insertExternalUnitOwnerSchema, insertExternalUnitAccessControlSchema, insertExternalRentalContractSchema } from "@shared/schema";
 import { formatFloor, floorOptions } from "@/lib/unitHelpers";
 import { UnitImageGallery } from "@/components/external/UnitImageGallery";
+import { SectionMediaManager } from "@/components/external/SectionMediaManager";
 import { UnitAmenitiesSelector } from "@/components/external/UnitAmenitiesSelector";
 import { PropertyPreviewDialog } from "@/components/external/PropertyPreviewDialog";
 
@@ -1187,21 +1188,45 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
 
       {/* Image Gallery - Full Width Hero Section */}
       <div className="space-y-6">
-        <UnitImageGallery
-          unitId={id}
-          primaryImages={unit.primaryImages || []}
-          secondaryImages={unit.secondaryImages || []}
-          videos={unit.videos || []}
-          virtualTourUrl={unit.virtualTourUrl}
-          language={language}
-          readOnly={!user}
-          onUpdate={(data) => {
-            updateUnitMutation.mutate({
-              unitNumber: unit.unitNumber,
-              ...data,
-            });
-          }}
-        />
+        <Tabs defaultValue="gallery" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="gallery" className="flex items-center gap-1" data-testid="tab-gallery">
+              <Image className="h-4 w-4" />
+              {language === "es" ? "Galería" : "Gallery"}
+            </TabsTrigger>
+            <TabsTrigger value="sections" className="flex items-center gap-1" data-testid="tab-sections">
+              <Upload className="h-4 w-4" />
+              {language === "es" ? "Organizar por Sección" : "Organize by Section"}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="gallery" className="mt-4">
+            <UnitImageGallery
+              unitId={id}
+              primaryImages={unit.primaryImages || []}
+              secondaryImages={unit.secondaryImages || []}
+              videos={unit.videos || []}
+              virtualTourUrl={unit.virtualTourUrl}
+              language={language}
+              readOnly={!user}
+              onUpdate={(data) => {
+                updateUnitMutation.mutate({
+                  unitNumber: unit.unitNumber,
+                  ...data,
+                });
+              }}
+            />
+          </TabsContent>
+          <TabsContent value="sections" className="mt-4">
+            <SectionMediaManager
+              unitId={id}
+              language={language}
+              readOnly={!user}
+              onMediaChange={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/external-units', id] });
+              }}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Row 1: Unit Information (Left) + History (Right) */}

@@ -29678,6 +29678,174 @@ ${{precio}}/mes
   });
 
 
+  // POST /api/external-units/:id/media/migrate - Migrate legacy images to section-based system
+  app.post("/api/external-units/:id/media/migrate", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const unit = await storage.getExternalUnit(id);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, unit.agencyId);
+      if (!hasAccess) return;
+
+      // Check if unit already has section-based media
+      const existingMedia = await storage.getUnitMedia(id);
+      if (existingMedia.length > 0) {
+        return res.status(400).json({ 
+          message: "Unit already has section-based media. Migration skipped.",
+          existingCount: existingMedia.length
+        });
+      }
+
+      const primaryImages = unit.primaryImages || [];
+      const secondaryImages = unit.secondaryImages || [];
+      
+      if (primaryImages.length === 0 && secondaryImages.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: "No images to migrate",
+          migrated: 0 
+        });
+      }
+
+      let migratedCount = 0;
+
+      // Migrate primary images: first one as cover, rest as "other"
+      for (let i = 0; i < primaryImages.length; i++) {
+        const url = primaryImages[i];
+        const section = i === 0 ? 'cover' : 'other';
+        const isCover = i === 0;
+
+        await storage.createUnitMedia({
+          unitId: id,
+          agencyId: unit.agencyId,
+          section: section as any,
+          sectionIndex: 1,
+          url: url,
+          caption: null,
+          sortOrder: i,
+          isCover: isCover,
+        });
+        migratedCount++;
+      }
+
+      // Migrate secondary images to "other" section
+      for (let i = 0; i < secondaryImages.length; i++) {
+        const url = secondaryImages[i];
+        
+        await storage.createUnitMedia({
+          unitId: id,
+          agencyId: unit.agencyId,
+          section: 'other' as any,
+          sectionIndex: 1,
+          url: url,
+          caption: null,
+          sortOrder: primaryImages.length + i,
+          isCover: false,
+        });
+        migratedCount++;
+      }
+
+      res.json({
+        success: true,
+        message: `Migrated ${migratedCount} images successfully`,
+        migrated: migratedCount,
+        fromPrimary: primaryImages.length,
+        fromSecondary: secondaryImages.length,
+      });
+    } catch (error: any) {
+      console.error("Error migrating unit media:", error);
+      res.status(500).json({ message: error.message || "Failed to migrate media" });
+    }
+  });
+
+  // POST /api/external/migrate-all-unit-media - Migrate all units' legacy images (admin only)
+  app.post("/api/external/migrate-all-unit-media", isAuthenticated, requireRole(["master", "admin"]), async (req: any, res) => {
+    try {
+      const user = req.user;
+      const agencyId = user.externalAgencyId;
+      
+      if (!agencyId) {
+        return res.status(400).json({ message: "No agency associated with user" });
+      }
+
+      // Get all units for this agency that have legacy images but no section media
+      const allUnits = await db.select()
+        .from(externalUnits)
+        .where(eq(externalUnits.agencyId, agencyId));
+
+      let totalMigrated = 0;
+      let unitsMigrated = 0;
+      const errors: string[] = [];
+
+      for (const unit of allUnits) {
+        try {
+          // Check if unit already has section-based media
+          const existingMedia = await storage.getUnitMedia(unit.id);
+          if (existingMedia.length > 0) {
+            continue; // Skip if already migrated
+          }
+
+          const primaryImages = unit.primaryImages || [];
+          const secondaryImages = unit.secondaryImages || [];
+          
+          if (primaryImages.length === 0 && secondaryImages.length === 0) {
+            continue; // Skip if no images to migrate
+          }
+
+          // Migrate primary images
+          for (let i = 0; i < primaryImages.length; i++) {
+            await storage.createUnitMedia({
+              unitId: unit.id,
+              agencyId: agencyId,
+              section: (i === 0 ? 'cover' : 'other') as any,
+              sectionIndex: 1,
+              url: primaryImages[i],
+              caption: null,
+              sortOrder: i,
+              isCover: i === 0,
+            });
+            totalMigrated++;
+          }
+
+          // Migrate secondary images
+          for (let i = 0; i < secondaryImages.length; i++) {
+            await storage.createUnitMedia({
+              unitId: unit.id,
+              agencyId: agencyId,
+              section: 'other' as any,
+              sectionIndex: 1,
+              url: secondaryImages[i],
+              caption: null,
+              sortOrder: primaryImages.length + i,
+              isCover: false,
+            });
+            totalMigrated++;
+          }
+
+          unitsMigrated++;
+        } catch (unitError: any) {
+          errors.push(`Unit ${unit.unitNumber}: ${unitError.message}`);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Migration completed: ${unitsMigrated} units, ${totalMigrated} images`,
+        unitsMigrated,
+        totalImages: totalMigrated,
+        totalUnits: allUnits.length,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error: any) {
+      console.error("Error migrating all unit media:", error);
+      res.status(500).json({ message: error.message || "Failed to migrate media" });
+    }
+  });
+
   // POST /api/external-units/:id/upload-videos - Upload videos for external unit
   app.post("/api/external-units/:id/upload-videos", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
@@ -33592,6 +33760,102 @@ ${{precio}}/mes
       console.error("Error fetching public unit:", error);
       res.status(500).json({ message: "Internal server error" });
     }
+
+  // GET /api/public/external-units/:id/media - Public endpoint to view unit images organized by section
+  app.get("/api/public/external-units/:id/media", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const unit = await storage.getExternalUnit(id);
+      if (!unit) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      // Only return media for published units
+      if (!unit.publishToMain || unit.publishStatus !== 'approved') {
+        return res.status(404).json({ message: "Unit not publicly available" });
+      }
+
+      const media = await storage.getUnitMedia(id);
+      
+      // Group by section for the frontend
+      const groupedMedia: Record<string, Array<{ id: string; url: string; caption: string | null; isCover: boolean }>> = {};
+      
+      // Section labels for frontend
+      const sectionLabels: Record<string, { es: string; en: string }> = {
+        cover: { es: 'Portada', en: 'Cover' },
+        bedroom: { es: 'Recámara', en: 'Bedroom' },
+        bathroom: { es: 'Baño', en: 'Bathroom' },
+        half_bath: { es: 'Medio Baño', en: 'Half Bath' },
+        kitchen: { es: 'Cocina', en: 'Kitchen' },
+        living_room: { es: 'Sala', en: 'Living Room' },
+        dining_room: { es: 'Comedor', en: 'Dining Room' },
+        garden: { es: 'Jardín', en: 'Garden' },
+        terrace: { es: 'Terraza', en: 'Terrace' },
+        pool: { es: 'Alberca', en: 'Pool' },
+        balcony: { es: 'Balcón', en: 'Balcony' },
+        rooftop: { es: 'Rooftop', en: 'Rooftop' },
+        parking: { es: 'Estacionamiento', en: 'Parking' },
+        amenities: { es: 'Amenidades', en: 'Amenities' },
+        common_areas: { es: 'Áreas Comunes', en: 'Common Areas' },
+        exterior: { es: 'Exterior', en: 'Exterior' },
+        view: { es: 'Vista', en: 'View' },
+        floor_plan: { es: 'Plano', en: 'Floor Plan' },
+        other: { es: 'Otras Fotos', en: 'Other Photos' },
+      };
+
+      media.forEach(item => {
+        const key = item.sectionIndex && item.sectionIndex > 1 
+          ? `${item.section}_${item.sectionIndex}`
+          : item.section;
+        if (!groupedMedia[key]) {
+          groupedMedia[key] = [];
+        }
+        groupedMedia[key].push({
+          id: item.id,
+          url: item.url,
+          caption: item.caption,
+          isCover: item.isCover,
+        });
+      });
+
+      // Build sections array with labels
+      const sections = Object.entries(groupedMedia).map(([key, items]) => {
+        const [baseSection, indexStr] = key.includes('_') && !['half_bath', 'living_room', 'dining_room', 'common_areas', 'floor_plan'].includes(key) 
+          ? key.split(/_(?=\d+$)/)
+          : [key, '1'];
+        const sectionIndex = parseInt(indexStr) || 1;
+        const baseLabel = sectionLabels[baseSection] || { es: key, en: key };
+        
+        return {
+          key,
+          section: baseSection,
+          sectionIndex,
+          label: sectionIndex > 1 
+            ? { es: `${baseLabel.es} ${sectionIndex}`, en: `${baseLabel.en} ${sectionIndex}` }
+            : baseLabel,
+          images: items.sort((a, b) => (a.isCover ? -1 : 1)),
+        };
+      });
+
+      res.json({
+        success: true,
+        hasMedia: media.length > 0,
+        count: media.length,
+        sections: sections.sort((a, b) => {
+          // Sort order: cover first, then bedrooms, bathrooms, common areas, outdoor, other
+          const order = ['cover', 'bedroom', 'bathroom', 'half_bath', 'kitchen', 'living_room', 'dining_room', 'garden', 'terrace', 'pool', 'balcony', 'rooftop', 'parking', 'amenities', 'common_areas', 'exterior', 'view', 'floor_plan', 'other'];
+          const aIdx = order.indexOf(a.section);
+          const bIdx = order.indexOf(b.section);
+          if (aIdx === bIdx) return a.sectionIndex - b.sectionIndex;
+          return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+        }),
+      });
+    } catch (error: any) {
+      console.error("Error fetching public unit media:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
   });
 
   // POST /api/public/leads - Create a public lead from property inquiry

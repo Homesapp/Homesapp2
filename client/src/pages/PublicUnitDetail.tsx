@@ -121,6 +121,20 @@ export default function PublicUnitDetail() {
     enabled: !!unitId,
   });
 
+  // Fetch section-based media if available
+  interface MediaSection {
+    key: string;
+    section: string;
+    sectionIndex: number;
+    label: { es: string; en: string };
+    images: Array<{ id: string; url: string; caption: string | null; isCover: boolean }>;
+  }
+  
+  const { data: sectionMediaData } = useQuery<{ hasMedia: boolean; count: number; sections: MediaSection[] }>({
+    queryKey: ["/api/public/external-units", unitId, "media"],
+    enabled: !!unitId,
+  });
+
   const isLoading = isResolvingUrl || isLoadingUnit || (hasFriendlyUrl && !urlResolved);
 
   if (isLoading) {
@@ -168,11 +182,17 @@ export default function PublicUnitDetail() {
     );
   }
 
-  // Combine primary and secondary images for full gallery
+  // Combine primary and secondary images for full gallery (legacy system)
   const primaryImages = unit.primaryImages || unit.images || [];
   const secondaryImages = unit.secondaryImages || [];
   const allImages = [...primaryImages, ...secondaryImages];
-  const images = allImages.length > 0 ? allImages : [];
+  const legacyImages = allImages.length > 0 ? allImages : [];
+  
+  // Build flat array of all images (combining section-based and legacy)
+  const sectionFlatImages = sectionMediaData?.hasMedia 
+    ? sectionMediaData.sections.flatMap(s => s.images.map(img => img.url))
+    : [];
+  const images = sectionFlatImages.length > 0 ? sectionFlatImages : legacyImages;
   const currentImage = images[mainImageIndex] || "/placeholder-property.jpg";
 
   const formatPrice = (price: number | null, currency: string | null) => {
@@ -706,7 +726,7 @@ export default function PublicUnitDetail() {
                 {propertyTitle}
               </h2>
               <Badge variant="secondary">
-                {images.length} {language === "es" ? "fotos" : "photos"}
+                {sectionMediaData?.hasMedia ? sectionMediaData.count : images.length} {language === "es" ? "fotos" : "photos"}
               </Badge>
             </div>
             <Button 
@@ -721,74 +741,119 @@ export default function PublicUnitDetail() {
           
           {/* Gallery Grid */}
           <div className="overflow-y-auto max-h-[calc(95vh-80px)] p-4 bg-muted/30">
-            {/* Primary Images Section */}
-            {primaryImages.length > 0 && (
-              <div className="mb-6">
-                <p className="text-muted-foreground text-sm mb-3 px-2 font-medium">
-                  {language === "es" ? "Fotos principales" : "Main photos"} ({primaryImages.length})
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {primaryImages.map((img, idx) => (
-                    <button
-                      key={`primary-${idx}`}
-                      className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
-                      onClick={() => setExpandedImageIndex(idx)}
-                    >
-                      <img
-                        src={img}
-                        alt={`${propertyTitle} - ${idx + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Secondary Images Section */}
-            {secondaryImages.length > 0 && (
-              <div>
-                <p className="text-muted-foreground text-sm mb-3 px-2 font-medium">
-                  {language === "es" ? "Más fotos" : "More photos"} ({secondaryImages.length})
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {secondaryImages.map((img, idx) => (
-                    <button
-                      key={`secondary-${idx}`}
-                      className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
-                      onClick={() => setExpandedImageIndex(primaryImages.length + idx)}
-                    >
-                      <img
-                        src={img}
-                        alt={`${propertyTitle} - ${primaryImages.length + idx + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Fallback if no categorized images */}
-            {primaryImages.length === 0 && secondaryImages.length === 0 && images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
-                    onClick={() => setExpandedImageIndex(idx)}
-                  >
-                    <img
-                      src={img}
-                      alt={`${propertyTitle} - ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                  </button>
+            {/* Section-based images (new system) */}
+            {sectionMediaData?.hasMedia && sectionMediaData.sections.length > 0 ? (
+              <div className="space-y-6">
+                {sectionMediaData.sections.map((section, sectionIdx) => (
+                  <div key={section.key} className="mb-6">
+                    <p className="text-muted-foreground text-sm mb-3 px-2 font-medium flex items-center gap-2">
+                      {section.label[language]} ({section.images.length})
+                      {section.images.some(img => img.isCover) && (
+                        <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                      )}
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {section.images.map((img, imgIdx) => {
+                        const flatIndex = sectionMediaData.sections
+                          .slice(0, sectionIdx)
+                          .reduce((acc, s) => acc + s.images.length, 0) + imgIdx;
+                        return (
+                          <button
+                            key={img.id}
+                            className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
+                            onClick={() => setExpandedImageIndex(flatIndex)}
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.caption || `${propertyTitle} - ${section.label[language]}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                            {img.isCover && (
+                              <Badge className="absolute top-2 left-2 text-xs" variant="secondary">
+                                <Star className="h-3 w-3 mr-1 fill-yellow-500 text-yellow-500" />
+                                {language === "es" ? "Portada" : "Cover"}
+                              </Badge>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
+            ) : (
+              <>
+                {/* Legacy: Primary Images Section */}
+                {primaryImages.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-muted-foreground text-sm mb-3 px-2 font-medium">
+                      {language === "es" ? "Fotos principales" : "Main photos"} ({primaryImages.length})
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {primaryImages.map((img, idx) => (
+                        <button
+                          key={`primary-${idx}`}
+                          className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
+                          onClick={() => setExpandedImageIndex(idx)}
+                        >
+                          <img
+                            src={img}
+                            alt={`${propertyTitle} - ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Legacy: Secondary Images Section */}
+                {secondaryImages.length > 0 && (
+                  <div>
+                    <p className="text-muted-foreground text-sm mb-3 px-2 font-medium">
+                      {language === "es" ? "Más fotos" : "More photos"} ({secondaryImages.length})
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {secondaryImages.map((img, idx) => (
+                        <button
+                          key={`secondary-${idx}`}
+                          className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
+                          onClick={() => setExpandedImageIndex(primaryImages.length + idx)}
+                        >
+                          <img
+                            src={img}
+                            alt={`${propertyTitle} - ${primaryImages.length + idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Fallback if no categorized images */}
+                {primaryImages.length === 0 && secondaryImages.length === 0 && images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {images.map((img, idx) => (
+                      <button
+                        key={idx}
+                        className="aspect-[4/3] rounded-xl overflow-hidden relative group shadow-sm border"
+                        onClick={() => setExpandedImageIndex(idx)}
+                      >
+                        <img
+                          src={img}
+                          alt={`${propertyTitle} - ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </DialogContent>
