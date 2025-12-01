@@ -28580,6 +28580,25 @@ ${{precio}}/mes
     }
   });
 
+  // POST /api/external-units/parse-maps-url - Extract coordinates from Google Maps URL
+  app.post("/api/external-units/parse-maps-url", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ success: false, error: "URL is required" });
+      }
+      
+      const { parseGoogleMapsUrlWithResolve } = await import('./googleMapsParser');
+      const result = await parseGoogleMapsUrlWithResolve(url);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error parsing Google Maps URL:", error);
+      res.status(500).json({ success: false, error: "Error parsing URL" });
+    }
+  });
+
   app.patch("/api/external-units/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;

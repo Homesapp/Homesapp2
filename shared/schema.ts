@@ -7234,6 +7234,7 @@ export const externalUnits = pgTable("external_units", {
   googleMapsUrl: text("google_maps_url"), // Link de Google Maps
   latitude: decimal("latitude", { precision: 10, scale: 7 }), // Coordenada latitud
   longitude: decimal("longitude", { precision: 10, scale: 7 }), // Coordenada longitud
+  locationConfidence: varchar("location_confidence", { length: 20 }).default("manual"), // manual, parsed, geocoded
   
   // Características
   amenities: text("amenities").array().default(sql`ARRAY[]::text[]`), // Amenidades
@@ -7285,6 +7286,7 @@ export const insertExternalUnitSchema = createInsertSchema(externalUnits).omit({
   listingType: z.enum(["rent", "sale", "both"]).optional(),
   latitude: z.union([z.string(), z.number(), z.null()]).transform(val => (val === undefined || val === null || val === '') ? undefined : String(val)).optional().nullable(),
   longitude: z.union([z.string(), z.number(), z.null()]).transform(val => (val === undefined || val === null || val === '') ? undefined : String(val)).optional().nullable(),
+  locationConfidence: z.enum(["manual", "parsed", "geocoded"]).optional(),
   primaryImages: z.array(z.string()).optional(),
   secondaryImages: z.array(z.string()).optional(),
   videos: z.array(z.string()).optional(),
