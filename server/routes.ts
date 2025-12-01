@@ -30643,8 +30643,8 @@ ${{precio}}/mes
     }
   });
 
-  // DELETE /api/external-leads/:id - Delete lead (sellers can delete their own leads)
-  app.delete("/api/external-leads/:id", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
+  // DELETE /api/external-leads/:id - Delete lead (admin only)
+  app.delete("/api/external-leads/:id", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id } = req.params;
       const existing = await storage.getExternalLead(id);
@@ -30655,17 +30655,6 @@ ${{precio}}/mes
       
       const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
       if (!hasAccess) return;
-      
-      const userRole = req.user?.cachedRole || req.user?.role;
-      const userId = req.user?.claims?.sub || req.user?.id;
-      const isSeller = userRole === 'external_agency_seller';
-      
-      // Sellers can only delete leads that are assigned to them (sellerId matches their ID)
-      if (isSeller && existing.sellerId !== userId) {
-        return res.status(403).json({ 
-          message: "Solo puedes eliminar leads que estén asignados a ti" 
-        });
-      }
       
       // Security: Block deleting leads in locked statuses
       const lockedStatuses = ["proceso_renta", "renta_concretada"];

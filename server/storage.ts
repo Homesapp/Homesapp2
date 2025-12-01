@@ -384,6 +384,7 @@ import {
   type ExternalLeadStatusHistory,
   type InsertExternalLeadStatusHistory,
   externalLeadShowings,
+  externalLeadReminders,
   type ExternalLeadShowing,
   type InsertExternalLeadShowing,
   type UpdateExternalLeadShowing,
