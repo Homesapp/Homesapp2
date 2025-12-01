@@ -37,6 +37,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
+import CommissionRatesDisplay from "@/components/CommissionRatesDisplay";
 
 type DashboardSummary = {
   totalCondominiums: number;
@@ -328,6 +329,24 @@ function SellerDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Commission Rates Section */}
+      <Card data-testid="card-commission-rates">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Percent className="h-5 w-5" />
+            {language === "es" ? "Mis Comisiones" : "My Commissions"}
+          </CardTitle>
+          <CardDescription>
+            {language === "es" 
+              ? "Tus porcentajes de comisión por concepto"
+              : "Your commission percentages by concept"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CommissionRatesDisplay />
+        </CardContent>
+      </Card>
 
       {/* Lead Status Distribution */}
       {Object.keys(stats.leadsByStatus).length > 0 && (
