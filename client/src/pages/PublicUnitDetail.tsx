@@ -219,7 +219,7 @@ export default function PublicUnitDetail() {
               </div>
 
               {/* Desktop: Grid layout */}
-              <div className="hidden lg:grid grid-cols-4 grid-rows-2 gap-2 p-4 h-[60vh] max-h-[500px]">
+              <div className="hidden lg:grid grid-cols-4 grid-rows-2 gap-1.5 p-3 h-[45vh] max-h-[360px]">
                 <div 
                   className="col-span-2 row-span-2 relative rounded-l-2xl overflow-hidden cursor-pointer"
                   onClick={() => setShowAllPhotosDialog(true)}
@@ -312,10 +312,10 @@ export default function PublicUnitDetail() {
                   {propertyTitle}
                 </h1>
                 <Badge 
-                  variant={unit.status === "active" || unit.status === "available" ? "default" : "secondary"} 
+                  variant={["active", "available", "listed", "published"].includes(unit.status || "") || unit.isActive ? "default" : "secondary"} 
                   className="shrink-0 text-sm px-3 py-1"
                 >
-                  {unit.status === "active" || unit.status === "available"
+                  {["active", "available", "listed", "published"].includes(unit.status || "") || unit.isActive
                     ? (language === "es" ? "Disponible" : "Available")
                     : (language === "es" ? "No disponible" : "Not available")}
                 </Badge>
@@ -324,10 +324,10 @@ export default function PublicUnitDetail() {
                 <MapPin className="h-5 w-5 shrink-0" />
                 {propertyLocation}
               </p>
-              {unit.condominiumName && unit.zone && (
+              {unit.condominiumName && (
                 <p className="text-muted-foreground flex items-center gap-2 mt-1">
                   <Building2 className="h-4 w-4 shrink-0" />
-                  {unit.condominiumName}
+                  {unit.condominiumName}{unit.zone ? ` - ${unit.zone}` : ''}
                 </p>
               )}
             </div>
