@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, X, Heart, PawPrint, Home, Building2, ChevronRight, Star, ChevronLeft, Sofa } from "lucide-react";
+import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, X, Heart, PawPrint, Home, Building2, ChevronRight, Star, ChevronLeft, Sofa, Map, Grid, LayoutGrid } from "lucide-react";
 import { type Property } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
 import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
+import { PropertyMap } from "@/components/external/PropertyMap";
 
 interface SearchFilters {
   query?: string;
@@ -74,6 +75,7 @@ export default function PropertySearch() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const ITEMS_PER_PAGE = 24;
 
   // Read URL query parameters on mount and apply to filters
@@ -478,7 +480,57 @@ export default function PropertySearch() {
           <p className="text-sm text-muted-foreground">
             {pagination.totalCount} {pagination.totalCount === 1 ? "propiedad encontrada" : "propiedades encontradas"}
           </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              data-testid="btn-view-grid"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("map")}
+              data-testid="btn-view-map"
+            >
+              <Map className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+
+        {viewMode === "map" && (
+          <div className="mb-6">
+            <PropertyMap
+              properties={properties.map((p: any) => ({
+                id: p.id,
+                title: p.title,
+                unitNumber: p.unitNumber || "",
+                latitude: p.latitude,
+                longitude: p.longitude,
+                price: p.price,
+                salePrice: p.salePrice,
+                currency: p.currency,
+                saleCurrency: p.saleCurrency,
+                listingType: p.listingType,
+                bedrooms: p.bedrooms,
+                bathrooms: p.bathrooms,
+                area: p.area,
+                propertyType: p.propertyType,
+                zone: p.location,
+                primaryImages: p.primaryImages,
+                slug: p.unitSlug,
+                agencySlug: p.agencySlug,
+              }))}
+              height="450px"
+              language="es"
+            />
+          </div>
+        )}
+
+        {viewMode === "grid" && (
+          <>
 
         {/* Property Grid - Minimalist Cards */}
         {isLoading ? (
@@ -665,8 +717,9 @@ export default function PropertySearch() {
             </span>
           </div>
         )}
+          </>
+        )}
       </div>
-
       {/* Footer - Minimalist */}
       {!isAuthenticated && (
         <footer className="border-t bg-muted/30 mt-12">

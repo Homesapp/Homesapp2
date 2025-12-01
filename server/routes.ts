@@ -21313,6 +21313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         condominiumId: condominiumId,
         condoName: condoName || null,
         unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
         showCondoInListing: true,
         showUnitNumberInListing: true,
         primaryImages: unit.primaryImages || [],
@@ -21725,6 +21727,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           condominiumId: condominiumId,
           condoName: condoName || null,
           unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
           showCondoInListing: true,
           showUnitNumberInListing: true,
           primaryImages: unit.primaryImages || [],
@@ -29039,9 +29043,13 @@ ${{precio}}/mes
               .set({
                 condominiumId,
                 unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
                 zone: unit.zone,
           condominiumName: condoName || null,
           unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
                 propertyType: unit.propertyType,
                 floor: unit.floor,
                 bedrooms: unit.bedrooms,
@@ -29067,9 +29075,13 @@ ${{precio}}/mes
                 agencyId,
                 condominiumId,
                 unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
                 zone: unit.zone,
           condominiumName: condoName || null,
           unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
                 propertyType: unit.propertyType,
                 floor: unit.floor,
                 bedrooms: unit.bedrooms,
@@ -32283,6 +32295,8 @@ ${{precio}}/mes
           propertySnapshot = {
             propertyName: property?.name || '',
             unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
             rentPrice: unit.rentPrice?.toString(),
             bedrooms: unit.bedrooms,
             zone: property?.zone || '',
@@ -32433,6 +32447,8 @@ ${{precio}}/mes
         leadName: lead.fullName,
         propertyName: property?.name,
         unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
         createdByName,
       });
     } catch (error: any) {
@@ -32595,6 +32611,8 @@ ${{precio}}/mes
         leadName: lead.fullName,
         propertyName: property?.name || condo?.name,
         unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
         createdByName,
         agencySlug: agency?.slug,
         unitSlug: unit.slug,
@@ -32725,6 +32743,8 @@ ${{precio}}/mes
         leadName: lead.fullName,
         propertyName: property?.name,
         unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
         createdByName,
       });
     } catch (error: any) {
@@ -33134,6 +33154,8 @@ ${{precio}}/mes
         agencyId: unit.agencyId, // For public lead submission
         name: unit.name,
         unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
         zone: unit.zone,
         unitType: unit.unitType,
         bedrooms: unit.bedrooms,
@@ -33606,6 +33628,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           zone: unit.zone,
           condominiumName: condoName || null,
           unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
           condominiumId: unit.condominiumId,
         };
       }));
@@ -34189,6 +34213,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         referrer.units.push({
           id: unit.id,
           unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
           condominiumName: unit.condominiumName,
           monthlyRent12: unit.monthlyRent12,
           status: unit.status,
@@ -37083,6 +37109,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
             ? {
                 id: unit.id,
                 unitNumber: unit.unitNumber,
+          latitude: unit.latitude ? parseFloat(unit.latitude) : null,
+          longitude: unit.longitude ? parseFloat(unit.longitude) : null,
                 condominium: {
                   id: unit.condominium.id,
                   name: unit.condominium.name,
