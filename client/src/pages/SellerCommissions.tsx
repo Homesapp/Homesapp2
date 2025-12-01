@@ -3,8 +3,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, TrendingUp, Calendar, CheckCircle2, Clock, Home } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, CheckCircle2, Clock, Home, Percent, Info } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Commission {
   id: string;
@@ -16,12 +17,59 @@ interface Commission {
   paidAt?: string;
 }
 
+interface CommissionRateItem {
+  rate: number;
+  source: string;
+  sourceId?: string;
+}
+
+interface CommissionRatesResponse {
+  rentalNoReferral: CommissionRateItem;
+  rentalWithReferral: CommissionRateItem;
+  propertyRecruitment: CommissionRateItem;
+  brokerReferral: CommissionRateItem;
+}
+
+const conceptLabels: Record<string, { es: string; en: string; desc: string }> = {
+  rental_no_referral: { 
+    es: "Renta sin referido", 
+    en: "Rental without referral",
+    desc: "Comisión cuando cierras una renta sin referido externo"
+  },
+  rental_with_referral: { 
+    es: "Renta con referido", 
+    en: "Rental with referral",
+    desc: "Comisión cuando cierras una renta que fue referida"
+  },
+  property_recruitment: { 
+    es: "Reclutamiento de propiedad", 
+    en: "Property recruitment",
+    desc: "Comisión por captar una nueva propiedad para el portafolio"
+  },
+  broker_referral: { 
+    es: "Referido de broker", 
+    en: "Broker referral",
+    desc: "Comisión por referir un negocio a otro agente"
+  },
+};
+
 export default function SellerCommissions() {
   const { t } = useLanguage();
 
   const { data: commissions = [], isLoading } = useQuery<Commission[]>({
     queryKey: ["/api/external-seller/commissions"],
   });
+
+  const { data: commissionRates, isLoading: isLoadingRates } = useQuery<CommissionRatesResponse>({
+    queryKey: ["/api/external/seller-commission-rates/my-rates"],
+  });
+
+  const ratesList = commissionRates ? [
+    { concept: 'rental_no_referral', ...commissionRates.rentalNoReferral },
+    { concept: 'rental_with_referral', ...commissionRates.rentalWithReferral },
+    { concept: 'property_recruitment', ...commissionRates.propertyRecruitment },
+    { concept: 'broker_referral', ...commissionRates.brokerReferral },
+  ] : [];
 
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -115,6 +163,77 @@ export default function SellerCommissions() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Commission Rates */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Percent className="h-5 w-5 text-primary" />
+            Mis Porcentajes de Comisión
+          </CardTitle>
+          <CardDescription>
+            Estos son tus porcentajes de comisión según tu rol y configuración
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingRates ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-20" />
+              ))}
+            </div>
+          ) : ratesList.length === 0 ? (
+            <div className="text-center py-8">
+              <Percent className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">
+                Los porcentajes de comisión aún no han sido configurados
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {ratesList.map((rate) => {
+                const label = conceptLabels[rate.concept];
+                return (
+                  <div
+                    key={rate.concept}
+                    className="flex items-start gap-4 p-4 border rounded-lg"
+                    data-testid={`rate-${rate.concept}`}
+                  >
+                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg font-bold text-primary">
+                        {rate.rate}%
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">
+                          {label?.es || rate.concept}
+                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            {label?.desc || rate.description || "Porcentaje de comisión"}
+                          </TooltipContent>
+                        </Tooltip>
+                        {rate.source !== 'default' && (
+                          <Badge variant="secondary" className="text-xs">
+                            {rate.source === 'user' ? 'Personalizado' : 'Por rol'}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {label?.desc || rate.description || "Porcentaje de comisión"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Commissions List */}
       <Card>

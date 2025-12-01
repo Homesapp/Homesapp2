@@ -647,6 +647,7 @@ export default function ExternalSellersManagement() {
   const [isPayoutDialogOpen, setIsPayoutDialogOpen] = useState(false);
   const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SellerGoal | null>(null);
+  const [editingCommissionRate, setEditingCommissionRate] = useState<string | null>(null);
   const [goalFormData, setGoalFormData] = useState({
     sellerId: "",
     goalType: "leads",
@@ -731,6 +732,40 @@ export default function ExternalSellersManagement() {
           ? "El estado del pago ha sido actualizado"
           : "The payout status has been updated"
       });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message
+      });
+    }
+  });
+
+  // Update seller commission rate mutation
+  const updateSellerCommissionMutation = useMutation({
+    mutationFn: async ({ id, commissionRate }: { id: string; commissionRate: string }) => {
+      const response = await apiRequest("PATCH", `/api/external/sellers/${id}`, { 
+        commissionRate: `${commissionRate}.00`
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error updating commission rate");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external/sellers"] });
+      toast({
+        title: language === "es" ? "Comisión actualizada" : "Commission updated",
+        description: language === "es" 
+          ? "La tasa de comisión ha sido actualizada"
+          : "The commission rate has been updated"
+      });
+      setEditingCommissionRate(null);
+      if (selectedSeller && data) {
+        setSelectedSeller({ ...selectedSeller, commissionRate: data.commissionRate || editingCommissionRate + ".00" });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -1291,6 +1326,9 @@ export default function ExternalSellersManagement() {
                     )}
                   </Button>
                 </TableHead>
+                <TableHead className="text-center">
+                  {language === "es" ? "% Comisión" : "Commission %"}
+                </TableHead>
                 <TableHead>
                   <Button 
                     variant="ghost" 
@@ -1349,6 +1387,11 @@ export default function ExternalSellersManagement() {
                   </TableCell>
                   <TableCell className="font-medium">{seller.stats.totalContracts}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(seller.stats.totalRevenue)}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className="font-medium">
+                      {seller.commissionRate ? `${parseFloat(seller.commissionRate)}%` : '10%'}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <span className={seller.stats.unpaidCommissions > 0 ? "text-amber-600 font-medium" : ""}>
                       {formatCurrency(seller.stats.unpaidCommissions)}
@@ -2432,6 +2475,82 @@ export default function ExternalSellersManagement() {
                         }%
                       </span>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Commission Rate Card with Edit */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Percent className="h-4 w-4" />
+                      {language === "es" ? "Tasa de Comisión" : "Commission Rate"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {editingCommissionRate !== null ? (
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={editingCommissionRate}
+                          onValueChange={setEditingCommissionRate}
+                        >
+                          <SelectTrigger className="w-24" data-testid="select-edit-commission">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10%</SelectItem>
+                            <SelectItem value="20">20%</SelectItem>
+                            <SelectItem value="40">40%</SelectItem>
+                            <SelectItem value="50">50%</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (selectedSeller && editingCommissionRate) {
+                              updateSellerCommissionMutation.mutate({
+                                id: selectedSeller.id,
+                                commissionRate: editingCommissionRate
+                              });
+                            }
+                          }}
+                          disabled={updateSellerCommissionMutation.isPending}
+                          data-testid="button-save-commission"
+                        >
+                          {updateSellerCommissionMutation.isPending 
+                            ? (language === "es" ? "Guardando..." : "Saving...") 
+                            : (language === "es" ? "Guardar" : "Save")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingCommissionRate(null)}
+                          data-testid="button-cancel-commission"
+                        >
+                          {language === "es" ? "Cancelar" : "Cancel"}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold">
+                          {selectedSeller.commissionRate 
+                            ? `${parseFloat(selectedSeller.commissionRate)}%` 
+                            : '10%'}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingCommissionRate(
+                            selectedSeller.commissionRate 
+                              ? String(parseFloat(selectedSeller.commissionRate)) 
+                              : "10"
+                          )}
+                          data-testid="button-edit-commission"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          {language === "es" ? "Editar" : "Edit"}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
