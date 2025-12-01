@@ -412,7 +412,7 @@ export default function ExternalUnitDetail() {
         externalUnitOwnerId: ownerId,
         recipientType: 'owner',
       });
-      return res;
+      return res.json();
     },
     onSuccess: (data: any) => {
       const link = `${window.location.origin}/rental-form/${data.token}`;
