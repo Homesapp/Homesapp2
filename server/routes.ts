@@ -40342,27 +40342,40 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         return res.status(404).json({ error: "Agency not found" });
       }
       
-      // Find unit by slug or generated slug
+      // Find unit by slug or generated slug (matching public API logic)
       const units = await db
-        .select()
+        .select({
+          unit: externalUnits,
+          condoName: externalCondominiums.name,
+        })
         .from(externalUnits)
+        .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
         .where(and(
           eq(externalUnits.agencyId, matchedAgency.id),
           eq(externalUnits.isActive, true),
           eq(externalUnits.publishStatus, "approved")
         ));
       
-      const matchedUnit = units.find(u => {
-        const unitTitle = u.title || `${u.propertyType || 'propiedad'}-${u.unitNumber}`;
-        const slug = u.slug || generateSlug(unitTitle);
-        return slug === unitSlug;
+      const matchedUnit = units.find(({ unit: u, condoName }) => {
+        // Generate slug same way as public properties endpoint
+        if (u.slug) return u.slug === unitSlug;
+        
+        // Try condoName-unitNumber (preferred format)
+        const condoBasedSlug = condoName ? generateSlug(`${condoName}-${u.unitNumber}`) : null;
+        if (condoBasedSlug === unitSlug) return true;
+        
+        // Fallback to title or propertyType-unitNumber
+        const titleBasedSlug = generateSlug(u.title || `${u.propertyType || 'propiedad'}-${u.unitNumber}`);
+        return titleBasedSlug === unitSlug;
       });
       
-      if (!matchedUnit) {
+      const matchedUnitData = matchedUnit?.unit;
+      
+      if (!matchedUnitData) {
         return res.status(404).json({ error: "Property not found" });
       }
       
-      res.json({ unitId: matchedUnit.id });
+      res.json({ unitId: matchedUnitData.id });
     } catch (error: any) {
       console.error("Error resolving property URL:", error);
       res.status(500).json({ error: error.message || "Error resolving property URL" });
