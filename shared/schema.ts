@@ -9634,3 +9634,90 @@ export const insertExternalLeadEmailImportLogSchema = createInsertSchema(externa
 
 export type InsertExternalLeadEmailImportLog = z.infer<typeof insertExternalLeadEmailImportLogSchema>;
 export type ExternalLeadEmailImportLog = typeof externalLeadEmailImportLogs.$inferSelect;
+
+// ========================================
+// SELLER COMMISSION RATES SYSTEM
+// ========================================
+
+// Commission concept enum
+export const sellerCommissionConceptEnum = pgEnum("seller_commission_concept", [
+  "rental_no_referral",    // Renta de propiedad sin referido
+  "rental_with_referral",  // Renta de propiedad con referido
+  "property_recruitment",  // Reclutamiento de propiedad
+  "broker_referral",       // Referir a un broker
+]);
+
+// External Seller Commission Defaults - Default commission rates per agency
+export const externalSellerCommissionDefaults = pgTable("external_seller_commission_defaults", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Commission concept
+  concept: sellerCommissionConceptEnum("concept").notNull(),
+  
+  // Rate percentage (0-100)
+  rate: decimal("rate", { precision: 5, scale: 2 }).notNull(),
+  
+  // Description
+  descriptionEs: varchar("description_es", { length: 255 }),
+  descriptionEn: varchar("description_en", { length: 255 }),
+  
+  // Audit
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_commission_defaults_agency").on(table.agencyId),
+  unique("unique_commission_defaults_agency_concept").on(table.agencyId, table.concept),
+]);
+
+export const insertExternalSellerCommissionDefaultSchema = createInsertSchema(externalSellerCommissionDefaults).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalSellerCommissionDefault = z.infer<typeof insertExternalSellerCommissionDefaultSchema>;
+export type ExternalSellerCommissionDefault = typeof externalSellerCommissionDefaults.$inferSelect;
+
+// External Seller Commission Overrides - Override rates by role or user
+export const externalSellerCommissionOverrides = pgTable("external_seller_commission_overrides", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  
+  // Commission concept
+  concept: sellerCommissionConceptEnum("concept").notNull(),
+  
+  // Override type: 'role' or 'user'
+  overrideType: varchar("override_type", { length: 20 }).notNull(), // 'role' or 'user'
+  
+  // Either role name or user ID
+  roleValue: varchar("role_value", { length: 50 }), // e.g., "vendedor", "vendedor_senior"
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  
+  // Rate percentage (0-100)
+  rate: decimal("rate", { precision: 5, scale: 2 }).notNull(),
+  
+  // Notes
+  notes: text("notes"),
+  
+  // Audit
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_commission_overrides_agency").on(table.agencyId),
+  index("idx_commission_overrides_role").on(table.roleValue),
+  index("idx_commission_overrides_user").on(table.userId),
+  index("idx_commission_overrides_concept").on(table.concept),
+]);
+
+export const insertExternalSellerCommissionOverrideSchema = createInsertSchema(externalSellerCommissionOverrides).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalSellerCommissionOverride = z.infer<typeof insertExternalSellerCommissionOverrideSchema>;
+export type ExternalSellerCommissionOverride = typeof externalSellerCommissionOverrides.$inferSelect;

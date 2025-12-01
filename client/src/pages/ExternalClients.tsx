@@ -3349,17 +3349,19 @@ export default function ExternalClients() {
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setSelectedLead(lead);
-                                    setIsDeleteLeadDialogOpen(true);
-                                  }}
-                                  data-testid={`button-delete-lead-${lead.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {!isSeller && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedLead(lead);
+                                      setIsDeleteLeadDialogOpen(true);
+                                    }}
+                                    data-testid={`button-delete-lead-${lead.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -3531,18 +3533,20 @@ export default function ExternalClients() {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  setSelectedLead(lead);
-                                  setIsDeleteLeadDialogOpen(true);
-                                }}
-                                data-testid={`button-delete-lead-footer-${lead.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {!isSeller && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    setSelectedLead(lead);
+                                    setIsDeleteLeadDialogOpen(true);
+                                  }}
+                                  data-testid={`button-delete-lead-footer-${lead.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </CardContent>
