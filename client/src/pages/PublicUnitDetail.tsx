@@ -12,7 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, 
   Bed, 
@@ -60,6 +62,8 @@ export default function PublicUnitDetail() {
   const [showAllPhotosDialog, setShowAllPhotosDialog] = useState(false);
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
   const [showBenefitsDialog, setShowBenefitsDialog] = useState(false);
+  const [showFavoriteDialog, setShowFavoriteDialog] = useState(false);
+  const { toast } = useToast();
 
   const directUnitId = paramsUnidad?.id || paramsPropiedad?.id;
   const agencySlug = paramsFriendly?.agencySlug;
@@ -188,6 +192,13 @@ export default function PublicUnitDetail() {
               size="icon"
               className="min-h-[44px] min-w-[44px]"
               data-testid="button-share"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                toast({
+                  title: language === "es" ? "Link copiado" : "Link copied",
+                  description: language === "es" ? "El link ha sido copiado al portapapeles" : "The link has been copied to clipboard",
+                });
+              }}
             >
               <Share2 className="h-5 w-5" />
             </Button>
@@ -196,6 +207,7 @@ export default function PublicUnitDetail() {
               size="icon"
               className="min-h-[44px] min-w-[44px]"
               data-testid="button-favorite"
+              onClick={() => setShowFavoriteDialog(true)}
             >
               <Heart className="h-5 w-5" />
             </Button>
@@ -596,6 +608,52 @@ export default function PublicUnitDetail() {
               {language === "es" ? "Ya tengo una cuenta" : "I already have an account"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Favorite Dialog - Prompt to Create Account */}
+      <Dialog open={showFavoriteDialog} onOpenChange={setShowFavoriteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-center pb-2">
+            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center">
+              <Heart className="h-8 w-8 text-red-500" />
+            </div>
+            <DialogTitle className="text-xl">
+              {language === "es" ? "Guarda esta propiedad" : "Save this property"}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              {language === "es" 
+                ? "Crea una cuenta gratuita para guardar tus propiedades favoritas y recibir alertas cuando haya cambios."
+                : "Create a free account to save your favorite properties and get alerts when there are changes."}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="flex flex-col gap-3 pt-4">
+            <Button 
+              size="lg" 
+              className="w-full min-h-[52px] text-base font-semibold"
+              onClick={() => {
+                setShowFavoriteDialog(false);
+                setLocation("/register");
+              }}
+              data-testid="button-register-favorite"
+            >
+              <User className="h-5 w-5 mr-2" />
+              {language === "es" ? "Crear cuenta gratis" : "Create free account"}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="w-full min-h-[52px] text-base"
+              onClick={() => {
+                setShowFavoriteDialog(false);
+                setLocation("/login");
+              }}
+              data-testid="button-login-favorite"
+            >
+              {language === "es" ? "Ya tengo una cuenta" : "I already have an account"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
