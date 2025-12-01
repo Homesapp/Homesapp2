@@ -83,10 +83,43 @@ export default function PropertySearch() {
 
   const favoriteIds = new Set((favorites as any[]).map((fav: any) => fav.propertyId));
 
+  // Build query params for API filtering
+  const buildQueryParams = () => {
+    const params = new URLSearchParams();
+    params.set('page', currentPage.toString());
+    params.set('limit', ITEMS_PER_PAGE.toString());
+    
+    // Search query
+    if (filters.query && filters.query.trim()) params.set('q', filters.query.trim());
+    
+    // Status filter (rent/sale)
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+    
+    // Property type filter
+    if (filters.propertyType && filters.propertyType !== 'all') params.set('propertyType', filters.propertyType);
+    
+    // Price range filters
+    if (filters.minPrice && filters.minPrice > 0) params.set('minPrice', filters.minPrice.toString());
+    if (filters.maxPrice && filters.maxPrice > 0) params.set('maxPrice', filters.maxPrice.toString());
+    
+    // Bedroom/bathroom filters
+    if (filters.bedrooms && filters.bedrooms > 0) params.set('bedrooms', filters.bedrooms.toString());
+    if (filters.bathrooms && filters.bathrooms > 0) params.set('bathrooms', filters.bathrooms.toString());
+    
+    // Boolean filters - only set when true
+    if (filters.petFriendly === true) params.set('petFriendly', 'true');
+    if (filters.featured === true) params.set('featured', 'true');
+    
+    // Location/colony filter
+    if (filters.colonyName && filters.colonyName.trim()) params.set('location', filters.colonyName.trim());
+    
+    return params.toString();
+  };
+
   const { data: apiResponse, isLoading } = useQuery<{ data: any[], pagination: { page: number, limit: number, totalCount: number, totalPages: number } }>({
-    queryKey: ["/api/public/external-properties", currentPage],
+    queryKey: ["/api/public/external-properties", currentPage, filters.query, filters.status, filters.propertyType, filters.minPrice, filters.maxPrice, filters.bedrooms, filters.bathrooms, filters.petFriendly, filters.featured, filters.colonyName],
     queryFn: async () => {
-      const response = await fetch(`/api/public/external-properties?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
+      const response = await fetch(`/api/public/external-properties?${buildQueryParams()}`);
       if (!response.ok) {
         throw new Error("Error al buscar propiedades");
       }
@@ -94,52 +127,9 @@ export default function PropertySearch() {
     },
   });
 
-  const allProperties = apiResponse?.data || [];
+  // Use API-filtered data directly - no client-side filtering needed for server-applied filters
+  const properties = apiResponse?.data || [];
   const pagination = apiResponse?.pagination || { page: 1, limit: ITEMS_PER_PAGE, totalCount: 0, totalPages: 1 };
-
-  const properties = allProperties.filter((prop: any) => {
-    if (filters.query) {
-      const searchQuery = filters.query.toLowerCase();
-      const title = (prop.title || "").toLowerCase();
-      const description = (prop.description || "").toLowerCase();
-      const location = (prop.location || "").toLowerCase();
-      if (!title.includes(searchQuery) && !description.includes(searchQuery) && !location.includes(searchQuery)) {
-        return false;
-      }
-    }
-    if (filters.status && filters.status !== "all") {
-      if (filters.status === "rent" && prop.status !== "rent") return false;
-      if (filters.status === "sale" && prop.status !== "sale") return false;
-    }
-    if (filters.propertyType && filters.propertyType !== "all") {
-      if (prop.propertyType?.toLowerCase() !== filters.propertyType.toLowerCase()) return false;
-    }
-    if (filters.minPrice && prop.price < filters.minPrice) return false;
-    if (filters.maxPrice && prop.price > filters.maxPrice) return false;
-    if (filters.bedrooms && prop.bedrooms < filters.bedrooms) return false;
-    if (filters.bathrooms && prop.bathrooms < filters.bathrooms) return false;
-    if (filters.minArea && prop.area && prop.area < filters.minArea) return false;
-    if (filters.maxArea && prop.area && prop.area > filters.maxArea) return false;
-    if (filters.location) {
-      const searchLocation = filters.location.toLowerCase();
-      const propLocation = (prop.location || "").toLowerCase();
-      const propTitle = (prop.title || "").toLowerCase();
-      if (!propLocation.includes(searchLocation) && !propTitle.includes(searchLocation)) return false;
-    }
-    if (filters.colonyName) {
-      const searchColony = filters.colonyName.toLowerCase();
-      const propLocation = (prop.location || "").toLowerCase();
-      if (!propLocation.includes(searchColony)) return false;
-    }
-    if (filters.petFriendly && !prop.amenities?.includes("Mascotas permitidas")) return false;
-    if (filters.featured && !prop.featured) return false;
-    if (filters.minRating && prop.rating && prop.rating < filters.minRating) return false;
-    if (selectedAmenities.length > 0) {
-      const propAmenities = prop.amenities || [];
-      if (!selectedAmenities.every(a => propAmenities.includes(a))) return false;
-    }
-    return true;
-  });
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities(prev =>
@@ -181,9 +171,16 @@ export default function PropertySearch() {
     toggleFavoriteMutation.mutate(propertyId);
   };
 
+  // Helper to update filters and reset page to 1
+  const updateFilters = (newFilters: Partial<SearchFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
   const clearFilters = () => {
     setFilters({ location: "Tulum" });
     setSelectedAmenities([]);
+    setCurrentPage(1);
   };
 
   return (
@@ -237,7 +234,7 @@ export default function PropertySearch() {
               placeholder="Buscar por ubicación, nombre..."
               className="flex-1 border-0 bg-transparent focus-visible:ring-0 text-sm sm:text-base h-9"
               value={filters.query || ""}
-              onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+              onChange={(e) => updateFilters({ query: e.target.value })}
               data-testid="input-search-query"
             />
             <Button
@@ -256,28 +253,22 @@ export default function PropertySearch() {
             <Badge
               variant={filters.status === "rent" ? "default" : "secondary"}
               className="rounded-full px-3 py-1.5 text-xs cursor-pointer"
-              onClick={() => setFilters({ ...filters, status: filters.status === "rent" ? undefined : "rent" })}
+              onClick={() => updateFilters({ status: filters.status === "rent" ? undefined : "rent" })}
             >
               En Renta
             </Badge>
             <Badge
               variant={filters.status === "sale" ? "default" : "secondary"}
               className="rounded-full px-3 py-1.5 text-xs cursor-pointer"
-              onClick={() => setFilters({ ...filters, status: filters.status === "sale" ? undefined : "sale" })}
+              onClick={() => updateFilters({ status: filters.status === "sale" ? undefined : "sale" })}
             >
               En Venta
             </Badge>
-            <Badge
-              variant={filters.featured ? "default" : "secondary"}
-              className="rounded-full px-3 py-1.5 text-xs cursor-pointer"
-              onClick={() => setFilters({ ...filters, featured: !filters.featured })}
-            >
-              Destacadas
-            </Badge>
+{/* Destacadas filter hidden - external properties don't have featured field yet */}
             <Badge
               variant={filters.petFriendly ? "default" : "secondary"}
               className="rounded-full px-3 py-1.5 text-xs cursor-pointer gap-1"
-              onClick={() => setFilters({ ...filters, petFriendly: !filters.petFriendly })}
+              onClick={() => updateFilters({ petFriendly: !filters.petFriendly })}
             >
               <PawPrint className="h-3 w-3" />
               Pet-friendly
@@ -293,7 +284,7 @@ export default function PropertySearch() {
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Tipo</Label>
                 <Select
                   value={filters.propertyType || "all"}
-                  onValueChange={(value) => setFilters({ ...filters, propertyType: value === "all" ? undefined : value })}
+                  onValueChange={(value) => updateFilters({ propertyType: value === "all" ? undefined : value })}
                 >
                   <SelectTrigger className="rounded-xl h-10" data-testid="select-property-type">
                     <SelectValue placeholder="Todos" />
@@ -313,7 +304,7 @@ export default function PropertySearch() {
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Zona</Label>
                 <Select
                   value={filters.colonyName || "all"}
-                  onValueChange={(value) => setFilters({ ...filters, colonyName: value === "all" ? undefined : value })}
+                  onValueChange={(value) => updateFilters({ colonyName: value === "all" ? undefined : value })}
                 >
                   <SelectTrigger className="rounded-xl h-10" data-testid="select-colony">
                     <SelectValue placeholder="Todas" />
@@ -333,7 +324,7 @@ export default function PropertySearch() {
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Recámaras</Label>
                 <Select
                   value={filters.bedrooms?.toString() || "any"}
-                  onValueChange={(value) => setFilters({ ...filters, bedrooms: value === "any" ? undefined : parseInt(value) })}
+                  onValueChange={(value) => updateFilters({ bedrooms: value === "any" ? undefined : parseInt(value) })}
                 >
                   <SelectTrigger className="rounded-xl h-10" data-testid="select-bedrooms">
                     <SelectValue placeholder="Todas" />
@@ -352,7 +343,7 @@ export default function PropertySearch() {
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Baños</Label>
                 <Select
                   value={filters.bathrooms?.toString() || "any"}
-                  onValueChange={(value) => setFilters({ ...filters, bathrooms: value === "any" ? undefined : parseFloat(value) })}
+                  onValueChange={(value) => updateFilters({ bathrooms: value === "any" ? undefined : parseFloat(value) })}
                 >
                   <SelectTrigger className="rounded-xl h-10" data-testid="select-bathrooms">
                     <SelectValue placeholder="Todos" />
@@ -373,7 +364,7 @@ export default function PropertySearch() {
                   placeholder="$0"
                   className="rounded-xl h-10"
                   value={filters.minPrice || ""}
-                  onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  onChange={(e) => updateFilters({ minPrice: e.target.value ? parseFloat(e.target.value) : undefined })}
                   data-testid="input-min-price"
                 />
               </div>
@@ -385,7 +376,7 @@ export default function PropertySearch() {
                   placeholder="Sin límite"
                   className="rounded-xl h-10"
                   value={filters.maxPrice || ""}
-                  onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  onChange={(e) => updateFilters({ maxPrice: e.target.value ? parseFloat(e.target.value) : undefined })}
                   data-testid="input-max-price"
                 />
               </div>
@@ -421,7 +412,7 @@ export default function PropertySearch() {
         {/* Results Count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">
-            {properties.length} {properties.length === 1 ? "propiedad encontrada" : "propiedades encontradas"}
+            {pagination.totalCount} {pagination.totalCount === 1 ? "propiedad encontrada" : "propiedades encontradas"}
           </p>
         </div>
 

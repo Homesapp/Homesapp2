@@ -32376,19 +32376,95 @@ ${{precio}}/mes
   // GET /api/public/external-properties - Public list of approved external properties with pagination
   app.get("/api/public/external-properties", async (req, res) => {
     try {
-      const { page = 1, limit = 24, q, location, status, propertyType, minPrice, maxPrice, bedrooms, bathrooms } = req.query;
+      const { page = 1, limit = 24, q, location, status, propertyType, minPrice, maxPrice, bedrooms, bathrooms, petFriendly, featured } = req.query;
       const pageNum = Math.max(1, parseInt(page as string) || 1);
       const limitNum = Math.min(Math.max(1, parseInt(limit as string) || 24), 50);
       const offset = (pageNum - 1) * limitNum;
       
-      // Build where conditions
-      const conditions = [
+      // Build where conditions - base conditions
+      const conditions: any[] = [
         eq(externalUnits.publishToMain, true),
         eq(externalUnits.publishStatus, 'approved'),
         eq(externalUnits.isActive, true)
       ];
       
-      // Get total count first
+      // Apply filter: status (rent/sale/both)
+      if (status && typeof status === 'string' && status !== 'all') {
+        if (status === 'rent') {
+          conditions.push(or(eq(externalUnits.listingType, 'rent'), eq(externalUnits.listingType, 'both')));
+        } else if (status === 'sale') {
+          conditions.push(or(eq(externalUnits.listingType, 'sale'), eq(externalUnits.listingType, 'both')));
+        }
+      }
+      
+      // Apply filter: pet-friendly
+      if (petFriendly === 'true' || petFriendly === '1') {
+        conditions.push(eq(externalUnits.petsAllowed, true));
+      }
+      
+      // Apply filter: featured - Note: external units don't have a dedicated featured field
+      // For now, featured filter is not applicable to external units
+      // TODO: Add featured field to externalUnits schema if needed
+      
+      // Apply filter: location/zone search
+      if (location && typeof location === 'string' && location.trim()) {
+        const locationTerm = `%${location.trim()}%`;
+        conditions.push(or(
+          ilike(externalUnits.zone, locationTerm),
+          ilike(externalUnits.title, locationTerm),
+          ilike(externalUnits.description, locationTerm)
+        ));
+      }
+      
+      // Apply filter: property type
+      if (propertyType && typeof propertyType === 'string' && propertyType !== 'all') {
+        conditions.push(ilike(externalUnits.propertyType, propertyType));
+      }
+      
+      // Apply filter: bedrooms
+      if (bedrooms && typeof bedrooms === 'string') {
+        const bedroomsNum = parseInt(bedrooms);
+        if (!isNaN(bedroomsNum) && bedroomsNum > 0) {
+          conditions.push(gte(externalUnits.bedrooms, bedroomsNum));
+        }
+      }
+      
+      // Apply filter: bathrooms
+      if (bathrooms && typeof bathrooms === 'string') {
+        const bathroomsNum = parseFloat(bathrooms);
+        if (!isNaN(bathroomsNum) && bathroomsNum > 0) {
+          conditions.push(gte(externalUnits.bathrooms, bathroomsNum));
+        }
+      }
+      
+      // Apply filter: min price
+      if (minPrice && typeof minPrice === 'string') {
+        const minPriceNum = parseFloat(minPrice);
+        if (!isNaN(minPriceNum) && minPriceNum > 0) {
+          conditions.push(gte(sql`CAST(${externalUnits.price} AS numeric)`, minPriceNum));
+        }
+      }
+      
+      // Apply filter: max price
+      if (maxPrice && typeof maxPrice === 'string') {
+        const maxPriceNum = parseFloat(maxPrice);
+        if (!isNaN(maxPriceNum) && maxPriceNum > 0) {
+          conditions.push(lte(sql`CAST(${externalUnits.price} AS numeric)`, maxPriceNum));
+        }
+      }
+      
+      // Apply filter: search query (title, description, zone)
+      if (q && typeof q === 'string' && q.trim()) {
+        const searchTerm = `%${q.trim()}%`;
+        conditions.push(or(
+          ilike(externalUnits.title, searchTerm),
+          ilike(externalUnits.description, searchTerm),
+          ilike(externalUnits.zone, searchTerm),
+          ilike(externalUnits.unitNumber, searchTerm)
+        ));
+      }
+      
+      // Get total count with filters applied
       const countResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(externalUnits)
