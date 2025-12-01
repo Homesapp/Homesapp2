@@ -23,35 +23,16 @@ export function parseGoogleMapsUrl(url: string): ParseResult {
     let lng: number | null = null;
     let source = 'unknown';
 
-    // Pattern 1: ?q=lat,lng or ?ll=lat,lng
-    const queryMatch = trimmedUrl.match(/[?&](?:q|ll)=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-    if (queryMatch) {
-      lat = parseFloat(queryMatch[1]);
-      lng = parseFloat(queryMatch[2]);
-      source = 'query_param';
+    // Pattern 1: !8m2!3d{lat}!4d{lng} (place coordinates in data param - HIGHEST PRIORITY)
+    // This is the ACTUAL place location, not the viewport
+    const dataMatch = trimmedUrl.match(/!8m2!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+    if (dataMatch) {
+      lat = parseFloat(dataMatch[1]);
+      lng = parseFloat(dataMatch[2]);
+      source = 'place_data_param';
     }
 
-    // Pattern 2: /@lat,lng,zoom (Google Maps view URL)
-    if (!lat) {
-      const atMatch = trimmedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),\d+\.?\d*z/);
-      if (atMatch) {
-        lat = parseFloat(atMatch[1]);
-        lng = parseFloat(atMatch[2]);
-        source = 'at_param';
-      }
-    }
-
-    // Pattern 3: /place/.../@lat,lng (place URL with coordinates)
-    if (!lat) {
-      const placeMatch = trimmedUrl.match(/\/place\/[^@]*@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-      if (placeMatch) {
-        lat = parseFloat(placeMatch[1]);
-        lng = parseFloat(placeMatch[2]);
-        source = 'place_param';
-      }
-    }
-
-    // Pattern 4: !3d{lat}!4d{lng} (embedded maps format)
+    // Pattern 2: !3d{lat}!4d{lng} (embedded maps format - second priority for place coords)
     if (!lat) {
       const embeddedMatch = trimmedUrl.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
       if (embeddedMatch) {
@@ -61,23 +42,45 @@ export function parseGoogleMapsUrl(url: string): ParseResult {
       }
     }
 
-    // Pattern 5: data=...!8m2!3d{lat}!4d{lng} (another embedded format)
+    // Pattern 3: ?q=lat,lng or ?ll=lat,lng
     if (!lat) {
-      const dataMatch = trimmedUrl.match(/!8m2!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
-      if (dataMatch) {
-        lat = parseFloat(dataMatch[1]);
-        lng = parseFloat(dataMatch[2]);
-        source = 'data_param';
+      const queryMatch = trimmedUrl.match(/[?&](?:q|ll)=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+      if (queryMatch) {
+        lat = parseFloat(queryMatch[1]);
+        lng = parseFloat(queryMatch[2]);
+        source = 'query_param';
       }
     }
 
-    // Pattern 6: Direct coordinate format (20.2085,-87.4278)
+    // Pattern 4: Direct coordinate format (20.2085,-87.4278)
     if (!lat) {
       const directMatch = trimmedUrl.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
       if (directMatch) {
         lat = parseFloat(directMatch[1]);
         lng = parseFloat(directMatch[2]);
         source = 'direct_coords';
+      }
+    }
+
+    // Pattern 5: /@lat,lng,zoom (Google Maps view URL - LOWER PRIORITY)
+    // Note: This is the viewport/camera position, not necessarily the place location
+    // Only use this if no place coordinates were found above
+    if (!lat) {
+      const atMatch = trimmedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),\d+\.?\d*[zm]/);
+      if (atMatch) {
+        lat = parseFloat(atMatch[1]);
+        lng = parseFloat(atMatch[2]);
+        source = 'viewport_param';
+      }
+    }
+
+    // Pattern 6: /place/.../@lat,lng (place URL with coordinates in path)
+    if (!lat) {
+      const placeMatch = trimmedUrl.match(/\/place\/[^@]*@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+      if (placeMatch) {
+        lat = parseFloat(placeMatch[1]);
+        lng = parseFloat(placeMatch[2]);
+        source = 'place_path_param';
       }
     }
 
