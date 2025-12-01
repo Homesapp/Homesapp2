@@ -30605,7 +30605,7 @@ ${{precio}}/mes
   });
 
     // POST /api/external-leads/:id/reassign - Reassign lead to different seller
-  app.post("/api/external-leads/:id/reassign", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+  app.post("/api/external-leads/:id/reassign", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, "external_agency_seller"]), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { newSellerId, newSellerName } = req.body;

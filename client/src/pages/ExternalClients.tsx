@@ -3449,16 +3449,18 @@ export default function ExternalClients() {
                                   <Edit2 className="h-4 w-4 mr-2" />
                                   {language === "es" ? "Editar" : "Edit"}
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    setSelectedLead(lead);
-                                    setIsDeleteLeadDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  {language === "es" ? "Eliminar" : "Delete"}
-                                </DropdownMenuItem>
+                                {!isSeller && (
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      setSelectedLead(lead);
+                                      setIsDeleteLeadDialogOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    {language === "es" ? "Eliminar" : "Delete"}
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -5668,20 +5670,18 @@ export default function ExternalClients() {
                            (language === "es" ? "Sin asignar" : "Unassigned")}
                         </p>
                       </div>
-                      {!isSeller && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setNewAssignedSellerId(selectedLead.assignedSellerId || selectedLead.sellerId || "");
-                            setIsReassignDialogOpen(true);
-                          }}
-                          data-testid="button-reassign-lead"
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          {language === "es" ? "Reasignar" : "Reassign"}
-                        </Button>
-                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setNewAssignedSellerId(selectedLead.assignedSellerId || selectedLead.sellerId || "");
+                          setIsReassignDialogOpen(true);
+                        }}
+                        data-testid="button-reassign-lead"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        {language === "es" ? "Reasignar" : "Reassign"}
+                      </Button>
                     </div>
                     {selectedLead.assistantSellerName && (
                       <div>
