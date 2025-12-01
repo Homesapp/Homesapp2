@@ -9710,3 +9710,23 @@ export const insertExternalSellerCommissionOverrideSchema = createInsertSchema(e
 
 export type InsertExternalSellerCommissionOverride = z.infer<typeof insertExternalSellerCommissionOverrideSchema>;
 export type ExternalSellerCommissionOverride = typeof externalSellerCommissionOverrides.$inferSelect;
+
+// Featured Properties - Maximum 30 featured properties with custom ordering
+export const featuredProperties = pgTable("featured_properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  unitId: varchar("unit_id").references(() => externalUnits.id, { onDelete: 'cascade' }).notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  addedBy: varchar("added_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_featured_properties_sort_order").on(table.sortOrder),
+  index("idx_featured_properties_unit_id").on(table.unitId),
+]);
+
+export const insertFeaturedPropertySchema = createInsertSchema(featuredProperties).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFeaturedProperty = z.infer<typeof insertFeaturedPropertySchema>;
+export type FeaturedProperty = typeof featuredProperties.$inferSelect;
