@@ -353,6 +353,7 @@ export default function ExternalClients() {
   const [editPendingUnitId, setEditPendingUnitId] = useState<string>("");
   const [editCondoSearchQuery, setEditCondoSearchQuery] = useState("");
   const [editCondoPopoverOpen, setEditCondoPopoverOpen] = useState(false);
+  const [editCondominiumId, setEditCondominiumId] = useState<string>("");
   
   // Legacy state for backward compatibility (derived from property selections)
   const selectedCreateCondominiums = createPropertySelections.map(p => p.condominiumId);
@@ -395,6 +396,22 @@ export default function ExternalClients() {
     staleTime: 5 * 60 * 1000,
   });
   const editPendingUnits = editPendingUnitsData || [];
+  
+  // Fetch units for the selected condominium in edit form (for legacy single-select)
+  const { data: editUnitsData } = useQuery<{ id: string; unitNumber: string; type?: string }[]>({
+    queryKey: ["/api/external-condominiums", editCondominiumId, "units", "legacy"],
+    queryFn: async () => {
+      if (!editCondominiumId) return [];
+      const response = await fetch(`/api/external-condominiums/${editCondominiumId}/units`, { credentials: 'include' });
+      if (response.ok) {
+        return response.json();
+      }
+      return [];
+    },
+    enabled: !!editCondominiumId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const editUnits = editUnitsData || [];
   
   // Filter condominiums by search query
   const filteredCreateCondominiums = condominiums.filter(c => 
@@ -3603,7 +3620,18 @@ export default function ExternalClients() {
           </DialogHeader>
           
           <Form {...leadForm}>
-            <form onSubmit={leadForm.handleSubmit((data) => createLeadMutation.mutate(data))} className="space-y-6 py-4">
+            <form 
+              onSubmit={leadForm.handleSubmit((data) => createLeadMutation.mutate(data))} 
+              className="space-y-6 py-4"
+              onKeyDown={(e) => {
+                // Prevent form submission when pressing Enter on step 1
+                // This ensures users must explicitly click "Siguiente" to move to step 2
+                // and "Crear Lead" to submit the form
+                if (e.key === 'Enter' && createLeadStep === 1) {
+                  e.preventDefault();
+                }
+              }}
+            >
               
               {/* ===== STEP 1: Contact Information ===== */}
               {createLeadStep === 1 && (
