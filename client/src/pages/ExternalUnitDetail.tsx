@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload, Clock, Calendar, Wrench, Users, MapPin, Shield, ShieldCheck, ShieldX, ExternalLink, Link2, XCircle, Send, UserCircle, Building2, Maximize, DollarSign, Sparkles, PawPrint, Megaphone, Image, Scale, FileArchive } from "lucide-react";
+import { ArrowLeft, Home, User, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, FileText, Upload, Clock, Calendar, Wrench, Users, MapPin, Shield, ShieldCheck, ShieldX, ExternalLink, Link2, XCircle, Send, UserCircle, Building2, Maximize, DollarSign, Sparkles, PawPrint, Megaphone, Image, Scale, FileArchive, Globe, UserPlus } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -187,6 +187,7 @@ export default function ExternalUnitDetail() {
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showOwnerLinkDialog, setShowOwnerLinkDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showReferrerDialog, setShowReferrerDialog] = useState(false);
   const [showDocumentDialog, setShowDocumentDialog] = useState(false);
   const [editingOwner, setEditingOwner] = useState<ExternalUnitOwner | null>(null);
@@ -364,6 +365,36 @@ export default function ExternalUnitDetail() {
         title: language === "es" ? "Publicación removida" : "Publication removed",
         description: language === "es" ? "El listado ya no está visible en el sitio público" : "The listing is no longer visible on the public site",
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', `/api/external-publication-requests`, {
+        unitId: id,
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external-units', id, 'overview'] });
+      setShowPublishDialog(false);
+      if (data.autoApproved) {
+        toast({
+          title: language === "es" ? "Publicado" : "Published",
+          description: language === "es" ? "Tu propiedad ha sido publicada en HomesApp" : "Your property has been published on HomesApp",
+        });
+      } else {
+        toast({
+          title: language === "es" ? "Solicitud enviada" : "Request sent",
+          description: language === "es" ? "Tu solicitud de publicación está pendiente de aprobación" : "Your publication request is pending approval",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -1104,10 +1135,23 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
               </Button>
             </>
           )}
+          {(!unit.publishStatus || unit.publishStatus === 'draft' || unit.publishStatus === 'rejected') && (
+            <Button
+              onClick={() => setShowPublishDialog(true)}
+              data-testid="button-publish"
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              {language === "es" ? "Publicar en HomesApp" : "Publish to HomesApp"}
+            </Button>
+          )}
+          {unit.publishStatus === 'pending' && (
+            <Badge variant="secondary" className="bg-orange-500 dark:bg-orange-600 text-white">
+              {language === "es" ? "Pendiente Aprobación" : "Pending Approval"}
+            </Badge>
+          )}
           <Button
             variant="outline"
             onClick={() => setShowOwnerLinkDialog(true)}
-            disabled={!owners || owners.length === 0}
             title={language === "es" ? "Enviar enlace al propietario" : "Send link to owner"}
             data-testid="button-owner-intake-link"
           >
@@ -3595,6 +3639,43 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
         </DialogContent>
       </Dialog>
 
+      {/* Publish Dialog */}
+      <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
+        <DialogContent className="max-w-md" data-testid="dialog-publish">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-blue-500" />
+              {language === "es" ? "Publicar en HomesApp" : "Publish to HomesApp"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "es" 
+                ? "Tu propiedad será visible en el sitio público de HomesApp. Los visitantes podrán ver los detalles y contactarte."
+                : "Your property will be visible on the HomesApp public site. Visitors will be able to see the details and contact you."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowPublishDialog(false)}
+              data-testid="button-cancel-publish"
+            >
+              {language === "es" ? "Cancelar" : "Cancel"}
+            </Button>
+            <Button
+              onClick={() => publishMutation.mutate()}
+              disabled={publishMutation.isPending}
+              data-testid="button-confirm-publish"
+            >
+              {publishMutation.isPending
+                ? (language === "es" ? "Publicando..." : "Publishing...")
+                : (language === "es" ? "Sí, publicar" : "Yes, publish")
+              }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Owner Link Generation Dialog */}
       <Dialog open={showOwnerLinkDialog} onOpenChange={(open) => {
         setShowOwnerLinkDialog(open);
@@ -3619,41 +3700,65 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
           <div className="space-y-4">
             {!generatedOwnerLink ? (
               <>
-                <div className="space-y-2">
-                  <Label>{language === "es" ? "Seleccionar Propietario" : "Select Owner"}</Label>
-                  <Select
-                    value={selectedOwnerForLink?.id || ''}
-                    onValueChange={(value) => {
-                      const owner = owners?.find(o => o.id === value);
-                      setSelectedOwnerForLink(owner || null);
-                    }}
-                    data-testid="select-owner-for-link"
-                  >
-                    <SelectTrigger className="min-h-[44px]" data-testid="trigger-owner-for-link">
-                      <SelectValue placeholder={language === "es" ? "Selecciona un propietario" : "Select an owner"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {owners?.map((owner) => (
-                        <SelectItem key={owner.id} value={owner.id} data-testid={`option-owner-${owner.id}`}>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            {owner.ownerName}
-                            {owner.isActive && (
-                              <Badge variant="outline" className="text-xs ml-1">
-                                {language === "es" ? "Principal" : "Primary"}
-                              </Badge>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {selectedOwnerForLink && (
-                  <div className="p-3 bg-muted rounded-md text-sm">
-                    <p><strong>{language === "es" ? "Email:" : "Email:"}</strong> {selectedOwnerForLink.ownerEmail || '-'}</p>
-                    <p><strong>{language === "es" ? "Teléfono:" : "Phone:"}</strong> {selectedOwnerForLink.ownerPhone || '-'}</p>
+                {(!owners || owners.length === 0) ? (
+                  <div className="text-center py-4">
+                    <UserPlus className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {language === "es" 
+                        ? "No hay propietarios registrados para esta unidad. Agrega un propietario para poder generar el enlace."
+                        : "No owners registered for this unit. Add an owner to generate the link."
+                      }
+                    </p>
+                    <Button
+                      onClick={() => {
+                        setShowOwnerLinkDialog(false);
+                        setShowOwnerDialog(true);
+                      }}
+                      data-testid="button-add-owner-from-link"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {language === "es" ? "Agregar Propietario" : "Add Owner"}
+                    </Button>
                   </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>{language === "es" ? "Seleccionar Propietario" : "Select Owner"}</Label>
+                      <Select
+                        value={selectedOwnerForLink?.id || ''}
+                        onValueChange={(value) => {
+                          const owner = owners?.find(o => o.id === value);
+                          setSelectedOwnerForLink(owner || null);
+                        }}
+                        data-testid="select-owner-for-link"
+                      >
+                        <SelectTrigger className="min-h-[44px]" data-testid="trigger-owner-for-link">
+                          <SelectValue placeholder={language === "es" ? "Selecciona un propietario" : "Select an owner"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {owners?.map((owner) => (
+                            <SelectItem key={owner.id} value={owner.id} data-testid={`option-owner-${owner.id}`}>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                {owner.ownerName}
+                                {owner.isActive && (
+                                  <Badge variant="outline" className="text-xs ml-1">
+                                    {language === "es" ? "Principal" : "Primary"}
+                                  </Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedOwnerForLink && (
+                      <div className="p-3 bg-muted rounded-md text-sm">
+                        <p><strong>{language === "es" ? "Email:" : "Email:"}</strong> {selectedOwnerForLink.ownerEmail || '-'}</p>
+                        <p><strong>{language === "es" ? "Teléfono:" : "Phone:"}</strong> {selectedOwnerForLink.ownerPhone || '-'}</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             ) : (
@@ -3714,7 +3819,7 @@ ${language === "es" ? "ACCESOS" : "ACCESSES"}:
             >
               {language === "es" ? "Cerrar" : "Close"}
             </Button>
-            {!generatedOwnerLink && (
+            {!generatedOwnerLink && owners && owners.length > 0 && (
               <Button
                 onClick={() => {
                   if (selectedOwnerForLink) {
