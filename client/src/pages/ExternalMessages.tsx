@@ -152,8 +152,6 @@ export default function ExternalMessages() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [teamChatInput, setTeamChatInput] = useState("");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
@@ -188,35 +186,40 @@ export default function ExternalMessages() {
     }
   }, [isSeller, activeTab]);
 
-  // Fetch team chat messages with polling
-  const { data: teamMessages, isLoading: loadingTeamMessages } = useQuery<ChatMessage[]>({
+  // Fetch team chat messages with polling - keep previous data to prevent flickering
+  const { data: teamMessages, isLoading: loadingTeamMessages, isFetched: messagesFetched } = useQuery<ChatMessage[]>({
     queryKey: ['/api/external/chat/messages'],
     refetchInterval: 5000, // Poll every 5 seconds
     enabled: activeTab === 'team',
+    placeholderData: (previousData) => previousData, // Keep previous data while refetching
+    staleTime: 4000, // Consider data fresh for 4 seconds
   });
 
   useEffect(() => {
-    if (teamMessages) {
+    if (teamMessages && teamMessages.length > 0) {
       scrollTeamToBottom();
     }
-  }, [teamMessages]);
+  }, [teamMessages?.length]);
 
   // Fetch leaderboard
   const { data: leaderboard, isLoading: loadingLeaderboard } = useQuery<SellerPoints[]>({
     queryKey: ['/api/external/chat/points/leaderboard'],
-    enabled: showLeaderboard,
+    enabled: showLeaderboard || activeTab === 'team',
+    placeholderData: (previousData) => previousData,
   });
 
-  // Fetch sellers list (admin only)
+  // Fetch sellers list (visible to all team members)
   const { data: sellers } = useQuery<Seller[]>({
     queryKey: ['/api/external/chat/sellers'],
-    enabled: isAdmin,
+    enabled: activeTab === 'team',
+    placeholderData: (previousData) => previousData,
   });
 
   // Fetch my points
   const { data: myPoints } = useQuery<SellerPoints>({
     queryKey: ['/api/external/chat/points/my-points'],
     enabled: activeTab === 'team',
+    placeholderData: (previousData) => previousData,
   });
 
   // Send team chat message
@@ -349,19 +352,11 @@ export default function ExternalMessages() {
         return;
       }
       
-      if (file.type.startsWith('image/')) {
-        setSelectedImage(file);
-        setImagePreview(URL.createObjectURL(file));
-      } else if (file.type.startsWith('audio/')) {
-        uploadAttachmentMutation.mutate(file);
-      }
+      // Upload file directly without preview
+      uploadAttachmentMutation.mutate(file);
     }
-  };
-
-  const handleSendImage = () => {
-    if (selectedImage) {
-      uploadAttachmentMutation.mutate(selectedImage);
-    }
+    // Clear the input so the same file can be selected again
+    e.target.value = '';
   };
 
   const startRecording = async () => {
@@ -852,44 +847,6 @@ export default function ExternalMessages() {
                       </div>
                     )}
                   </ScrollArea>
-
-                  {/* Image Preview */}
-                  {imagePreview && (
-                    <div className="p-4 border-t bg-muted/50">
-                      <div className="relative inline-block">
-                        <img 
-                          src={imagePreview} 
-                          alt="Preview" 
-                          className="max-h-32 rounded-md"
-                        />
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          className="absolute -top-2 -right-2 h-6 w-6"
-                          onClick={() => {
-                            setSelectedImage(null);
-                            setImagePreview(null);
-                          }}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={handleSendImage}
-                          disabled={uploadAttachmentMutation.isPending}
-                        >
-                          {uploadAttachmentMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4 mr-2" />
-                          )}
-                          {language === "es" ? "Enviar imagen" : "Send image"}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                   
                   {/* Message Input */}
                   <div className="p-4 border-t bg-background/95 backdrop-blur">
@@ -916,7 +873,7 @@ export default function ExternalMessages() {
                         <input
                           ref={fileInputRef}
                           type="file"
-                          accept="image/*"
+                          accept="image/*,audio/*,.pdf,.doc,.docx"
                           className="hidden"
                           onChange={handleFileSelect}
                         />
@@ -925,15 +882,21 @@ export default function ExternalMessages() {
                           size="icon"
                           className="min-h-[44px] min-w-[44px] shrink-0"
                           onClick={() => fileInputRef.current?.click()}
-                          data-testid="button-attach-image"
+                          disabled={uploadAttachmentMutation.isPending}
+                          data-testid="button-attach-file"
                         >
-                          <ImageIcon className="h-4 w-4" />
+                          {uploadAttachmentMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Paperclip className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           variant="outline"
                           size="icon"
                           className="min-h-[44px] min-w-[44px] shrink-0"
                           onClick={startRecording}
+                          disabled={uploadAttachmentMutation.isPending}
                           data-testid="button-record-audio"
                         >
                           <Mic className="h-4 w-4" />
@@ -1055,22 +1018,24 @@ export default function ExternalMessages() {
                   </Card>
                 )}
 
-                {/* Admin: Online Sellers */}
-                {isAdmin && sellers && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        {language === "es" ? "Vendedores" : "Sellers"}
+                {/* Team Members - Visible to all */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      {language === "es" ? "Equipo" : "Team"}
+                      {sellers && (
                         <Badge variant="outline" className="ml-auto">
                           {sellers.length}
                         </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-48">
-                        <div className="space-y-2">
-                          {sellers.map((seller) => (
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[200px]">
+                      <div className="space-y-1 p-3">
+                        {sellers && sellers.length > 0 ? (
+                          sellers.map((seller) => (
                             <div 
                               key={seller.id}
                               className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer"
@@ -1097,12 +1062,16 @@ export default function ExternalMessages() {
                               </div>
                               <ChevronRight className="h-4 w-4 text-muted-foreground" />
                             </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                )}
+                          ))
+                        ) : (
+                          <div className="flex items-center justify-center py-4 text-muted-foreground text-sm">
+                            {language === "es" ? "Sin vendedores" : "No sellers"}
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </TabsContent>

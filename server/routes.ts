@@ -41786,7 +41786,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
   });
 
   // GET /api/external/chat/sellers - Get all sellers with their metrics
-  app.get("/api/external/chat/sellers", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+  app.get("/api/external/chat/sellers", isAuthenticated, requireRole([...EXTERNAL_ADMIN_ROLES, 'external_agency_seller']), async (req: any, res) => {
     try {
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
