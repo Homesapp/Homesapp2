@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   ArrowLeft, 
   Bed, 
@@ -63,7 +67,42 @@ export default function PublicUnitDetail() {
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
   const [showBenefitsDialog, setShowBenefitsDialog] = useState(false);
   const [showFavoriteDialog, setShowFavoriteDialog] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    message: ""
+  });
   const { toast } = useToast();
+
+  // Contact form submission mutation
+  const contactMutation = useMutation({
+    mutationFn: async (data: typeof contactForm & { agencyId: string; unitId: string }) => {
+      return await apiRequest("/api/public/leads", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: language === "es" ? "Solicitud enviada" : "Request sent",
+        description: language === "es" 
+          ? "Un asesor te contactará pronto." 
+          : "An advisor will contact you soon.",
+      });
+      setShowContactDialog(false);
+      setContactForm({ firstName: "", lastName: "", email: "", phone: "", message: "" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error.message || (language === "es" ? "No se pudo enviar la solicitud" : "Could not send request"),
+        variant: "destructive",
+      });
+    },
+  });
 
   const directUnitId = paramsUnidad?.id || paramsPropiedad?.id;
   const agencySlug = paramsFriendly?.agencySlug;
@@ -511,7 +550,7 @@ export default function PublicUnitDetail() {
                       variant="outline" 
                       size="lg" 
                       className="w-full min-h-[52px] text-base"
-                      onClick={() => setShowBenefitsDialog(true)}
+                      onClick={() => setShowContactDialog(true)}
                       data-testid="button-contact-agent"
                     >
                       <MessageCircle className="h-5 w-5 mr-2" />
@@ -809,6 +848,131 @@ export default function PublicUnitDetail() {
               {expandedImageIndex + 1} / {images.length}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact Form Dialog */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-center pb-2">
+            <div className="mx-auto mb-4">
+              <img src={logoIcon} alt="HomesApp" className="h-12 w-auto mx-auto" />
+            </div>
+            <DialogTitle className="text-2xl">
+              {language === "es" ? "Solicitar información" : "Request information"}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              {language === "es" 
+                ? "Completa el formulario y un asesor te contactará" 
+                : "Fill out the form and an advisor will contact you"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form 
+            className="space-y-4 py-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!unit) return;
+              contactMutation.mutate({
+                ...contactForm,
+                agencyId: (unit as any).agencyId,
+                unitId: unit.id,
+              });
+            }}
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">
+                  {language === "es" ? "Nombre *" : "First name *"}
+                </Label>
+                <Input
+                  id="firstName"
+                  value={contactForm.firstName}
+                  onChange={(e) => setContactForm({ ...contactForm, firstName: e.target.value })}
+                  placeholder={language === "es" ? "Tu nombre" : "Your name"}
+                  required
+                  data-testid="input-contact-firstname"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">
+                  {language === "es" ? "Apellido *" : "Last name *"}
+                </Label>
+                <Input
+                  id="lastName"
+                  value={contactForm.lastName}
+                  onChange={(e) => setContactForm({ ...contactForm, lastName: e.target.value })}
+                  placeholder={language === "es" ? "Tu apellido" : "Your last name"}
+                  required
+                  data-testid="input-contact-lastname"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                {language === "es" ? "Correo electrónico" : "Email"}
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={contactForm.email}
+                onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                placeholder={language === "es" ? "tu@email.com" : "you@email.com"}
+                data-testid="input-contact-email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">
+                {language === "es" ? "Teléfono" : "Phone"}
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={contactForm.phone}
+                onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                placeholder="+52 999 123 4567"
+                data-testid="input-contact-phone"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="message">
+                {language === "es" ? "Mensaje (opcional)" : "Message (optional)"}
+              </Label>
+              <Textarea
+                id="message"
+                value={contactForm.message}
+                onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                placeholder={language === "es" 
+                  ? "¿En qué podemos ayudarte?" 
+                  : "How can we help you?"}
+                rows={3}
+                data-testid="input-contact-message"
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              {language === "es" 
+                ? "Se requiere al menos un método de contacto (email o teléfono)" 
+                : "At least one contact method is required (email or phone)"}
+            </p>
+
+            <DialogFooter className="pt-4">
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full min-h-[52px]"
+                disabled={contactMutation.isPending || !contactForm.firstName || !contactForm.lastName || (!contactForm.email && !contactForm.phone)}
+                data-testid="button-submit-contact"
+              >
+                {contactMutation.isPending 
+                  ? (language === "es" ? "Enviando..." : "Sending...") 
+                  : (language === "es" ? "Enviar solicitud" : "Send request")}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

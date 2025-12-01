@@ -32841,6 +32841,7 @@ ${{precio}}/mes
       // Return only public-safe information
       res.json({
         id: unit.id,
+        agencyId: unit.agencyId, // For public lead submission
         name: unit.name,
         unitNumber: unit.unitNumber,
         zone: unit.zone,
@@ -32877,7 +32878,103 @@ ${{precio}}/mes
     }
   });
 
-  // GET /api/public/sellers - Get public list of sellers for lead registration dropdown
+  // POST /api/public/leads - Create a public lead from property inquiry
+  app.post("/api/public/leads", async (req, res) => {
+    try {
+      const { 
+        agencyId, 
+        unitId,
+        firstName, 
+        lastName, 
+        email, 
+        phone,
+        message 
+      } = req.body;
+
+      // Validate required fields
+      if (!agencyId || !firstName || !lastName) {
+        return res.status(400).json({ 
+          message: "Nombre, apellido y agencia son requeridos" 
+        });
+      }
+
+      // At least one contact method is required
+      if (!email && !phone) {
+        return res.status(400).json({ 
+          message: "Se requiere al menos un método de contacto (email o teléfono)" 
+        });
+      }
+
+      // Verify agency exists
+      const agency = await db.select()
+        .from(externalAgencies)
+        .where(eq(externalAgencies.id, agencyId))
+        .limit(1);
+
+      if (!agency.length) {
+        return res.status(404).json({ message: "Agencia no encontrada" });
+      }
+
+      // Get unit info for source tracking
+      let sourceInfo = "Sitio web - Contacto directo";
+      let interestedUnitIds: string[] = [];
+      
+      if (unitId) {
+        const unit = await storage.getExternalUnit(unitId);
+        if (unit) {
+          // Get condo name for better source tracking
+          let condoName = unit.condominiumName || '';
+          if (!condoName && unit.condominiumId) {
+            const condo = await db.select({ name: externalCondominiums.name })
+              .from(externalCondominiums)
+              .where(eq(externalCondominiums.id, unit.condominiumId))
+              .limit(1);
+            condoName = condo[0]?.name || '';
+          }
+          sourceInfo = `Sitio web - ${condoName ? condoName + ' ' : ''}#${unit.unitNumber}`;
+          interestedUnitIds = [unitId];
+        }
+      }
+
+      // Calculate validUntil (3 months from now)
+      const validUntil = new Date();
+      validUntil.setMonth(validUntil.getMonth() + 3);
+
+      // Create the lead
+      const leadId = crypto.randomUUID();
+      const now = new Date();
+      
+      await db.insert(externalLeads).values({
+        id: leadId,
+        agencyId,
+        registrationType: "seller", // Public leads use seller type for full data access
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
+        phoneLast4: phone ? phone.trim().slice(-4) : null,
+        interestedUnitIds: interestedUnitIds.length > 0 ? interestedUnitIds : null,
+        source: sourceInfo,
+        status: "nuevo_lead",
+        notes: message ? `Mensaje del sitio web: ${message}` : null,
+        firstContactDate: now,
+        validUntil,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      res.status(201).json({ 
+        success: true,
+        message: "Solicitud enviada correctamente. Un asesor te contactará pronto.",
+        leadId 
+      });
+    } catch (error: any) {
+      console.error("Error creating public lead:", error);
+      res.status(500).json({ message: "Error al enviar la solicitud" });
+    }
+  });
+
+    // GET /api/public/sellers - Get public list of sellers for lead registration dropdown
   // GET /api/public/resolve-offer-token/:agencySlug/:unitSlug - Resolve offer token by slugs
   app.get("/api/public/resolve-offer-token/:agencySlug/:unitSlug", async (req, res) => {
     try {
