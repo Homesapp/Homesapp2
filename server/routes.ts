@@ -28233,6 +28233,12 @@ ${{precio}}/mes
       const wantsToPublishToMain = validatedData.publishToMain === true || 
                                    (validatedData.publishToMain === undefined && req.body.publishToMain === true);
       
+      // If unpublishing (publishToMain changed from true to false), set publishStatus to draft
+      const wantsToUnpublish = validatedData.publishToMain === false;
+      if (wantsToUnpublish && wasPublishingToMain) {
+        updateData.publishStatus = 'draft';
+      }
+
       if (wantsToPublishToMain && !wasPublishingToMain) {
         // Check if there's already a pending request for this unit
         const [existingPending] = await db.select()

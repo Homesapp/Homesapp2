@@ -9914,6 +9914,8 @@ export class DatabaseStorage implements IStorage {
       price: externalUnits.price,
       salePrice: externalUnits.salePrice,
       currency: externalUnits.currency,
+      publishToMain: externalUnits.publishToMain,
+      publishStatus: externalUnits.publishStatus,
       condominium: {
         id: externalCondominiums.id,
         name: externalCondominiums.name,

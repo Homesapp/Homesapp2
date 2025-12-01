@@ -300,22 +300,13 @@ export default function ExternalCondominiums() {
     enabled: !!units && units.length > 0,
   });
 
-  // Publication requests for units (to show portal status)
-  const { data: publicationRequests } = useQuery<{ unitId: string; status: string }[]>({
-    queryKey: ['/api/external-units/publication-status'],
-    queryFn: async () => {
-      const response = await fetch('/api/external-units/publication-status', { credentials: 'include' });
-      if (!response.ok) return [];
-      return response.json();
-    },
-    staleTime: 2 * 60 * 1000,
-  });
-
-  // Helper to get publication status for a unit
-  const getPublicationStatus = (unitId: string): 'approved' | 'pending' | 'rejected' | 'not_requested' => {
-    const request = publicationRequests?.find(r => r.unitId === unitId);
-    if (!request) return 'not_requested';
-    return request.status as 'approved' | 'pending' | 'rejected';
+  // Helper to get publication status for a unit based on its actual fields
+  const getPublicationStatus = (unit: ExternalUnitWithCondominium & { publishToMain?: boolean; publishStatus?: string }): 'approved' | 'pending' | 'rejected' | 'not_requested' => {
+    if (!unit.publishToMain) return 'not_requested';
+    if (unit.publishStatus === 'approved') return 'approved';
+    if (unit.publishStatus === 'pending') return 'pending';
+    if (unit.publishStatus === 'rejected') return 'rejected';
+    return 'not_requested';
   };
 
   const condoForm = useForm<CondominiumFormData>({
@@ -2272,7 +2263,7 @@ export default function ExternalCondominiums() {
                         return typeMap[s.serviceType] || s.serviceType;
                       });
                       
-                      const pubStatus = getPublicationStatus(unit.id);
+                      const pubStatus = getPublicationStatus(unit as any);
                       
                       return (
                         <TableRow 
