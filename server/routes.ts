@@ -33519,7 +33519,7 @@ ${{precio}}/mes
   // GET /api/public/external-properties - Public list of approved external properties with pagination
   app.get("/api/public/external-properties", async (req, res) => {
     try {
-      const { page = 1, limit = 24, q, location, status, propertyType, minPrice, maxPrice, bedrooms, bathrooms, petFriendly, featured } = req.query;
+      const { page = 1, limit = 24, q, location, status, propertyType, minPrice, maxPrice, bedrooms, bathrooms, petFriendly, featured, hasCoordinates } = req.query;
       const pageNum = Math.max(1, parseInt(page as string) || 1);
       const limitNum = Math.min(Math.max(1, parseInt(limit as string) || 24), 50);
       const offset = (pageNum - 1) * limitNum;
@@ -33549,6 +33549,11 @@ ${{precio}}/mes
       // For now, featured filter is not applicable to external units
       // TODO: Add featured field to externalUnits schema if needed
       
+      
+      // Apply filter: has coordinates (for map view)
+      if (hasCoordinates === "true" || hasCoordinates === "1") {
+        conditions.push(isNotNull(externalUnits.latitude));
+      }
       // Apply filter: location/zone search
       if (location && typeof location === 'string' && location.trim()) {
         const locationTerm = `%${location.trim()}%`;

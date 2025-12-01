@@ -33,7 +33,7 @@ export default function PublicDashboard() {
 
   // Load properties with coordinates for map (get more for the map view)
   const { data: mapPropertiesResponse } = useQuery<{ data: any[]; totalCount: number }>({
-    queryKey: ["/api/public/external-properties?limit=100"],
+    queryKey: ["/api/public/external-properties?limit=50&hasCoordinates=true"],
   });
   const mapProperties = (mapPropertiesResponse?.data || [])
     .filter((p: any) => p.latitude && p.longitude)
