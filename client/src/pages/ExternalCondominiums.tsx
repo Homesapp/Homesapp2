@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, LayoutGrid, Table as TableIcon, ArrowUpDown, FileSpreadsheet } from "lucide-react";
+import { Building2, Plus, AlertCircle, AlertTriangle, Home, Edit, Trash2, Search, Filter, CheckCircle2, XCircle, DoorOpen, DoorClosed, Key, Power, PowerOff, ChevronDown, ChevronUp, LayoutGrid, Table as TableIcon, ArrowUpDown, FileSpreadsheet, Target, UserCheck, Clock, Phone, Mail, MapPin, Calendar } from "lucide-react";
 import { ExternalPaginationControls } from "@/components/external/ExternalPaginationControls";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -898,12 +898,12 @@ export default function ExternalCondominiums() {
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">
-            {language === "es" ? "Condominios y Unidades" : "Condominiums & Units"}
+            {language === "es" ? "Propiedades" : "Properties"}
           </h1>
           <p className="text-muted-foreground mt-2">
             {language === "es" 
-              ? "Gestiona tus condominios y unidades"
-              : "Manage your condominiums and units"}
+              ? "Gestiona condominios, unidades y reclutamiento de propiedades"
+              : "Manage condominiums, units and property recruitment"}
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
@@ -924,7 +924,7 @@ export default function ExternalCondominiums() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => {
-        setActiveTab(value as "condominiums" | "units");
+        setActiveTab(value as "condominiums" | "units" | "recruitment");
         // Close filters when switching tabs
         if (value === "condominiums") {
           setFiltersExpanded(false);
@@ -932,7 +932,7 @@ export default function ExternalCondominiums() {
           setCondoFiltersExpanded(false);
         }
       }} className="w-full">
-        <TabsList className="grid w-full sm:max-w-md grid-cols-2 mb-4">
+        <TabsList className="grid w-full sm:max-w-lg grid-cols-3 mb-4">
           <TabsTrigger value="condominiums" data-testid="tab-condominiums">
             <Building2 className="mr-2 h-4 w-4" />
             {language === "es" ? "Condominios" : "Condominiums"}
@@ -940,6 +940,10 @@ export default function ExternalCondominiums() {
           <TabsTrigger value="units" data-testid="tab-units">
             <Home className="mr-2 h-4 w-4" />
             {language === "es" ? "Unidades" : "Units"}
+          </TabsTrigger>
+          <TabsTrigger value="recruitment" data-testid="tab-recruitment">
+            <Target className="mr-2 h-4 w-4" />
+            {language === "es" ? "Reclutamiento" : "Recruitment"}
           </TabsTrigger>
         </TabsList>
 
@@ -2394,6 +2398,35 @@ export default function ExternalCondominiums() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="recruitment" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                {language === "es" ? "Reclutamiento de Propiedades" : "Property Recruitment"}
+              </CardTitle>
+              <CardDescription>
+                {language === "es" 
+                  ? "Revisa y aprueba propiedades enviadas por vendedores. Valida datos del propietario antes de aprobar."
+                  : "Review and approve properties submitted by sellers. Validate owner data before approval."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">
+                  {language === "es" ? "No hay propiedades pendientes de aprobación" : "No properties pending approval"}
+                </h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  {language === "es" 
+                    ? "Las propiedades enviadas por vendedores aparecerán aquí para su revisión y aprobación."
+                    : "Properties submitted by sellers will appear here for review and approval."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
