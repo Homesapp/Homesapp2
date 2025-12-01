@@ -40,7 +40,11 @@ import {
   Wifi,
   Flame,
   Droplets,
-  Zap
+  Zap,
+  Image as ImageIcon,
+  Video,
+  Map,
+  Globe
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { ExternalUnit } from "@shared/schema";
@@ -62,17 +66,19 @@ export default function PublicUnitDetail() {
   const unitSlug = paramsFriendly?.unitSlug;
   const hasFriendlyUrl = !!(agencySlug && unitSlug && !directUnitId);
 
-  const { data: resolvedData } = useQuery<{ unitId: string }>({
+  const { data: resolvedData, isLoading: isResolvingUrl, isFetched: urlResolved } = useQuery<{ unitId: string }>({
     queryKey: ["/api/public/property", agencySlug, unitSlug],
     enabled: hasFriendlyUrl,
   });
 
   const unitId = directUnitId || resolvedData?.unitId;
 
-  const { data: unit, isLoading, error } = useQuery<ExternalUnit>({
+  const { data: unit, isLoading: isLoadingUnit, error } = useQuery<ExternalUnit>({
     queryKey: ["/api/public/external-units", unitId],
     enabled: !!unitId,
   });
+
+  const isLoading = isResolvingUrl || isLoadingUnit || (hasFriendlyUrl && !urlResolved);
 
   if (isLoading) {
     return (
@@ -253,6 +259,53 @@ export default function PublicUnitDetail() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Action Buttons Bar */}
+      <div className="border-b bg-background">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-4 gap-2 px-4 py-4">
+            <Button
+              variant="outline"
+              className="flex flex-col items-center gap-1 h-auto py-3"
+              onClick={() => setShowAllPhotosDialog(true)}
+              disabled={images.length === 0}
+              data-testid="button-action-images"
+            >
+              <ImageIcon className="h-5 w-5" />
+              <span className="text-xs">{language === "es" ? "Imágenes" : "Images"}</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="flex flex-col items-center gap-1 h-auto py-3"
+              disabled={!unit.videos || unit.videos.length === 0}
+              data-testid="button-action-video"
+            >
+              <Video className="h-5 w-5" />
+              <span className="text-xs">{language === "es" ? "Video" : "Video"}</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="flex flex-col items-center gap-1 h-auto py-3"
+              disabled={!unit.googleMapsUrl}
+              onClick={() => unit.googleMapsUrl && window.open(unit.googleMapsUrl, '_blank')}
+              data-testid="button-action-location"
+            >
+              <Map className="h-5 w-5" />
+              <span className="text-xs">{language === "es" ? "Ubicación" : "Location"}</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="flex flex-col items-center gap-1 h-auto py-3"
+              disabled={!unit.virtualTourUrl}
+              onClick={() => unit.virtualTourUrl && window.open(unit.virtualTourUrl, '_blank')}
+              data-testid="button-action-tour360"
+            >
+              <Globe className="h-5 w-5" />
+              <span className="text-xs">{language === "es" ? "Tour 360°" : "360° Tour"}</span>
+            </Button>
+          </div>
         </div>
       </div>
 
