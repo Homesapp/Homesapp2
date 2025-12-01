@@ -36,7 +36,11 @@ import {
   Heart,
   Share2,
   Grid3X3,
-  User
+  User,
+  Wifi,
+  Flame,
+  Droplets,
+  Zap
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { ExternalUnit } from "@shared/schema";
@@ -366,16 +370,49 @@ export default function PublicUnitDetail() {
               </div>
             )}
 
+            {/* Included Services */}
+            {unit.includedServices && Object.values(unit.includedServices).some(v => v) && (
+              <div>
+                <h2 className="text-xl font-semibold mb-4">{language === "es" ? "Servicios Incluidos" : "Included Services"}</h2>
+                <div className="flex flex-wrap gap-3">
+                  {unit.includedServices.internet && (
+                    <Badge variant="secondary" className="gap-2 px-4 py-2.5 text-sm">
+                      <Wifi className="h-4 w-4" />
+                      {language === "es" ? "Internet" : "Internet"}
+                    </Badge>
+                  )}
+                  {unit.includedServices.water && (
+                    <Badge variant="secondary" className="gap-2 px-4 py-2.5 text-sm">
+                      <Droplets className="h-4 w-4" />
+                      {language === "es" ? "Agua" : "Water"}
+                    </Badge>
+                  )}
+                  {unit.includedServices.electricity && (
+                    <Badge variant="secondary" className="gap-2 px-4 py-2.5 text-sm">
+                      <Zap className="h-4 w-4" />
+                      {language === "es" ? "Electricidad" : "Electricity"}
+                    </Badge>
+                  )}
+                  {unit.includedServices.gas && (
+                    <Badge variant="secondary" className="gap-2 px-4 py-2.5 text-sm">
+                      <Flame className="h-4 w-4" />
+                      {language === "es" ? "Gas" : "Gas"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Amenities */}
             {unit.amenities && unit.amenities.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">{language === "es" ? "Lo que ofrece este lugar" : "What this place offers"}</h2>
-                <div className="grid grid-cols-2 gap-3">
+                <h2 className="text-xl font-semibold mb-4">{language === "es" ? "Amenidades" : "Amenities"}</h2>
+                <div className="flex flex-wrap gap-2">
                   {unit.amenities.map((amenity, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 min-h-[44px]">
-                      <Check className="h-5 w-5 text-primary shrink-0" />
-                      <span>{amenity}</span>
-                    </div>
+                    <Badge key={idx} variant="outline" className="gap-1 px-3 py-1.5">
+                      <Check className="h-3 w-3" />
+                      {amenity}
+                    </Badge>
                   ))}
                 </div>
               </div>
