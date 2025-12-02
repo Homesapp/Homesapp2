@@ -29418,15 +29418,21 @@ ${{precio}}/mes
       const photos = media.filter(m => m.mediaType === 'photo');
       const videos = media.filter(m => m.mediaType === 'video');
       
-      // Group photos by effective label (manual or AI) and cover flag
+      // Group photos by effective label (manual or AI), sectionIndex, and cover flag
       const grouped: Record<string, typeof media> = {};
       photos.forEach(item => {
-        // Cover photos go to cover section regardless of label
-        const key = item.isCover ? 'cover' : (item.manualLabel || item.aiPrimaryLabel || 'other');
-        if (!grouped[key]) {
-          grouped[key] = [];
+        // Cover photos go to 'cover' section regardless of label
+        if (item.isCover) {
+          if (!grouped['cover']) grouped['cover'] = [];
+          grouped['cover'].push(item);
+        } else {
+          const label = item.manualLabel || item.aiPrimaryLabel || 'other';
+          const idx = item.sectionIndex || 1;
+          // For sections with index > 1, use format "label_index", otherwise just "label"
+          const key = idx > 1 ? `${label}_${idx}` : label;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(item);
         }
-        grouped[key].push(item);
       });
 
       res.json({ 
@@ -29633,7 +29639,7 @@ ${{precio}}/mes
   app.patch("/api/external-units/:id/media/:mediaId/move-section", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
     try {
       const { id, mediaId } = req.params;
-      const { section } = req.body;
+      const { section, sectionIndex = 1 } = req.body;
 
       if (!section) {
         return res.status(400).json({ message: "Section is required" });
@@ -29647,7 +29653,7 @@ ${{precio}}/mes
       const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
       if (!hasAccess) return;
 
-      const result = await storage.moveMediaToSection(mediaId, section);
+      const result = await storage.moveMediaToSection(mediaId, section, sectionIndex);
       
       if (!result) {
         return res.status(404).json({ message: "Media not found" });
