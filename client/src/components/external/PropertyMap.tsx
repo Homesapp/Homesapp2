@@ -185,7 +185,15 @@ export function PropertyMap({
         onPropertyClick(cluster.properties[0]);
       }
     } else {
-      // Multiple properties - show cluster list
+      // For clusters with many properties, zoom in first
+      if (map && cluster.properties.length > 15) {
+        const currentZoom = map.getZoom() || 13;
+        if (currentZoom < 17) {
+          map.setZoom(Math.min(currentZoom + 2, 18));
+          map.panTo({ lat: cluster.lat, lng: cluster.lng });
+        }
+      }
+      // Show cluster list
       setSelectedCluster(cluster);
       setSelectedProperty(null);
     }
@@ -342,7 +350,7 @@ export function PropertyMap({
           />
         ))}
 
-        {/* Cluster InfoWindow - Compact list of properties at same location */}
+        {/* Cluster InfoWindow - Scrollable list of all properties at same location */}
         {showInfoWindow && selectedCluster && selectedCluster.properties.length > 1 && (
           <InfoWindow
             position={{
@@ -352,66 +360,85 @@ export function PropertyMap({
             onCloseClick={() => setSelectedCluster(null)}
             options={{
               pixelOffset: new google.maps.Size(0, -20),
-              maxWidth: 280,
+              maxWidth: 300,
             }}
           >
-            <div style={{ width: '250px', maxHeight: '300px', display: 'flex', flexDirection: 'column' }}>
-              <div className="flex items-center gap-2 px-2 py-1.5 border-b bg-gray-50">
+            <div style={{ width: '270px', maxHeight: '380px', display: 'flex', flexDirection: 'column' }}>
+              {/* Header with count */}
+              <div className="flex items-center gap-2 px-3 py-2 border-b bg-indigo-50 rounded-t">
                 <Building2 className="h-4 w-4 text-indigo-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-xs text-gray-900 truncate">
+                  <h3 className="font-semibold text-sm text-gray-900 truncate">
                     {selectedCluster.condominiumName || selectedCluster.properties[0]?.condominiumName || selectedCluster.properties[0]?.zone || "Ubicación"}
                   </h3>
                 </div>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                  {selectedCluster.properties.length}
+                <Badge className="text-xs px-2 py-0.5 bg-indigo-600 text-white">
+                  {selectedCluster.properties.length} {language === "es" ? "unidades" : "units"}
                 </Badge>
               </div>
               
-              <div className="overflow-y-auto" style={{ maxHeight: '250px' }}>
-                <div className="p-1.5 space-y-1">
-                  {selectedCluster.properties.map((property) => (
-                    <div
-                      key={property.id}
-                      className="flex items-center gap-1.5 p-1.5 rounded cursor-pointer border border-gray-100 bg-white hover:bg-gray-50 transition-colors"
-                      onClick={() => handlePropertySelect(property)}
+              {/* Scrollable property list */}
+              <div 
+                className="overflow-y-auto" 
+                style={{ 
+                  maxHeight: '320px',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#6366f1 #f1f5f9'
+                }}
+              >
+                <div className="p-2 space-y-1.5">
+                  {selectedCluster.properties.map((property, index) => (
+                    <Link 
+                      key={property.id} 
+                      href={getPropertyLink(property)}
                       data-testid={`cluster-property-${property.id}`}
                     >
-                      {property.primaryImages && property.primaryImages[0] ? (
-                        <img
-                          src={property.primaryImages[0]}
-                          alt={property.unitNumber}
-                          className="w-10 h-10 rounded object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          <Home className="h-4 w-4 text-gray-400" />
+                      <div
+                        className="flex items-center gap-2 p-2 rounded-lg cursor-pointer border border-gray-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 transition-all"
+                      >
+                        {/* Property number indicator */}
+                        <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-semibold text-indigo-700">{index + 1}</span>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-xs text-gray-900 truncate">
-                          {property.propertyType || 'Unidad'} {property.unitNumber}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                          {property.bedrooms !== undefined && (
-                            <span className="flex items-center gap-0.5">
-                              <Bed className="h-2.5 w-2.5" />{property.bedrooms}
-                            </span>
-                          )}
-                          {property.bathrooms && (
-                            <span className="flex items-center gap-0.5">
-                              <Bath className="h-2.5 w-2.5" />{property.bathrooms}
-                            </span>
-                          )}
-                          <span className="text-indigo-600 font-semibold ml-auto">
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-gray-900 truncate">
+                            {property.propertyType || 'Unidad'} {property.unitNumber}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                            {property.bedrooms !== undefined && (
+                              <span className="flex items-center gap-0.5">
+                                <Bed className="h-3 w-3" />{property.bedrooms}
+                              </span>
+                            )}
+                            {property.bathrooms && (
+                              <span className="flex items-center gap-0.5">
+                                <Bath className="h-3 w-3" />{property.bathrooms}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-sm font-bold text-indigo-600">
                             {formatPrice(property.price, property.currency)}
                           </span>
+                          <ChevronRight className="h-4 w-4 text-gray-400 mt-1 ml-auto" />
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
+              
+              {/* Footer scroll indicator */}
+              {selectedCluster.properties.length > 5 && (
+                <div className="px-3 py-1.5 border-t bg-gray-50 text-center rounded-b">
+                  <span className="text-[11px] text-gray-500">
+                    ↓ {language === "es" ? "Desliza para ver más" : "Scroll to see more"}
+                  </span>
+                </div>
+              )}
             </div>
           </InfoWindow>
         )}
