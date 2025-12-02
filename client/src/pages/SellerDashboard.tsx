@@ -142,9 +142,9 @@ export default function SellerDashboard() {
     return (
       <div className="space-y-4 sm:space-y-6 p-4">
         <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="flex gap-2 sm:gap-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="flex-1 min-w-[100px] h-24" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -172,78 +172,78 @@ export default function SellerDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-5 gap-2 sm:gap-3">
-        <Card className="min-w-0">
+      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
+        <Card className="flex-1 min-w-[100px]">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
             <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
-              {language === "es" ? "Leads" : "Leads"}
+              {language === "es" ? "Leads Asignados" : "Assigned Leads"}
             </CardTitle>
             <Users className="h-3 w-3 sm:h-4 sm:w-4 text-primary shrink-0" />
           </CardHeader>
           <CardContent className="p-2 sm:p-3 pt-0">
             <div className="text-lg sm:text-2xl font-bold" data-testid="text-total-leads">{totalLeads}</div>
             <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
-              +{summary?.thisMonthLeads || 0} {language === "es" ? "mes" : "month"}
+              +{summary?.thisMonthLeads || 0} {language === "es" ? "este mes" : "this month"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0">
+        <Card className="flex-1 min-w-[100px]">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
             <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
-              {language === "es" ? "Conversión" : "Conversion"}
+              {language === "es" ? "Tasa de Conversión" : "Conversion Rate"}
             </CardTitle>
             <Percent className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 shrink-0" />
           </CardHeader>
           <CardContent className="p-2 sm:p-3 pt-0">
             <div className="text-lg sm:text-2xl font-bold" data-testid="text-conversion-rate">{conversionRate}%</div>
             <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
-              {summary?.convertedLeads || 0} {language === "es" ? "cerrados" : "closed"}
+              {summary?.convertedLeads || 0} {language === "es" ? "convertidos" : "converted"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0">
+        <Card className="flex-1 min-w-[100px]">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
             <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
-              {language === "es" ? "Visitas" : "Visits"}
+              {language === "es" ? "Visitas Hoy" : "Today's Visits"}
             </CardTitle>
             <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
           </CardHeader>
           <CardContent className="p-2 sm:p-3 pt-0">
             <div className="text-lg sm:text-2xl font-bold" data-testid="text-today-showings">{todayShowings}</div>
             <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
-              {language === "es" ? "hoy" : "today"}
+              {language === "es" ? "Programadas para hoy" : "Scheduled today"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0">
+        <Card className="flex-1 min-w-[100px]">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
             <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
-              {language === "es" ? "Enviadas" : "Sent"}
+              {language === "es" ? "Propiedades Enviadas" : "Properties Sent"}
             </CardTitle>
             <Send className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
           </CardHeader>
           <CardContent className="p-2 sm:p-3 pt-0">
             <div className="text-lg sm:text-2xl font-bold" data-testid="text-properties-sent">{propertiesSent}</div>
             <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
-              {language === "es" ? "propiedades" : "properties"}
+              {language === "es" ? "este mes" : "this month"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className={`min-w-0 ${followUpCount > 0 ? "border-amber-300 dark:border-amber-700" : ""}`}>
+        <Card className={`flex-1 min-w-[100px] ${followUpCount > 0 ? "border-amber-300 dark:border-amber-700" : ""}`}>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-2 sm:p-3 pb-1 sm:pb-2">
             <CardTitle className="text-[10px] sm:text-xs font-medium truncate">
-              {language === "es" ? "Pendientes" : "Pending"}
+              {language === "es" ? "Seguimientos" : "Follow-ups"}
             </CardTitle>
             <Bell className={`h-3 w-3 sm:h-4 sm:w-4 shrink-0 ${followUpCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent className="p-2 sm:p-3 pt-0">
             <div className="text-lg sm:text-2xl font-bold" data-testid="text-follow-ups">{followUpCount}</div>
             <p className="text-[9px] sm:text-xs text-muted-foreground truncate">
-              {followUps?.overdueCount || 0} {language === "es" ? "vencidos" : "overdue"}
+              {language === "es" ? "Pendientes de contactar" : "Pending contact"}
             </p>
           </CardContent>
         </Card>
