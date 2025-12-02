@@ -7365,8 +7365,9 @@ export const externalUnitMedia = pgTable("external_unit_media", {
   aiConfidence: real("ai_confidence"), // Confidence score 0-1
   aiDescription: text("ai_description"), // AI-generated description
   
-  // Manual override
+  // Manual override and section assignment
   manualLabel: externalUnitMediaLabelEnum("manual_label"), // Human-assigned label
+  sectionIndex: integer("section_index").default(1), // Index within section (e.g., Bedroom 1 vs Bedroom 2)
   displayOrder: integer("display_order").default(0), // Order within category
   isHidden: boolean("is_hidden").default(false), // Hide from public view
   isCover: boolean("is_cover").default(false), // Cover image for the unit

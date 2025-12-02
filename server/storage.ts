@@ -13694,11 +13694,12 @@ export class DatabaseStorage implements IStorage {
     return result || null;
   }
 
-  async moveMediaToSection(mediaId: string, newSection: string): Promise<ExternalUnitMedia | null> {
+  async moveMediaToSection(mediaId: string, newSection: string, sectionIndex: number = 1): Promise<ExternalUnitMedia | null> {
     const labelSections = [
-      "bedroom", "bathroom", "kitchen", "living_room", 
+      "bedroom", "bathroom", "half_bath", "kitchen", "living_room", 
       "dining_room", "balcony", "rooftop", "pool", "gym", 
-      "entrance", "facade", "other"
+      "entrance", "facade", "garden", "terrace", "parking",
+      "amenities", "common_areas", "exterior", "view", "floor_plan", "other"
     ];
     
     if (newSection === "cover") {
@@ -13714,6 +13715,7 @@ export class DatabaseStorage implements IStorage {
         .update(externalUnitMedia)
         .set({ 
           isCover: true,
+          sectionIndex: 1,
           displayOrder: 0,
           updatedAt: new Date() 
         })
@@ -13731,6 +13733,7 @@ export class DatabaseStorage implements IStorage {
       .update(externalUnitMedia)
       .set({ 
         manualLabel: newSection as any,
+        sectionIndex: sectionIndex,
         isCover: false,
         displayOrder: 999,
         updatedAt: new Date() 
