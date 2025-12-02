@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,8 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Image, Plus, Trash2, ChevronLeft, ChevronRight, X, Star, Video, Camera, Upload, Link, Globe, AlertCircle } from "lucide-react";
+import { Image, Plus, Trash2, ChevronLeft, ChevronRight, X, Star, Video, Camera, Upload, Link, Globe, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface MediaItem {
+  id: string;
+  thumbnailUrl: string;
+  driveWebViewUrl?: string;
+  driveFileId?: string;
+  aiPrimaryLabel?: string;
+}
 
 interface UnitImageGalleryProps {
   unitId?: string;
@@ -20,6 +28,10 @@ interface UnitImageGalleryProps {
   language?: "es" | "en";
   readOnly?: boolean;
   title?: string;
+}
+
+function getFullSizeGoogleDriveUrl(driveFileId: string): string {
+  return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w1600`;
 }
 
 const ACCEPTED_FORMATS = ".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.gif,.tiff,.bmp";
@@ -45,11 +57,53 @@ export function UnitImageGallery({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upload" | "url">("upload");
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [fullSizeUrlMap, setFullSizeUrlMap] = useState<Map<string, string>>(new Map());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const allImages = [...primaryImages, ...secondaryImages];
+  
+  const fetchMediaDetails = useCallback(async () => {
+    if (!unitId || mediaItems.length > 0) return;
+    
+    setIsLoadingMedia(true);
+    try {
+      const response = await fetch(`/api/external-units/${unitId}/media`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const photos: MediaItem[] = data.photos || [];
+        setMediaItems(photos);
+        
+        const urlMap = new Map<string, string>();
+        photos.forEach((item: MediaItem) => {
+          if (item.thumbnailUrl && item.driveFileId) {
+            urlMap.set(item.thumbnailUrl, getFullSizeGoogleDriveUrl(item.driveFileId));
+          }
+        });
+        setFullSizeUrlMap(urlMap);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch media details:', err);
+    } finally {
+      setIsLoadingMedia(false);
+    }
+  }, [unitId, mediaItems.length]);
+  
+  useEffect(() => {
+    if (lightboxOpen && unitId && mediaItems.length === 0) {
+      fetchMediaDetails();
+    }
+  }, [lightboxOpen, unitId, fetchMediaDetails, mediaItems.length]);
+  
+  const getFullSizeUrl = (thumbnailUrl: string): string => {
+    return fullSizeUrlMap.get(thumbnailUrl) || thumbnailUrl;
+  };
   const hasPrimaryImages = primaryImages.length > 0;
   const hasSecondaryImages = secondaryImages.length > 0;
   const hasVideos = videos.length > 0;
@@ -611,50 +665,80 @@ export function UnitImageGallery({
       </Card>
 
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent className="max-w-4xl p-0 bg-black/90 border-none">
+        <DialogContent className="max-w-5xl p-0 bg-black/95 border-none">
           <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 z-10 text-white hover:bg-white/20"
-              onClick={() => setLightboxOpen(false)}
-              data-testid="button-close-lightbox"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center justify-center min-h-[60vh]">
-              <img
-                src={allImages[lightboxIndex] || ""}
-                alt={`Image ${lightboxIndex + 1}`}
-                className="max-h-[80vh] max-w-full object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://placehold.co/800x600?text=Error";
-                }}
-              />
+            <div className="absolute top-2 right-2 z-10 flex gap-2">
+              {allImages[lightboxIndex] && fullSizeUrlMap.size > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                  onClick={() => {
+                    const currentUrl = allImages[lightboxIndex];
+                    const mediaItem = mediaItems.find(m => m.thumbnailUrl === currentUrl);
+                    if (mediaItem?.driveWebViewUrl) {
+                      window.open(mediaItem.driveWebViewUrl, '_blank');
+                    }
+                  }}
+                  title={language === "es" ? "Abrir en Google Drive" : "Open in Google Drive"}
+                  data-testid="button-open-drive"
+                >
+                  <ExternalLink className="h-5 w-5" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                onClick={() => setLightboxOpen(false)}
+                data-testid="button-close-lightbox"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex items-center justify-center min-h-[70vh] p-4">
+              {isLoadingMedia ? (
+                <div className="flex flex-col items-center gap-3 text-white">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="text-sm">{language === "es" ? "Cargando imagen..." : "Loading image..."}</span>
+                </div>
+              ) : (
+                <img
+                  src={getFullSizeUrl(allImages[lightboxIndex] || "")}
+                  alt={`Image ${lightboxIndex + 1}`}
+                  className="max-h-[85vh] max-w-full object-contain rounded"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (img.src !== allImages[lightboxIndex]) {
+                      img.src = allImages[lightboxIndex] || "https://placehold.co/800x600?text=Error";
+                    }
+                  }}
+                />
+              )}
             </div>
             {allImages.length > 1 && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-12 w-12"
                   onClick={prevImage}
                   data-testid="button-prev-image"
                 >
-                  <ChevronLeft className="h-8 w-8" />
+                  <ChevronLeft className="h-10 w-10" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-12 w-12"
                   onClick={nextImage}
                   data-testid="button-next-image"
                 >
-                  <ChevronRight className="h-8 w-8" />
+                  <ChevronRight className="h-10 w-10" />
                 </Button>
               </>
             )}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-3 py-1 rounded-full text-white text-sm">
               {lightboxIndex + 1} / {allImages.length}
             </div>
           </div>
