@@ -16,9 +16,14 @@ const SPREADSHEET_ID = '1fmViiKjC07TFzR71p19y7tN36430FkpJ8MF0DRlKQg4';
 const SHEET_NAME = 'Renta/Long Term';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
-const THUMBNAIL_WIDTH = 400;
-const THUMBNAIL_HEIGHT = 300;
-const MAX_PHOTOS_PER_UNIT = 20;
+// High quality settings for better visual appearance
+// Targeting 1-2 GB total storage for all units with ~25 photos each
+const THUMBNAIL_WIDTH = 1200;  // Was 400 - now HD quality
+const THUMBNAIL_HEIGHT = 900;  // Was 300 - now HD quality
+const JPEG_QUALITY = 90;       // Was 80 - higher quality
+const MAX_PRIMARY_PHOTOS = 5;  // Primary/cover photos
+const MAX_SECONDARY_PHOTOS = 20; // Additional photos
+const MAX_PHOTOS_PER_UNIT = MAX_PRIMARY_PHOTOS + MAX_SECONDARY_PHOTOS; // Total 25
 const MAX_VIDEOS_PER_UNIT = 10;
 
 interface MediaRecord {
@@ -118,7 +123,7 @@ async function createThumbnail(imageBuffer: Buffer): Promise<Buffer> {
       fit: 'cover',
       position: 'center',
     })
-    .jpeg({ quality: 80 })
+    .jpeg({ quality: JPEG_QUALITY })
     .toBuffer();
 }
 

@@ -10,9 +10,11 @@ const SPREADSHEET_ID = '1fmViiKjC07TFzR71p19y7tN36430FkpJ8MF0DRlKQg4';
 const SHEET_NAME = 'Renta/Long Term';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
-const THUMBNAIL_WIDTH = 400;
-const THUMBNAIL_HEIGHT = 300;
-const MAX_PHOTOS_PER_UNIT = 10;
+// High quality settings for better visual appearance
+const THUMBNAIL_WIDTH = 1200;  // Was 400 - now HD quality
+const THUMBNAIL_HEIGHT = 900;  // Was 300 - now HD quality
+const JPEG_QUALITY = 90;       // Was 80 - higher quality
+const MAX_PHOTOS_PER_UNIT = 25; // 5 primary + 20 secondary
 
 interface DrivePhotoData {
   sheetRowId: string;
@@ -45,7 +47,7 @@ async function createThumbnail(imageBuffer: Buffer): Promise<Buffer> {
       fit: 'cover',
       position: 'center',
     })
-    .jpeg({ quality: 80 })
+    .jpeg({ quality: JPEG_QUALITY })
     .toBuffer();
 }
 
