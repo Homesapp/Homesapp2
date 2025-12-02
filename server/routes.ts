@@ -34389,7 +34389,6 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: unit.petFriendly,
           zone: unit.zone,
           condominiumName: condoName || null,
-          petsAllowed: m.petsAllowed || false,
           unitNumber: unit.unitNumber,
           latitude: unit.latitude ? parseFloat(unit.latitude) : null,
           longitude: unit.longitude ? parseFloat(unit.longitude) : null,
