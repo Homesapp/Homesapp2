@@ -25779,6 +25779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const agencyId = await getUserAgencyId(req);
+      console.log("[seller-summary DEBUG] userId:", userId, "agencyId:", agencyId, "user.role:", req.user.role);
       
       if (!agencyId) {
         return res.status(400).json({ message: "User is not assigned to any agency" });
