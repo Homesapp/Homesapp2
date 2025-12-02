@@ -110,3 +110,51 @@ export async function getFileMetadata(fileId: string): Promise<drive_v3.Schema$F
 export async function getDriveFileDirectLink(fileId: string): Promise<string> {
   return `https://drive.google.com/uc?export=view&id=${fileId}`;
 }
+
+export async function listVideosInFolder(folderId: string): Promise<drive_v3.Schema$File[]> {
+  const drive = await getGoogleDriveClient();
+  
+  const response = await drive.files.list({
+    q: `'${folderId}' in parents and (mimeType contains 'video/')`,
+    fields: 'files(id, name, mimeType, size, thumbnailLink, webViewLink)',
+    pageSize: 50,
+    orderBy: 'name',
+  });
+  
+  return response.data.files || [];
+}
+
+export async function listAllMediaInFolder(folderId: string): Promise<{
+  images: drive_v3.Schema$File[];
+  videos: drive_v3.Schema$File[];
+}> {
+  const drive = await getGoogleDriveClient();
+  
+  const [imagesResponse, videosResponse] = await Promise.all([
+    drive.files.list({
+      q: `'${folderId}' in parents and (mimeType contains 'image/')`,
+      fields: 'files(id, name, mimeType, size, thumbnailLink, webContentLink, webViewLink)',
+      pageSize: 100,
+      orderBy: 'name',
+    }),
+    drive.files.list({
+      q: `'${folderId}' in parents and (mimeType contains 'video/')`,
+      fields: 'files(id, name, mimeType, size, thumbnailLink, webViewLink)',
+      pageSize: 50,
+      orderBy: 'name',
+    }),
+  ]);
+  
+  return {
+    images: imagesResponse.data.files || [],
+    videos: videosResponse.data.files || [],
+  };
+}
+
+export function getVideoEmbedUrl(fileId: string): string {
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+export function getVideoThumbnailUrl(fileId: string): string {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400-h300`;
+}

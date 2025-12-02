@@ -1,0 +1,380 @@
+import { db } from "../db";
+import { externalUnits } from "@shared/schema";
+import { getGoogleSheetsClient } from "../googleSheets";
+import { 
+  extractFolderIdFromUrl, 
+  listAllMediaInFolder, 
+  downloadFileAsBuffer, 
+  getVideoEmbedUrl,
+  getVideoThumbnailUrl 
+} from "../googleDrive";
+import { objectStorageClient } from "../objectStorage";
+import sharp from "sharp";
+import { eq, sql } from "drizzle-orm";
+
+const SPREADSHEET_ID = '1fmViiKjC07TFzR71p19y7tN36430FkpJ8MF0DRlKQg4';
+const SHEET_NAME = 'Renta/Long Term';
+const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+
+const THUMBNAIL_WIDTH = 400;
+const THUMBNAIL_HEIGHT = 300;
+const MAX_PHOTOS_PER_UNIT = 20;
+const MAX_VIDEOS_PER_UNIT = 10;
+
+interface MediaRecord {
+  id: string;
+  unitId: string;
+  mediaType: 'photo' | 'video';
+  driveFileId: string | null;
+  driveWebViewUrl: string | null;
+  thumbnailUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  status: 'pending' | 'processing' | 'processed' | 'error';
+  displayOrder: number;
+  isHidden: boolean;
+  isCover: boolean;
+}
+
+interface DriveMediaData {
+  sheetRowId: string;
+  unitNumber: string;
+  condominiumName: string;
+  fichasDriveUrl: string;
+  directDriveUrl: string;
+}
+
+function extractDriveLinkFromFichas(fichasNotes: string): string | null {
+  if (!fichasNotes) return null;
+  const patterns = [
+    /https:\/\/drive\.google\.com\/(?:drive\/)?folders\/[a-zA-Z0-9_-]+/gi,
+    /https:\/\/drive\.google\.com\/(?:open|file\/d)\/[a-zA-Z0-9_-]+/gi,
+  ];
+  for (const pattern of patterns) {
+    const matches = fichasNotes.match(pattern);
+    if (matches && matches.length > 0) {
+      return matches[0];
+    }
+  }
+  return null;
+}
+
+async function readDriveLinksFromSheet(): Promise<DriveMediaData[]> {
+  const sheets = await getGoogleSheetsClient();
+  
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!A2:AA`,
+  });
+  
+  const rows = response.data.values || [];
+  
+  return rows.map((row: any[]) => {
+    const fichasNotes = row[19] || '';
+    const directDriveUrl = row[26] || '';
+    const fichasDriveUrl = extractDriveLinkFromFichas(fichasNotes);
+    
+    return {
+      sheetRowId: row[0] || '',
+      condominiumName: row[6] || '',
+      unitNumber: row[7] || '',
+      fichasDriveUrl: fichasDriveUrl || '',
+      directDriveUrl: directDriveUrl,
+    };
+  }).filter((r: DriveMediaData) => r.sheetRowId && (r.fichasDriveUrl || r.directDriveUrl));
+}
+
+async function createThumbnail(imageBuffer: Buffer): Promise<Buffer> {
+  return sharp(imageBuffer)
+    .resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, {
+      fit: 'cover',
+      position: 'center',
+    })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+}
+
+async function uploadToObjectStorage(
+  buffer: Buffer, 
+  filename: string, 
+  contentType: string = 'image/jpeg'
+): Promise<string> {
+  if (!BUCKET_ID) {
+    throw new Error("BUCKET_ID not configured");
+  }
+  
+  const bucket = objectStorageClient.bucket(BUCKET_ID);
+  const objectPath = `public/properties/${filename}`;
+  const file = bucket.file(objectPath);
+  
+  await file.save(buffer, {
+    contentType,
+    metadata: {
+      cacheControl: 'public, max-age=31536000',
+    },
+  });
+  
+  return `/api/public/images/properties/${filename}`;
+}
+
+async function insertMediaRecord(record: Partial<MediaRecord>): Promise<void> {
+  const id = `${record.unitId}_${record.mediaType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  await db.execute(sql`
+    INSERT INTO external_unit_media (
+      id, unit_id, media_type, drive_file_id, drive_web_view_url, 
+      thumbnail_url, file_name, mime_type, file_size, status, 
+      display_order, is_hidden, is_cover
+    ) VALUES (
+      ${id}, ${record.unitId}, ${record.mediaType}, ${record.driveFileId || null}, ${record.driveWebViewUrl || null}, 
+      ${record.thumbnailUrl || null}, ${record.fileName || null}, ${record.mimeType || null}, ${record.fileSize || null}, ${record.status || 'pending'}, 
+      ${record.displayOrder || 0}, ${record.isHidden || false}, ${record.isCover || false}
+    )
+  `);
+}
+
+async function getExistingMediaCount(unitId: string): Promise<{ photos: number; videos: number }> {
+  const result = await db.execute(sql`
+    SELECT media_type, COUNT(*) as count
+    FROM external_unit_media
+    WHERE unit_id = ${unitId}
+    GROUP BY media_type
+  `);
+  
+  const counts = { photos: 0, videos: 0 };
+  for (const row of (result.rows || [])) {
+    if ((row as any).media_type === 'photo') counts.photos = parseInt((row as any).count);
+    if ((row as any).media_type === 'video') counts.videos = parseInt((row as any).count);
+  }
+  return counts;
+}
+
+async function importMediaForUnit(
+  unit: { id: string; sheetRowId: string; unitNumber: string },
+  folderId: string,
+  dryRun: boolean = true
+): Promise<{ photos: number; videos: number }> {
+  const { images, videos } = await listAllMediaInFolder(folderId);
+  
+  const existingCounts = await getExistingMediaCount(unit.id);
+  const photosToAdd = MAX_PHOTOS_PER_UNIT - existingCounts.photos;
+  const videosToAdd = MAX_VIDEOS_PER_UNIT - existingCounts.videos;
+  
+  let photosImported = 0;
+  let videosImported = 0;
+  
+  const imagesToProcess = images.slice(0, Math.max(0, photosToAdd));
+  for (let i = 0; i < imagesToProcess.length; i++) {
+    const image = imagesToProcess[i];
+    if (!image.id) continue;
+    
+    try {
+      let thumbnailUrl: string | null = null;
+      
+      if (!dryRun) {
+        const imageBuffer = await downloadFileAsBuffer(image.id);
+        const thumbnailBuffer = await createThumbnail(imageBuffer);
+        const filename = `${unit.sheetRowId}_${Date.now()}_${i + 1}.jpg`;
+        thumbnailUrl = await uploadToObjectStorage(thumbnailBuffer, filename);
+        
+        await insertMediaRecord({
+          unitId: unit.id,
+          mediaType: 'photo',
+          driveFileId: image.id,
+          driveWebViewUrl: image.webViewLink || null,
+          thumbnailUrl,
+          fileName: image.name || null,
+          mimeType: image.mimeType || null,
+          fileSize: image.size ? parseInt(image.size) : null,
+          status: 'pending',
+          displayOrder: existingCounts.photos + i,
+          isCover: existingCounts.photos === 0 && i === 0,
+        });
+        
+        console.log(`    Photo ${i + 1}/${imagesToProcess.length}: ${image.name}`);
+      }
+      
+      photosImported++;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+    } catch (error: any) {
+      console.error(`    Error with photo ${image.name}: ${error.message}`);
+    }
+  }
+  
+  const videosToProcess = videos.slice(0, Math.max(0, videosToAdd));
+  for (let i = 0; i < videosToProcess.length; i++) {
+    const video = videosToProcess[i];
+    if (!video.id) continue;
+    
+    try {
+      if (!dryRun) {
+        const embedUrl = getVideoEmbedUrl(video.id);
+        const thumbnailUrl = getVideoThumbnailUrl(video.id);
+        
+        await insertMediaRecord({
+          unitId: unit.id,
+          mediaType: 'video',
+          driveFileId: video.id,
+          driveWebViewUrl: embedUrl,
+          thumbnailUrl,
+          fileName: video.name || null,
+          mimeType: video.mimeType || null,
+          fileSize: video.size ? parseInt(video.size) : null,
+          status: 'pending',
+          displayOrder: existingCounts.videos + i,
+        });
+        
+        console.log(`    Video ${i + 1}/${videosToProcess.length}: ${video.name}`);
+      }
+      
+      videosImported++;
+      
+    } catch (error: any) {
+      console.error(`    Error with video ${video.name}: ${error.message}`);
+    }
+  }
+  
+  return { photos: photosImported, videos: videosImported };
+}
+
+async function updateUnitPrimaryImages(unitId: string): Promise<void> {
+  const result = await db.execute(sql`
+    SELECT thumbnail_url FROM external_unit_media
+    WHERE unit_id = ${unitId} AND media_type = 'photo' AND is_hidden = false
+    ORDER BY is_cover DESC, display_order ASC
+    LIMIT 10
+  `);
+  
+  const thumbnails = (result.rows || []).map((r: any) => r.thumbnail_url).filter(Boolean);
+  
+  if (thumbnails.length > 0) {
+    await db
+      .update(externalUnits)
+      .set({ primaryImages: thumbnails })
+      .where(eq(externalUnits.id, unitId));
+  }
+}
+
+async function importMedia(dryRun: boolean = true, limit?: number, skipExisting: boolean = true) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`MEDIA IMPORT FROM GOOGLE DRIVE`);
+  console.log(`Mode: ${dryRun ? 'DRY RUN (no changes)' : 'LIVE IMPORT'}`);
+  console.log(`Skip existing: ${skipExisting}`);
+  console.log(`${'='.repeat(60)}\n`);
+  
+  console.log("Reading Drive links from spreadsheet...");
+  const driveData = await readDriveLinksFromSheet();
+  console.log(`Found ${driveData.length} units with Drive folder links\n`);
+  
+  const allUnits = await db
+    .select({
+      id: externalUnits.id,
+      sheetRowId: externalUnits.sheetRowId,
+      unitNumber: externalUnits.unitNumber,
+    })
+    .from(externalUnits);
+  
+  const unitsBySheetRowId = new Map(
+    allUnits.map(u => [u.sheetRowId, u])
+  );
+  
+  let processed = 0;
+  let updated = 0;
+  let skipped = 0;
+  let errors = 0;
+  let totalPhotos = 0;
+  let totalVideos = 0;
+  
+  const dataToProcess = limit ? driveData.slice(0, limit) : driveData;
+  
+  for (const data of dataToProcess) {
+    const unit = unitsBySheetRowId.get(data.sheetRowId);
+    
+    if (!unit) {
+      skipped++;
+      continue;
+    }
+    
+    if (skipExisting) {
+      const existing = await getExistingMediaCount(unit.id);
+      if (existing.photos >= MAX_PHOTOS_PER_UNIT) {
+        console.log(`[SKIP] ${data.condominiumName} ${data.unitNumber} - Already has ${existing.photos} photos`);
+        skipped++;
+        continue;
+      }
+    }
+    
+    const driveUrl = data.directDriveUrl || data.fichasDriveUrl;
+    const folderId = extractFolderIdFromUrl(driveUrl);
+    
+    if (!folderId) {
+      console.log(`[ERROR] Invalid folder URL for ${data.condominiumName} ${data.unitNumber}`);
+      errors++;
+      continue;
+    }
+    
+    console.log(`[PROCESS] ${data.condominiumName} ${data.unitNumber}`);
+    console.log(`  Source: ${data.directDriveUrl ? 'Column AA' : 'Fichas T'}`);
+    
+    try {
+      const { photos, videos } = await importMediaForUnit(
+        { id: unit.id, sheetRowId: data.sheetRowId, unitNumber: data.unitNumber },
+        folderId,
+        dryRun
+      );
+      
+      if (photos > 0 || videos > 0) {
+        console.log(`  → ${photos} photos, ${videos} videos processed`);
+        totalPhotos += photos;
+        totalVideos += videos;
+        
+        if (!dryRun) {
+          await updateUnitPrimaryImages(unit.id);
+          updated++;
+        }
+      } else {
+        console.log(`  → No new media found`);
+      }
+      
+      processed++;
+      
+    } catch (error: any) {
+      console.log(`[ERROR] ${data.condominiumName} ${data.unitNumber}: ${error.message}`);
+      errors++;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`SUMMARY`);
+  console.log(`${'='.repeat(60)}`);
+  console.log(`Processed: ${processed}`);
+  console.log(`Updated: ${updated}`);
+  console.log(`Skipped: ${skipped}`);
+  console.log(`Errors: ${errors}`);
+  console.log(`Total photos: ${totalPhotos}`);
+  console.log(`Total videos: ${totalVideos}`);
+  
+  if (dryRun) {
+    console.log(`\nThis was a DRY RUN. Run with --import to actually import media.`);
+  }
+}
+
+const args = process.argv.slice(2);
+const dryRun = !args.includes('--import');
+const limitArg = args.find(a => a.startsWith('--limit='));
+const limit = limitArg ? parseInt(limitArg.split('=')[1]) : undefined;
+const skipExisting = !args.includes('--force');
+
+importMedia(dryRun, limit, skipExisting)
+  .then(() => {
+    console.log("\nDone!");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Script failed:", error);
+    process.exit(1);
+  });
