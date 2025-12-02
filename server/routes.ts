@@ -34403,6 +34403,166 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
     }
   });
 
+  // GET /api/public/map-markers - Lightweight endpoint for map markers only
+  // Returns minimal data for fast map loading
+  app.get("/api/public/map-markers", async (req, res) => {
+    try {
+      const { status, propertyType, minPrice, maxPrice, bedrooms, bathrooms, petFriendly, zone, condominiumId } = req.query;
+      
+      // Build where conditions - base conditions for approved/active properties with coordinates
+      const conditions: any[] = [
+        eq(externalUnits.publishToMain, true),
+        eq(externalUnits.publishStatus, 'approved'),
+        eq(externalUnits.isActive, true),
+        isNotNull(externalUnits.latitude),
+        isNotNull(externalUnits.longitude)
+      ];
+      
+      // Apply filters
+      if (status && typeof status === 'string' && status !== 'all') {
+        if (status === 'rent') {
+          conditions.push(or(eq(externalUnits.listingType, 'rent'), eq(externalUnits.listingType, 'both')));
+        } else if (status === 'sale') {
+          conditions.push(or(eq(externalUnits.listingType, 'sale'), eq(externalUnits.listingType, 'both')));
+        }
+      }
+      
+      if (petFriendly === 'true' || petFriendly === '1') {
+        conditions.push(eq(externalUnits.petsAllowed, true));
+      }
+      
+      if (propertyType && typeof propertyType === 'string' && propertyType !== 'all') {
+        conditions.push(ilike(externalUnits.propertyType, propertyType));
+      }
+      
+      if (bedrooms && typeof bedrooms === 'string') {
+        const bedroomsNum = parseInt(bedrooms);
+        if (!isNaN(bedroomsNum) && bedroomsNum > 0) {
+          conditions.push(gte(externalUnits.bedrooms, bedroomsNum));
+        }
+      }
+      
+      if (bathrooms && typeof bathrooms === 'string') {
+        const bathroomsNum = parseFloat(bathrooms);
+        if (!isNaN(bathroomsNum) && bathroomsNum > 0) {
+          conditions.push(gte(externalUnits.bathrooms, bathroomsNum));
+        }
+      }
+      
+      if (minPrice && typeof minPrice === 'string') {
+        const minPriceNum = parseFloat(minPrice);
+        if (!isNaN(minPriceNum) && minPriceNum > 0) {
+          conditions.push(gte(sql`CAST(${externalUnits.price} AS numeric)`, minPriceNum));
+        }
+      }
+      
+      if (maxPrice && typeof maxPrice === 'string') {
+        const maxPriceNum = parseFloat(maxPrice);
+        if (!isNaN(maxPriceNum) && maxPriceNum > 0) {
+          conditions.push(lte(sql`CAST(${externalUnits.price} AS numeric)`, maxPriceNum));
+        }
+      }
+      
+      if (zone && typeof zone === 'string' && zone !== 'all') {
+        conditions.push(ilike(externalUnits.zone, zone));
+      }
+      
+      if (condominiumId && typeof condominiumId === 'string' && condominiumId !== 'all') {
+        conditions.push(eq(externalUnits.condominiumId, condominiumId));
+      }
+      
+      // Select only minimal fields needed for map markers
+      const markers = await db
+        .select({
+          id: externalUnits.id,
+          latitude: externalUnits.latitude,
+          longitude: externalUnits.longitude,
+          price: externalUnits.price,
+          salePrice: externalUnits.salePrice,
+          listingType: externalUnits.listingType,
+          propertyType: externalUnits.propertyType,
+          bedrooms: externalUnits.bedrooms,
+          bathrooms: externalUnits.bathrooms,
+          title: externalUnits.title,
+          unitNumber: externalUnits.unitNumber,
+          zone: externalUnits.zone,
+          currency: externalUnits.currency,
+          saleCurrency: externalUnits.saleCurrency,
+          slug: externalUnits.slug,
+          agencyId: externalUnits.agencyId,
+          condominiumId: externalUnits.condominiumId,
+        })
+        .from(externalUnits)
+        .where(and(...conditions))
+        .limit(2000);
+      
+      // Build a cache for agencies and condominiums
+      const agencyIds = [...new Set(markers.map(m => m.agencyId))];
+      const condoIds = [...new Set(markers.filter(m => m.condominiumId).map(m => m.condominiumId!))];
+      
+      const agenciesData = agencyIds.length > 0 ? await db
+        .select({ id: externalAgencies.id, name: externalAgencies.name, slug: externalAgencies.slug })
+        .from(externalAgencies)
+        .where(inArray(externalAgencies.id, agencyIds)) : [];
+      
+      const condosData = condoIds.length > 0 ? await db
+        .select({ id: externalCondominiums.id, name: externalCondominiums.name })
+        .from(externalCondominiums)
+        .where(inArray(externalCondominiums.id, condoIds)) : [];
+      
+      const agencyMap = new Map(agenciesData.map(a => [a.id, a]));
+      const condoMap = new Map(condosData.map(c => [c.id, c.name]));
+      
+      // Helper to generate slug
+      const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      
+      // Transform to lightweight marker format
+      const mapMarkers = markers.map(m => {
+        const agency = agencyMap.get(m.agencyId);
+        const condoName = m.condominiumId ? condoMap.get(m.condominiumId) : null;
+        
+        // Generate slugs
+        const agencySlug = agency?.slug || generateSlug(agency?.name || 'agency');
+        let unitSlug = m.slug;
+        if (!unitSlug) {
+          if (condoName) {
+            unitSlug = generateSlug(`${condoName}-${m.unitNumber}`);
+          } else {
+            const unitTitle = m.title || `${m.propertyType || 'propiedad'}-${m.unitNumber}`;
+            unitSlug = generateSlug(`${unitTitle}-${m.id.substring(0, 8)}`);
+          }
+        }
+        
+        return {
+          id: m.id,
+          lat: m.latitude ? parseFloat(m.latitude) : null,
+          lng: m.longitude ? parseFloat(m.longitude) : null,
+          price: parseFloat(m.price || '0') || 0,
+          salePrice: m.salePrice ? parseFloat(m.salePrice) : null,
+          listingType: m.listingType || 'rent',
+          propertyType: m.propertyType,
+          bedrooms: m.bedrooms || 0,
+          bathrooms: m.bathrooms || 0,
+          title: m.title || `${m.propertyType || 'Propiedad'} ${m.unitNumber}`,
+          zone: m.zone,
+          currency: m.currency || 'MXN',
+          saleCurrency: m.saleCurrency || 'MXN',
+          agencySlug,
+          unitSlug,
+          condominiumName: condoName || null,
+        };
+      }).filter(m => m.lat && m.lng);
+      
+      res.json({
+        markers: mapMarkers,
+        total: mapMarkers.length
+      });
+    } catch (error: any) {
+      console.error("Error fetching map markers:", error);
+      res.status(500).json({ message: "Error al obtener marcadores del mapa" });
+    }
+  });
+
 
   // =============================================================================
   // PUBLIC CHATBOT ENDPOINTS - AI assistant for homepage
