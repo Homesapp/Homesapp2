@@ -28306,7 +28306,7 @@ ${{precio}}/mes
           thumbnail_url,
           drive_web_view_url
         FROM external_unit_media 
-        WHERE unit_id = ANY(${unitIds}) 
+        WHERE unit_id = ANY(${sql.raw('ARRAY[' + unitIds.map(id => "'" + id + "'").join(',') + ']::varchar[]')}) 
           AND media_type = 'photo'
           AND (status = 'processed' OR status = 'pending')
         ORDER BY unit_id, is_cover DESC, display_order ASC, created_at ASC
