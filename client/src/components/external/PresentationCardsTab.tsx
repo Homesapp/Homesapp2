@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -151,6 +153,7 @@ interface FormData {
   bedroomsText: string;
   bathrooms: string;
   preferredZone: string;
+  moveInDate: Date | undefined;
   moveInDateText: string;
   contractDuration: string;
   hasPets: boolean;
@@ -174,6 +177,7 @@ const defaultFormData: FormData = {
   bedroomsText: "",
   bathrooms: "",
   preferredZone: "",
+  moveInDate: undefined,
   moveInDateText: "",
   contractDuration: "",
   hasPets: false,
@@ -411,6 +415,18 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
 
   const openEdit = (card: ExternalPresentationCard) => {
     setSelectedCard(card);
+    // Parse moveInDateText to Date if possible
+    let parsedDate: Date | undefined = undefined;
+    if (card.moveInDateText) {
+      try {
+        const parsed = new Date(card.moveInDateText);
+        if (!isNaN(parsed.getTime())) {
+          parsedDate = parsed;
+        }
+      } catch (e) {
+        // Keep undefined if parsing fails
+      }
+    }
     setFormData({
       title: card.title,
       propertyType: card.propertyType || "",
@@ -422,6 +438,7 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
       bedroomsText: card.bedroomsText || "",
       bathrooms: card.bathrooms?.toString() || "",
       preferredZone: card.preferredZone || "",
+      moveInDate: parsedDate,
       moveInDateText: card.moveInDateText || "",
       contractDuration: card.contractDuration || "",
       hasPets: card.hasPets || false,
@@ -478,6 +495,8 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
       bedrooms: leadPreferences.bedrooms ? String(leadPreferences.bedrooms) : "",
       bedroomsText: leadPreferences.bedroomsText || "",
       preferredZone: leadPreferences.desiredNeighborhood || "",
+      moveInDate: undefined,
+      moveInDateText: "",
       contractDuration: leadPreferences.contractDuration || "",
       hasPets: leadPreferences.hasPets && leadPreferences.hasPets !== "No" ? true : false,
       petsDescription: leadPreferences.hasPets && leadPreferences.hasPets !== "No" ? leadPreferences.hasPets : "",
@@ -715,13 +734,46 @@ export default function PresentationCardsTab({ leadId, clientId, personName, lea
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-sm">{language === "es" ? "Fecha de ingreso" : "Move-in date"}</Label>
-              <Input
-                value={formData.moveInDateText}
-                onChange={(e) => setFormData({ ...formData, moveInDateText: e.target.value })}
-                placeholder={language === "es" ? "Ej: Enero 2025" : "E.g: January 2025"}
-                className="min-h-[44px]"
-                data-testid="input-move-in"
-              />
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="min-h-[44px] shrink-0"
+                      data-testid="button-move-in-date"
+                    >
+                      <Calendar className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={formData.moveInDate}
+                      onSelect={(date) => setFormData({ 
+                        ...formData, 
+                        moveInDate: date,
+                        moveInDateText: date ? format(date, "dd MMM yyyy", { locale }) : ""
+                      })}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      locale={locale}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Input
+                  value={formData.moveInDateText}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    moveInDateText: e.target.value,
+                    moveInDate: undefined
+                  })}
+                  placeholder={language === "es" ? "Ej: Enero 2025" : "E.g: January 2025"}
+                  className="min-h-[44px] flex-1"
+                  data-testid="input-move-in"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-sm">{language === "es" ? "Duracion del contrato" : "Contract duration"}</Label>

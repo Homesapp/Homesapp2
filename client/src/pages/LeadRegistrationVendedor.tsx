@@ -266,7 +266,11 @@ export default function LeadRegistrationVendedor() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const onSubmit = (data: VendedorFormData) => {
+  const onSubmit = (e: React.FormEvent, data: VendedorFormData) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only submit on the final step
     if (currentStep !== STEPS.length) {
       return;
     }
@@ -276,6 +280,13 @@ export default function LeadRegistrationVendedor() {
       desiredNeighborhoods: selectedNeighborhoods,
       interestedUnitIds: selectedUnitIds,
     });
+  };
+  
+  // Prevent form submission on Enter key (except on submit button)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+      e.preventDefault();
+    }
   };
 
   // Add property interest
@@ -405,7 +416,16 @@ export default function LeadRegistrationVendedor() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (currentStep === STEPS.length) {
+                  form.handleSubmit((data) => onSubmit(e, data))(e);
+                }
+              }} 
+              onKeyDown={handleKeyDown}
+              className="space-y-6"
+            >
               {/* Step 1: Client Information */}
               {currentStep === 1 && (
                 <div className="space-y-4">
