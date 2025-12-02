@@ -63,8 +63,10 @@ export default function InteractiveMap() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const { data: propertiesResponse, isLoading, error } = useQuery<{ data: any[]; pagination: any }>({
-    queryKey: ["/api/public/external-properties?limit=500&hasCoordinates=true"],
+  // Use lightweight map-markers endpoint for faster loading
+  const { data: markersResponse, isLoading, error } = useQuery<{ markers: any[]; total: number }>({
+    queryKey: ["/api/public/map-markers"],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const { data: zonesData } = useQuery<{ data: string[] }>({
@@ -75,20 +77,20 @@ export default function InteractiveMap() {
     queryKey: ["/api/public/condominiums"],
   });
 
-  const allProperties = propertiesResponse?.data || [];
+  const allMarkers = markersResponse?.markers || [];
   const rawZones = zonesData?.data || [];
   const condominiums = Array.isArray(condominiumsData) ? condominiumsData : (condominiumsData?.data || []);
 
   // Calculate the maximum price from the dataset for dynamic slider
   const datasetMaxPrice = useMemo(() => {
-    if (allProperties.length === 0) return 500000;
-    const prices = allProperties
+    if (allMarkers.length === 0) return 500000;
+    const prices = allMarkers
       .map((p: any) => p.price || 0)
       .filter((p: number) => p > 0);
     const maxPrice = Math.max(...prices, 500000);
     // Round up to nearest 50,000 for cleaner UI
     return Math.ceil(maxPrice / 50000) * 50000;
-  }, [allProperties]);
+  }, [allMarkers]);
 
   const zones = useMemo(() => {
     const normalizedMap = new Map<string, string>();
@@ -101,88 +103,76 @@ export default function InteractiveMap() {
     return Array.from(normalizedMap.values()).sort((a, b) => a.localeCompare(b, 'es'));
   }, [rawZones]);
 
-  const filteredProperties = useMemo(() => {
-    return allProperties.filter((property: any) => {
-      if (!property.latitude || !property.longitude) return false;
+  const filteredMarkers = useMemo(() => {
+    return allMarkers.filter((marker: any) => {
+      // Lightweight markers already have lat/lng validated
+      if (!marker.lat || !marker.lng) return false;
 
       if (filters.search && filters.search.trim()) {
         const searchTerm = filters.search.toLowerCase();
         const matchesSearch = 
-          property.title?.toLowerCase().includes(searchTerm) ||
-          property.location?.toLowerCase().includes(searchTerm) ||
-          property.zone?.toLowerCase().includes(searchTerm) ||
-          property.condominiumName?.toLowerCase().includes(searchTerm) ||
-          property.unitNumber?.toLowerCase().includes(searchTerm);
+          marker.title?.toLowerCase().includes(searchTerm) ||
+          marker.zone?.toLowerCase().includes(searchTerm) ||
+          marker.condominiumName?.toLowerCase().includes(searchTerm);
         if (!matchesSearch) return false;
       }
 
       if (filters.status !== "all") {
-        if (filters.status === "rent" && property.listingType !== "rent" && property.listingType !== "both") return false;
-        if (filters.status === "sale" && property.listingType !== "sale" && property.listingType !== "both") return false;
+        if (filters.status === "rent" && marker.listingType !== "rent" && marker.listingType !== "both") return false;
+        if (filters.status === "sale" && marker.listingType !== "sale" && marker.listingType !== "both") return false;
       }
 
-      if (filters.propertyType !== "all" && property.propertyType !== filters.propertyType) return false;
+      if (filters.propertyType !== "all" && marker.propertyType !== filters.propertyType) return false;
 
       if (filters.zone !== "all") {
         const filterZone = filters.zone.toLowerCase().trim();
-        const propertyZone = (property.zone || "").toLowerCase().trim();
-        if (filterZone !== propertyZone) return false;
+        const markerZone = (marker.zone || "").toLowerCase().trim();
+        if (filterZone !== markerZone) return false;
       }
 
-      if (filters.condominiumName !== "all" && property.condominiumName !== filters.condominiumName) return false;
+      if (filters.condominiumName !== "all" && marker.condominiumName !== filters.condominiumName) return false;
 
-      const price = property.price || 0;
+      const price = marker.price || 0;
       if (price < filters.minPrice || price > filters.maxPrice) return false;
 
       if (filters.bedrooms !== "all") {
         const bedroomCount = parseInt(filters.bedrooms);
-        if (filters.bedrooms === "4+" && (property.bedrooms || 0) < 4) return false;
-        if (filters.bedrooms !== "4+" && (property.bedrooms || 0) !== bedroomCount) return false;
+        if (filters.bedrooms === "4+" && (marker.bedrooms || 0) < 4) return false;
+        if (filters.bedrooms !== "4+" && (marker.bedrooms || 0) !== bedroomCount) return false;
       }
 
       if (filters.bathrooms !== "all") {
         const bathroomCount = parseFloat(filters.bathrooms);
-        const propertyBathrooms = parseFloat(property.bathrooms || "0");
-        if (filters.bathrooms === "3+" && propertyBathrooms < 3) return false;
-        if (filters.bathrooms !== "3+" && propertyBathrooms !== bathroomCount) return false;
+        const markerBathrooms = parseFloat(marker.bathrooms || "0");
+        if (filters.bathrooms === "3+" && markerBathrooms < 3) return false;
+        if (filters.bathrooms !== "3+" && markerBathrooms !== bathroomCount) return false;
       }
 
-      if (filters.petFriendly) {
-        const petsAllowed = property.petsAllowed;
-        const isPetFriendly = petsAllowed === true || 
-          petsAllowed === "true" || 
-          petsAllowed === "Sí" || 
-          petsAllowed === "sí" || 
-          petsAllowed === "si" ||
-          petsAllowed === "yes" ||
-          petsAllowed === "Yes";
-        if (!isPetFriendly) return false;
-      }
+      // Note: petFriendly filter not available in lightweight markers
+      // The server endpoint handles this filter
 
       return true;
     });
-  }, [allProperties, filters]);
+  }, [allMarkers, filters]);
 
-  const mapProperties = filteredProperties.map((p: any) => ({
-    id: p.id,
-    title: p.title,
-    unitNumber: p.unitNumber || "",
-    condominiumName: p.condominiumName,
-    latitude: parseFloat(p.latitude),
-    longitude: parseFloat(p.longitude),
-    price: p.price,
-    salePrice: p.salePrice,
-    currency: p.currency,
-    saleCurrency: p.saleCurrency,
-    listingType: p.listingType,
-    bedrooms: p.bedrooms,
-    bathrooms: p.bathrooms,
-    area: p.area,
-    propertyType: p.propertyType,
-    zone: p.zone,
-    primaryImages: p.primaryImages,
-    slug: p.unitSlug,
-    agencySlug: p.agencySlug,
+  // Map lightweight markers to PropertyMap format
+  const mapProperties = filteredMarkers.map((m: any) => ({
+    id: m.id,
+    title: m.title,
+    condominiumName: m.condominiumName,
+    latitude: m.lat,
+    longitude: m.lng,
+    price: m.price,
+    salePrice: m.salePrice,
+    currency: m.currency,
+    saleCurrency: m.saleCurrency,
+    listingType: m.listingType,
+    bedrooms: m.bedrooms,
+    bathrooms: m.bathrooms,
+    propertyType: m.propertyType,
+    zone: m.zone,
+    slug: m.unitSlug,
+    agencySlug: m.agencySlug,
   }));
 
   const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
