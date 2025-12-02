@@ -29418,14 +29418,15 @@ ${{precio}}/mes
       const photos = media.filter(m => m.mediaType === 'photo');
       const videos = media.filter(m => m.mediaType === 'video');
       
-      // Group photos by effective label (manual or AI)
-      const groupedByLabel: Record<string, typeof media> = {};
+      // Group photos by effective label (manual or AI) and cover flag
+      const grouped: Record<string, typeof media> = {};
       photos.forEach(item => {
-        const label = item.manualLabel || item.aiPrimaryLabel || 'other';
-        if (!groupedByLabel[label]) {
-          groupedByLabel[label] = [];
+        // Cover photos go to cover section regardless of label
+        const key = item.isCover ? 'cover' : (item.manualLabel || item.aiPrimaryLabel || 'other');
+        if (!grouped[key]) {
+          grouped[key] = [];
         }
-        groupedByLabel[label].push(item);
+        grouped[key].push(item);
       });
 
       res.json({ 
@@ -29433,7 +29434,7 @@ ${{precio}}/mes
         data: media,
         photos,
         videos,
-        groupedByLabel,
+        grouped,
         counts: {
           total: media.length,
           photos: photos.length,
@@ -29625,6 +29626,37 @@ ${{precio}}/mes
     } catch (error: any) {
       console.error("Error setting cover image:", error);
       res.status(500).json({ message: error.message || "Failed to set cover image" });
+    }
+  });
+
+  // PATCH /api/external-units/:id/media/:mediaId/move-section - Move media to different section
+  app.patch("/api/external-units/:id/media/:mediaId/move-section", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { id, mediaId } = req.params;
+      const { section } = req.body;
+
+      if (!section) {
+        return res.status(400).json({ message: "Section is required" });
+      }
+
+      const existing = await storage.getExternalUnit(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+
+      const hasAccess = await verifyExternalAgencyOwnership(req, res, existing.agencyId);
+      if (!hasAccess) return;
+
+      const result = await storage.moveMediaToSection(mediaId, section);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Media not found" });
+      }
+
+      res.json({ success: true, message: "Imagen movida correctamente", data: result });
+    } catch (error: any) {
+      console.error("Error moving media to section:", error);
+      res.status(500).json({ message: error.message || "Failed to move media" });
     }
   });
 

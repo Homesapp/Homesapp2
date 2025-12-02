@@ -11,6 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { 
   Upload, 
   Image as ImageIcon, 
   Trash2, 
@@ -35,7 +43,9 @@ import {
   Plus,
   Loader2,
   AlertCircle,
-  Check
+  Check,
+  MoveRight,
+  MoreVertical
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -98,14 +108,22 @@ function SortableImage({
   item, 
   onDelete, 
   onSetCover, 
+  onMoveToSection,
   onClick,
-  disabled 
+  disabled,
+  sections,
+  currentSection,
+  language = "es"
 }: { 
   item: MediaItem; 
   onDelete: () => void; 
   onSetCover: () => void;
+  onMoveToSection: (section: string) => void;
   onClick: () => void;
   disabled: boolean;
+  sections: MediaSection[];
+  currentSection: string;
+  language?: "es" | "en";
 }) {
   const {
     attributes,
@@ -121,6 +139,9 @@ function SortableImage({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  const otherSections = sections.filter(s => s.key !== currentSection);
+  const moveText = language === "es" ? "Mover a" : "Move to";
 
   return (
     <div
@@ -143,12 +164,45 @@ function SortableImage({
       )}
       {!disabled && (
         <>
-          <div
-            {...attributes}
-            {...listeners}
-            className="absolute top-1 right-1 p-1 bg-black/50 rounded cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <GripVertical className="h-4 w-4 text-white" />
+          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div
+              {...attributes}
+              {...listeners}
+              className="p-1 bg-black/50 rounded cursor-grab"
+            >
+              <GripVertical className="h-4 w-4 text-white" />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-6 w-6 bg-black/50 hover:bg-black/70"
+                  data-testid={`menu-${item.id}`}
+                >
+                  <MoreVertical className="h-4 w-4 text-white" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <MoveRight className="h-4 w-4" />
+                  {moveText}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {otherSections.map((sec) => (
+                  <DropdownMenuItem 
+                    key={sec.key}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onMoveToSection(sec.section); 
+                    }}
+                    data-testid={`move-to-${sec.section}-${item.id}`}
+                  >
+                    {sec.label[language]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="absolute bottom-1 left-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {!item.isCover && (
@@ -280,6 +334,24 @@ export function SectionMediaManager({
     onSuccess: () => {
       refetchMedia();
       toast({ title: t.reorderSuccess });
+    },
+  });
+
+  const moveSectionMutation = useMutation({
+    mutationFn: async ({ mediaId, section }: { mediaId: string; section: string }) => {
+      await apiRequest('PATCH', `/api/external-units/${unitId}/media/${mediaId}/move-section`, { section });
+    },
+    onSuccess: () => {
+      refetchMedia();
+      onMediaChange?.();
+      toast({ title: language === "es" ? "Imagen movida correctamente" : "Image moved successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: language === "es" ? "Error al mover imagen" : "Error moving image", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -493,8 +565,12 @@ export function SectionMediaManager({
                                     item={item}
                                     onDelete={() => deleteMutation.mutate(item.id)}
                                     onSetCover={() => setCoverMutation.mutate(item.id)}
+                                    onMoveToSection={(newSection) => moveSectionMutation.mutate({ mediaId: item.id, section: newSection })}
                                     onClick={() => openLightbox(sectionMedia, idx)}
                                     disabled={readOnly}
+                                    sections={sections}
+                                    currentSection={sectionKey}
+                                    language={language}
                                   />
                                 ))}
                               </div>

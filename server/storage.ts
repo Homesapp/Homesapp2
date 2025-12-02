@@ -13693,6 +13693,53 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     return result || null;
   }
+
+  async moveMediaToSection(mediaId: string, newSection: string): Promise<ExternalUnitMedia | null> {
+    const labelSections = [
+      "bedroom", "bathroom", "kitchen", "living_room", 
+      "dining_room", "balcony", "rooftop", "pool", "gym", 
+      "entrance", "facade", "other"
+    ];
+    
+    if (newSection === "cover") {
+      const media = await db.select().from(externalUnitMedia).where(eq(externalUnitMedia.id, mediaId)).limit(1);
+      if (!media[0]) return null;
+      
+      await db
+        .update(externalUnitMedia)
+        .set({ isCover: false, updatedAt: new Date() })
+        .where(eq(externalUnitMedia.unitId, media[0].unitId));
+      
+      const [result] = await db
+        .update(externalUnitMedia)
+        .set({ 
+          isCover: true,
+          displayOrder: 0,
+          updatedAt: new Date() 
+        })
+        .where(eq(externalUnitMedia.id, mediaId))
+        .returning();
+      
+      return result || null;
+    }
+    
+    if (!labelSections.includes(newSection)) {
+      throw new Error(`Invalid section: ${newSection}`);
+    }
+    
+    const [result] = await db
+      .update(externalUnitMedia)
+      .set({ 
+        manualLabel: newSection as any,
+        isCover: false,
+        displayOrder: 999,
+        updatedAt: new Date() 
+      })
+      .where(eq(externalUnitMedia.id, mediaId))
+      .returning();
+    
+    return result || null;
+  }
 }
 
 export const storage = new DatabaseStorage();
