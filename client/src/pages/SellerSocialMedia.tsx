@@ -143,28 +143,79 @@ interface TrackingLink {
 const DEFAULT_TEMPLATES_ES = [
   {
     id: "default-1",
-    title: "Nueva Propiedad - WhatsApp",
-    platform: "whatsapp" as const,
-    content: `🏠 *NUEVA PROPIEDAD EN {{location}}*
+    title: "Listado Completo - Facebook/WhatsApp",
+    platform: "facebook" as const,
+    content: `🌴{{condominiumName}}{{unitNumber}}🌴
 
-✨ {{propertyType}} de {{bedrooms}} recámaras
-🛁 {{bathrooms}} baños
-📐 {{area}} m²
+📍{{location}}
 
-💰 *Precio: {{price}}*
+💫Características destacadas💫
+✅{{bedrooms}} Recámaras con closet
+✅{{bathrooms}} Baños completos
+✅Cocina equipada con barra/comedor
+✅Amplia sala
+✅Comedor
+✅Ventiladores de techo & A/C
+✅{{floor}}
+{{amenitiesList}}
 
-📍 Ubicación privilegiada en Tulum
+💫Amenidades💫
+{{condoAmenities}}
 
-¿Te interesa agendar una visita? 
-Contáctame para más información.`,
+💰Precio: {{price}} mensuales + depósito + servicios{{contractFee}}
+
+🚰Incluye mantenimiento (HOA){{includedServices}}
+
+{{locationLink}}
+
+{{driveLink}}
+
+{{trhId}}`,
   },
   {
     id: "default-2",
+    title: "Listado Compacto - Sin Links",
+    platform: "facebook" as const,
+    content: `🌴{{condominiumName}}{{unitNumber}}🌴
+
+📍{{location}}
+
+💫Características💫
+✅{{bedrooms}} Recámaras
+✅{{bathrooms}} Baños
+✅{{area}} m²
+✅{{floor}}
+
+💰{{price}} mensuales
+
+{{trhId}}`,
+  },
+  {
+    id: "default-3",
+    title: "WhatsApp Directo",
+    platform: "whatsapp" as const,
+    content: `*{{condominiumName}}{{unitNumber}}*
+
+📍 {{location}}
+
+*Detalles:*
+• {{bedrooms}} Recámaras
+• {{bathrooms}} Baños
+• {{area}} m²
+
+*Precio:* {{price}} MXN mensuales
+
+¿Te interesa? Contáctame para agendar una visita.
+
+{{locationLink}}`,
+  },
+  {
+    id: "default-4",
     title: "Promoción Instagram",
     platform: "instagram" as const,
     content: `🌴 Tu paraíso en Tulum te espera
 
-{{propertyType}} de ensueño con:
+{{propertyType}} de ensueño en {{condominiumName}}:
 🛏️ {{bedrooms}} recámaras
 🛁 {{bathrooms}} baños  
 📐 {{area}} m²
@@ -174,55 +225,111 @@ Contáctame para más información.`,
 
 ¡Escríbenos para más información!
 
-#TulumRealEstate #PropiedadesEnTulum #VidaEnTulum #InvierteEnTulum #ParaisoMexicano`,
+#TulumRealEstate #PropiedadesEnTulum #VidaEnTulum #InvierteEnTulum #{{condominiumName}}`,
   },
   {
-    id: "default-3",
-    title: "Casa Abierta - Facebook",
+    id: "default-5",
+    title: "Formato Plano - Sin Iconos",
     platform: "facebook" as const,
-    content: `🎉 ¡CASA ABIERTA este fin de semana!
+    content: `{{condominiumName}}{{unitNumber}}
 
-Te invitamos a conocer esta increíble propiedad:
+Ubicación: {{location}}
 
-🏡 {{propertyType}}
-📍 {{location}}
-🛏️ {{bedrooms}} recámaras
-🛁 {{bathrooms}} baños
-📐 {{area}} m²
-💰 {{price}}
+CARACTERÍSTICAS:
+- {{bedrooms}} Recámaras con closet
+- {{bathrooms}} Baños completos
+- Cocina equipada
+- Sala y comedor
+- A/C incluido
+- {{floor}}
 
-📅 Sábado y Domingo
-🕐 10:00 AM - 4:00 PM
+AMENIDADES:
+{{condoAmenitiesPlain}}
 
-¡No te lo pierdas! Confirma tu asistencia.`,
+PRECIO: {{price}} mensuales + depósito + servicios
+
+Incluye: Mantenimiento (HOA){{includedServicesPlain}}
+
+{{trhId}}`,
   },
 ];
 
 const DEFAULT_TEMPLATES_EN = [
   {
     id: "default-1",
-    title: "New Listing - WhatsApp",
-    platform: "whatsapp" as const,
-    content: `🏠 *NEW LISTING IN {{location}}*
+    title: "Complete Listing - Facebook/WhatsApp",
+    platform: "facebook" as const,
+    content: `🌴{{condominiumName}}{{unitNumber}}🌴
 
-✨ {{propertyType}} with {{bedrooms}} bedrooms
-🛁 {{bathrooms}} bathrooms
-📐 {{area}} sqft
+📍{{location}}
 
-💰 *Price: {{price}}*
+💫Key Features💫
+✅{{bedrooms}} Bedrooms with closet
+✅{{bathrooms}} Full bathrooms
+✅Equipped kitchen with bar/dining
+✅Spacious living room
+✅Dining area
+✅Ceiling fans & A/C
+✅{{floor}}
+{{amenitiesList}}
 
-📍 Premium location in Tulum
+💫Amenities💫
+{{condoAmenities}}
 
-Interested in scheduling a viewing?
-Contact me for more information.`,
+💰Price: {{price}} monthly + deposit + utilities{{contractFee}}
+
+🚰Includes HOA{{includedServices}}
+
+{{locationLink}}
+
+{{driveLink}}
+
+{{trhId}}`,
   },
   {
-    id: "default-2", 
+    id: "default-2",
+    title: "Compact Listing - No Links",
+    platform: "facebook" as const,
+    content: `🌴{{condominiumName}}{{unitNumber}}🌴
+
+📍{{location}}
+
+💫Features💫
+✅{{bedrooms}} Bedrooms
+✅{{bathrooms}} Bathrooms
+✅{{area}} sqft
+✅{{floor}}
+
+💰{{price}} monthly
+
+{{trhId}}`,
+  },
+  {
+    id: "default-3",
+    title: "WhatsApp Direct",
+    platform: "whatsapp" as const,
+    content: `*{{condominiumName}}{{unitNumber}}*
+
+📍 {{location}}
+
+*Details:*
+• {{bedrooms}} Bedrooms
+• {{bathrooms}} Bathrooms
+• {{area}} sqft
+
+*Price:* {{price}} monthly
+
+Interested? Contact me to schedule a visit.
+
+{{locationLink}}`,
+  },
+  {
+    id: "default-4", 
     title: "Instagram Promotion",
     platform: "instagram" as const,
     content: `🌴 Your paradise in Tulum awaits
 
-Dream {{propertyType}} featuring:
+Dream {{propertyType}} at {{condominiumName}}:
 🛏️ {{bedrooms}} bedrooms
 🛁 {{bathrooms}} bathrooms
 📐 {{area}} sqft
@@ -232,27 +339,32 @@ Dream {{propertyType}} featuring:
 
 DM us for more information!
 
-#TulumRealEstate #TulumProperties #TulumLife #InvestInTulum #MexicanParadise`,
+#TulumRealEstate #TulumProperties #TulumLife #InvestInTulum #{{condominiumName}}`,
   },
   {
-    id: "default-3",
-    title: "Open House - Facebook",
+    id: "default-5",
+    title: "Plain Format - No Icons",
     platform: "facebook" as const,
-    content: `🎉 OPEN HOUSE this weekend!
+    content: `{{condominiumName}}{{unitNumber}}
 
-Come visit this incredible property:
+Location: {{location}}
 
-🏡 {{propertyType}}
-📍 {{location}}
-🛏️ {{bedrooms}} bedrooms
-🛁 {{bathrooms}} bathrooms
-📐 {{area}} sqft
-💰 {{price}}
+FEATURES:
+- {{bedrooms}} Bedrooms with closet
+- {{bathrooms}} Full bathrooms
+- Equipped kitchen
+- Living & dining area
+- A/C included
+- {{floor}}
 
-📅 Saturday & Sunday
-🕐 10:00 AM - 4:00 PM
+AMENITIES:
+{{condoAmenitiesPlain}}
 
-Don't miss it! RSVP now.`,
+PRICE: {{price}} monthly + deposit + utilities
+
+Includes: HOA{{includedServicesPlain}}
+
+{{trhId}}`,
   },
 ];
 
@@ -492,6 +604,17 @@ export default function SellerSocialMedia() {
   const [showLinkTracker, setShowLinkTracker] = useState(false);
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [newLinkPlatform, setNewLinkPlatform] = useState<string>("");
+  
+  // Template toggle options (for pre-designed templates)
+  const [templateOptions, setTemplateOptions] = useState({
+    includeUnitNumber: true,
+    includeLinks: true,
+    includeIcons: true,
+    locationLink: "",
+    driveLink: "",
+    contractFee: "$2,500 MXN",
+    trhId: "",
+  });
   
   // Reminder state
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
@@ -842,9 +965,18 @@ export default function SellerSocialMedia() {
     }
   };
   
+  // Get selected property details for template
+  const getSelectedProperty = () => {
+    if (!selectedPropertyId || propertySourceType === "manual") return null;
+    return properties?.find(p => p.id === selectedPropertyId);
+  };
+  
   // Apply template with property data
   const applyTemplateWithProperty = (template: typeof DEFAULT_TEMPLATES_ES[0]) => {
     let content = template.content;
+    const property = getSelectedProperty();
+    
+    // Basic property fields
     content = content.replace(/\{\{propertyType\}\}/g, aiPropertyInfo.propertyType || "_____");
     content = content.replace(/\{\{location\}\}/g, aiPropertyInfo.location || "_____");
     content = content.replace(/\{\{bedrooms\}\}/g, aiPropertyInfo.bedrooms || "_____");
@@ -852,6 +984,68 @@ export default function SellerSocialMedia() {
     content = content.replace(/\{\{price\}\}/g, aiPropertyInfo.price || "_____");
     content = content.replace(/\{\{area\}\}/g, aiPropertyInfo.area || "_____");
     content = content.replace(/\{\{address\}\}/g, aiPropertyInfo.address || "_____");
+    
+    // Condominium name
+    const condoName = property?.condominiumName || aiPropertyInfo.propertyType || "_____";
+    content = content.replace(/\{\{condominiumName\}\}/g, condoName);
+    
+    // Unit number (optional)
+    if (templateOptions.includeUnitNumber && property?.unitNumber) {
+      content = content.replace(/\{\{unitNumber\}\}/g, ` ${property.unitNumber}`);
+    } else {
+      content = content.replace(/\{\{unitNumber\}\}/g, "");
+    }
+    
+    // Floor
+    const floor = property?.unitNumber?.includes("piso") || property?.unitNumber?.includes("floor") 
+      ? property.unitNumber 
+      : (lang === "es" ? "Planta baja" : "Ground floor");
+    content = content.replace(/\{\{floor\}\}/g, floor);
+    
+    // Amenities (with or without icons)
+    const amenitiesWithIcons = property?.amenities?.map(a => `✅${a}`).join("\n") || "";
+    const amenitiesPlain = property?.amenities?.map(a => `- ${a}`).join("\n") || "";
+    content = content.replace(/\{\{amenitiesList\}\}/g, amenitiesWithIcons);
+    content = content.replace(/\{\{condoAmenities\}\}/g, amenitiesWithIcons || (lang === "es" ? "✅Alberca\n✅Gimnasio" : "✅Pool\n✅Gym"));
+    content = content.replace(/\{\{condoAmenitiesPlain\}\}/g, amenitiesPlain || (lang === "es" ? "- Alberca\n- Gimnasio" : "- Pool\n- Gym"));
+    
+    // Included services
+    const includedServicesWithIcons = property?.includedServices?.map(s => `✅${s}`).join("\n") || "";
+    const includedServicesPlain = property?.includedServices?.map(s => `, ${s}`).join("") || "";
+    content = content.replace(/\{\{includedServices\}\}/g, includedServicesWithIcons ? `\n${includedServicesWithIcons}` : "");
+    content = content.replace(/\{\{includedServicesPlain\}\}/g, includedServicesPlain);
+    
+    // Contract fee
+    const contractFeeText = templateOptions.contractFee ? ` + ${templateOptions.contractFee} ${lang === "es" ? "contrato/póliza" : "contract/policy"}` : "";
+    content = content.replace(/\{\{contractFee\}\}/g, contractFeeText);
+    
+    // Links (optional based on toggle)
+    if (templateOptions.includeLinks && templateOptions.locationLink) {
+      content = content.replace(/\{\{locationLink\}\}/g, `📍${lang === "es" ? "Ubicación" : "Location"}:${templateOptions.locationLink}`);
+    } else {
+      content = content.replace(/\{\{locationLink\}\}/g, "");
+    }
+    
+    if (templateOptions.includeLinks && templateOptions.driveLink) {
+      content = content.replace(/\{\{driveLink\}\}/g, `🖪 Drive:${templateOptions.driveLink}`);
+    } else {
+      content = content.replace(/\{\{driveLink\}\}/g, "");
+    }
+    
+    // TRH ID
+    if (templateOptions.trhId) {
+      content = content.replace(/\{\{trhId\}\}/g, `TRH ID ${templateOptions.trhId}`);
+    } else {
+      content = content.replace(/\{\{trhId\}\}/g, "");
+    }
+    
+    // Remove icons if option is disabled
+    if (!templateOptions.includeIcons) {
+      content = content.replace(/[🌴📍💫✅💰🚰🖪📅🕐🎉🏡🛏️🛁📐🏠📦🔑🌊🏊‍♂️💪🅿️🔒]/g, "");
+    }
+    
+    // Clean up empty lines
+    content = content.replace(/\n{3,}/g, "\n\n").trim();
     
     navigator.clipboard.writeText(content);
     toast({ title: t.copied });
@@ -1314,6 +1508,93 @@ export default function SellerSocialMedia() {
                       </div>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+              
+              {/* Template Options */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    {lang === "es" ? "Opciones de Publicación" : "Publishing Options"}
+                  </CardTitle>
+                  <CardDescription>
+                    {lang === "es" 
+                      ? "Configura qué elementos incluir en tu publicación"
+                      : "Configure what to include in your post"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Toggle options */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                      <Label htmlFor="include-unit" className="text-sm cursor-pointer">
+                        {lang === "es" ? "No. Unidad" : "Unit #"}
+                      </Label>
+                      <Switch 
+                        id="include-unit"
+                        checked={templateOptions.includeUnitNumber}
+                        onCheckedChange={(checked) => setTemplateOptions(p => ({ ...p, includeUnitNumber: checked }))}
+                        data-testid="switch-include-unit"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                      <Label htmlFor="include-links" className="text-sm cursor-pointer">
+                        {lang === "es" ? "Links" : "Links"}
+                      </Label>
+                      <Switch 
+                        id="include-links"
+                        checked={templateOptions.includeLinks}
+                        onCheckedChange={(checked) => setTemplateOptions(p => ({ ...p, includeLinks: checked }))}
+                        data-testid="switch-include-links"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                      <Label htmlFor="include-icons" className="text-sm cursor-pointer">
+                        {lang === "es" ? "Iconos" : "Icons"}
+                      </Label>
+                      <Switch 
+                        id="include-icons"
+                        checked={templateOptions.includeIcons}
+                        onCheckedChange={(checked) => setTemplateOptions(p => ({ ...p, includeIcons: checked }))}
+                        data-testid="switch-include-icons"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Links inputs (only shown when links are enabled) */}
+                  {templateOptions.includeLinks && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder={lang === "es" ? "Link de ubicación (Google Maps)" : "Location link (Google Maps)"}
+                        value={templateOptions.locationLink}
+                        onChange={e => setTemplateOptions(p => ({ ...p, locationLink: e.target.value }))}
+                        data-testid="input-location-link"
+                      />
+                      <Input
+                        placeholder={lang === "es" ? "Link de Drive (fotos)" : "Drive link (photos)"}
+                        value={templateOptions.driveLink}
+                        onChange={e => setTemplateOptions(p => ({ ...p, driveLink: e.target.value }))}
+                        data-testid="input-drive-link"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Additional info */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder={lang === "es" ? "Costo contrato/póliza" : "Contract/policy fee"}
+                      value={templateOptions.contractFee}
+                      onChange={e => setTemplateOptions(p => ({ ...p, contractFee: e.target.value }))}
+                      data-testid="input-contract-fee"
+                    />
+                    <Input
+                      placeholder="TRH ID"
+                      value={templateOptions.trhId}
+                      onChange={e => setTemplateOptions(p => ({ ...p, trhId: e.target.value }))}
+                      data-testid="input-trh-id"
+                    />
+                  </div>
                 </CardContent>
               </Card>
               
