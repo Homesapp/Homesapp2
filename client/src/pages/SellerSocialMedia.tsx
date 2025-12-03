@@ -675,10 +675,10 @@ export default function SellerSocialMedia() {
   const { data: properties, isLoading: propertiesLoading } = useQuery<PropertyCatalogItem[]>({
     queryKey: ["/api/external-seller/properties", { 
       type: propertySourceType === "condo" ? "condo" : propertySourceType === "house" ? "house" : undefined,
-      condominiumId: propertySourceType === "condo" ? selectedCondominiumId : undefined,
+      condominiumId: propertySourceType === "condo" && selectedCondominiumId ? selectedCondominiumId : undefined,
       search: propertySearchQuery,
     }],
-    enabled: propertySourceType !== "manual",
+    enabled: propertySourceType === "house" || (propertySourceType === "condo" && !!selectedCondominiumId),
   });
   
   // Query for property media/photos
@@ -969,13 +969,24 @@ export default function SellerSocialMedia() {
     setSelectedPropertyId(propertyId);
     const property = properties?.find(p => p.id === propertyId);
     if (property) {
+      // Build a descriptive name including unit number and condo if applicable
+      let propertyName = property.unitNumber || property.title || property.propertyType || "";
+      
+      // Only append condominium name if both unit number AND condo name exist
+      if (property.unitNumber && property.condominiumName) {
+        propertyName = `${property.unitNumber} - ${property.condominiumName}`;
+      } else if (property.condominiumName && !property.unitNumber) {
+        // If only condo name exists, use title or property type with condo
+        propertyName = property.title || property.condominiumName;
+      }
+      
       setAiPropertyInfo({
-        propertyType: property.propertyType || property.title || "",
+        propertyType: propertyName,
         location: property.zone || property.city || "",
         bedrooms: property.bedrooms?.toString() || "",
         bathrooms: property.bathrooms?.toString() || "",
-        price: property.price ? `$${Number(property.price).toLocaleString()} ${property.currency}` : "",
-        area: property.area?.toString() || "",
+        price: property.price ? `$${Number(property.price).toLocaleString()} ${property.currency || 'MXN'}` : "",
+        area: property.area ? `${property.area} m²` : "",
         address: property.address || "",
         unitId: property.id,
       });
@@ -1695,279 +1706,364 @@ export default function SellerSocialMedia() {
             </>
           ) : (
             <>
-              {/* AI Generator Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" />
-                    {t.tabGenerator}
-                  </CardTitle>
-                  <CardDescription>
-                    {lang === "es" 
-                      ? "Genera contenido para redes sociales con inteligencia artificial"
-                      : "Generate social media content with artificial intelligence"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Property Source Selection */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
-                      {lang === "es" ? "Fuente de Datos" : "Data Source"}
-                    </Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        variant={propertySourceType === "condo" ? "default" : "outline"}
-                        className="flex-col h-auto py-3 gap-1"
-                        onClick={() => {
-                          setPropertySourceType("condo");
-                          setSelectedPropertyId("");
-                        }}
-                        data-testid="button-source-condo"
-                      >
-                        <Building2 className="h-5 w-5" />
-                        <span className="text-xs">{lang === "es" ? "Condominio" : "Condo"}</span>
-                      </Button>
-                      <Button
-                        variant={propertySourceType === "house" ? "default" : "outline"}
-                        className="flex-col h-auto py-3 gap-1"
-                        onClick={() => {
-                          setPropertySourceType("house");
-                          setSelectedCondominiumId("");
-                          setSelectedPropertyId("");
-                        }}
-                        data-testid="button-source-house"
-                      >
-                        <Home className="h-5 w-5" />
-                        <span className="text-xs">{lang === "es" ? "Casa" : "House"}</span>
-                      </Button>
-                      <Button
-                        variant={propertySourceType === "manual" ? "default" : "outline"}
-                        className="flex-col h-auto py-3 gap-1"
-                        onClick={() => setPropertySourceType("manual")}
-                        data-testid="button-source-manual"
-                      >
-                        <Pencil className="h-5 w-5" />
-                        <span className="text-xs">{lang === "es" ? "Manual" : "Manual"}</span>
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Condo Selection */}
-                  {propertySourceType === "condo" && (
-                    <Select value={selectedCondominiumId} onValueChange={setSelectedCondominiumId}>
-                      <SelectTrigger data-testid="select-ai-condominium">
-                        <SelectValue placeholder={lang === "es" ? "Seleccionar condominio..." : "Select condominium..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {condominiums?.map(condo => (
-                          <SelectItem key={condo.id} value={condo.id}>
-                            {condo.name} {condo.zone && `- ${condo.zone}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  
-                  {/* Property Selection */}
-                  {propertySourceType !== "manual" && (
-                    <Select 
-                      value={selectedPropertyId} 
-                      onValueChange={handlePropertySelect}
-                      disabled={propertySourceType === "condo" && !selectedCondominiumId}
-                    >
-                      <SelectTrigger data-testid="select-ai-property">
-                        <SelectValue placeholder={lang === "es" ? "Seleccionar propiedad..." : "Select property..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {propertiesLoading ? (
-                          <div className="p-2 text-center text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                          </div>
-                        ) : properties?.length === 0 ? (
-                          <div className="p-2 text-center text-sm text-muted-foreground">
-                            {lang === "es" ? "No hay propiedades" : "No properties"}
-                          </div>
-                        ) : (
-                          properties?.map(prop => (
-                            <SelectItem key={prop.id} value={prop.id}>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{prop.unitNumber}</span>
-                                {prop.zone && <span className="text-muted-foreground">- {prop.zone}</span>}
-                                {prop.bedrooms && <span className="text-xs text-muted-foreground">{prop.bedrooms}BR</span>}
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  
-                  {/* Platform selection */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">{t.platform}</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {PLATFORMS.map(p => (
+              {/* AI Generator - Professional Split Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Left Panel - Configuration */}
+                <div className="space-y-4">
+                  {/* Property Selection Card */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Home className="h-4 w-4" />
+                        {lang === "es" ? "Seleccionar Propiedad" : "Select Property"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Property Type Toggle */}
+                      <div className="grid grid-cols-3 gap-2">
                         <Button
-                          key={p.value}
-                          variant={aiPlatform === p.value ? "default" : "outline"}
-                          className="flex-col h-auto py-3 gap-1"
-                          onClick={() => setAiPlatform(p.value as any)}
-                          data-testid={`button-ai-platform-${p.value}`}
+                          variant={propertySourceType === "condo" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setPropertySourceType("condo");
+                            setSelectedPropertyId("");
+                          }}
+                          data-testid="button-source-condo"
                         >
-                          <p.icon className={`h-5 w-5 ${aiPlatform === p.value ? "text-current" : p.color}`} />
-                          <span className="text-xs">{p.label}</span>
+                          <Building2 className="h-4 w-4 mr-1" />
+                          {lang === "es" ? "Condo" : "Condo"}
                         </Button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Category and tone */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-sm">{t.category}</Label>
-                      <Select value={aiCategory} onValueChange={setAiCategory}>
-                        <SelectTrigger data-testid="select-ai-category">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(CATEGORIES[lang]).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-sm">{t.tone}</Label>
-                      <Select value={aiTone} onValueChange={setAiTone}>
-                        <SelectTrigger data-testid="select-ai-tone">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(t.tones).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  {/* Property info (manual or editable) */}
-                  <div>
-                    <Label className="text-sm">{t.propertyDetails}</Label>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <Input
-                        placeholder={t.propertyName}
-                        value={aiPropertyInfo.propertyType}
-                        onChange={e => setAiPropertyInfo(p => ({ ...p, propertyType: e.target.value }))}
-                        data-testid="input-ai-property-type"
-                      />
-                      <Input
-                        placeholder={t.propertyLocation}
-                        value={aiPropertyInfo.location}
-                        onChange={e => setAiPropertyInfo(p => ({ ...p, location: e.target.value }))}
-                        data-testid="input-ai-location"
-                      />
-                      <Input
-                        placeholder={t.propertyBedrooms}
-                        value={aiPropertyInfo.bedrooms}
-                        onChange={e => setAiPropertyInfo(p => ({ ...p, bedrooms: e.target.value }))}
-                        data-testid="input-ai-bedrooms"
-                      />
-                      <Input
-                        placeholder={t.propertyBathrooms}
-                        value={aiPropertyInfo.bathrooms}
-                        onChange={e => setAiPropertyInfo(p => ({ ...p, bathrooms: e.target.value }))}
-                        data-testid="input-ai-bathrooms"
-                      />
-                      <Input
-                        placeholder={t.propertyPrice}
-                        value={aiPropertyInfo.price}
-                        onChange={e => setAiPropertyInfo(p => ({ ...p, price: e.target.value }))}
-                        data-testid="input-ai-price"
-                      />
-                      <Input
-                        placeholder={`${lang === "es" ? "Área m²" : "Area sqft"}`}
-                        value={aiPropertyInfo.area}
-                        onChange={e => setAiPropertyInfo(p => ({ ...p, area: e.target.value }))}
-                        data-testid="input-ai-area"
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleGenerateAI}
-                    disabled={generateMutation.isPending || !aiPropertyInfo.propertyType || (agencyConfig?.aiCreditBalance ?? 0) <= 0}
-                    className="w-full"
-                    data-testid="button-generate-ai"
-                  >
-                    {generateMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        {t.generating}
-                      </>
-                    ) : (agencyConfig?.aiCreditBalance ?? 0) <= 0 ? (
-                      <>
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        {lang === "es" ? "Sin Créditos" : "No Credits"}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {t.generateContent}
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          -1 {lang === "es" ? "crédito" : "credit"}
-                        </Badge>
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              {/* Generated content */}
-              {generatedContent && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{t.generatedContent}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="bg-muted rounded-lg p-3">
-                      <p className="whitespace-pre-wrap text-sm">{generatedContent.content}</p>
-                    </div>
-                    {generatedContent.hashtags && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Hash className="h-4 w-4" />
-                        {generatedContent.hashtags}
+                        <Button
+                          variant={propertySourceType === "house" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setPropertySourceType("house");
+                            setSelectedCondominiumId("");
+                            setSelectedPropertyId("");
+                          }}
+                          data-testid="button-source-house"
+                        >
+                          <Home className="h-4 w-4 mr-1" />
+                          {lang === "es" ? "Casa" : "House"}
+                        </Button>
+                        <Button
+                          variant={propertySourceType === "manual" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPropertySourceType("manual")}
+                          data-testid="button-source-manual"
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Manual
+                        </Button>
                       </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="gap-2 flex-col sm:flex-row">
-                    <Button
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                      onClick={() => {
-                        navigator.clipboard.writeText(
-                          generatedContent.content + 
-                          (generatedContent.hashtags ? `\n\n${generatedContent.hashtags}` : "")
-                        );
-                        toast({ title: t.copied });
-                      }}
-                      data-testid="button-copy-generated"
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      {t.copyToClipboard}
-                    </Button>
-                    <Button 
-                      className="w-full sm:w-auto"
-                      onClick={saveGeneratedAsTemplate}
-                      data-testid="button-save-generated"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      {t.saveAsTemplate}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
-              
+                      
+                      {/* Condo Selection */}
+                      {propertySourceType === "condo" && (
+                        <Select value={selectedCondominiumId} onValueChange={setSelectedCondominiumId}>
+                          <SelectTrigger data-testid="select-ai-condominium">
+                            <SelectValue placeholder={lang === "es" ? "Seleccionar condominio..." : "Select condominium..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {condominiums?.map(condo => (
+                              <SelectItem key={condo.id} value={condo.id}>
+                                {condo.name} {condo.zone && `- ${condo.zone}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      
+                      {/* Property Selection */}
+                      {propertySourceType !== "manual" && (
+                        <Select 
+                          value={selectedPropertyId} 
+                          onValueChange={handlePropertySelect}
+                          disabled={propertySourceType === "condo" && !selectedCondominiumId}
+                        >
+                          <SelectTrigger data-testid="select-ai-property">
+                            <SelectValue placeholder={lang === "es" ? "Seleccionar propiedad..." : "Select property..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {propertiesLoading ? (
+                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                              </div>
+                            ) : properties?.length === 0 ? (
+                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                {lang === "es" ? "No hay propiedades" : "No properties"}
+                              </div>
+                            ) : (
+                              properties?.map(prop => (
+                                <SelectItem key={prop.id} value={prop.id}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{prop.unitNumber}</span>
+                                    {prop.zone && <span className="text-muted-foreground">- {prop.zone}</span>}
+                                    {prop.bedrooms && <span className="text-xs text-muted-foreground">{prop.bedrooms}BR</span>}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Post Configuration Card */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        {lang === "es" ? "Configuración del Post" : "Post Configuration"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Platform selection */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">{t.platform}</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {PLATFORMS.map(p => (
+                            <Button
+                              key={p.value}
+                              variant={aiPlatform === p.value ? "default" : "outline"}
+                              size="sm"
+                              className="flex items-center gap-1"
+                              onClick={() => setAiPlatform(p.value as any)}
+                              data-testid={`button-ai-platform-${p.value}`}
+                            >
+                              <p.icon className={`h-4 w-4 ${aiPlatform === p.value ? "text-current" : p.color}`} />
+                              <span className="text-xs">{p.label}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Category and tone */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-sm">{t.category}</Label>
+                          <Select value={aiCategory} onValueChange={setAiCategory}>
+                            <SelectTrigger data-testid="select-ai-category">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(CATEGORIES[lang]).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-sm">{t.tone}</Label>
+                          <Select value={aiTone} onValueChange={setAiTone}>
+                            <SelectTrigger data-testid="select-ai-tone">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(t.tones).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {/* Property info (only for manual mode) */}
+                      {propertySourceType === "manual" && (
+                        <div>
+                          <Label className="text-sm">{t.propertyDetails}</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <Input
+                              placeholder={t.propertyName}
+                              value={aiPropertyInfo.propertyType}
+                              onChange={e => setAiPropertyInfo(p => ({ ...p, propertyType: e.target.value }))}
+                              data-testid="input-ai-property-type"
+                            />
+                            <Input
+                              placeholder={t.propertyLocation}
+                              value={aiPropertyInfo.location}
+                              onChange={e => setAiPropertyInfo(p => ({ ...p, location: e.target.value }))}
+                              data-testid="input-ai-location"
+                            />
+                            <Input
+                              placeholder={t.propertyBedrooms}
+                              value={aiPropertyInfo.bedrooms}
+                              onChange={e => setAiPropertyInfo(p => ({ ...p, bedrooms: e.target.value }))}
+                              data-testid="input-ai-bedrooms"
+                            />
+                            <Input
+                              placeholder={t.propertyBathrooms}
+                              value={aiPropertyInfo.bathrooms}
+                              onChange={e => setAiPropertyInfo(p => ({ ...p, bathrooms: e.target.value }))}
+                              data-testid="input-ai-bathrooms"
+                            />
+                            <Input
+                              placeholder={t.propertyPrice}
+                              value={aiPropertyInfo.price}
+                              onChange={e => setAiPropertyInfo(p => ({ ...p, price: e.target.value }))}
+                              data-testid="input-ai-price"
+                            />
+                            <Input
+                              placeholder={`${lang === "es" ? "Área m²" : "Area sqft"}`}
+                              value={aiPropertyInfo.area}
+                              onChange={e => setAiPropertyInfo(p => ({ ...p, area: e.target.value }))}
+                              data-testid="input-ai-area"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Selected Property Summary (for condo/house mode) */}
+                      {propertySourceType !== "manual" && selectedPropertyId && aiPropertyInfo.propertyType && (
+                        <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">{aiPropertyInfo.propertyType}</span>
+                            <Badge variant="outline" className="text-xs">{aiPropertyInfo.location}</Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            {aiPropertyInfo.bedrooms && <span>{aiPropertyInfo.bedrooms} {lang === "es" ? "Rec" : "BR"}</span>}
+                            {aiPropertyInfo.bathrooms && <span>{aiPropertyInfo.bathrooms} {lang === "es" ? "Baños" : "BA"}</span>}
+                            {aiPropertyInfo.area && <span>{aiPropertyInfo.area}</span>}
+                            {aiPropertyInfo.price && <span className="font-medium text-foreground">{aiPropertyInfo.price}</span>}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Generate Button */}
+                      <Button 
+                        onClick={handleGenerateAI}
+                        disabled={generateMutation.isPending || !aiPropertyInfo.propertyType || (agencyConfig?.aiCreditBalance ?? 0) <= 0}
+                        className="w-full"
+                        data-testid="button-generate-ai"
+                      >
+                        {generateMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            {t.generating}
+                          </>
+                        ) : (agencyConfig?.aiCreditBalance ?? 0) <= 0 ? (
+                          <>
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            {lang === "es" ? "Sin Créditos" : "No Credits"}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            {t.generateContent}
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              -1 {lang === "es" ? "crédito" : "credit"}
+                            </Badge>
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Right Panel - Generated Content */}
+                <div className="space-y-4">
+                  <Card className="h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          {t.generatedContent}
+                        </CardTitle>
+                        {agencyConfig && (
+                          <Badge variant="outline" className="text-xs">
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {agencyConfig.aiCreditBalance} {lang === "es" ? "créditos" : "credits"}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription>
+                        {lang === "es" 
+                          ? "El contenido generado aparecerá aquí. Puedes editarlo antes de copiar o guardar."
+                          : "Generated content will appear here. You can edit it before copying or saving."}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {generatedContent ? (
+                        <>
+                          {/* Editable Content Area */}
+                          <Textarea
+                            className="min-h-[200px] resize-none font-mono text-sm"
+                            value={generatedContent.content}
+                            onChange={(e) => setGeneratedContent(prev => 
+                              prev ? { ...prev, content: e.target.value } : null
+                            )}
+                            placeholder={lang === "es" ? "Contenido generado..." : "Generated content..."}
+                            data-testid="textarea-generated-content"
+                          />
+                          
+                          {/* Hashtags (for Instagram) */}
+                          {generatedContent.hashtags && (
+                            <div className="space-y-2">
+                              <Label className="text-sm flex items-center gap-1">
+                                <Hash className="h-3 w-3" />
+                                Hashtags
+                              </Label>
+                              <Input
+                                value={generatedContent.hashtags}
+                                onChange={(e) => setGeneratedContent(prev => 
+                                  prev ? { ...prev, hashtags: e.target.value } : null
+                                )}
+                                placeholder="#tulum #realestate"
+                                data-testid="input-hashtags"
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Action Buttons */}
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  generatedContent.content + 
+                                  (generatedContent.hashtags ? `\n\n${generatedContent.hashtags}` : "")
+                                );
+                                toast({ title: t.copied });
+                              }}
+                              data-testid="button-copy-generated"
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              {t.copyToClipboard}
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={saveGeneratedAsTemplate}
+                              data-testid="button-save-generated"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              {t.saveAsTemplate}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setGeneratedContent(null)}
+                              data-testid="button-clear-generated"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              {lang === "es" ? "Limpiar" : "Clear"}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center min-h-[200px] text-center text-muted-foreground">
+                          <Sparkles className="h-12 w-12 mb-3 opacity-50" />
+                          <p className="text-sm">
+                            {lang === "es" 
+                              ? "Selecciona una propiedad y configura tu post para generar contenido con IA"
+                              : "Select a property and configure your post to generate AI content"}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </>
           )}
         </TabsContent>
