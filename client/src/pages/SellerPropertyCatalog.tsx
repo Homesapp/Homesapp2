@@ -438,7 +438,7 @@ export default function SellerPropertyCatalog() {
   const [leadsPanelExpanded, setLeadsPanelExpanded] = useState(true);
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailUnit, setDetailUnit] = useState<Unit | null>(null);
   const [detailImageIndex, setDetailImageIndex] = useState(0);
@@ -1796,10 +1796,10 @@ export default function SellerPropertyCatalog() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="30">30</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="12">12</SelectItem>
+                    <SelectItem value="24">24</SelectItem>
+                    <SelectItem value="36">36</SelectItem>
+                    <SelectItem value="48">48</SelectItem>
                   </SelectContent>
                 </Select>
                 <span className="text-sm text-muted-foreground">por página</span>
@@ -2197,16 +2197,24 @@ export default function SellerPropertyCatalog() {
                       
                       {/* Main Content */}
                       <div className="flex-1 p-3 flex flex-col gap-2">
-                        {/* Status Badge - outside image to avoid clipping */}
-                        <Badge
-                          className={`w-fit text-xs px-2 py-0.5 ${
-                            unit.status === "active" 
-                              ? "bg-green-600 text-white border-0" 
-                              : "bg-red-600 text-white border-0"
-                          }`}
-                        >
-                          {unit.status === "active" ? "Disponible" : "Rentada"}
-                        </Badge>
+                        {/* Status & Referrer Badges */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge
+                            className={`text-xs px-2 py-0.5 ${
+                              unit.status === "active" 
+                                ? "bg-green-600 text-white border-0" 
+                                : "bg-red-600 text-white border-0"
+                            }`}
+                          >
+                            {unit.status === "active" ? "Disponible" : "Rentada"}
+                          </Badge>
+                          {unit.referrerName && (
+                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-0 text-[10px] px-1.5 py-0.5">
+                              <Star className="h-3 w-3 mr-0.5 fill-current" />
+                              Referido
+                            </Badge>
+                          )}
+                        </div>
                         {/* Title Row: Name + Price */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
