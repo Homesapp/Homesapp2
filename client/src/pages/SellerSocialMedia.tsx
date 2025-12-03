@@ -1002,32 +1002,51 @@ export default function SellerSocialMedia() {
       : (lang === "es" ? "Planta baja" : "Ground floor");
     content = content.replace(/\{\{floor\}\}/g, floor);
     
-    // Amenities (with or without icons)
-    const amenitiesWithIcons = property?.amenities?.map(a => `✅${a}`).join("\n") || "";
-    const amenitiesPlain = property?.amenities?.map(a => `- ${a}`).join("\n") || "";
-    content = content.replace(/\{\{amenitiesList\}\}/g, amenitiesWithIcons);
-    content = content.replace(/\{\{condoAmenities\}\}/g, amenitiesWithIcons || (lang === "es" ? "✅Alberca\n✅Gimnasio" : "✅Pool\n✅Gym"));
-    content = content.replace(/\{\{condoAmenitiesPlain\}\}/g, amenitiesPlain || (lang === "es" ? "- Alberca\n- Gimnasio" : "- Pool\n- Gym"));
+    // Amenities (respect icons toggle)
+    const hasAmenities = property?.amenities && property.amenities.length > 0;
+    const defaultAmenitiesWithIcons = lang === "es" ? "✅Alberca\n✅Gimnasio" : "✅Pool\n✅Gym";
+    const defaultAmenitiesPlain = lang === "es" ? "- Alberca\n- Gimnasio" : "- Pool\n- Gym";
     
-    // Included services
-    const includedServicesWithIcons = property?.includedServices?.map(s => `✅${s}`).join("\n") || "";
-    const includedServicesPlain = property?.includedServices?.map(s => `, ${s}`).join("") || "";
-    content = content.replace(/\{\{includedServices\}\}/g, includedServicesWithIcons ? `\n${includedServicesWithIcons}` : "");
-    content = content.replace(/\{\{includedServicesPlain\}\}/g, includedServicesPlain);
+    if (templateOptions.includeIcons) {
+      const amenitiesWithIcons = hasAmenities ? property.amenities!.map(a => `✅${a}`).join("\n") : defaultAmenitiesWithIcons;
+      content = content.replace(/\{\{amenitiesList\}\}/g, amenitiesWithIcons);
+      content = content.replace(/\{\{condoAmenities\}\}/g, amenitiesWithIcons);
+    } else {
+      const amenitiesPlain = hasAmenities ? property.amenities!.map(a => `- ${a}`).join("\n") : defaultAmenitiesPlain;
+      content = content.replace(/\{\{amenitiesList\}\}/g, amenitiesPlain);
+      content = content.replace(/\{\{condoAmenities\}\}/g, amenitiesPlain);
+    }
+    content = content.replace(/\{\{condoAmenitiesPlain\}\}/g, hasAmenities ? property.amenities!.map(a => `- ${a}`).join("\n") : defaultAmenitiesPlain);
+    
+    // Included services (respect icons toggle)
+    const hasServices = property?.includedServices && property.includedServices.length > 0;
+    if (templateOptions.includeIcons && hasServices) {
+      const servicesWithIcons = property.includedServices!.map(s => `✅${s}`).join("\n");
+      content = content.replace(/\{\{includedServices\}\}/g, `\n${servicesWithIcons}`);
+    } else if (hasServices) {
+      const servicesPlain = property.includedServices!.map(s => `- ${s}`).join("\n");
+      content = content.replace(/\{\{includedServices\}\}/g, `\n${servicesPlain}`);
+    } else {
+      content = content.replace(/\{\{includedServices\}\}/g, "");
+    }
+    content = content.replace(/\{\{includedServicesPlain\}\}/g, hasServices ? property.includedServices!.map(s => `, ${s}`).join("") : "");
     
     // Contract fee
     const contractFeeText = templateOptions.contractFee ? ` + ${templateOptions.contractFee} ${lang === "es" ? "contrato/póliza" : "contract/policy"}` : "";
     content = content.replace(/\{\{contractFee\}\}/g, contractFeeText);
     
-    // Links (optional based on toggle)
+    // Links (optional based on toggle - also respect icons toggle)
     if (templateOptions.includeLinks && templateOptions.locationLink) {
-      content = content.replace(/\{\{locationLink\}\}/g, `📍${lang === "es" ? "Ubicación" : "Location"}:${templateOptions.locationLink}`);
+      const locationLabel = lang === "es" ? "Ubicación" : "Location";
+      const locationIcon = templateOptions.includeIcons ? "📍" : "";
+      content = content.replace(/\{\{locationLink\}\}/g, `${locationIcon}${locationLabel}: ${templateOptions.locationLink}`);
     } else {
       content = content.replace(/\{\{locationLink\}\}/g, "");
     }
     
     if (templateOptions.includeLinks && templateOptions.driveLink) {
-      content = content.replace(/\{\{driveLink\}\}/g, `🖪 Drive:${templateOptions.driveLink}`);
+      const driveIcon = templateOptions.includeIcons ? "🖪 " : "";
+      content = content.replace(/\{\{driveLink\}\}/g, `${driveIcon}Drive: ${templateOptions.driveLink}`);
     } else {
       content = content.replace(/\{\{driveLink\}\}/g, "");
     }
