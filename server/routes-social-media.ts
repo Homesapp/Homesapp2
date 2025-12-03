@@ -204,8 +204,14 @@ export function registerSocialMediaRoutes(app: Express) {
       // Filter by property type (condo or independent house)
       if (type === 'house') {
         conditions.push(isNull(externalUnits.condominiumId));
-      } else if (type === 'condo' && condominiumId) {
-        conditions.push(eq(externalUnits.condominiumId, condominiumId as string));
+      } else if (type === 'condo') {
+        // If condominiumId is provided, filter by that specific condo
+        // Otherwise, show all properties that have a condominium (not independent houses)
+        if (condominiumId) {
+          conditions.push(eq(externalUnits.condominiumId, condominiumId as string));
+        } else {
+          conditions.push(sql`${externalUnits.condominiumId} IS NOT NULL`);
+        }
       }
       
       // Filter by listing type

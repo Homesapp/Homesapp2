@@ -26612,28 +26612,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/external-seller/condominiums - Get condominiums for seller's agency
-  app.get("/api/external-seller/condominiums", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
-    try {
-      const agencyId = await getUserAgencyId(req);
-      if (!agencyId) {
-        return res.status(400).json({ message: "User is not assigned to any agency" });
-      }
-
-      const condominiums = await storage.getExternalCondominiumsByAgency(agencyId);
-      
-      res.json(condominiums.map(c => ({
-        id: c.id,
-        name: c.name,
-        zone: c.zone,
-        address: c.address,
-        propertyCategory: c.propertyCategory,
-      })));
-    } catch (error: any) {
-      console.error("Error fetching condominiums for seller:", error);
-      handleGenericError(res, error);
-    }
-  });
 
   // GET /api/external-seller/watermark-config - Get watermark configuration for seller's agency
   app.get("/api/external-seller/watermark-config", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {

@@ -680,7 +680,7 @@ export default function SellerSocialMedia() {
       condominiumId: propertySourceType === "condo" && selectedCondominiumId ? selectedCondominiumId : undefined,
       search: propertySearchQuery,
     }],
-    enabled: propertySourceType !== "manual" && (propertySourceType === "house" || (propertySourceType === "condo" && !!selectedCondominiumId)),
+    enabled: propertySourceType !== "manual" && (propertySourceType === "house" || propertySourceType === "condo"),
   });
   
   // Photo properties query (separate from AI generator properties)
@@ -689,7 +689,7 @@ export default function SellerSocialMedia() {
       type: photoSourceType === "condo" ? "condo" : "house",
       condominiumId: photoSourceType === "condo" && photoCondominiumId ? photoCondominiumId : undefined,
     }],
-    enabled: photoSourceType === "house" || (photoSourceType === "condo" && !!photoCondominiumId),
+    enabled: photoSourceType === "house" || photoSourceType === "condo",
   });
   
   // Query for property media/photos
