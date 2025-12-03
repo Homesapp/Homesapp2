@@ -29,6 +29,16 @@ export interface TenantScreeningResult {
 }
 
 export class OpenAIService {
+  // Generic chat method for flexible AI interactions
+  async chat(messages: { role: "system" | "user" | "assistant"; content: string }[]): Promise<string> {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+    });
+    
+    return completion.choices[0].message.content || "";
+  }
+
   // Predictive Analytics: Analyze property rental probability
   async analyzeRentalProbability(propertyData: any): Promise<PredictiveAnalysisResult> {
     const prompt = `Analyze this property's rental probability:
