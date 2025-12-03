@@ -141,6 +141,10 @@ const PROPERTY_TYPES = [
 ];
 
 const newProspectFormSchema = z.object({
+  propertyCategory: z.enum(["condominium", "private_house"]).default("condominium"),
+  condominiumId: z.string().optional(),
+  newCondominiumName: z.string().optional(),
+  unitNumber: z.string().optional(),
   propertyName: z.string().min(1, "El nombre es obligatorio"),
   propertyType: z.string().optional(),
   address: z.string().optional(),
@@ -192,9 +196,25 @@ export default function ExternalPropertyRecruitment() {
   });
   const activeZones = zonesConfig.filter(z => z.isActive);
 
+  // Fetch condominiums for selector
+  const { data: condominiumsData = [] } = useQuery<Array<{id: string; name: string; neighborhood?: string}>>({
+    queryKey: ['/api/external/condominiums-list'],
+    queryFn: async () => {
+      const response = await fetch('/api/external/condominiums?limit=500', { credentials: 'include' });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.data || data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const form = useForm<NewProspectFormData>({
     resolver: zodResolver(newProspectFormSchema),
     defaultValues: {
+      propertyCategory: "condominium",
+      condominiumId: "",
+      newCondominiumName: "",
+      unitNumber: "",
       propertyName: "",
       propertyType: "",
       address: "",
@@ -211,6 +231,9 @@ export default function ExternalPropertyRecruitment() {
       listingType: "rent",
     },
   });
+
+  const propertyCategory = form.watch("propertyCategory");
+  const selectedCondominiumId = form.watch("condominiumId");
 
   const createProspectMutation = useMutation({
     mutationFn: async (data: NewProspectFormData) => {
@@ -351,7 +374,7 @@ export default function ExternalPropertyRecruitment() {
               </div>
             </CardHeader>
             <CardContent className="p-2 pt-0">
-              <ScrollArea className="h-[calc(100vh-240px)]">
+              <ScrollArea className="h-[320px]">
                 <div className="space-y-1.5">
                   {prospectsByStatus[status.value]?.map((prospect) => (
                     <Card
@@ -682,6 +705,109 @@ export default function ExternalPropertyRecruitment() {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* Property Category Selection */}
+              <div className="p-3 bg-muted/50 rounded-lg space-y-3">
+                <FormField
+                  control={form.control}
+                  name="propertyCategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Categoría de Propiedad *</FormLabel>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          className={`flex items-center justify-center gap-2 p-3 rounded-md border transition-colors ${
+                            field.value === "condominium" 
+                              ? "bg-primary text-primary-foreground border-primary" 
+                              : "bg-background border-input hover:bg-accent"
+                          }`}
+                          onClick={() => field.onChange("condominium")}
+                          data-testid="button-category-condominium"
+                        >
+                          <Building2 className="h-4 w-4" />
+                          <span className="text-sm font-medium">Condominio</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`flex items-center justify-center gap-2 p-3 rounded-md border transition-colors ${
+                            field.value === "private_house" 
+                              ? "bg-primary text-primary-foreground border-primary" 
+                              : "bg-background border-input hover:bg-accent"
+                          }`}
+                          onClick={() => field.onChange("private_house")}
+                          data-testid="button-category-private"
+                        >
+                          <Home className="h-4 w-4" />
+                          <span className="text-sm font-medium">Casa Privada</span>
+                        </button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Condominium Selection (only when category is condominium) */}
+                {propertyCategory === "condominium" && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <FormField
+                      control={form.control}
+                      name="condominiumId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Condominio</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-condominium">
+                                <SelectValue placeholder="Seleccionar condominio existente..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="new">+ Agregar nuevo condominio</SelectItem>
+                              {condominiumsData.map((condo) => (
+                                <SelectItem key={condo.id} value={condo.id}>
+                                  {condo.name} {condo.neighborhood && `(${condo.neighborhood})`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {selectedCondominiumId === "new" && (
+                      <FormField
+                        control={form.control}
+                        name="newCondominiumName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">Nombre del Nuevo Condominio *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Aldea Zamá, Holistika" {...field} data-testid="input-new-condo-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="unitNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Número de Unidad</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ej: 101, PH-2, Villa 5" {...field} data-testid="input-unit-number" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -690,7 +816,7 @@ export default function ExternalPropertyRecruitment() {
                     <FormItem className="sm:col-span-2">
                       <FormLabel>Nombre/Referencia de la Propiedad *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Casa Aldea Zamá, Depto Holistika" {...field} data-testid="input-property-name" />
+                        <Input placeholder={propertyCategory === "private_house" ? "Ej: Casa Blanca, Villa del Mar" : "Ej: Depto 101 Holistika"} {...field} data-testid="input-property-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

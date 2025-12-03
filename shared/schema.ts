@@ -8955,6 +8955,12 @@ export const externalPropertyProspects = pgTable("external_property_prospects", 
   sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   sellerName: varchar("seller_name", { length: 255 }),
   
+  // Categoría de propiedad (condominio vs casa privada)
+  propertyCategory: varchar("property_category", { length: 50 }).default("condominium"), // condominium, private_house
+  condominiumId: varchar("condominium_id").references(() => externalCondominiums.id, { onDelete: "set null" }),
+  newCondominiumName: varchar("new_condominium_name", { length: 255 }), // Para crear nuevo condominio
+  unitNumber: varchar("unit_number", { length: 50 }), // Número de unidad si es condominio
+  
   // Información de la propiedad
   propertyName: varchar("property_name", { length: 255 }), // Nombre/referencia de la propiedad
   propertyType: propertyProspectTypeEnum("property_type"),
