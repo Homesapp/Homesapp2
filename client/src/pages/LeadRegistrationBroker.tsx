@@ -94,11 +94,12 @@ export default function LeadRegistrationBroker() {
   const [unitTypeOpen, setUnitTypeOpen] = useState(false);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   
-  // Extract seller name from URL parameter for personalized links
-  // Links format: /leads/broker?seller=NombreVendedor
+  // Extract seller name and ID from URL parameters for personalized links
+  // Links format: /leads/broker?seller=NombreVendedor&sellerId=userId
   const urlParams = new URLSearchParams(window.location.search);
   const sellerFromUrl = urlParams.get("seller") || "";
-  const isPersonalizedLink = !!sellerFromUrl;
+  const sellerIdFromUrl = urlParams.get("sellerId") || "";
+  const isPersonalizedLink = !!sellerFromUrl || !!sellerIdFromUrl;
 
   // Fetch agency info for logo
   const { data: agencyData } = useQuery<{ id: string; name: string; logoUrl: string }>({
@@ -204,6 +205,8 @@ export default function LeadRegistrationBroker() {
           // Legacy fields for backward compatibility
           interestedCondominiumId: allCondominiumIds || "",
           interestedUnitId: allUnitIds || "",
+          // Seller referral tracking
+          sellerId: sellerIdFromUrl || undefined,
         }),
       });
       if (!response.ok) {

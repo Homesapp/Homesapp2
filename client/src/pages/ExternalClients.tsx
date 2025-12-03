@@ -1482,7 +1482,11 @@ export default function ExternalClients() {
             size="sm"
             className="shrink-0"
             onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/leads/broker`);
+              const sellerName = user?.firstName && user?.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user?.firstName || '';
+              const brokerLink = `${window.location.origin}/leads/broker?seller=${encodeURIComponent(sellerName)}&sellerId=${encodeURIComponent(user?.id || '')}`;
+              navigator.clipboard.writeText(brokerLink);
               toast({
                 title: language === "es" ? "Link copiado" : "Link copied",
                 description: language === "es" ? "El link ha sido copiado al portapapeles" : "The link has been copied to clipboard",

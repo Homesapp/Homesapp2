@@ -10166,6 +10166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerReferral.email,
         ownerReferral.firstName,
         sellerName,
+        sellerId,
         ownerReferral.propertyAddress || 'Propiedad referida',
         verificationLink
       );
@@ -31869,6 +31870,7 @@ ${{precio}}/mes
             phone: existingLead.phone,
             email: existingLead.email,
             sellerName,
+        sellerId,
             daysRemaining,
             timeRemainingText,
           }
@@ -33718,6 +33720,7 @@ ${{precio}}/mes
           detail: `Este lead ya fue registrado por ${duplicateCheck.sellerName || "otro vendedor"}. Quedan ${duplicateCheck.daysRemaining} días para que expire.`,
           duplicate: {
             sellerName: duplicateCheck.sellerName,
+        sellerId,
             daysRemaining: duplicateCheck.daysRemaining
           }
         });
@@ -33742,6 +33745,7 @@ ${{precio}}/mes
         interestedUnitId: interestedUnitId || null,
         sellerId: sellerId || null,
         sellerName: sellerName || null,
+        sellerId: sellerId || null,
         registrationType: "seller",
         status: "nuevo_lead",
         source: source || "public_web_vendedor",
@@ -33772,6 +33776,7 @@ ${{precio}}/mes
         desiredUnitType,
         desiredNeighborhood,
         sellerName,
+        sellerId,
         source, 
         notes,
         interestedCondominiumId,
@@ -33823,6 +33828,7 @@ ${{precio}}/mes
         desiredUnitType: desiredUnitType || null,
         desiredNeighborhood: desiredNeighborhood || null,
         sellerName: sellerName || null,
+        sellerId: sellerId || null,
         registrationType: "broker",
         status: "nuevo_lead",
         source: source || "public_web_broker",
@@ -42551,6 +42557,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         agencyId,
         sellerId: userId,
         sellerName,
+        sellerId,
       };
 
       const prospect = await storage.createExternalPropertyProspect(prospectData);
@@ -42564,6 +42571,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         description: `Propiedad prospecto registrada por ${sellerName || 'usuario'}`,
         performedBy: userId,
         performedByName: sellerName,
+        sellerId,
       });
 
       res.status(201).json(prospect);
@@ -42777,6 +42785,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         agencyName: agency?.name,
         agencyLogo: agency?.logoUrl,
         sellerName: prospect.sellerName,
+        sellerId,
       });
     } catch (error: any) {
       console.error("Error fetching prospect for registration:", error);
