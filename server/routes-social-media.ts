@@ -27,10 +27,41 @@ const SELLER_ROLES = ['external_agency_seller', 'external_agency_staff', ...EXTE
 
 // Helper to get user's agency ID
 async function getUserAgencyId(req: any): Promise<string | null> {
-  const userId = req.user?.id;
-  if (!userId) return null;
-  const user = await storage.getUser(userId);
-  return user?.externalAgencyId || null;
+  try {
+    // Admin and master users don't have an agency
+    const userRole = req.user?.cachedRole || req.user?.role || req.session?.adminUser?.role;
+    if (userRole === "master" || userRole === "admin") {
+      return null;
+    }
+
+    // Try to use cached agencyId from isAuthenticated middleware first
+    if (req.user?.cachedAgencyId) {
+      return req.user.cachedAgencyId;
+    }
+
+    // Check session cache (with TTL validation - 5 min)
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    const cacheValid = req.session?.cachedUser?.externalAgencyId && 
+                       req.session.cachedUser.cachedAt && 
+                       (now - req.session.cachedUser.cachedAt) < CACHE_TTL_MS;
+    if (cacheValid) {
+      return req.session.cachedUser.externalAgencyId;
+    }
+
+    // Get user ID from authentication
+    const userId = req.user?.claims?.sub || req.user?.id;
+    if (!userId) {
+      return null;
+    }
+
+    // Fallback: Get the user's external agency ID from DB
+    const user = await storage.getUser(userId);
+    return user?.externalAgencyId || null;
+  } catch (error) {
+    console.error("Error getting user agency ID:", error);
+    return null;
+  }
 }
 
 export function registerSocialMediaRoutes(app: Express) {

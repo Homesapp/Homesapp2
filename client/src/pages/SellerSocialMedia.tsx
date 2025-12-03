@@ -1126,7 +1126,7 @@ export default function SellerSocialMedia() {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile-optimized header */}
-      <div className="sticky top-0 z-10 bg-background border-b px-4 py-3">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b px-4 py-3">
         <h1 className="text-xl font-bold" data-testid="text-page-title">{t.pageTitle}</h1>
         <p className="text-sm text-muted-foreground">{t.pageDescription}</p>
       </div>
@@ -1927,94 +1927,6 @@ export default function SellerSocialMedia() {
                 </Card>
               )}
               
-              {/* Link Tracking Section */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Link className="h-5 w-5" />
-                      {lang === "es" ? "Links Rastreables" : "Trackable Links"}
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowLinkTracker(!showLinkTracker)}
-                      data-testid="button-toggle-link-tracker"
-                    >
-                      {showLinkTracker ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <CardDescription>
-                    {lang === "es" 
-                      ? "Crea links que registran cuando un cliente los visita"
-                      : "Create links that track when a client visits them"}
-                  </CardDescription>
-                </CardHeader>
-                {showLinkTracker && (
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={lang === "es" ? "URL de destino (ej: link de propiedad)" : "Target URL (e.g., property link)"}
-                        value={newLinkUrl}
-                        onChange={e => setNewLinkUrl(e.target.value)}
-                        data-testid="input-new-link-url"
-                      />
-                      <Button
-                        onClick={() => createTrackingLinkMutation.mutate({
-                          targetUrl: newLinkUrl,
-                          unitId: selectedPropertyId || undefined,
-                          platform: newLinkPlatform || undefined,
-                        })}
-                        disabled={!newLinkUrl || createTrackingLinkMutation.isPending}
-                        data-testid="button-create-link"
-                      >
-                        {createTrackingLinkMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Plus className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    
-                    {trackingLinks && trackingLinks.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">
-                          {lang === "es" ? "Links recientes" : "Recent links"}
-                        </p>
-                        {trackingLinks.slice(0, 5).map(link => (
-                          <div 
-                            key={link.id} 
-                            className="flex items-center justify-between bg-muted/50 rounded-lg p-2"
-                          >
-                            <div className="flex-1 min-w-0 mr-2">
-                              <p className="text-xs font-mono truncate">{link.trackingUrl}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {link.targetUrl}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {link.clickCount} {lang === "es" ? "clicks" : "clicks"}
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(link.trackingUrl);
-                                  toast({ title: t.copied });
-                                }}
-                                data-testid={`button-copy-link-${link.id}`}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                )}
-              </Card>
             </>
           )}
         </TabsContent>
