@@ -12,6 +12,7 @@ import {
   insertSellerSocialMediaTemplateSchema,
   insertSellerSocialMediaReminderSchema,
   externalUnits,
+  externalAgencies,
 } from "@shared/schema";
 import { eq, and, or, desc, asc, gte, lte, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -350,6 +351,19 @@ export function registerSocialMediaRoutes(app: Express) {
     try {
       const agencyId = await getUserAgencyId(req);
       if (!agencyId) return res.status(403).json({ message: "No agency access" });
+      
+      // Check if AI credits are enabled for this agency
+      const [agency] = await db
+        .select({ aiCreditsEnabled: externalAgencies.aiCreditsEnabled })
+        .from(externalAgencies)
+        .where(eq(externalAgencies.id, agencyId));
+      
+      if (!agency || agency.aiCreditsEnabled === false) {
+        return res.status(403).json({ 
+          message: "AI features are disabled for this agency",
+          code: "AI_CREDITS_DISABLED"
+        });
+      }
       
       const { platform, category, propertyInfo, language = "es", tone = "professional" } = req.body;
       

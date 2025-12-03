@@ -38361,6 +38361,19 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       if (!agencyId) {
         return res.status(400).json({ message: "No agency assigned to user" });
       }
+      // Check if AI credits are enabled for this agency
+      const [agency] = await db
+        .select({ aiCreditsEnabled: externalAgencies.aiCreditsEnabled })
+        .from(externalAgencies)
+        .where(eq(externalAgencies.id, agencyId));
+      
+      if (!agency || agency.aiCreditsEnabled === false) {
+        return res.status(403).json({ 
+          message: "AI features are disabled for this agency",
+          code: "AI_CREDITS_DISABLED"
+        });
+      }
+
 
       const { message, conversationHistory, clientInfo } = req.body;
 

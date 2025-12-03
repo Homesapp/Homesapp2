@@ -414,14 +414,28 @@ export default function SellerSocialMedia() {
   const generateMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/external-seller/social-templates/generate", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw { ...errorData, status: res.status };
+      }
       return res.json();
     },
     onSuccess: (data) => {
       setGeneratedContent(data);
       toast({ title: lang === "es" ? "Contenido generado" : "Content generated" });
     },
-    onError: () => {
-      toast({ title: lang === "es" ? "Error al generar" : "Error generating", variant: "destructive" });
+    onError: (error: any) => {
+      if (error?.code === "AI_CREDITS_DISABLED") {
+        toast({ 
+          title: lang === "es" ? "IA desactivada" : "AI disabled",
+          description: lang === "es" 
+            ? "Las funciones de IA están desactivadas para tu agencia. Contacta a tu administrador para habilitarlas."
+            : "AI features are disabled for your agency. Contact your administrator to enable them.",
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: lang === "es" ? "Error al generar" : "Error generating", variant: "destructive" });
+      }
     },
   });
   
