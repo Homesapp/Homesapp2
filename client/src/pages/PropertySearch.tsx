@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, X, Heart, PawPrint, Home, Building2, ChevronRight, Star, ChevronLeft, Sofa, Map, Grid, LayoutGrid } from "lucide-react";
+import { Search, SlidersHorizontal, MapPin, Bed, Bath, Square, X, Heart, PawPrint, Home, Building2, ChevronRight, Star, ChevronLeft, Sofa, Map, Grid, LayoutGrid, Droplet, Zap, Wifi, CheckCircle, XCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { type Property } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -557,7 +558,7 @@ export default function PropertySearch() {
             {properties.map((property) => (
               <div
                 key={property.id}
-                className="group cursor-pointer rounded-2xl overflow-hidden border bg-card hover-elevate"
+                className="group cursor-pointer rounded-2xl overflow-hidden border bg-card hover-elevate flex flex-col h-full"
                 onClick={() => {
                   if (property.isExternal && property.agencySlug && property.unitSlug) {
                     setLocation(`/${property.agencySlug}/${property.unitSlug}`);
@@ -604,7 +605,7 @@ export default function PropertySearch() {
                     </div>
                   )}
                 </div>
-                <div className="p-3 sm:p-4">
+                <div className="p-3 sm:p-4 flex flex-col flex-1">
                   <h3 className="font-medium text-sm sm:text-base truncate mb-1" data-testid={`text-title-${property.id}`}>
                     {getPropertyTitle(property)}
                   </h3>
@@ -612,11 +613,6 @@ export default function PropertySearch() {
                     <MapPin className="h-3 w-3 shrink-0" />
                     {property.location}
                   </p>
-                  {property.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2" data-testid={`text-desc-${property.id}`}>
-                      {property.description}
-                    </p>
-                  )}
                   <div className="flex flex-wrap gap-1 mb-2">
                     {property.hasFurniture && (
                       <Badge variant="secondary" className="text-[9px] h-5 rounded-full">
@@ -629,7 +625,104 @@ export default function PropertySearch() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t">
+                  
+                  {/* Servicios Incluidos/No Incluidos - Solo 4: HOA, Agua, Internet, Luz */}
+                  {(() => {
+                    const services = property.includedServices;
+                    const hasCondominium = property.condominiumId || property.condoName;
+                    
+                    const getServiceStatus = (serviceKey: string): boolean | null => {
+                      if (!services) return null;
+                      if (typeof services === 'object') {
+                        if ('basicServices' in services && services.basicServices) {
+                          const bs = services.basicServices as any;
+                          if (serviceKey === 'water' && bs.water) return bs.water.included;
+                          if (serviceKey === 'electricity' && bs.electricity) return bs.electricity.included;
+                          if (serviceKey === 'internet' && bs.internet) return bs.internet.included;
+                        }
+                        if (serviceKey in services) {
+                          return Boolean((services as any)[serviceKey]);
+                        }
+                      }
+                      return null;
+                    };
+                    
+                    const hoaIncluded = hasCondominium;
+                    const waterStatus = getServiceStatus('water');
+                    const internetStatus = getServiceStatus('internet');
+                    const electricityStatus = getServiceStatus('electricity');
+                    
+                    const includedItems: {icon: any, label: string, color: string}[] = [];
+                    const notIncludedItems: {icon: any, label: string}[] = [];
+                    
+                    if (hoaIncluded) {
+                      includedItems.push({ icon: Building2, label: 'Mantenimiento HOA', color: 'text-green-600' });
+                    }
+                    if (waterStatus === true) {
+                      includedItems.push({ icon: Droplet, label: 'Agua', color: 'text-blue-500' });
+                    } else if (waterStatus === false) {
+                      notIncludedItems.push({ icon: Droplet, label: 'Agua' });
+                    }
+                    if (internetStatus === true) {
+                      includedItems.push({ icon: Wifi, label: 'Internet', color: 'text-purple-500' });
+                    } else if (internetStatus === false) {
+                      notIncludedItems.push({ icon: Wifi, label: 'Internet' });
+                    }
+                    notIncludedItems.push({ icon: Zap, label: 'Luz' });
+                    
+                    if (includedItems.length === 0 && notIncludedItems.length <= 1) return null;
+                    
+                    return (
+                      <div className="pt-2 border-t space-y-1 mb-2">
+                        {includedItems.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-0.5 text-green-600">
+                                  <CheckCircle className="h-3 w-3" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Incluido</TooltipContent>
+                            </Tooltip>
+                            <div className="flex items-center gap-1.5">
+                              {includedItems.map((item, idx) => (
+                                <Tooltip key={idx}>
+                                  <TooltipTrigger asChild>
+                                    <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
+                                  </TooltipTrigger>
+                                  <TooltipContent>{item.label}</TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {notIncludedItems.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-0.5 text-muted-foreground">
+                                  <XCircle className="h-3 w-3" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>No incluido</TooltipContent>
+                            </Tooltip>
+                            <div className="flex items-center gap-1.5 opacity-50">
+                              {notIncludedItems.map((item, idx) => (
+                                <Tooltip key={idx}>
+                                  <TooltipTrigger asChild>
+                                    <item.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>{item.label} - No incluido</TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  
+                  <div className="flex items-center justify-between pt-2 border-t mt-auto">
                     <p className="font-semibold text-sm sm:text-base" data-testid={`text-price-${property.id}`}>
                       ${property.price.toLocaleString()}
                       <span className="font-normal text-xs text-muted-foreground ml-1">

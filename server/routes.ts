@@ -34738,6 +34738,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           latitude: unit.latitude ? parseFloat(unit.latitude) : null,
           longitude: unit.longitude ? parseFloat(unit.longitude) : null,
           condominiumId: unit.condominiumId,
+          condoName: condoName || null,
+          includedServices: unit.includedServices,
         };
       }));
       
