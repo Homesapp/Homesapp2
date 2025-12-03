@@ -32,6 +32,34 @@ async function getUserAgencyId(req: any): Promise<string | null> {
 export function registerSocialMediaRoutes(app: Express) {
   
   // ============================================
+  // AGENCY CONFIG FOR SELLERS
+  // ============================================
+  
+  // GET /api/external-seller/agency-config - Get agency config for seller (AI credits status, etc.)
+  app.get("/api/external-seller/agency-config", isAuthenticated, requireRole(SELLER_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+      
+      const [agency] = await db
+        .select({ aiCreditsEnabled: externalAgencies.aiCreditsEnabled })
+        .from(externalAgencies)
+        .where(eq(externalAgencies.id, agencyId));
+      
+      if (!agency) {
+        return res.status(404).json({ message: "Agency not found" });
+      }
+      
+      res.json({
+        aiCreditsEnabled: agency.aiCreditsEnabled ?? true,
+      });
+    } catch (error: any) {
+      console.error("Error fetching agency config:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // ============================================
   // SOCIAL MEDIA TEMPLATES
   // ============================================
   

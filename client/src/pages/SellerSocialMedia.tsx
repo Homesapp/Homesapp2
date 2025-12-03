@@ -317,6 +317,14 @@ export default function SellerSocialMedia() {
   const [showCompleted, setShowCompleted] = useState(false);
   
   // Queries
+  // Fetch agency AI credits status
+  const { data: agencyConfig } = useQuery<{ aiCreditsEnabled: boolean }>({
+    queryKey: ["/api/external-seller/agency-config"],
+  });
+  
+  // Derived AI credits status - disabled if explicitly false or on error
+  const aiCreditsDisabled = agencyConfig?.aiCreditsEnabled === false;
+  
   const { data: templates, isLoading: templatesLoading } = useQuery<SocialTemplate[]>({
     queryKey: ["/api/external-seller/social-templates"],
   });
@@ -426,6 +434,8 @@ export default function SellerSocialMedia() {
     },
     onError: (error: any) => {
       if (error?.code === "AI_CREDITS_DISABLED") {
+        // Refetch agency config to update state
+        queryClient.invalidateQueries({ queryKey: ["/api/external-seller/agency-config"] });
         toast({ 
           title: lang === "es" ? "IA desactivada" : "AI disabled",
           description: lang === "es" 
@@ -823,7 +833,26 @@ export default function SellerSocialMedia() {
         
         {/* AI Generator Tab */}
         <TabsContent value="generator" className="p-4 space-y-4">
-          <Card>
+          {/* AI Credits Disabled Warning */}
+          {aiCreditsDisabled && (
+            <Card className="border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950">
+              <CardContent className="flex items-center gap-3 p-4">
+                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-orange-800 dark:text-orange-200">
+                    {lang === "es" ? "IA desactivada" : "AI disabled"}
+                  </p>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    {lang === "es" 
+                      ? "Las funciones de IA están desactivadas para tu agencia. Contacta a tu administrador para habilitarlas."
+                      : "AI features are disabled for your agency. Contact your administrator to enable them."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          <Card className={aiCreditsDisabled ? "opacity-50 pointer-events-none" : ""}>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -927,7 +956,7 @@ export default function SellerSocialMedia() {
               
               <Button 
                 onClick={handleGenerateAI}
-                disabled={generateMutation.isPending || !aiPropertyInfo.propertyType}
+                disabled={generateMutation.isPending || !aiPropertyInfo.propertyType || aiCreditsDisabled}
                 className="w-full"
                 data-testid="button-generate-ai"
               >
