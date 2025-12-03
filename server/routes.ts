@@ -22523,6 +22523,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       handleGenericError(res, error);
     }
   });
+
+  // GET /api/external-agencies/:agencyId/watermark - Get watermark configuration for agency
+  app.get("/api/external-agencies/:agencyId/watermark", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      
+      // Verify user has access to this agency
+      const userAgencyId = await getUserAgencyId(req);
+      if (userAgencyId && userAgencyId !== agencyId && !ADMIN_ONLY.includes(req.user?.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const agency = await storage.getExternalAgency(agencyId);
+      if (!agency) {
+        return res.status(404).json({ message: "Agency not found" });
+      }
+      
+      res.json({
+        watermarkEnabled: agency.watermarkEnabled || false,
+        watermarkImageUrl: agency.watermarkImageUrl,
+        watermarkPosition: agency.watermarkPosition || 'bottom-right',
+        watermarkOpacity: agency.watermarkOpacity ?? 50,
+        watermarkScale: agency.watermarkScale ?? 20,
+        watermarkText: agency.watermarkText,
+      });
+    } catch (error: any) {
+      console.error("Error getting watermark configuration:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // PATCH /api/external-agencies/:agencyId/watermark - Update watermark configuration for agency
+  app.patch("/api/external-agencies/:agencyId/watermark", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const { agencyId } = req.params;
+      
+      // Verify user has access to this agency
+      const userAgencyId = await getUserAgencyId(req);
+      if (userAgencyId && userAgencyId !== agencyId && !ADMIN_ONLY.includes(req.user?.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { watermarkEnabled, watermarkImageUrl, watermarkPosition, watermarkOpacity, watermarkScale, watermarkText } = req.body;
+      
+      const updateData: Record<string, any> = {};
+      if (typeof watermarkEnabled === 'boolean') updateData.watermarkEnabled = watermarkEnabled;
+      if (watermarkImageUrl !== undefined) updateData.watermarkImageUrl = watermarkImageUrl;
+      if (watermarkPosition) updateData.watermarkPosition = watermarkPosition;
+      if (typeof watermarkOpacity === 'number') updateData.watermarkOpacity = Math.max(0, Math.min(100, watermarkOpacity));
+      if (typeof watermarkScale === 'number') updateData.watermarkScale = Math.max(5, Math.min(50, watermarkScale));
+      if (watermarkText !== undefined) updateData.watermarkText = watermarkText;
+      
+      const updated = await storage.updateExternalAgency(agencyId, updateData);
+      
+      await createAuditLog(req, "update", "external_agency", agencyId, "Updated watermark configuration");
+      
+      res.json({
+        watermarkEnabled: updated.watermarkEnabled || false,
+        watermarkImageUrl: updated.watermarkImageUrl,
+        watermarkPosition: updated.watermarkPosition || 'bottom-right',
+        watermarkOpacity: updated.watermarkOpacity ?? 50,
+        watermarkScale: updated.watermarkScale ?? 20,
+        watermarkText: updated.watermarkText,
+      });
+    } catch (error: any) {
+      console.error("Error updating watermark configuration:", error);
+      handleGenericError(res, error);
+    }
+  });
   // ==============================
   // External Permission Management Routes
   // ==============================
@@ -26553,6 +26622,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })));
     } catch (error: any) {
       console.error("Error fetching condominiums for seller:", error);
+      handleGenericError(res, error);
+    }
+  });
+
+  // GET /api/external-seller/watermark-config - Get watermark configuration for seller's agency
+  app.get("/api/external-seller/watermark-config", isAuthenticated, requireRole(['external_agency_seller', ...EXTERNAL_ADMIN_ROLES]), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) {
+        return res.status(400).json({ message: "User is not assigned to any agency" });
+      }
+
+      const agency = await storage.getExternalAgency(agencyId);
+      if (!agency) {
+        return res.status(404).json({ message: "Agency not found" });
+      }
+      
+      res.json({
+        watermarkEnabled: agency.watermarkEnabled || false,
+        watermarkImageUrl: agency.watermarkImageUrl,
+        watermarkPosition: agency.watermarkPosition || 'bottom-right',
+        watermarkOpacity: agency.watermarkOpacity ?? 50,
+        watermarkScale: agency.watermarkScale ?? 20,
+        watermarkText: agency.watermarkText,
+        agencyLogoUrl: agency.agencyLogoUrl,
+      });
+    } catch (error: any) {
+      console.error("Error getting seller watermark configuration:", error);
       handleGenericError(res, error);
     }
   });

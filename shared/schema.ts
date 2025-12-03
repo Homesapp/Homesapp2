@@ -5022,6 +5022,13 @@ export const externalAgencies = pgTable("external_agencies", {
   aiCreditsEnabled: boolean("ai_credits_enabled").notNull().default(true), // Si las funciones de IA con créditos están habilitadas
   aiCreditBalance: integer("ai_credit_balance").default(100), // Balance de créditos de IA disponibles (null = ilimitado)
   aiCreditsMonthlyReset: boolean("ai_credits_monthly_reset").default(false), // Si se reinician los créditos mensualmente
+  // Watermark/Logo configuration for photo editing
+  watermarkEnabled: boolean("watermark_enabled").default(false), // Si el watermark está habilitado
+  watermarkImageUrl: text("watermark_image_url"), // URL del logo/imagen para watermark
+  watermarkPosition: varchar("watermark_position", { length: 20 }).default('bottom-right'), // Posición: top-left, top-right, bottom-left, bottom-right, center
+  watermarkOpacity: integer("watermark_opacity").default(50), // Opacidad del watermark (0-100)
+  watermarkScale: integer("watermark_scale").default(20), // Tamaño del watermark (% del ancho de imagen)
+  watermarkText: varchar("watermark_text", { length: 255 }), // Texto alternativo si no hay imagen
   isActive: boolean("is_active").notNull().default(true), // Si está activa
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -5041,6 +5048,12 @@ export const insertExternalAgencySchema = createInsertSchema(externalAgencies).o
   autoApprovePublications: z.boolean().optional().default(false),
   aiCreditsEnabled: z.boolean().optional().default(true),
   createdBy: z.string().optional(),
+  watermarkEnabled: z.boolean().optional().default(false),
+  watermarkImageUrl: z.string().optional(),
+  watermarkPosition: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center']).optional().default('bottom-right'),
+  watermarkOpacity: z.number().min(0).max(100).optional().default(50),
+  watermarkScale: z.number().min(5).max(50).optional().default(20),
+  watermarkText: z.string().optional(),
 });
 
 export type InsertExternalAgency = z.infer<typeof insertExternalAgencySchema>;

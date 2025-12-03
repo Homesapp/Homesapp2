@@ -696,6 +696,21 @@ export default function SellerSocialMedia() {
     enabled: !!photoPropertyId,
   });
   
+  // Query for watermark configuration
+  interface WatermarkConfig {
+    watermarkEnabled: boolean;
+    watermarkImageUrl?: string;
+    watermarkPosition: string;
+    watermarkOpacity: number;
+    watermarkScale: number;
+    watermarkText?: string;
+    agencyLogoUrl?: string;
+  }
+  
+  const { data: watermarkConfig } = useQuery<WatermarkConfig>({
+    queryKey: ["/api/external-seller/watermark-config"],
+  });
+  
   // Template mutations
   const createTemplateMutation = useMutation({
     mutationFn: async (data: typeof templateForm) => {
@@ -2209,6 +2224,19 @@ export default function SellerSocialMedia() {
             <div className="p-4 pt-2 overflow-auto max-h-[calc(95vh-80px)]">
               <PhotoEditor
                 imageUrl={editingPhotoUrl}
+                agencyLogo={watermarkConfig?.watermarkImageUrl || watermarkConfig?.agencyLogoUrl}
+                agencyName={watermarkConfig?.watermarkText}
+                showWatermark={watermarkConfig?.watermarkEnabled}
+                initialWatermark={watermarkConfig ? {
+                  enabled: watermarkConfig.watermarkEnabled,
+                  type: (watermarkConfig.watermarkImageUrl || watermarkConfig.agencyLogoUrl) ? "image" : "text",
+                  imageUrl: watermarkConfig.watermarkImageUrl || watermarkConfig.agencyLogoUrl,
+                  position: watermarkConfig.watermarkPosition as "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center",
+                  opacity: watermarkConfig.watermarkOpacity,
+                  size: watermarkConfig.watermarkScale,
+                  padding: 20,
+                  text: watermarkConfig.watermarkText,
+                } : undefined}
                 onSave={async (editedBlob: Blob) => {
                   try {
                     const link = document.createElement("a");
@@ -2224,7 +2252,7 @@ export default function SellerSocialMedia() {
                     toast({ title: t.photoEditError, variant: "destructive" });
                   }
                 }}
-                onCancel={() => {
+                onClose={() => {
                   setEditingPhotoUrl(null);
                   setEditingMediaId(null);
                 }}
