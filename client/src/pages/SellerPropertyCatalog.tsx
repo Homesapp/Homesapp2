@@ -55,7 +55,11 @@ import {
   Maximize2,
   Square,
   Star,
-  Eye
+  Eye,
+  Droplets,
+  Wifi,
+  Zap,
+  Building
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 
@@ -86,6 +90,7 @@ interface Unit {
   listingType?: string | null;
   slug?: string | null;
   agencySlug?: string | null;
+  includedServices?: any;
 }
 
 interface ActiveCardSummary {
@@ -627,6 +632,34 @@ export default function SellerPropertyCatalog() {
     });
     setSearch("");
     setSelectedLead(null);
+  };
+
+  const getServiceStatus = (unit: Unit, serviceKey: string): boolean | null => {
+    const services = unit.includedServices;
+    if (!services) return null;
+    
+    if (typeof services === 'object' && services !== null) {
+      if ('basicServices' in services && services.basicServices) {
+        const basic = services.basicServices;
+        if (serviceKey in basic) return Boolean(basic[serviceKey]);
+      }
+      if (serviceKey in services) return Boolean(services[serviceKey]);
+    }
+    
+    if (typeof services === 'string') {
+      try {
+        const parsed = JSON.parse(services);
+        if (serviceKey in parsed) return Boolean(parsed[serviceKey]);
+      } catch {}
+    }
+    
+    if (Array.isArray(services)) {
+      return services.some((s: string) => 
+        s.toLowerCase().includes(serviceKey.toLowerCase())
+      );
+    }
+    
+    return null;
   };
 
   // Apply chosen presentation card filters when available
@@ -2031,6 +2064,60 @@ export default function SellerPropertyCatalog() {
                             </div>
                           </>
                         )}
+                      </div>
+
+                      {/* Service Icons Row */}
+                      <div className="flex items-center gap-3 py-1">
+                        {(() => {
+                          const waterStatus = getServiceStatus(unit, 'water');
+                          const internetStatus = getServiceStatus(unit, 'internet');
+                          const hoaIncluded = Boolean(unit.condominiumId || unit.condominiumName);
+                          
+                          return (
+                            <>
+                              <div 
+                                className={`flex items-center gap-1 ${waterStatus ? 'text-green-600' : 'text-muted-foreground/50'}`}
+                                title={waterStatus ? 'Agua incluida' : 'Agua no incluida'}
+                              >
+                                <Droplets className="h-4 w-4" />
+                                {waterStatus ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                              </div>
+                              <div 
+                                className={`flex items-center gap-1 ${internetStatus ? 'text-green-600' : 'text-muted-foreground/50'}`}
+                                title={internetStatus ? 'Internet incluido' : 'Internet no incluido'}
+                              >
+                                <Wifi className="h-4 w-4" />
+                                {internetStatus ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                              </div>
+                              <div 
+                                className="flex items-center gap-1 text-muted-foreground/50"
+                                title="Luz no incluida"
+                              >
+                                <Zap className="h-4 w-4" />
+                                <X className="h-3 w-3" />
+                              </div>
+                              <div 
+                                className={`flex items-center gap-1 ${hoaIncluded ? 'text-green-600' : 'text-muted-foreground/50'}`}
+                                title={hoaIncluded ? 'Mantenimiento HOA incluido' : 'Sin HOA'}
+                              >
+                                <Building className="h-4 w-4" />
+                                {hoaIncluded ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Characteristics Badges Row */}

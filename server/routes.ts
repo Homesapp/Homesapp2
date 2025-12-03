@@ -21389,6 +21389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
         agencyName: externalAgencies.name,
       })
       .from(externalPublicationRequests)
@@ -22188,6 +22189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
           images: externalUnits.images,
           agencyId: externalUnits.agencyId,
         })
@@ -24345,6 +24347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
         })
         .from(externalUnitAccessControls)
         .innerJoin(externalUnits, eq(externalUnitAccessControls.unitId, externalUnits.id))
@@ -24442,6 +24445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
         })
         .from(externalUnitAccessControls)
         .innerJoin(externalUnits, eq(externalUnitAccessControls.unitId, externalUnits.id))
@@ -26489,6 +26493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
         })
           .from(externalUnits)
           .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
@@ -26499,6 +26504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .offset(parseInt(offset as string)),
         db.select({ count: sql<number>`count(*)` })
           .from(externalUnits)
+          .leftJoin(externalCondominiums, eq(externalUnits.condominiumId, externalCondominiums.id))
           .where(and(...conditions))
       ]);
 
@@ -30425,6 +30431,7 @@ ${{precio}}/mes
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
           rentalStatus: externalUnits.rentalStatus,
           bedroomCount: externalUnits.bedroomCount,
           bathroomCount: externalUnits.bathroomCount,
@@ -34849,6 +34856,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
         })
         .from(externalUnits)
         .where(and(...conditions))
@@ -36747,6 +36755,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
       })
         .from(externalUnits)
         .where(whereConditions)
@@ -36804,6 +36813,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
       })
         .from(externalUnits)
         .where(eq(externalUnits.agencyId, agencyId))
@@ -39000,6 +39010,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
         })
         .from(externalUnits)
         .where(eq(externalUnits.agencyId, agencyId))
@@ -39996,6 +40007,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
             condominiumName: externalCondominiums.name,
           squareMeters: externalUnits.area,
           description: externalUnits.description,
@@ -40006,6 +40018,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
           petsAllowed: externalUnits.petFriendly,
           slug: externalUnits.slug,
           agencySlug: externalAgencies.slug,
+          includedServices: externalUnits.includedServices,
             zone: externalUnits.zone,
             typology: externalUnits.typology,
             propertyType: externalUnits.propertyType,
