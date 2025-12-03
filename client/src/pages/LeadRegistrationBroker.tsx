@@ -15,6 +15,189 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Building2, Home, Loader2, ChevronLeft, ChevronRight, ChevronDown, User, Search, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import logoPath from "@assets/H mes (500 x 300 px)_1759672952263.png";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+const translations = {
+  es: {
+    pageTitle: "Registro de Lead para Brokers",
+    pageDescription: "Comparte información básica de tu cliente para verificar disponibilidad",
+    smartRealEstate: "Smart Real Estate",
+    commissionTermsTitle: "Términos de Comisión para Brokers",
+    commissionIntro: "Al registrar un lead, acepto los siguientes términos:",
+    commission50: "50% de comisión",
+    commission50Desc: "si la propiedad rentada no tiene vendedor referido",
+    commission40: "40% de comisión",
+    commission40Desc: "si la propiedad rentada tiene un vendedor referido",
+    commissionNote: "El 10% de comisión del vendedor referido es cubierto por la agencia, no se descuenta de tu comisión.",
+    acceptTerms: "Acepto los términos de comisión y entiendo que mi pago dependerá de si la propiedad tiene referido.",
+    referralLink: "Link de referido:",
+    step1Title: "Información del Cliente",
+    step1Desc: "Datos de contacto",
+    step2Title: "Detalles de Búsqueda",
+    step2Desc: "Preferencias de propiedad",
+    firstName: "Nombre del Cliente",
+    lastName: "Apellido del Cliente",
+    email: "Correo Electrónico",
+    emailPlaceholder: "ejemplo@email.com (opcional)",
+    phoneLast4: "Últimos 4 dígitos del teléfono",
+    phoneLast4Desc: "Solo los últimos 4 dígitos del teléfono del cliente",
+    countryCode: "Lada",
+    contractDuration: "Tiempo de Contrato",
+    selectDuration: "Seleccionar duración",
+    months6: "6 meses",
+    year1: "1 año",
+    years2: "2 años",
+    years3Plus: "3+ años",
+    checkInDate: "Fecha de Check-in",
+    pets: "Mascotas",
+    hasPetsQuestion: "¿Tiene mascotas?",
+    petNo: "No",
+    pet1Dog: "1 Perro",
+    pet2Dogs: "2 Perros",
+    pet1Cat: "1 Gato",
+    pet2Cats: "2 Gatos",
+    petOther: "Otro",
+    budget: "Presupuesto de Renta (MXN)",
+    budgetMin: "Mín",
+    budgetMax: "Máx",
+    bedrooms: "Recámaras",
+    selectBedrooms: "Seleccionar",
+    studio: "Estudio",
+    bedroomSingular: "recámara",
+    bedroomsPlural: "recámaras",
+    bedroomsPlus: "o más",
+    propertyType: "Tipo de Propiedad",
+    selectTypes: "Seleccionar tipos",
+    selectedTypes: "seleccionados",
+    zone: "Zona / Colonia",
+    selectZones: "Seleccionar zonas",
+    selectedZones: "seleccionadas",
+    propertyInterest: "Propiedades de Interés",
+    selectCondominium: "Seleccionar condominio",
+    selectUnits: "Seleccionar unidades",
+    loading: "Cargando...",
+    noUnits: "Sin unidades",
+    addProperty: "Agregar",
+    propertiesSelected: "propiedades seleccionadas:",
+    brokerName: "Tu Nombre (Broker)",
+    brokerNameDesc: "Nombre de quien registra el lead",
+    source: "¿Cómo conoció al cliente?",
+    sourcePlaceholder: "Ej: Referido, Portal inmobiliario, Redes sociales...",
+    notes: "Notas Adicionales",
+    notesPlaceholder: "Cualquier información adicional relevante...",
+    previous: "Anterior",
+    next: "Siguiente",
+    submit: "Enviar Registro",
+    submitting: "Enviando...",
+    acceptTermsFirst: "Debes aceptar los términos de comisión para continuar",
+    successTitle: "¡Registro Completado!",
+    successDescription: "Gracias por compartir este lead. Lo revisaremos y te contactaremos si hay coincidencias.",
+    successToastTitle: "¡Registro Exitoso!",
+    successToastDesc: "Gracias por compartir este lead. Lo revisaremos pronto.",
+    errorTitle: "Error",
+    errorDesc: "Hubo un problema al enviar tu registro",
+    validationFirstName: "Nombre requerido",
+    validationLastName: "Apellido requerido",
+    validationEmail: "Correo electrónico válido",
+    validationCountryCode: "Código de país requerido",
+    validationPhoneLast4: "Últimos 4 dígitos del teléfono del cliente",
+    validationContractDuration: "Tiempo de contrato requerido",
+    validationCheckIn: "Fecha de check-in requerida",
+    validationPets: "Información sobre mascotas requerida",
+    validationBedrooms: "Número de recámaras requerido",
+    validationBrokerName: "Nombre del broker requerido",
+  },
+  en: {
+    pageTitle: "Lead Registration for Brokers",
+    pageDescription: "Share basic client information to verify availability",
+    smartRealEstate: "Smart Real Estate",
+    commissionTermsTitle: "Commission Terms for Brokers",
+    commissionIntro: "By registering a lead, I accept the following terms:",
+    commission50: "50% commission",
+    commission50Desc: "if the rented property has no referring seller",
+    commission40: "40% commission",
+    commission40Desc: "if the rented property has a referring seller",
+    commissionNote: "The 10% commission for the referring seller is covered by the agency and is not deducted from your commission.",
+    acceptTerms: "I accept the commission terms and understand that my payment will depend on whether the property has a referral.",
+    referralLink: "Referral link:",
+    step1Title: "Client Information",
+    step1Desc: "Contact details",
+    step2Title: "Search Details",
+    step2Desc: "Property preferences",
+    firstName: "Client First Name",
+    lastName: "Client Last Name",
+    email: "Email Address",
+    emailPlaceholder: "example@email.com (optional)",
+    phoneLast4: "Last 4 digits of phone",
+    phoneLast4Desc: "Only the last 4 digits of the client's phone",
+    countryCode: "Code",
+    contractDuration: "Contract Duration",
+    selectDuration: "Select duration",
+    months6: "6 months",
+    year1: "1 year",
+    years2: "2 years",
+    years3Plus: "3+ years",
+    checkInDate: "Check-in Date",
+    pets: "Pets",
+    hasPetsQuestion: "Has pets?",
+    petNo: "No",
+    pet1Dog: "1 Dog",
+    pet2Dogs: "2 Dogs",
+    pet1Cat: "1 Cat",
+    pet2Cats: "2 Cats",
+    petOther: "Other",
+    budget: "Rent Budget (MXN)",
+    budgetMin: "Min",
+    budgetMax: "Max",
+    bedrooms: "Bedrooms",
+    selectBedrooms: "Select",
+    studio: "Studio",
+    bedroomSingular: "bedroom",
+    bedroomsPlural: "bedrooms",
+    bedroomsPlus: "or more",
+    propertyType: "Property Type",
+    selectTypes: "Select types",
+    selectedTypes: "selected",
+    zone: "Zone / Neighborhood",
+    selectZones: "Select zones",
+    selectedZones: "selected",
+    propertyInterest: "Properties of Interest",
+    selectCondominium: "Select condominium",
+    selectUnits: "Select units",
+    loading: "Loading...",
+    noUnits: "No units",
+    addProperty: "Add",
+    propertiesSelected: "properties selected:",
+    brokerName: "Your Name (Broker)",
+    brokerNameDesc: "Name of who is registering the lead",
+    source: "How did you meet the client?",
+    sourcePlaceholder: "Ex: Referral, Real estate portal, Social media...",
+    notes: "Additional Notes",
+    notesPlaceholder: "Any additional relevant information...",
+    previous: "Previous",
+    next: "Next",
+    submit: "Submit Registration",
+    submitting: "Submitting...",
+    acceptTermsFirst: "You must accept the commission terms to continue",
+    successTitle: "Registration Complete!",
+    successDescription: "Thank you for sharing this lead. We will review it and contact you if there are matches.",
+    successToastTitle: "Registration Successful!",
+    successToastDesc: "Thank you for sharing this lead. We'll review it soon.",
+    errorTitle: "Error",
+    errorDesc: "There was a problem submitting your registration",
+    validationFirstName: "First name required",
+    validationLastName: "Last name required",
+    validationEmail: "Valid email address",
+    validationCountryCode: "Country code required",
+    validationPhoneLast4: "Last 4 digits of client's phone",
+    validationContractDuration: "Contract duration required",
+    validationCheckIn: "Check-in date required",
+    validationPets: "Pet information required",
+    validationBedrooms: "Number of bedrooms required",
+    validationBrokerName: "Broker name required",
+  },
+};
 
 interface PropertyInterest {
   condominiumId: string;
@@ -53,9 +236,9 @@ const NEIGHBORHOODS = [
   "Otro",
 ];
 
-const STEPS = [
-  { id: 1, title: "Información del Cliente", description: "Datos de contacto", icon: User },
-  { id: 2, title: "Detalles de Búsqueda", description: "Preferencias de propiedad", icon: Search },
+const getSteps = (t: typeof translations.es) => [
+  { id: 1, title: t.step1Title, description: t.step1Desc, icon: User },
+  { id: 2, title: t.step2Title, description: t.step2Desc, icon: Search },
 ];
 
 const brokerFormSchema = z.object({
@@ -84,6 +267,9 @@ type BrokerFormData = z.infer<typeof brokerFormSchema>;
 export default function LeadRegistrationBroker() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const t = translations[language];
+  const STEPS = getSteps(t);
   const [submitted, setSubmitted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState<string>("");
@@ -219,14 +405,14 @@ export default function LeadRegistrationBroker() {
     onSuccess: () => {
       setSubmitted(true);
       toast({
-        title: "¡Registro Exitoso!",
-        description: "Gracias por compartir este lead. Lo revisaremos pronto.",
+        title: t.successToastTitle,
+        description: t.successToastDesc,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Hubo un problema al enviar tu registro",
+        title: t.errorTitle,
+        description: error.message || t.errorDesc,
         variant: "destructive",
       });
     },
@@ -311,9 +497,9 @@ export default function LeadRegistrationBroker() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <CheckCircle2 className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-2xl">¡Registro Completado!</CardTitle>
+            <CardTitle className="text-2xl">{t.successTitle}</CardTitle>
             <CardDescription className="text-base">
-              Gracias por compartir este lead. Lo revisaremos y te contactaremos si hay coincidencias.
+              {t.successDescription}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -325,29 +511,35 @@ export default function LeadRegistrationBroker() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
-          <div className="flex justify-center items-center gap-6 mb-4">
-            <div className="flex flex-col items-center">
-              <img 
-                src={logoPath} 
-                alt="HomesApp Logo" 
-                className="h-14 w-auto"
-              />
-              <span className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">Smart Real Estate</span>
-            </div>
-            {agencyData?.logoUrl && (
-              <>
-                <span className="text-muted-foreground text-xl">×</span>
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1" />
+            <div className="flex justify-center items-center gap-6 flex-1">
+              <div className="flex flex-col items-center">
                 <img 
-                  src={agencyData.logoUrl} 
-                  alt={`${agencyData.name} Logo`} 
-                  className="h-14 w-auto object-contain"
+                  src={logoPath} 
+                  alt="HomesApp Logo" 
+                  className="h-14 w-auto"
                 />
-              </>
-            )}
+                <span className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t.smartRealEstate}</span>
+              </div>
+              {agencyData?.logoUrl && (
+                <>
+                  <span className="text-muted-foreground text-xl">×</span>
+                  <img 
+                    src={agencyData.logoUrl} 
+                    alt={`${agencyData.name} Logo`} 
+                    className="h-14 w-auto object-contain"
+                  />
+                </>
+              )}
+            </div>
+            <div className="flex-1 flex justify-end">
+              <LanguageToggle />
+            </div>
           </div>
-          <CardTitle className="text-3xl">Registro de Lead para Brokers</CardTitle>
+          <CardTitle className="text-3xl">{t.pageTitle}</CardTitle>
           <CardDescription className="text-base">
-            Comparte información básica de tu cliente para verificar disponibilidad
+            {t.pageDescription}
             {agencyData?.name && <span className="block mt-1 font-medium">{agencyData.name}</span>}
           </CardDescription>
         </CardHeader>
@@ -355,15 +547,15 @@ export default function LeadRegistrationBroker() {
           {/* Broker Terms and Conditions */}
           <div className="mb-6 p-4 bg-muted/50 border rounded-lg space-y-3">
             <div className="space-y-2">
-              <p className="font-semibold text-sm">Términos de Comisión para Brokers</p>
+              <p className="font-semibold text-sm">{t.commissionTermsTitle}</p>
               <div className="text-sm text-muted-foreground space-y-1">
-                <p>Al registrar un lead, acepto los siguientes términos:</p>
+                <p>{t.commissionIntro}</p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>50% de comisión</strong> si la propiedad rentada no tiene vendedor referido</li>
-                  <li><strong>40% de comisión</strong> si la propiedad rentada tiene un vendedor referido</li>
+                  <li><strong>{t.commission50}</strong> {t.commission50Desc}</li>
+                  <li><strong>{t.commission40}</strong> {t.commission40Desc}</li>
                 </ul>
                 <p className="text-xs mt-2 text-muted-foreground/80">
-                  El 10% de comisión del vendedor referido es cubierto por la agencia, no se descuenta de tu comisión.
+                  {t.commissionNote}
                 </p>
               </div>
             </div>
@@ -378,12 +570,12 @@ export default function LeadRegistrationBroker() {
                 htmlFor="terms-accept" 
                 className="text-sm cursor-pointer leading-tight"
               >
-                Acepto los términos de comisión y entiendo que mi pago dependerá de si la propiedad tiene referido.
+                {t.acceptTerms}
               </label>
             </div>
             {isPersonalizedLink && (
               <div className="text-xs text-primary font-medium pt-1">
-                Link de referido: {sellerFromUrl}
+                {t.referralLink} {sellerFromUrl}
               </div>
             )}
           </div>
@@ -441,7 +633,7 @@ export default function LeadRegistrationBroker() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nombre del Cliente *</FormLabel>
+                          <FormLabel>{t.firstName} *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Juan" data-testid="input-first-name" />
                           </FormControl>
@@ -454,7 +646,7 @@ export default function LeadRegistrationBroker() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Apellido del Cliente *</FormLabel>
+                          <FormLabel>{t.lastName} *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Pérez" data-testid="input-last-name" />
                           </FormControl>
@@ -469,16 +661,16 @@ export default function LeadRegistrationBroker() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Correo Electrónico</FormLabel>
+                          <FormLabel>{t.email}</FormLabel>
                           <FormControl>
-                            <Input {...field} type="email" placeholder="ejemplo@email.com (opcional)" data-testid="input-email" />
+                            <Input {...field} type="email" placeholder={t.emailPlaceholder} data-testid="input-email" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                     <div className="space-y-2">
-                      <FormLabel>Últimos 4 dígitos del teléfono *</FormLabel>
+                      <FormLabel>{t.phoneLast4} *</FormLabel>
                       <div className="flex gap-2">
                         <FormField
                           control={form.control}
@@ -488,7 +680,7 @@ export default function LeadRegistrationBroker() {
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger data-testid="select-country-code">
-                                    <SelectValue placeholder="Lada" />
+                                    <SelectValue placeholder={t.countryCode} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -518,7 +710,7 @@ export default function LeadRegistrationBroker() {
                                 />
                               </FormControl>
                               <FormDescription>
-                                Solo los últimos 4 dígitos del teléfono del cliente
+                                {t.phoneLast4Desc}
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -539,18 +731,18 @@ export default function LeadRegistrationBroker() {
                       name="contractDuration"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tiempo de Contrato *</FormLabel>
+                          <FormLabel>{t.contractDuration} *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-contract-duration">
-                                <SelectValue placeholder="Seleccionar duración" />
+                                <SelectValue placeholder={t.selectDuration} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="6 meses">6 meses</SelectItem>
-                              <SelectItem value="1 año">1 año</SelectItem>
-                              <SelectItem value="2 años">2 años</SelectItem>
-                              <SelectItem value="3+ años">3+ años</SelectItem>
+                              <SelectItem value="6 meses">{t.months6}</SelectItem>
+                              <SelectItem value="1 año">{t.year1}</SelectItem>
+                              <SelectItem value="2 años">{t.years2}</SelectItem>
+                              <SelectItem value="3+ años">{t.years3Plus}</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -562,7 +754,7 @@ export default function LeadRegistrationBroker() {
                       name="checkInDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Fecha de Check-in *</FormLabel>
+                          <FormLabel>{t.checkInDate} *</FormLabel>
                           <FormControl>
                             <Input {...field} type="date" data-testid="input-check-in-date" />
                           </FormControl>
@@ -578,20 +770,20 @@ export default function LeadRegistrationBroker() {
                       name="hasPets"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Mascotas *</FormLabel>
+                          <FormLabel>{t.pets} *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-has-pets">
-                                <SelectValue placeholder="¿Tiene mascotas?" />
+                                <SelectValue placeholder={t.hasPetsQuestion} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="No">No</SelectItem>
-                              <SelectItem value="1 Perro">1 Perro</SelectItem>
-                              <SelectItem value="2 Perros">2 Perros</SelectItem>
-                              <SelectItem value="1 Gato">1 Gato</SelectItem>
-                              <SelectItem value="2 Gatos">2 Gatos</SelectItem>
-                              <SelectItem value="Otro">Otro</SelectItem>
+                              <SelectItem value="No">{t.petNo}</SelectItem>
+                              <SelectItem value="1 Perro">{t.pet1Dog}</SelectItem>
+                              <SelectItem value="2 Perros">{t.pet2Dogs}</SelectItem>
+                              <SelectItem value="1 Gato">{t.pet1Cat}</SelectItem>
+                              <SelectItem value="2 Gatos">{t.pet2Cats}</SelectItem>
+                              <SelectItem value="Otro">{t.petOther}</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -599,7 +791,7 @@ export default function LeadRegistrationBroker() {
                       )}
                     />
                     <div className="space-y-2">
-                      <FormLabel>Presupuesto de Renta (MXN)</FormLabel>
+                      <FormLabel>{t.budget}</FormLabel>
                       <div className="flex gap-2 items-center">
                         <FormField
                           control={form.control}
@@ -646,7 +838,7 @@ export default function LeadRegistrationBroker() {
                       name="bedrooms"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Recámaras *</FormLabel>
+                          <FormLabel>{t.bedrooms} *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Ej: 1-2, 2+, 3" data-testid="input-bedrooms" />
                           </FormControl>
@@ -655,7 +847,7 @@ export default function LeadRegistrationBroker() {
                       )}
                     />
                     <div className="space-y-2">
-                      <FormLabel>Tipo de Unidad (opcional, múltiple)</FormLabel>
+                      <FormLabel>{t.propertyType}</FormLabel>
                       <Popover open={unitTypeOpen} onOpenChange={setUnitTypeOpen}>
                         <PopoverTrigger asChild>
                           <Button
@@ -664,8 +856,8 @@ export default function LeadRegistrationBroker() {
                             data-testid="button-unit-type"
                           >
                             {selectedUnitTypes.length > 0
-                              ? `${selectedUnitTypes.length} seleccionado(s)`
-                              : "Seleccionar tipos de unidad..."}
+                              ? `${selectedUnitTypes.length} ${t.selectedTypes}`
+                              : t.selectTypes}
                             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -699,7 +891,7 @@ export default function LeadRegistrationBroker() {
                   </div>
 
                   <div className="space-y-2">
-                    <FormLabel>Zona Deseada (opcional, múltiple)</FormLabel>
+                    <FormLabel>{t.zone}</FormLabel>
                     <Popover open={neighborhoodOpen} onOpenChange={setNeighborhoodOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -708,8 +900,8 @@ export default function LeadRegistrationBroker() {
                           data-testid="button-neighborhood"
                         >
                           {selectedNeighborhoods.length > 0
-                            ? `${selectedNeighborhoods.length} zona(s) seleccionada(s)`
-                            : "Seleccionar zonas..."}
+                            ? `${selectedNeighborhoods.length} ${t.selectedZones}`
+                            : t.selectZones}
                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -745,15 +937,11 @@ export default function LeadRegistrationBroker() {
                   <div className="space-y-4 pt-4 border-t">
                     <div className="flex items-center gap-2">
                       <Building2 className="h-5 w-5 text-muted-foreground" />
-                      <FormLabel className="text-base">Propiedades de Interés (Opcional)</FormLabel>
+                      <FormLabel className="text-base">{t.propertyInterest}</FormLabel>
                     </div>
-                    <FormDescription>
-                      Puedes agregar múltiples propiedades de diferentes condominios que le interesen al cliente.
-                    </FormDescription>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <FormLabel>Condominio</FormLabel>
                         <Select
                           value={selectedCondominiumId}
                           onValueChange={(value) => {
@@ -762,7 +950,7 @@ export default function LeadRegistrationBroker() {
                           }}
                         >
                           <SelectTrigger data-testid="select-condominium">
-                            <SelectValue placeholder="Seleccionar condominio" />
+                            <SelectValue placeholder={t.selectCondominium} />
                           </SelectTrigger>
                           <SelectContent>
                             {condominiums.map((condo) => (
@@ -774,7 +962,6 @@ export default function LeadRegistrationBroker() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <FormLabel>Unidades de Interés</FormLabel>
                         <Select
                           disabled={!selectedCondominiumId}
                           value=""
@@ -785,7 +972,7 @@ export default function LeadRegistrationBroker() {
                           }}
                         >
                           <SelectTrigger data-testid="select-units">
-                            <SelectValue placeholder={selectedCondominiumId ? "Agregar unidad" : "Primero seleccione un condominio"} />
+                            <SelectValue placeholder={t.selectUnits} />
                           </SelectTrigger>
                           <SelectContent>
                             {units.map((unit) => (
@@ -829,7 +1016,7 @@ export default function LeadRegistrationBroker() {
                         className="gap-2"
                       >
                         <Plus className="h-4 w-4" />
-                        Agregar Propiedad de Interés
+                        {t.addProperty}
                       </Button>
                     )}
 
@@ -867,14 +1054,13 @@ export default function LeadRegistrationBroker() {
 
                   {/* Broker Information */}
                   <div className="space-y-4 pt-4 border-t">
-                    <FormLabel className="text-base">Información del Broker</FormLabel>
                     <FormField
                       control={form.control}
                       name="sellerName"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            {isPersonalizedLink ? "Vendedor Asignado" : "Tu Nombre (Broker)"} *
+                            {t.brokerName} *
                           </FormLabel>
                           <FormControl>
                             <Input 
@@ -900,11 +1086,11 @@ export default function LeadRegistrationBroker() {
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Notas Adicionales</FormLabel>
+                          <FormLabel>{t.notes}</FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              placeholder="Cualquier información adicional sobre el cliente..."
+                              placeholder={t.notesPlaceholder}
                               rows={3}
                               data-testid="input-notes"
                             />
@@ -928,7 +1114,7 @@ export default function LeadRegistrationBroker() {
                     data-testid="button-previous"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Anterior
+                    {t.previous}
                   </Button>
                 ) : (
                   <div />
@@ -941,7 +1127,7 @@ export default function LeadRegistrationBroker() {
                     className="gap-2"
                     data-testid="button-next"
                   >
-                    Siguiente
+                    {t.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 ) : (
@@ -954,17 +1140,17 @@ export default function LeadRegistrationBroker() {
                     {submitMutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Enviando...
+                        {t.submitting}
                       </>
                     ) : !termsAccepted ? (
                       <>
                         <CheckCircle2 className="h-4 w-4" />
-                        Acepta los términos
+                        {t.acceptTermsFirst}
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4" />
-                        Registrar Lead
+                        {t.submit}
                       </>
                     )}
                   </Button>
