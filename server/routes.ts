@@ -279,6 +279,7 @@ import {
 import { db } from "./db";
 import { registerPortalRoutes } from "./portal-routes";
 import { registerSocialMediaRoutes } from "./routes-social-media";
+import { registerImpersonationRoutes } from "./routes-impersonation";
 import { logSellerActivity } from "./activityService";
 import { eq, and, or, not, inArray, desc, asc, sql, ne, isNull, isNotNull, gte, lte, lt, ilike } from "drizzle-orm";
 
@@ -41646,6 +41647,7 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
   // Register portal routes for tenant/owner portals
   // Register social media routes for sellers
   registerSocialMediaRoutes(app);
+  registerImpersonationRoutes(app);
 
   // Register portal routes for tenant/owner portals
   registerPortalRoutes(

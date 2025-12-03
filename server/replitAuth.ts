@@ -283,6 +283,34 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
     console.log("[Auth Debug] rental-form-tokens: session exists?", !!req.session, "adminUser?", !!req.session?.adminUser, "userId?", !!req.session?.userId);
   }
   
+  // Check if admin is impersonating another user
+  if (req.session?.impersonatedUserId && req.session?.originalAdminId) {
+    try {
+      const impersonatedUser = await storage.getUser(req.session.impersonatedUserId);
+      if (impersonatedUser) {
+        req.user = {
+          claims: {
+            sub: impersonatedUser.id,
+            email: impersonatedUser.email,
+            first_name: impersonatedUser.firstName,
+            last_name: impersonatedUser.lastName,
+          },
+          localAuth: true,
+          isImpersonated: true,
+          originalAdminId: req.session.originalAdminId,
+          cachedRole: impersonatedUser.additionalRole || impersonatedUser.role,
+          cachedAgencyId: impersonatedUser.externalAgencyId,
+        };
+        return next();
+      }
+    } catch (error) {
+      console.error("Error loading impersonated user:", error);
+      // Clear impersonation on error
+      delete req.session.impersonatedUserId;
+      delete req.session.originalAdminId;
+    }
+  }
+  
   // Check if admin is authenticated via local session
   if (req.session && req.session.adminUser) {
     // Normalize admin identity into req.user for consistent downstream access
