@@ -45,12 +45,17 @@ import {
   AlertCircle,
   Check,
   MoveRight,
-  MoreVertical
+  MoreVertical,
+  Pencil,
+  Images,
+  Wand2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { PhotoEditorDialog, ImageAdjustments, WatermarkConfig } from "@/components/PhotoEditor";
+import { BulkPhotoEditorDialog, BulkPhoto } from "@/components/BulkPhotoEditor";
 
 interface MediaSection {
   key: string;
@@ -109,6 +114,7 @@ function SortableImage({
   onDelete, 
   onSetCover, 
   onMoveToSection,
+  onEdit,
   onClick,
   disabled,
   sections,
@@ -119,6 +125,7 @@ function SortableImage({
   onDelete: () => void; 
   onSetCover: () => void;
   onMoveToSection: (section: string, sectionIndex: number) => void;
+  onEdit: () => void;
   onClick: () => void;
   disabled: boolean;
   sections: MediaSection[];
@@ -184,6 +191,17 @@ function SortableImage({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    onEdit(); 
+                  }}
+                  data-testid={`edit-image-${item.id}`}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {language === "es" ? "Editar foto" : "Edit photo"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="flex items-center gap-2">
                   <MoveRight className="h-4 w-4" />
                   {moveText}
@@ -247,6 +265,10 @@ export function SectionMediaManager({
   const [lightboxImages, setLightboxImages] = useState<MediaItem[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  
+  const [editingImage, setEditingImage] = useState<MediaItem | null>(null);
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkPhotos, setBulkPhotos] = useState<BulkPhoto[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -465,13 +487,33 @@ export function SectionMediaManager({
     <>
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Camera className="h-5 w-5" />
-            {t.mediaManager}
-            <Badge variant="outline" className="ml-auto">
-              {mediaItems.length} {language === "es" ? "imágenes" : "images"}
-            </Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Camera className="h-5 w-5" />
+              {t.mediaManager}
+              <Badge variant="outline">
+                {mediaItems.length} {language === "es" ? "imágenes" : "images"}
+              </Badge>
+            </CardTitle>
+            {!readOnly && mediaItems.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBulkPhotos(mediaItems.map(item => ({
+                    id: item.id,
+                    url: item.url,
+                    name: item.caption || item.section,
+                  })));
+                  setBulkEditMode(true);
+                }}
+                data-testid="button-bulk-edit"
+              >
+                <Wand2 className="h-4 w-4 mr-1" />
+                {language === "es" ? "Editar en lote" : "Bulk Edit"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[600px] pr-4">
@@ -566,6 +608,7 @@ export function SectionMediaManager({
                                     onDelete={() => deleteMutation.mutate(item.id)}
                                     onSetCover={() => setCoverMutation.mutate(item.id)}
                                     onMoveToSection={(newSection, newSectionIndex) => moveSectionMutation.mutate({ mediaId: item.id, section: newSection, sectionIndex: newSectionIndex })}
+                                    onEdit={() => setEditingImage(item)}
                                     onClick={() => openLightbox(sectionMedia, idx)}
                                     disabled={readOnly}
                                     sections={sections}
@@ -642,6 +685,90 @@ export function SectionMediaManager({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Photo Editor Dialog */}
+      <PhotoEditorDialog
+        open={!!editingImage}
+        onOpenChange={(open) => !open && setEditingImage(null)}
+        imageUrl={editingImage?.url || ""}
+        language={language}
+        showWatermark={true}
+        onSave={async (blob, adjustments, watermark) => {
+          if (!editingImage) return;
+          
+          const formData = new FormData();
+          formData.append("file", blob, `edited-${editingImage.id}.jpg`);
+          formData.append("mediaId", editingImage.id);
+          formData.append("adjustments", JSON.stringify(adjustments));
+          if (watermark) {
+            formData.append("watermark", JSON.stringify(watermark));
+          }
+          
+          try {
+            const response = await fetch(`/api/external-units/${unitId}/media/${editingImage.id}/replace`, {
+              method: "POST",
+              body: formData,
+            });
+            
+            if (!response.ok) throw new Error("Failed to save edited image");
+            
+            await refetchMedia();
+            onMediaChange?.();
+            setEditingImage(null);
+            toast({ 
+              title: language === "es" ? "Foto actualizada" : "Photo updated",
+              description: language === "es" ? "Los cambios se guardaron correctamente" : "Changes saved successfully"
+            });
+          } catch (error: any) {
+            toast({
+              variant: "destructive",
+              title: language === "es" ? "Error" : "Error",
+              description: error.message
+            });
+          }
+        }}
+      />
+
+      {/* Bulk Photo Editor Dialog */}
+      <BulkPhotoEditorDialog
+        open={bulkEditMode}
+        onOpenChange={setBulkEditMode}
+        photos={bulkPhotos}
+        language={language}
+        onSave={async (processedPhotos) => {
+          let successCount = 0;
+          for (const photo of processedPhotos) {
+            const formData = new FormData();
+            formData.append("file", photo.blob, `edited-${photo.id}.jpg`);
+            formData.append("mediaId", photo.id);
+            formData.append("adjustments", JSON.stringify(photo.adjustments));
+            if (photo.watermark) {
+              formData.append("watermark", JSON.stringify(photo.watermark));
+            }
+            
+            try {
+              const response = await fetch(`/api/external-units/${unitId}/media/${photo.id}/replace`, {
+                method: "POST",
+                body: formData,
+              });
+              
+              if (response.ok) successCount++;
+            } catch (error) {
+              console.error("Error saving edited image:", error);
+            }
+          }
+          
+          await refetchMedia();
+          onMediaChange?.();
+          setBulkEditMode(false);
+          toast({ 
+            title: language === "es" ? "Fotos actualizadas" : "Photos updated",
+            description: language === "es" 
+              ? `${successCount} de ${processedPhotos.length} fotos guardadas` 
+              : `${successCount} of ${processedPhotos.length} photos saved`
+          });
+        }}
+      />
     </>
   );
 }

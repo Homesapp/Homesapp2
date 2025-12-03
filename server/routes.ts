@@ -29695,6 +29695,45 @@ ${{precio}}/mes
     }
   });
 
+  // POST /api/external-units/:id/media/:mediaId/replace - Replace image with edited version
+  app.post("/api/external-units/:id/media/:mediaId/replace", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), uploadExternalUnitImages.single("file"), async (req: any, res) => {
+    try {
+      const { id, mediaId } = req.params;
+      
+      const existing = await storage.getExternalUnit(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Unit not found" });
+      }
+      
+      const hasAccess = await verifyExternalAgencyAccess(req, res, existing.agencyId);
+      if (!hasAccess) return;
+      
+      const media = await storage.getExternalUnitMedia(mediaId);
+      if (!media || media.unitId !== id) {
+        return res.status(404).json({ message: "Media not found" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file provided" });
+      }
+      
+      // Upload edited image
+      const gcsUrl = await uploadToGCS(
+        req.file.buffer,
+        `external-units/${id}/media/edited/${mediaId}-${Date.now()}.jpg`,
+        req.file.mimetype
+      );
+      
+      // Update media record with new URL
+      const updated = await storage.updateExternalUnitMedia(mediaId, { url: gcsUrl });
+      
+      res.json({ success: true, data: updated });
+    } catch (error: any) {
+      console.error("Error replacing media:", error);
+      res.status(500).json({ message: error.message || "Failed to replace media" });
+    }
+  });
+
   // GET /api/external-units/:id/media/sections - Get available sections based on unit characteristics
   app.get("/api/external-units/:id/media/sections", isAuthenticated, requireRole(EXTERNAL_ALL_ROLES), async (req: any, res) => {
     try {
