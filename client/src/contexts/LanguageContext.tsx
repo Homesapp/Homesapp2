@@ -402,6 +402,13 @@ const translations: Record<Language, Record<string, string>> = {
     "property.petFriendly": "Acepta Mascotas",
     "property.listedBy": "Listado por",
     "property.hoaIncluded": "Mant. condominal incluido",
+    "property.included": "Incluido",
+    "property.notIncluded": "No incluido",
+    "property.serviceWater": "Agua",
+    "property.serviceElectricity": "Luz",
+    "property.poolCleaning": "Limpieza de alberca",
+    "property.garden": "Jardinería",
+    "property.gas": "Gas",
     
     // Property Display
     "property.bedrooms": "hab",
@@ -1414,6 +1421,13 @@ const translations: Record<Language, Record<string, string>> = {
     "property.petFriendly": "Pet Friendly",
     "property.listedBy": "Listed by",
     "property.hoaIncluded": "HOA included",
+    "property.included": "Included",
+    "property.notIncluded": "Not included",
+    "property.serviceWater": "Water",
+    "property.serviceElectricity": "Electricity",
+    "property.poolCleaning": "Pool cleaning",
+    "property.garden": "Gardening",
+    "property.gas": "Gas",
     
     // Property Display
     "property.bedrooms": "bed",

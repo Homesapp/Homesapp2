@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2, Droplet, Zap, Wifi, PawPrint, Building2, CheckCircle } from "lucide-react";
+import { Bed, Bath, Square, MapPin, Eye, Edit, Calendar, Trash2, Droplet, Zap, Wifi, PawPrint, Building2, CheckCircle, XCircle, Flame, Trees, Waves } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type IncludedServices = {
@@ -224,31 +224,118 @@ export function PropertyCard({
           )}
         </div>
 
-        {/* Servicios Incluidos - Solo mostrar servicios incluidos (no los no incluidos) */}
-        {(includedServices?.hoaMaintenance || includedServices?.basicServices?.water?.included || includedServices?.basicServices?.electricity?.included || includedServices?.basicServices?.internet?.included) && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {includedServices?.hoaMaintenance && (
-              <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700" data-testid="service-hoa">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                {t("property.hoaIncluded")}
-              </Badge>
-            )}
-            {includedServices?.basicServices?.water?.included && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="service-water">
-                <Droplet className="h-3 w-3 text-blue-500" />
-                <span>{t("property.serviceWater") || "Agua"}</span>
+        {/* Servicios Incluidos y No Incluidos - Solo iconos */}
+        {includedServices && (
+          <div className="pt-2 border-t space-y-1">
+            {/* Incluido */}
+            {(includedServices?.hoaMaintenance || 
+              includedServices?.basicServices?.water?.included || 
+              includedServices?.basicServices?.electricity?.included || 
+              includedServices?.basicServices?.internet?.included ||
+              includedServices?.additionalServices?.some(s => s.type)) && (
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-0.5 text-green-600">
+                      <CheckCircle className="h-3 w-3" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("property.included") || "Incluido"}</TooltipContent>
+                </Tooltip>
+                <div className="flex items-center gap-1.5">
+                  {includedServices?.hoaMaintenance && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Building2 className="h-3.5 w-3.5 text-green-600" data-testid="service-hoa-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("property.hoaIncluded") || "Mantenimiento HOA"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {includedServices?.basicServices?.water?.included && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Droplet className="h-3.5 w-3.5 text-blue-500" data-testid="service-water-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("property.serviceWater") || "Agua"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {includedServices?.basicServices?.electricity?.included && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Zap className="h-3.5 w-3.5 text-yellow-500" data-testid="service-electricity-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("property.serviceElectricity") || "Luz"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {includedServices?.basicServices?.internet?.included && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Wifi className="h-3.5 w-3.5 text-purple-500" data-testid="service-internet-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>Internet</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {includedServices?.additionalServices?.map((service, idx) => (
+                    <Tooltip key={idx}>
+                      <TooltipTrigger asChild>
+                        {service.type === "pool_cleaning" ? (
+                          <Waves className="h-3.5 w-3.5 text-cyan-500" />
+                        ) : service.type === "garden" ? (
+                          <Trees className="h-3.5 w-3.5 text-green-500" />
+                        ) : service.type === "gas" ? (
+                          <Flame className="h-3.5 w-3.5 text-orange-500" />
+                        ) : null}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {service.type === "pool_cleaning" ? (t("property.poolCleaning") || "Limpieza de alberca") :
+                         service.type === "garden" ? (t("property.garden") || "Jardinería") :
+                         service.type === "gas" ? (t("property.gas") || "Gas") : service.type}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
               </div>
             )}
-            {includedServices?.basicServices?.electricity?.included && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="service-electricity">
-                <Zap className="h-3 w-3 text-yellow-500" />
-                <span>{t("property.serviceElectricity") || "Luz"}</span>
-              </div>
-            )}
-            {includedServices?.basicServices?.internet?.included && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="service-internet">
-                <Wifi className="h-3 w-3 text-purple-500" />
-                <span>Internet</span>
+            
+            {/* No Incluido */}
+            {(includedServices?.basicServices?.water && !includedServices.basicServices.water.included ||
+              includedServices?.basicServices?.electricity && !includedServices.basicServices.electricity.included ||
+              includedServices?.basicServices?.internet && !includedServices.basicServices.internet.included) && (
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-0.5 text-muted-foreground">
+                      <XCircle className="h-3 w-3" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("property.notIncluded") || "No incluido"}</TooltipContent>
+                </Tooltip>
+                <div className="flex items-center gap-1.5 opacity-50">
+                  {includedServices?.basicServices?.water && !includedServices.basicServices.water.included && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Droplet className="h-3.5 w-3.5 text-muted-foreground" data-testid="service-water-not-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("property.serviceWater") || "Agua"} - {t("property.notIncluded") || "No incluido"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {includedServices?.basicServices?.electricity && !includedServices.basicServices.electricity.included && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Zap className="h-3.5 w-3.5 text-muted-foreground" data-testid="service-electricity-not-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("property.serviceElectricity") || "Luz"} - {t("property.notIncluded") || "No incluido"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {includedServices?.basicServices?.internet && !includedServices.basicServices.internet.included && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Wifi className="h-3.5 w-3.5 text-muted-foreground" data-testid="service-internet-not-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>Internet - {t("property.notIncluded") || "No incluido"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             )}
           </div>
