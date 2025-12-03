@@ -638,6 +638,8 @@ export default function SellerSocialMedia() {
   
   // Photo editor state
   const [photoPropertyId, setPhotoPropertyId] = useState<string>("");
+  const [photoSourceType, setPhotoSourceType] = useState<"condo" | "house">("condo");
+  const [photoCondominiumId, setPhotoCondominiumId] = useState<string>("");
   const [editingPhotoUrl, setEditingPhotoUrl] = useState<string | null>(null);
   const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
   
@@ -678,7 +680,16 @@ export default function SellerSocialMedia() {
       condominiumId: propertySourceType === "condo" && selectedCondominiumId ? selectedCondominiumId : undefined,
       search: propertySearchQuery,
     }],
-    enabled: propertySourceType === "house" || (propertySourceType === "condo" && !!selectedCondominiumId),
+    enabled: propertySourceType !== "manual" && (propertySourceType === "house" || (propertySourceType === "condo" && !!selectedCondominiumId)),
+  });
+  
+  // Photo properties query (separate from AI generator properties)
+  const { data: photoProperties, isLoading: photoPropertiesLoading } = useQuery<PropertyCatalogItem[]>({
+    queryKey: ["/api/external-seller/properties", { 
+      type: photoSourceType === "condo" ? "condo" : "house",
+      condominiumId: photoSourceType === "condo" && photoCondominiumId ? photoCondominiumId : undefined,
+    }],
+    enabled: photoSourceType === "house" || (photoSourceType === "condo" && !!photoCondominiumId),
   });
   
   // Query for property media/photos
@@ -2204,22 +2215,97 @@ export default function SellerSocialMedia() {
               <CardDescription>{t.photosDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Property selector for photos */}
+              {/* Property Type Toggle */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  {lang === "es" ? "Tipo de Propiedad" : "Property Type"}
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={photoSourceType === "condo" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setPhotoSourceType("condo");
+                      setPhotoPropertyId("");
+                    }}
+                    data-testid="button-photo-source-condo"
+                  >
+                    <Building2 className="h-4 w-4 mr-1" />
+                    {lang === "es" ? "Condominio" : "Condo"}
+                  </Button>
+                  <Button
+                    variant={photoSourceType === "house" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setPhotoSourceType("house");
+                      setPhotoCondominiumId("");
+                      setPhotoPropertyId("");
+                    }}
+                    data-testid="button-photo-source-house"
+                  >
+                    <Home className="h-4 w-4 mr-1" />
+                    {lang === "es" ? "Casa" : "House"}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Condominium Selection (only for condo mode) */}
+              {photoSourceType === "condo" && (
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    {lang === "es" ? "Condominio" : "Condominium"}
+                  </Label>
+                  <Select value={photoCondominiumId} onValueChange={(val) => {
+                    setPhotoCondominiumId(val);
+                    setPhotoPropertyId("");
+                  }}>
+                    <SelectTrigger data-testid="select-photo-condominium">
+                      <SelectValue placeholder={lang === "es" ? "Seleccionar condominio..." : "Select condominium..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {condominiums?.map(condo => (
+                        <SelectItem key={condo.id} value={condo.id}>
+                          {condo.name} {condo.zone && `- ${condo.zone}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {/* Property/Unit Selection */}
               <div>
                 <Label className="text-sm font-medium mb-2 block">
                   {t.selectProperty}
                 </Label>
-                <Select value={photoPropertyId} onValueChange={setPhotoPropertyId}>
+                <Select 
+                  value={photoPropertyId} 
+                  onValueChange={setPhotoPropertyId}
+                  disabled={photoSourceType === "condo" && !photoCondominiumId}
+                >
                   <SelectTrigger data-testid="select-photo-property">
                     <SelectValue placeholder={lang === "es" ? "Seleccionar propiedad..." : "Select property..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {properties?.map(property => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.unitNumber} - {property.propertyType || property.title || ""}
-                        {property.zone && ` (${property.zone})`}
-                      </SelectItem>
-                    ))}
+                    {photoPropertiesLoading ? (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                      </div>
+                    ) : !photoProperties || photoProperties.length === 0 ? (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
+                        {lang === "es" ? "No hay propiedades" : "No properties"}
+                      </div>
+                    ) : (
+                      photoProperties.map(prop => (
+                        <SelectItem key={prop.id} value={prop.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{prop.unitNumber}</span>
+                            {prop.zone && <span className="text-muted-foreground">- {prop.zone}</span>}
+                            {prop.bedrooms && <span className="text-xs text-muted-foreground">{prop.bedrooms}BR</span>}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
