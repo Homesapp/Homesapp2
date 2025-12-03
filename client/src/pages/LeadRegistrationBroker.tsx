@@ -26,11 +26,10 @@ const translations = {
     commissionTermsTitle: "Términos de Comisión para Brokers",
     commissionIntro: "Al registrar un lead, acepto los siguientes términos:",
     commission50: "50% de comisión",
-    commission50Desc: "si la propiedad rentada no tiene vendedor referido",
+    commission50Desc: "si la propiedad rentada no tiene referido",
     commission40: "40% de comisión",
-    commission40Desc: "si la propiedad rentada tiene un vendedor referido",
-    commissionNote: "El 10% de comisión del vendedor referido es cubierto por la agencia, no se descuenta de tu comisión.",
-    acceptTerms: "Acepto los términos de comisión y entiendo que mi pago dependerá de si la propiedad tiene referido.",
+    commission40Desc: "si la propiedad rentada tiene referido",
+    acceptTerms: "Acepto los términos de comisión y entiendo que mi pago dependerá de si la propiedad tiene referido o no.",
     referralLink: "Link de referido:",
     step1Title: "Información del Cliente",
     step1Desc: "Datos de contacto",
@@ -115,11 +114,10 @@ const translations = {
     commissionTermsTitle: "Commission Terms for Brokers",
     commissionIntro: "By registering a lead, I accept the following terms:",
     commission50: "50% commission",
-    commission50Desc: "if the rented property has no referring seller",
+    commission50Desc: "if the rented property has no referral",
     commission40: "40% commission",
-    commission40Desc: "if the rented property has a referring seller",
-    commissionNote: "The 10% commission for the referring seller is covered by the agency and is not deducted from your commission.",
-    acceptTerms: "I accept the commission terms and understand that my payment will depend on whether the property has a referral.",
+    commission40Desc: "if the rented property has a referral",
+    acceptTerms: "I accept the commission terms and understand that my payment will depend on whether the property has a referral or not.",
     referralLink: "Referral link:",
     step1Title: "Client Information",
     step1Desc: "Contact details",
@@ -518,7 +516,7 @@ export default function LeadRegistrationBroker() {
                 <img 
                   src={logoPath} 
                   alt="HomesApp Logo" 
-                  className="h-14 w-auto"
+                  className="h-16 max-w-[140px] object-contain"
                 />
                 <span className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t.smartRealEstate}</span>
               </div>
@@ -528,7 +526,7 @@ export default function LeadRegistrationBroker() {
                   <img 
                     src={agencyData.logoUrl} 
                     alt={`${agencyData.name} Logo`} 
-                    className="h-14 w-auto object-contain"
+                    className="h-16 max-w-[140px] object-contain"
                   />
                 </>
               )}
@@ -554,9 +552,6 @@ export default function LeadRegistrationBroker() {
                   <li><strong>{t.commission50}</strong> {t.commission50Desc}</li>
                   <li><strong>{t.commission40}</strong> {t.commission40Desc}</li>
                 </ul>
-                <p className="text-xs mt-2 text-muted-foreground/80">
-                  {t.commissionNote}
-                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 pt-2 border-t">
