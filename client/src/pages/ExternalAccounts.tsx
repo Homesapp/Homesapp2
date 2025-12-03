@@ -13,7 +13,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck, Shield, Users, Save, X, Loader2, Briefcase, Calculator, Wrench, ShoppingBag, Bell, Scale } from "lucide-react";
+import { Plus, Trash2, RotateCw, Copy, Check, Pencil, LayoutGrid, LayoutList, Mail, Phone, User as UserIcon, ArrowUpDown, ChevronUp, ChevronDown, Search, Filter, Ban, UserCheck, Shield, Users, Save, X, Loader2, Briefcase, Calculator, Wrench, ShoppingBag, Bell, Scale, Eye } from "lucide-react";
+import { useLocation } from "wouter";
 import { useState, useLayoutEffect, useEffect, useMemo, useCallback } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { z } from "zod";
@@ -724,6 +725,35 @@ export default function ExternalAccounts() {
         description: language === "es"
           ? "No se pudo reactivar el usuario"
           : "Could not reactivate user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [, setLocation] = useLocation();
+  
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/external-agency-users/${userId}/impersonate`, {});
+      return await res.json();
+    },
+    onSuccess: (response: any) => {
+      toast({
+        title: language === "es" ? "Viendo como usuario" : "Viewing as user",
+        description: language === "es"
+          ? `Ahora estas viendo como ${response.impersonatedUser.firstName} ${response.impersonatedUser.lastName}`
+          : `You are now viewing as ${response.impersonatedUser.firstName} ${response.impersonatedUser.lastName}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external/impersonation-status'] });
+      setLocation('/external/dashboard');
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === "es" ? "Error" : "Error",
+        description: error?.message || (language === "es"
+          ? "No se pudo iniciar la suplantacion"
+          : "Could not start impersonation"),
         variant: "destructive",
       });
     },
@@ -1676,6 +1706,16 @@ The HomesApp Team`;
                           <Button
                             variant="outline"
                             size="icon"
+                            onClick={() => impersonateMutation.mutate(user.id)}
+                            disabled={impersonateMutation.isPending}
+                            data-testid={`button-view-as-${user.id}`}
+                            title={language === "es" ? "Ver como este usuario" : "View as this user"}
+                          >
+                            <Eye className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
                             onClick={() => openEditDialog(user)}
                             data-testid={`button-edit-${user.id}`}
                           >
@@ -1801,6 +1841,16 @@ The HomesApp Team`;
                     </Badge>
                   )}
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => impersonateMutation.mutate(user.id)}
+                      disabled={impersonateMutation.isPending}
+                      data-testid={`button-view-as-card-${user.id}`}
+                      title={language === "es" ? "Ver como este usuario" : "View as this user"}
+                    >
+                      <Eye className="h-4 w-4 text-blue-600" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
