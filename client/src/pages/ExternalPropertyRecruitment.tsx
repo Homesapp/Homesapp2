@@ -332,68 +332,58 @@ export default function ExternalPropertyRecruitment() {
   };
 
   const renderKanbanView = () => (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex gap-2 overflow-x-auto pb-4">
       {PROSPECT_STATUSES.slice(0, -1).map((status) => (
         <div
           key={status.value}
-          className="flex-shrink-0 w-72"
+          className="flex-shrink-0 w-44"
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, status.value)}
         >
           <Card className="h-full">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${status.color}`} />
-                <CardTitle className="text-sm font-medium">{status.label}</CardTitle>
-                <Badge variant="secondary" className="ml-auto">
+            <CardHeader className="p-2 pb-1">
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${status.color}`} />
+                <CardTitle className="text-xs font-medium truncate">{status.label}</CardTitle>
+                <Badge variant="secondary" className="ml-auto text-xs h-5 px-1">
                   {prospectsByStatus[status.value]?.length || 0}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
-              <ScrollArea className="h-[calc(100vh-280px)]">
-                <div className="space-y-2">
+            <CardContent className="p-2 pt-0">
+              <ScrollArea className="h-[calc(100vh-240px)]">
+                <div className="space-y-1.5">
                   {prospectsByStatus[status.value]?.map((prospect) => (
                     <Card
                       key={prospect.id}
-                      className="p-3 cursor-grab hover-elevate"
+                      className="p-2 cursor-grab hover-elevate"
                       draggable
                       onDragStart={(e) => handleDragStart(e, prospect.id)}
                     >
-                      <div className="space-y-2">
-                        <div className="font-medium text-sm truncate">
+                      <div className="space-y-1">
+                        <div className="font-medium text-xs truncate">
                           {prospect.propertyName || "Sin nombre"}
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Home className="w-3 h-3" />
-                          {getPropertyTypeLabel(prospect.propertyType)}
-                        </div>
                         {prospect.neighborhood && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="w-3 h-3" />
-                            {prospect.neighborhood}
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                            <span className="truncate">{prospect.neighborhood}</span>
                           </div>
                         )}
                         {prospect.ownerFirstName && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <User className="w-3 h-3" />
-                            {prospect.ownerFirstName} {prospect.ownerLastName}
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <User className="w-2.5 h-2.5 flex-shrink-0" />
+                            <span className="truncate">{prospect.ownerFirstName}</span>
                           </div>
                         )}
-                        {prospect.estimatedRentPrice && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <DollarSign className="w-3 h-3" />
-                            ${Number(prospect.estimatedRentPrice).toLocaleString()} MXN
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-xs text-muted-foreground">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">
                             {formatDistanceToNow(new Date(prospect.createdAt), { addSuffix: true, locale: es })}
                           </span>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <MoreVertical className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-5 w-5">
+                                <MoreVertical className="h-3 w-3" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -428,7 +418,7 @@ export default function ExternalPropertyRecruitment() {
                     </Card>
                   ))}
                   {(!prospectsByStatus[status.value] || prospectsByStatus[status.value].length === 0) && (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
+                    <div className="text-center py-4 text-muted-foreground text-xs">
                       Sin prospectos
                     </div>
                   )}
