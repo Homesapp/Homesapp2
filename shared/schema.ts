@@ -7149,6 +7149,7 @@ export const externalCondominiums = pgTable("external_condominiums", {
   zone: varchar("zone", { length: 100 }), // Zona/colonia donde se ubica el condominio
   description: text("description"), // Descripción
   totalUnits: integer("total_units"), // Total de unidades en el condominio
+  propertyCategory: varchar("property_category", { length: 50 }).default("condominium"), // 'condominium' o 'house' (casa privada)
   isActive: boolean("is_active").notNull().default(true),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -7157,6 +7158,7 @@ export const externalCondominiums = pgTable("external_condominiums", {
   index("idx_external_condominiums_agency").on(table.agencyId),
   index("idx_external_condominiums_active").on(table.isActive),
   index("idx_external_condominiums_zone").on(table.zone),
+  index("idx_external_condominiums_category").on(table.propertyCategory),
 ]);
 
 export const insertExternalCondominiumSchema = createInsertSchema(externalCondominiums).omit({
