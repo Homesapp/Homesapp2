@@ -68,6 +68,7 @@ interface Unit {
   bedrooms: number | null;
   bathrooms: number | null;
   monthlyRent: number | null;
+  salePrice?: string | null;
   currency: string | null;
   status: string | null;
   images: string[] | null;
@@ -77,8 +78,12 @@ interface Unit {
   squareMeters: number | null;
   hasFurniture: boolean | null;
   hasParking: boolean | null;
+  hasAC?: boolean | null;
   petsAllowed: boolean | null;
   description: string | null;
+  commissionType?: string | null;
+  referrerName?: string | null;
+  listingType?: string | null;
 }
 
 interface ActiveCardSummary {
@@ -1221,7 +1226,7 @@ export default function SellerPropertyCatalog() {
                               {/* Prefer activeCard hasPets, fallback to legacy */}
                               {(() => {
                                 const hasPetsValue = lead.activeCard?.hasPets ?? lead.hasPets;
-                                const hasPets = hasPetsValue === "yes" || hasPetsValue === "si" || hasPetsValue === "sí" || hasPetsValue === true || hasPetsValue === "true";
+                                const hasPets = hasPetsValue === "yes" || hasPetsValue === "si" || hasPetsValue === "sí" || hasPetsValue === "true" || (hasPetsValue && hasPetsValue !== "no" && hasPetsValue !== "No");
                                 return hasPets ? <PawPrint className="h-3 w-3 text-amber-500" /> : null;
                               })()}
                             </div>
@@ -1921,7 +1926,20 @@ export default function SellerPropertyCatalog() {
                       >
                         {unit.status === "active" ? "Disponible" : "Rentada"}
                       </Badge>
-                      {/* Title Row: Name + Price */}
+                      {/* Referrer Badge - Shows if property has a referrer for higher commission */}
+                      {unit.referrerName && (
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-0 text-[10px] px-1.5 py-0.5">
+                            <Star className="h-3 w-3 mr-0.5 fill-current" />
+                            Referido
+                          </Badge>
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                            40-50% comisión
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Title Row: Name + Prices */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-semibold text-base line-clamp-1" data-testid={`text-unit-name-${unit.id}`}>
@@ -1937,17 +1955,30 @@ export default function SellerPropertyCatalog() {
                             </span>
                           </div>
                         </div>
-                        {/* Price Badge - Clean black text style */}
-                        <div className="flex-shrink-0 bg-primary/10 dark:bg-primary/20 rounded-lg px-2.5 py-1.5 border border-primary/20">
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-bold text-foreground">
-                              {unit.monthlyRent?.toLocaleString() || "—"}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground block text-center">
-                            {unit.currency || "MXN"}/mes
-                          </span>
+                        {/* Prices - Clean black text style */}
+                        <div className="flex-shrink-0 text-right">
+                          {/* Rent Price */}
+                          {unit.monthlyRent && (
+                            <div className="flex items-center gap-1 justify-end">
+                              <span className="text-sm font-bold text-foreground">
+                                ${unit.monthlyRent?.toLocaleString()}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                /{unit.currency || "MXN"}/mes
+                              </span>
+                            </div>
+                          )}
+                          {/* Sale Price */}
+                          {unit.salePrice && parseFloat(unit.salePrice) > 0 && (
+                            <div className="flex items-center gap-1 justify-end">
+                              <span className="text-sm font-bold text-foreground">
+                                ${parseFloat(unit.salePrice).toLocaleString()}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {unit.currency || "MXN"} venta
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 

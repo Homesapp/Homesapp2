@@ -26396,6 +26396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           condominiumName: externalCondominiums.name,
           squareMeters: externalUnits.area,
           description: externalUnits.description,
+          salePrice: externalUnits.salePrice,
+          commissionType: externalUnits.commissionType,
+          referrerName: externalUnits.referrerName,
+          listingType: externalUnits.listingType,
           petsAllowed: externalUnits.petFriendly,
         })
           .from(externalUnits)
@@ -39692,6 +39696,10 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
             condominiumName: externalCondominiums.name,
           squareMeters: externalUnits.area,
           description: externalUnits.description,
+          salePrice: externalUnits.salePrice,
+          commissionType: externalUnits.commissionType,
+          referrerName: externalUnits.referrerName,
+          listingType: externalUnits.listingType,
           petsAllowed: externalUnits.petFriendly,
             zone: externalUnits.zone,
             typology: externalUnits.typology,
