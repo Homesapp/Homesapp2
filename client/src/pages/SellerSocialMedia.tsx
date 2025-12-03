@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -675,34 +675,46 @@ export default function SellerSocialMedia() {
     queryKey: ["/api/external-seller/condominiums"],
   });
   
-  // Build properties query URL with proper query parameters
-  const propertiesQueryUrl = (() => {
-    const params = new URLSearchParams();
-    const type = propertySourceType === "condo" ? "condo" : propertySourceType === "house" ? "house" : undefined;
-    if (type) params.set("type", type);
-    if (propertySourceType === "condo" && selectedCondominiumId) params.set("condominiumId", selectedCondominiumId);
-    if (propertySearchQuery) params.set("search", propertySearchQuery);
-    const queryString = params.toString();
-    return `/api/external-seller/properties${queryString ? `?${queryString}` : ""}`;
-  })();
-  
+  // Properties query for AI generator/templates
   const { data: properties, isLoading: propertiesLoading } = useQuery<PropertyCatalogItem[]>({
-    queryKey: [propertiesQueryUrl],
+    queryKey: [
+      "/api/external-seller/properties",
+      propertySourceType,
+      selectedCondominiumId,
+      propertySearchQuery,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      const type = propertySourceType === "condo" ? "condo" : propertySourceType === "house" ? "house" : undefined;
+      if (type) params.set("type", type);
+      if (propertySourceType === "condo" && selectedCondominiumId) params.set("condominiumId", selectedCondominiumId);
+      if (propertySearchQuery) params.set("search", propertySearchQuery);
+      const queryString = params.toString();
+      const url = `/api/external-seller/properties${queryString ? `?${queryString}` : ""}`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch properties");
+      return res.json();
+    },
     enabled: propertySourceType === "house" || (propertySourceType === "condo" && !!selectedCondominiumId),
   });
   
-  // Build photo properties query URL with proper query parameters
-  const photoPropertiesQueryUrl = (() => {
-    const params = new URLSearchParams();
-    const type = photoSourceType === "condo" ? "condo" : "house";
-    params.set("type", type);
-    if (photoSourceType === "condo" && photoCondominiumId) params.set("condominiumId", photoCondominiumId);
-    return `/api/external-seller/properties?${params.toString()}`;
-  })();
-  
   // Photo properties query (separate from AI generator properties)
   const { data: photoProperties, isLoading: photoPropertiesLoading } = useQuery<PropertyCatalogItem[]>({
-    queryKey: [photoPropertiesQueryUrl],
+    queryKey: [
+      "/api/external-seller/properties-photos",
+      photoSourceType,
+      photoCondominiumId,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      const type = photoSourceType === "condo" ? "condo" : "house";
+      params.set("type", type);
+      if (photoSourceType === "condo" && photoCondominiumId) params.set("condominiumId", photoCondominiumId);
+      const url = `/api/external-seller/properties?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch photo properties");
+      return res.json();
+    },
     enabled: photoSourceType === "house" || (photoSourceType === "condo" && !!photoCondominiumId),
   });
   
