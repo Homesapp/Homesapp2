@@ -14,6 +14,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -368,6 +369,7 @@ function AuthenticatedApp() {
           userId={currentUser?.id}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
+          <ImpersonationBanner />
           <header className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b bg-background">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-1 sm:gap-2">
