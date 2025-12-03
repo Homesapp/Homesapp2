@@ -654,7 +654,7 @@ export default function SellerCalendar() {
               </CardDescription>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[350px]">
             {isLoadingAppointments ? (
               <div className="space-y-3">
                 <Skeleton className="h-20 w-full" />
@@ -662,7 +662,7 @@ export default function SellerCalendar() {
               </div>
             ) : selectedDate ? (
               (selectedDateAppointments.length > 0 || selectedDateReminders.length > 0) ? (
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[320px]">
                   <div className="space-y-3 pr-4">
                     {/* Reminders Section */}
                     {selectedDateReminders.length > 0 && (
@@ -786,8 +786,8 @@ export default function SellerCalendar() {
                   </div>
                 </ScrollArea>
               ) : (
-                <div className="text-center py-8">
-                  <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <div className="flex flex-col items-center justify-center h-[320px]">
+                  <CalendarIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <p className="text-muted-foreground text-sm mb-4">
                     {language === "es" 
                       ? "No hay citas para este día"
@@ -806,7 +806,8 @@ export default function SellerCalendar() {
                 </div>
               )
             ) : (
-              <div className="text-center py-8 text-muted-foreground text-sm">
+              <div className="flex flex-col items-center justify-center h-[320px] text-muted-foreground text-sm">
+                <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
                 {language === "es" 
                   ? "Selecciona un día en el calendario"
                   : "Select a day on the calendar"}
