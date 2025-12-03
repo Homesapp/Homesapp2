@@ -396,7 +396,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   // Check if user is authenticated via Google OAuth
   const user = req.user as any;
   if (req.isAuthenticated() && user?.googleAuth) {
-    // Check if Google OAuth user is suspended
+    // Check if Google OAuth user is suspended and cache role/agencyId
     if (user.claims?.sub) {
       const dbUser = await storage.getUser(user.claims.sub);
       if (dbUser?.isSuspended) {
@@ -405,6 +405,11 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
           message: "Tu cuenta ha sido suspendida. Contacta al administrador.",
           code: "ACCOUNT_SUSPENDED"
         });
+      }
+      // Cache role and agencyId for requireRole middleware
+      if (dbUser) {
+        user.cachedRole = dbUser.additionalRole || dbUser.role;
+        user.cachedAgencyId = dbUser.externalAgencyId;
       }
     }
     // Google OAuth session - no token refresh needed
