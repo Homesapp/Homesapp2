@@ -9945,3 +9945,89 @@ export const mediaSectionLabels = {
     other: "Other Photos",
   },
 } as const;
+
+// ============================================
+// SELLER SOCIAL MEDIA MARKETING SYSTEM
+// ============================================
+
+// Social Media Platform Types
+export const socialMediaPlatformEnum = pgEnum("social_media_platform", [
+  "facebook",
+  "instagram", 
+  "whatsapp",
+]);
+
+// Social Media Template Category
+export const socialMediaTemplateCategoryEnum = pgEnum("social_media_template_category", [
+  "new_listing",      // Nueva propiedad
+  "price_update",     // Actualización de precio
+  "open_house",       // Casa abierta
+  "featured",         // Destacada
+  "promotion",        // Promoción
+  "general",          // General
+]);
+
+// Seller Social Media Templates - Plantillas para publicaciones en redes sociales
+export const sellerSocialMediaTemplates = pgTable("seller_social_media_templates", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  sellerId: varchar("seller_id").references(() => users.id, { onDelete: "cascade" }), // null = shared template for agency
+  
+  title: varchar("title", { length: 150 }).notNull(),
+  platform: socialMediaPlatformEnum("platform").notNull(),
+  category: socialMediaTemplateCategoryEnum("category").notNull().default("general"),
+  
+  content: text("content").notNull(), // Template content with variables like {{property.name}}, {{property.price}}
+  hashtags: text("hashtags"), // Suggested hashtags for the post
+  
+  isAiGenerated: boolean("is_ai_generated").notNull().default(false),
+  isDefault: boolean("is_default").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  
+  usageCount: integer("usage_count").notNull().default(0), // Track how many times template was used
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_social_templates_agency").on(table.agencyId),
+  index("idx_social_templates_seller").on(table.sellerId),
+  index("idx_social_templates_platform").on(table.platform),
+  index("idx_social_templates_category").on(table.category),
+]);
+
+export const insertSellerSocialMediaTemplateSchema = createInsertSchema(sellerSocialMediaTemplates).omit({
+  id: true, createdAt: true, updatedAt: true, usageCount: true,
+});
+export type InsertSellerSocialMediaTemplate = z.infer<typeof insertSellerSocialMediaTemplateSchema>;
+export type SellerSocialMediaTemplate = typeof sellerSocialMediaTemplates.$inferSelect;
+
+// Seller Social Media Reminders - Recordatorios para re-publicar en redes sociales
+export const sellerSocialMediaReminders = pgTable("seller_social_media_reminders", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  agencyId: varchar("agency_id").notNull().references(() => externalAgencies.id, { onDelete: "cascade" }),
+  sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  unitId: varchar("unit_id").references(() => externalUnits.id, { onDelete: "cascade" }),
+  
+  platform: socialMediaPlatformEnum("platform").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  notes: text("notes"),
+  
+  scheduledAt: timestamp("scheduled_at").notNull(), // When to remind
+  isCompleted: boolean("is_completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_social_reminders_agency").on(table.agencyId),
+  index("idx_social_reminders_seller").on(table.sellerId),
+  index("idx_social_reminders_unit").on(table.unitId),
+  index("idx_social_reminders_scheduled").on(table.scheduledAt),
+  index("idx_social_reminders_completed").on(table.isCompleted),
+]);
+
+export const insertSellerSocialMediaReminderSchema = createInsertSchema(sellerSocialMediaReminders).omit({
+  id: true, createdAt: true, updatedAt: true, completedAt: true,
+});
+export type InsertSellerSocialMediaReminder = z.infer<typeof insertSellerSocialMediaReminderSchema>;
+export type SellerSocialMediaReminder = typeof sellerSocialMediaReminders.$inferSelect;
