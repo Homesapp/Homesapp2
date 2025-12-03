@@ -32,7 +32,7 @@ export function ImpersonationBanner() {
 
   const endImpersonationMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("DELETE", "/api/external/impersonation", {});
+      return await apiRequest("POST", "/api/external/end-impersonation", {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
