@@ -52,7 +52,9 @@ import {
   RefreshCw,
   Download,
   Home,
-  Key
+  Key,
+  Coins,
+  Sparkles
 } from "lucide-react";
 
 type SellerWithStats = {
@@ -65,6 +67,9 @@ type SellerWithStats = {
   terminationDate: string | null;
   notes: string | null;
   createdAt: string;
+  aiCreditBalance: number;
+  aiCreditUsed: number;
+  aiCreditTotalAssigned: number;
   user: {
     id: string;
     firstName: string;
@@ -650,6 +655,7 @@ export default function ExternalSellersManagement() {
   const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SellerGoal | null>(null);
   const [editingCommissionRate, setEditingCommissionRate] = useState<string | null>(null);
+  const [editingCredits, setEditingCredits] = useState<number | null>(null);
   const [goalFormData, setGoalFormData] = useState({
     sellerId: "",
     goalType: "leads",
@@ -868,6 +874,42 @@ export default function ExternalSellersManagement() {
         description: language === "es" 
           ? "La meta ha sido eliminada"
           : "The goal has been deleted"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: language === "es" ? "Error" : "Error",
+        description: error.message
+      });
+    }
+  });
+
+  const assignCreditsMutation = useMutation({
+    mutationFn: async ({ sellerId, credits }: { sellerId: string; credits: number }) => {
+      const response = await apiRequest("POST", `/api/external/sellers/${sellerId}/credits`, { credits });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error assigning credits");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external/sellers"] });
+      setEditingCredits(null);
+      if (selectedSeller) {
+        setSelectedSeller({
+          ...selectedSeller,
+          aiCreditBalance: data.balance,
+          aiCreditUsed: data.used,
+          aiCreditTotalAssigned: data.totalAssigned,
+        });
+      }
+      toast({
+        title: language === "es" ? "Créditos asignados" : "Credits assigned",
+        description: language === "es" 
+          ? `Se asignaron ${data.totalAssigned} créditos correctamente`
+          : `${data.totalAssigned} credits assigned successfully`
       });
     },
     onError: (error: any) => {
@@ -1359,6 +1401,12 @@ export default function ExternalSellersManagement() {
                     )}
                   </Button>
                 </TableHead>
+                <TableHead className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    {language === "es" ? "Créditos IA" : "AI Credits"}
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">{language === "es" ? "Acciones" : "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
@@ -1413,6 +1461,17 @@ export default function ExternalSellersManagement() {
                     <span className={seller.stats.unpaidCommissions > 0 ? "text-amber-600 font-medium" : ""}>
                       {formatCurrency(seller.stats.unpaidCommissions)}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Badge 
+                        variant={seller.aiCreditBalance > 0 ? "secondary" : "outline"}
+                        className={seller.aiCreditBalance === 0 ? "text-muted-foreground" : ""}
+                      >
+                        <Coins className="h-3 w-3 mr-1" />
+                        {seller.aiCreditBalance}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -1489,6 +1548,19 @@ export default function ExternalSellersManagement() {
                       {formatCurrency(seller.stats.unpaidCommissions)}
                     </p>
                   </div>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Sparkles className="h-3 w-3" />
+                    {language === "es" ? "Créditos IA" : "AI Credits"}
+                  </div>
+                  <Badge 
+                    variant={seller.aiCreditBalance > 0 ? "secondary" : "outline"}
+                    className={seller.aiCreditBalance === 0 ? "text-muted-foreground" : ""}
+                  >
+                    <Coins className="h-3 w-3 mr-1" />
+                    {seller.aiCreditBalance} / {seller.aiCreditTotalAssigned}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -2491,6 +2563,95 @@ export default function ExternalSellersManagement() {
                           : 0
                         }%
                       </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* AI Credits Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      {language === "es" ? "Créditos de IA" : "AI Credits"}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {language === "es" 
+                        ? "Créditos disponibles para generar contenido con IA" 
+                        : "Credits available for AI content generation"}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-full">
+                          <Coins className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <span className={`text-2xl font-bold ${selectedSeller.aiCreditBalance > 0 ? "text-primary" : "text-destructive"}`}>
+                              {selectedSeller.aiCreditBalance}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              / {selectedSeller.aiCreditTotalAssigned}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {language === "es" ? "Usados:" : "Used:"} {selectedSeller.aiCreditUsed}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {editingCredits !== null ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="1000"
+                            value={editingCredits}
+                            onChange={(e) => setEditingCredits(parseInt(e.target.value) || 0)}
+                            className="w-20 h-8 text-center"
+                            data-testid="input-assign-credits"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (editingCredits >= 0 && selectedSeller) {
+                                assignCreditsMutation.mutate({ 
+                                  sellerId: selectedSeller.id, 
+                                  credits: editingCredits 
+                                });
+                              }
+                            }}
+                            disabled={assignCreditsMutation.isPending}
+                            data-testid="button-confirm-credits"
+                          >
+                            {assignCreditsMutation.isPending ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingCredits(null)}
+                            disabled={assignCreditsMutation.isPending}
+                            data-testid="button-cancel-credits"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingCredits(selectedSeller.aiCreditTotalAssigned)}
+                          data-testid="button-edit-credits"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          {language === "es" ? "Asignar" : "Assign"}
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

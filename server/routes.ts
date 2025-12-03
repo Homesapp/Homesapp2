@@ -41891,6 +41891,9 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
     hireDate: z.string().trim().optional(),
     terminationDate: z.string().trim().optional(),
     notes: z.string().trim().optional(),
+    aiCreditBalance: z.number().int().min(0).optional(),
+    aiCreditUsed: z.number().int().min(0).optional(),
+    aiCreditTotalAssigned: z.number().int().min(0).optional(),
   });
 
   const createCommissionSchema = z.object({
@@ -42075,6 +42078,54 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating seller:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/external/sellers/:id/credits - Assign AI credits to a seller
+  app.post("/api/external/sellers/:id/credits", isAuthenticated, requireRole(EXTERNAL_ADMIN_ROLES), async (req: any, res) => {
+    try {
+      const agencyId = await getUserAgencyId(req);
+      if (!agencyId) return res.status(403).json({ message: "No agency access" });
+
+      const { credits } = req.body;
+      if (typeof credits !== "number" || credits < 0 || !Number.isInteger(credits)) {
+        return res.status(400).json({ message: "Credits must be a non-negative integer" });
+      }
+
+      const profile = await storage.getExternalSellerProfile(req.params.id);
+      if (!profile || profile.agencyId !== agencyId) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+
+      // Calculate new balance: reset used to 0, add new credits
+      const newBalance = credits;
+      const updated = await storage.updateExternalSellerProfile(req.params.id, {
+        aiCreditBalance: newBalance,
+        aiCreditUsed: 0,
+        aiCreditTotalAssigned: credits,
+      });
+
+      // Log credit assignment event
+      await db.insert(aiCreditEvents).values({
+        id: crypto.randomUUID(),
+        agencyId,
+        sellerId: profile.userId,
+        eventType: "credits_assigned",
+        creditsChange: credits,
+        newBalance: newBalance,
+        description: `Admin assigned ${credits} AI credits`,
+        metadata: { assignedBy: req.user?.id || "unknown" },
+      });
+
+      res.json({
+        message: `Successfully assigned ${credits} credits`,
+        balance: newBalance,
+        used: 0,
+        totalAssigned: credits,
+      });
+    } catch (error: any) {
+      console.error("Error assigning credits:", error);
       res.status(500).json({ message: error.message });
     }
   });
