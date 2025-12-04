@@ -1333,7 +1333,12 @@ export const condominiums = pgTable("condominiums", {
   requestedBy: varchar("requested_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_condominiums_approval_status").on(table.approvalStatus),
+  index("idx_condominiums_colony").on(table.colonyId),
+  index("idx_condominiums_active").on(table.active),
+  index("idx_condominiums_active_approved").on(table.active, table.approvalStatus),
+]);
 
 export const insertCondominiumSchema = createInsertSchema(condominiums).omit({
   id: true,
@@ -1438,7 +1443,14 @@ export const leads = pgTable("leads", {
   validUntil: timestamp("valid_until").notNull(), // Fecha de expiración del lead (3 meses por defecto)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_leads_status").on(table.status),
+  index("idx_leads_registered_by").on(table.registeredById),
+  index("idx_leads_assigned_to").on(table.assignedToId),
+  index("idx_leads_created_at").on(table.createdAt),
+  index("idx_leads_valid_until").on(table.validUntil),
+  index("idx_leads_status_assigned").on(table.status, table.assignedToId),
+]);
 
 export const insertLeadSchema = createInsertSchema(leads)
   .omit({
@@ -4662,7 +4674,15 @@ export const offerTokens = pgTable("offer_tokens", {
   }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_offer_tokens_is_used").on(table.isUsed),
+  index("idx_offer_tokens_expires_at").on(table.expiresAt),
+  index("idx_offer_tokens_created_by").on(table.createdBy),
+  index("idx_offer_tokens_external_unit").on(table.externalUnitId),
+  index("idx_offer_tokens_external_client").on(table.externalClientId),
+  index("idx_offer_tokens_external_lead").on(table.externalLeadId),
+  index("idx_offer_tokens_used_expires").on(table.isUsed, table.expiresAt),
+]);
 
 export const insertOfferTokenSchema = createInsertSchema(offerTokens).omit({
   id: true,
