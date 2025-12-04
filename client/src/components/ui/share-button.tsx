@@ -6,10 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Share2, Copy, Check, ExternalLink, AlertCircle } from "lucide-react";
+import { Share2, Copy, Check, AlertCircle } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface ShareButtonProps {
@@ -39,8 +40,10 @@ export function ShareButton({
 }: ShareButtonProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
+  const isMobile = useMobile();
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [showFallbackMenu, setShowFallbackMenu] = useState(false);
 
   const translations = {
     es: {
@@ -77,29 +80,49 @@ export function ShareButton({
 
   const canUseNativeShare = typeof navigator !== "undefined" && navigator.share;
 
-  const handleCopyToClipboard = async () => {
+  const handleCopyToClipboard = async (): Promise<boolean> => {
     if (!isValidUrl) {
       toast({
         variant: "destructive",
         title: t.noLink,
         description: t.noLinkDesc,
       });
-      return;
+      return false;
     }
 
     try {
-      await navigator.clipboard.writeText(url!);
-      setCopied(true);
-      toast({
-        title: t.copied,
-        description: t.copiedDesc,
-      });
-      setTimeout(() => setCopied(false), 2000);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url!);
+        setCopied(true);
+        toast({
+          title: t.copied,
+          description: t.copiedDesc,
+        });
+        setTimeout(() => setCopied(false), 2000);
+        return true;
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = url!;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          setCopied(true);
+          toast({
+            title: t.copied,
+            description: t.copiedDesc,
+          });
+          setTimeout(() => setCopied(false), 2000);
+          return true;
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
     } catch {
-      toast({
-        variant: "destructive",
-        title: t.shareError,
-      });
+      setShowFallbackMenu(true);
+      return false;
     }
   };
 
@@ -137,7 +160,7 @@ export function ShareButton({
     }
 
     if (!canUseNativeShare) {
-      handleCopyToClipboard();
+      setShowFallbackMenu(true);
       return;
     }
 
@@ -155,7 +178,7 @@ export function ShareButton({
       });
     } catch (error: any) {
       if (error.name !== "AbortError") {
-        handleCopyToClipboard();
+        setShowFallbackMenu(true);
       }
     } finally {
       setIsSharing(false);
@@ -215,7 +238,45 @@ export function ShareButton({
     );
   }
 
-  if (canUseNativeShare) {
+  if (isMobile && !prominent) {
+    return (
+      <div className={cn("flex gap-1", className)}>
+        {canUseNativeShare ? (
+          <Button
+            variant={variant}
+            size={size}
+            onClick={handleNativeShare}
+            disabled={isSharing}
+            data-testid="button-share-native"
+          >
+            <Share2 className="h-4 w-4" />
+            {showLabel && <span className="ml-2">{t.share}</span>}
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant={variant}
+              size={size}
+              onClick={handleWhatsAppShare}
+              data-testid="button-share-whatsapp-mobile"
+            >
+              <SiWhatsapp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={variant}
+              size={size}
+              onClick={handleCopyToClipboard}
+              data-testid="button-share-copy-mobile"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (canUseNativeShare && !showFallbackMenu) {
     return (
       <Button
         variant={variant}
@@ -232,7 +293,7 @@ export function ShareButton({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={showFallbackMenu} onOpenChange={setShowFallbackMenu}>
       <DropdownMenuTrigger asChild>
         <Button variant={variant} size={size} className={className} data-testid="button-share-menu">
           <Share2 className="h-4 w-4" />
@@ -244,7 +305,7 @@ export function ShareButton({
           <SiWhatsapp className="h-4 w-4 mr-2 text-green-600" />
           {t.openWhatsApp}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleCopyToClipboard} data-testid="menu-share-copy">
+        <DropdownMenuItem onClick={() => { handleCopyToClipboard(); setShowFallbackMenu(false); }} data-testid="menu-share-copy">
           {copied ? (
             <Check className="h-4 w-4 mr-2 text-green-600" />
           ) : (

@@ -59,7 +59,9 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
+import { ShareButton } from "@/components/ui/share-button";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ExternalLead } from "@shared/schema";
@@ -106,6 +108,7 @@ const STATUS_LABELS: Record<string, { es: string; en: string }> = {
 export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
+  const isMobile = useMobile();
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   const [isAddShowingOpen, setIsAddShowingOpen] = useState(false);
   const [newActivityType, setNewActivityType] = useState<ActivityType>("call");
@@ -525,6 +528,22 @@ export default function LeadCRMTabs({ lead }: LeadCRMTabsProps) {
                           </div>
                           {offer.message && (
                             <p className="text-xs text-muted-foreground mt-2 italic line-clamp-2">"{offer.message}"</p>
+                          )}
+                          
+                          {/* Share button for quick mobile access */}
+                          {offer.publicUrl && (
+                            <div className="mt-3 pt-3 border-t">
+                              <ShareButton
+                                url={offer.publicUrl}
+                                title={`${offer.propertyName}${offer.unitNumber ? ` - ${offer.unitNumber}` : ''}`}
+                                recipientPhone={lead.phone}
+                                recipientName={lead.firstName}
+                                variant="outline"
+                                size={isMobile ? "default" : "sm"}
+                                className="w-full"
+                                prominent={isMobile}
+                              />
+                            </div>
                           )}
                         </div>
                       </div>
