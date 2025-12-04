@@ -13694,6 +13694,15 @@ export class DatabaseStorage implements IStorage {
     return result || null;
   }
 
+  async findExternalUnitMediaByThumbnail(thumbnailUrl: string): Promise<ExternalUnitMedia | null> {
+    const [result] = await db
+      .select()
+      .from(externalUnitMedia)
+      .where(eq(externalUnitMedia.thumbnailUrl, thumbnailUrl))
+      .limit(1);
+    return result || null;
+  }
+
   async moveMediaToSection(mediaId: string, newSection: string, sectionIndex: number = 1): Promise<ExternalUnitMedia | null> {
     const labelSections = [
       "bedroom", "bathroom", "half_bath", "kitchen", "living_room", 

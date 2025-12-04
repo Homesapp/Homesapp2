@@ -44943,7 +44943,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
 
 
 
-  // GET /api/public/images/:path - Serve public images from Object Storage
+  // GET /api/public/images/:path - Serve public images
+  // First checks Google Drive URLs from database, then falls back to Object Storage
   app.get("/api/public/images/*", async (req, res) => {
     try {
       const imagePath = req.params[0];
@@ -44951,34 +44952,54 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         return res.status(400).json({ message: "Image path required" });
       }
 
+      // First, try to find the Drive URL for this image in the database
+      const thumbnailPath = `/api/public/images/${imagePath}`;
+      const mediaRecord = await storage.findExternalUnitMediaByThumbnail(thumbnailPath);
+      
+      if (mediaRecord && mediaRecord.driveWebViewUrl) {
+        // Convert Drive view URL to direct thumbnail URL for embedding
+        const fileIdMatch = mediaRecord.driveWebViewUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch) {
+          const fileId = fileIdMatch[1];
+          // Use Google Drive thumbnail URL for direct embedding (max 1200px)
+          const driveThumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
+          return res.redirect(302, driveThumbUrl);
+        }
+      }
+
+      // Fallback: Try Object Storage
       const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
       if (!bucketId) {
-        return res.status(500).json({ message: "Object storage not configured" });
+        return res.status(404).json({ message: "Image not found" });
       }
 
       const bucket = objectStorageClient.bucket(bucketId);
       const file = bucket.file(`public/${imagePath}`);
       
-      const [exists] = await file.exists();
-      if (!exists) {
+      try {
+        const [exists] = await file.exists();
+        if (!exists) {
+          return res.status(404).json({ message: "Image not found" });
+        }
+
+        const [metadata] = await file.getMetadata();
+        res.set({
+          "Content-Type": metadata.contentType || "image/jpeg",
+          "Cache-Control": "public, max-age=31536000",
+          "Access-Control-Allow-Origin": "*",
+        });
+
+        const stream = file.createReadStream();
+        stream.on("error", (err) => {
+          console.error("Stream error:", err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: "Error streaming image" });
+          }
+        });
+        stream.pipe(res);
+      } catch (storageError) {
         return res.status(404).json({ message: "Image not found" });
       }
-
-      const [metadata] = await file.getMetadata();
-      res.set({
-        "Content-Type": metadata.contentType || "image/jpeg",
-        "Cache-Control": "public, max-age=31536000",
-        "Access-Control-Allow-Origin": "*",
-      });
-
-      const stream = file.createReadStream();
-      stream.on("error", (err) => {
-        console.error("Stream error:", err);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Error streaming image" });
-        }
-      });
-      stream.pipe(res);
     } catch (error: any) {
       console.error("Error serving image:", error);
       res.status(500).json({ message: error.message });
