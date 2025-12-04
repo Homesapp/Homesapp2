@@ -159,6 +159,13 @@ const t = {
     validationMoveInDate: "Fecha de ingreso es requerida",
     validationNumberOfOccupants: "Número de ocupantes es requerido",
     validationPets: "Información sobre mascotas es requerida",
+    validationPaymentTerms: "Debes aceptar los términos de pago para continuar",
+    
+    // Payment terms
+    paymentTermsTitle: "Términos de Pago",
+    paymentTermsLiving: "Al aceptar esta oferta de renta, se me solicitará un apartado del 50% de la renta mensual + costo de contrato ($2,500 MXN) para continuar con el proceso de elaboración de contrato. El restante (50% de la renta + 1 mes de depósito de seguridad) se deberá pagar antes o al momento del check-in.",
+    paymentTermsSublet: "Al aceptar esta oferta de renta, deberé pagar el 100% de la primera renta mensual + costo de contrato ($3,800 MXN). Los 2 meses de depósito de seguridad se pagan al momento de ingresar a la propiedad.",
+    acceptPaymentTerms: "Acepto los términos de pago descritos arriba",
     
     // Footer
     footerHomesApp: "HomesApp - Tulum Rental Homes ™",
@@ -302,6 +309,13 @@ const t = {
     validationMoveInDate: "Move-in date is required",
     validationNumberOfOccupants: "Number of occupants is required",
     validationPets: "Pet information is required",
+    validationPaymentTerms: "You must accept the payment terms to continue",
+    
+    // Payment terms
+    paymentTermsTitle: "Payment Terms",
+    paymentTermsLiving: "Upon accepting this rental offer, I will be required to pay a reservation of 50% of the monthly rent + contract cost ($2,500 MXN) to proceed with the contract preparation process. The remaining balance (50% of rent + 1 month security deposit) must be paid before or at the time of check-in.",
+    paymentTermsSublet: "Upon accepting this rental offer, I must pay 100% of the first monthly rent + contract cost ($3,800 MXN). The 2 months security deposit is paid at the time of entering the property.",
+    acceptPaymentTerms: "I accept the payment terms described above",
     
     // Footer
     footerHomesApp: "HomesApp - Tulum Rental Homes ™",
@@ -347,6 +361,7 @@ export default function PublicOfferForm() {
     propertyRequiredServices: z.array(z.string()).optional(),
     additionalComments: z.string().optional(),
     signature: z.string().optional(),
+    acceptPaymentTerms: z.boolean().refine(val => val === true, { message: text.validationPaymentTerms }),
   });
 
   type OfferFormValues = z.infer<typeof offerFormSchema>;
@@ -406,6 +421,7 @@ export default function PublicOfferForm() {
       propertyRequiredServices: [],
       additionalComments: "",
       signature: "",
+      acceptPaymentTerms: false,
     },
   });
 
@@ -437,6 +453,11 @@ export default function PublicOfferForm() {
   useEffect(() => {
     form.setValue("securityDeposit", securityDeposit);
   }, [securityDeposit, form]);
+
+  // Reset payment terms acceptance when usage type changes
+  useEffect(() => {
+    form.setValue("acceptPaymentTerms", false);
+  }, [usageType, form]);
 
   useEffect(() => {
     if (contractDuration === "personalizado" && moveInDate && moveOutDate) {
@@ -1425,6 +1446,37 @@ export default function PublicOfferForm() {
                     </div>
                     <FormDescription>{text.signatureDesc}</FormDescription>
                   </div>
+                </div>
+
+                {/* Payment Terms Section */}
+                <div className="space-y-4 pt-6 border-t">
+                  <h3 className="text-lg font-semibold">{text.paymentTermsTitle}</h3>
+                  <div className="p-4 bg-muted rounded-lg space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {usageType === "vivienda" ? text.paymentTermsLiving : text.paymentTermsSublet}
+                    </p>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="acceptPaymentTerms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-accept-payment-terms"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium cursor-pointer">
+                            {text.acceptPaymentTerms} *
+                          </FormLabel>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <Button
