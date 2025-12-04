@@ -846,6 +846,7 @@ export default function LeadRegistrationBroker() {
                       <Popover open={unitTypeOpen} onOpenChange={setUnitTypeOpen}>
                         <PopoverTrigger asChild>
                           <Button
+                            type="button"
                             variant="outline"
                             className="w-full justify-between font-normal"
                             data-testid="button-unit-type"
@@ -890,6 +891,7 @@ export default function LeadRegistrationBroker() {
                     <Popover open={neighborhoodOpen} onOpenChange={setNeighborhoodOpen}>
                       <PopoverTrigger asChild>
                         <Button
+                          type="button"
                           variant="outline"
                           className="w-full justify-between font-normal"
                           data-testid="button-neighborhood"

@@ -108,6 +108,7 @@ export function SearchableMultiSelect({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            type="button"
             variant="outline"
             role="combobox"
             aria-expanded={open}
@@ -145,6 +146,7 @@ export function SearchableMultiSelect({
             />
             {value.length > 0 && (
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
