@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import { Search, MapPin, Map, Home, Heart, SlidersHorizontal, Building2, Users, Star, Clock, ChevronRight, MessageCircle, Bed, Bath, Square, Calendar, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getPropertyTitle } from "@/lib/propertyHelpers";
 import logoIcon from "@assets/H mes (500 x 300 px)_1759672952263.png";
-import { FloatingChat } from "@/components/FloatingChat";
+
+const FloatingChat = lazy(() => import("@/components/FloatingChat").then(m => ({ default: m.FloatingChat })));
 
 export default function PublicDashboard() {
   const [, setLocation] = useLocation();
@@ -22,7 +23,13 @@ export default function PublicDashboard() {
   const [colonyName, setColonyName] = useState("");
   const [condoName, setCondoName] = useState("");
   const [allowsSubleasing, setAllowsSubleasing] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowChat(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Load external approved properties for homepage
   const { data: externalPropertiesResponse } = useQuery<{ data: any[]; totalCount: number }>({
@@ -493,6 +500,7 @@ export default function PublicDashboard() {
                       src={property.primaryImages[0]}
                       alt={getFormattedTitle(property)}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
                       data-testid={`img-all-property-${property.id}`}
                     />
                   ) : (
@@ -761,7 +769,11 @@ export default function PublicDashboard() {
         </div>
       </footer>
 
-      <FloatingChat />
+      {showChat && (
+        <Suspense fallback={null}>
+          <FloatingChat />
+        </Suspense>
+      )}
     </div>
   );
 }
