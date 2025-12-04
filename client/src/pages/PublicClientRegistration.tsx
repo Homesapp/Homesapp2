@@ -20,13 +20,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const translations = {
   es: {
-    pageTitle: "Registro de Lead para Vendedores",
-    pageDescription: "Registra los datos del cliente interesado en propiedades de renta",
+    pageTitle: "Registro de Cliente",
+    pageDescription: "¿Buscas rentar una propiedad? Regístrate y te contactaremos pronto",
     smartRealEstate: "Smart Real Estate",
-    step1Title: "Información del Cliente",
-    step1Desc: "Datos de contacto",
-    step2Title: "Detalles de Búsqueda",
-    step2Desc: "Preferencias de propiedad",
+    step1Title: "Tus Datos",
+    step1Desc: "Información de contacto",
+    step2Title: "Tu Búsqueda",
+    step2Desc: "¿Qué tipo de propiedad buscas?",
     firstName: "Nombre",
     lastName: "Apellido",
     email: "Correo Electrónico",
@@ -39,9 +39,9 @@ const translations = {
     year1: "1 año",
     years2: "2 años",
     years3Plus: "3+ años",
-    checkInDate: "Fecha de Check-in",
+    checkInDate: "Fecha de Entrada Deseada",
     pets: "Mascotas",
-    hasPetsQuestion: "¿Tiene mascotas?",
+    hasPetsQuestion: "¿Tienes mascotas?",
     petNo: "No",
     pet1Dog: "1 Perro",
     pet2Dogs: "2 Perros",
@@ -53,35 +53,31 @@ const translations = {
     budgetMax: "Máx",
     bedrooms: "Recámaras",
     bedroomsPlaceholder: "Ej: 1-2, 2+, 3",
-    unitType: "Tipo de Unidad (opcional, múltiple)",
-    selectUnitTypes: "Seleccionar tipos de unidad...",
+    unitType: "Tipo de Propiedad (opcional)",
+    selectUnitTypes: "Seleccionar tipos...",
     selectedTypes: "seleccionado(s)",
-    zone: "Zona Deseada (opcional, múltiple)",
+    zone: "Zona de Interés (opcional)",
     selectZones: "Seleccionar zonas...",
     selectedZones: "zona(s) seleccionada(s)",
     propertyInterest: "Propiedades de Interés (Opcional)",
-    propertyInterestDesc: "Puedes agregar múltiples propiedades de diferentes condominios que le interesen al cliente.",
+    propertyInterestDesc: "Si ya viste alguna propiedad que te interesa, puedes agregarla aquí.",
     condominium: "Condominio",
     selectCondominium: "Seleccionar condominio",
     unitsOfInterest: "Unidades de Interés",
     addUnit: "Agregar unidad",
     selectCondoFirst: "Primero seleccione un condominio",
-    addPropertyInterest: "Agregar Propiedad de Interés",
+    addPropertyInterest: "Agregar Propiedad",
     units: "unidad(es)",
-    sellerInfo: "Información del Vendedor",
-    sellerRegistering: "Vendedor que Registra",
-    selectSeller: "Seleccionar vendedor",
-    sellerDesc: "Selecciona tu nombre de la lista de vendedores registrados.",
     notes: "Notas Adicionales",
-    notesPlaceholder: "Cualquier información adicional sobre el cliente...",
+    notesPlaceholder: "Cuéntanos más sobre lo que buscas...",
     previous: "Anterior",
     next: "Siguiente",
-    submit: "Registrar Lead",
+    submit: "Enviar Registro",
     submitting: "Enviando...",
-    successTitle: "¡Registro Completado!",
-    successDescription: "Hemos recibido la información del lead. El vendedor asignado será notificado.",
+    successTitle: "¡Registro Recibido!",
+    successDescription: "Gracias por tu interés. Un asesor te contactará pronto para ayudarte a encontrar tu propiedad ideal.",
     successToastTitle: "¡Registro Exitoso!",
-    successToastDesc: "Gracias por registrar este lead. El vendedor será notificado.",
+    successToastDesc: "Pronto te contactaremos.",
     errorTitle: "Error",
     errorDesc: "Hubo un problema al enviar tu registro",
     required: "*",
@@ -93,13 +89,13 @@ const translations = {
     loft: "Loft",
   },
   en: {
-    pageTitle: "Lead Registration for Sellers",
-    pageDescription: "Register client information interested in rental properties",
+    pageTitle: "Client Registration",
+    pageDescription: "Looking to rent a property? Register and we'll contact you soon",
     smartRealEstate: "Smart Real Estate",
-    step1Title: "Client Information",
+    step1Title: "Your Information",
     step1Desc: "Contact details",
-    step2Title: "Search Details",
-    step2Desc: "Property preferences",
+    step2Title: "Your Search",
+    step2Desc: "What type of property are you looking for?",
     firstName: "First Name",
     lastName: "Last Name",
     email: "Email",
@@ -112,9 +108,9 @@ const translations = {
     year1: "1 year",
     years2: "2 years",
     years3Plus: "3+ years",
-    checkInDate: "Check-in Date",
+    checkInDate: "Desired Move-in Date",
     pets: "Pets",
-    hasPetsQuestion: "Has pets?",
+    hasPetsQuestion: "Do you have pets?",
     petNo: "No",
     pet1Dog: "1 Dog",
     pet2Dogs: "2 Dogs",
@@ -126,35 +122,31 @@ const translations = {
     budgetMax: "Max",
     bedrooms: "Bedrooms",
     bedroomsPlaceholder: "Ex: 1-2, 2+, 3",
-    unitType: "Unit Type (optional, multiple)",
-    selectUnitTypes: "Select unit types...",
+    unitType: "Property Type (optional)",
+    selectUnitTypes: "Select types...",
     selectedTypes: "selected",
-    zone: "Desired Zone (optional, multiple)",
-    selectZones: "Select zones...",
-    selectedZones: "zone(s) selected",
+    zone: "Area of Interest (optional)",
+    selectZones: "Select areas...",
+    selectedZones: "area(s) selected",
     propertyInterest: "Properties of Interest (Optional)",
-    propertyInterestDesc: "You can add multiple properties from different condos that the client is interested in.",
+    propertyInterestDesc: "If you've already seen a property you like, you can add it here.",
     condominium: "Condominium",
     selectCondominium: "Select condominium",
     unitsOfInterest: "Units of Interest",
     addUnit: "Add unit",
     selectCondoFirst: "First select a condominium",
-    addPropertyInterest: "Add Property of Interest",
+    addPropertyInterest: "Add Property",
     units: "unit(s)",
-    sellerInfo: "Seller Information",
-    sellerRegistering: "Registering Seller",
-    selectSeller: "Select seller",
-    sellerDesc: "Select your name from the list of registered sellers.",
     notes: "Additional Notes",
-    notesPlaceholder: "Any additional information about the client...",
+    notesPlaceholder: "Tell us more about what you're looking for...",
     previous: "Previous",
     next: "Next",
-    submit: "Register Lead",
+    submit: "Submit Registration",
     submitting: "Submitting...",
-    successTitle: "Registration Complete!",
-    successDescription: "We have received the lead information. The assigned seller will be notified.",
+    successTitle: "Registration Received!",
+    successDescription: "Thank you for your interest. An advisor will contact you soon to help you find your ideal property.",
     successToastTitle: "Registration Successful!",
-    successToastDesc: "Thank you for registering this lead. The seller will be notified.",
+    successToastDesc: "We'll contact you soon.",
     errorTitle: "Error",
     errorDesc: "There was a problem submitting your registration",
     required: "*",
@@ -209,7 +201,7 @@ const getSteps = (t: typeof translations.es) => [
   { id: 2, title: t.step2Title, description: t.step2Desc, icon: Search },
 ];
 
-const vendedorFormSchema = z.object({
+const clientFormSchema = z.object({
   firstName: z.string().min(1, "Nombre requerido"),
   lastName: z.string().min(1, "Apellido requerido"),
   email: z.string().email("Correo electrónico válido").optional().or(z.literal("")),
@@ -225,15 +217,13 @@ const vendedorFormSchema = z.object({
   desiredNeighborhoods: z.array(z.string()).optional(),
   interestedCondominiumId: z.string().optional(),
   interestedUnitIds: z.array(z.string()).optional(),
-  sellerId: z.string().optional(),
-  sellerName: z.string().optional(),
   source: z.string().optional(),
   notes: z.string().optional(),
 });
 
-type VendedorFormData = z.infer<typeof vendedorFormSchema>;
+type ClientFormData = z.infer<typeof clientFormSchema>;
 
-export default function LeadRegistrationVendedor() {
+export default function PublicClientRegistration() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [submitted, setSubmitted] = useState(false);
@@ -261,18 +251,6 @@ export default function LeadRegistrationVendedor() {
     staleTime: 30 * 60 * 1000,
   });
 
-  // Fetch sellers for dropdown
-  const { data: sellersData, isLoading: isLoadingSellers } = useQuery<{ id: string; fullName: string }[]>({
-    queryKey: ["/api/public/sellers"],
-    queryFn: async () => {
-      const response = await fetch("/api/public/sellers");
-      if (!response.ok) return [];
-      return response.json();
-    },
-    staleTime: 10 * 60 * 1000,
-  });
-  const sellers = sellersData || [];
-
   // Fetch condominiums
   const { data: condominiumsData, isLoading: isLoadingCondos } = useQuery<{ id: string; name: string; neighborhood?: string }[]>({
     queryKey: ["/api/public/condominiums"],
@@ -298,8 +276,8 @@ export default function LeadRegistrationVendedor() {
   });
   const units = unitsData || [];
 
-  const form = useForm<VendedorFormData>({
-    resolver: zodResolver(vendedorFormSchema),
+  const form = useForm<ClientFormData>({
+    resolver: zodResolver(clientFormSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -316,17 +294,14 @@ export default function LeadRegistrationVendedor() {
       desiredNeighborhoods: [],
       interestedCondominiumId: "",
       interestedUnitIds: [],
-      sellerId: "",
-      sellerName: "",
-      source: "",
+      source: "Registro Público",
       notes: "",
     },
   });
 
   const submitMutation = useMutation({
-    mutationFn: async (data: VendedorFormData) => {
+    mutationFn: async (data: ClientFormData) => {
       const fullPhone = `${data.countryCode}${data.phone}`;
-      const seller = sellers.find(s => s.id === data.sellerId);
       
       // Helper: parse bedrooms text to extract numeric value
       const parseBedroomsText = (text?: string): number | undefined => {
@@ -349,7 +324,7 @@ export default function LeadRegistrationVendedor() {
       // Parse numeric values from text fields
       const numericBedrooms = parseBedroomsText(data.bedrooms);
       
-      const response = await fetch("/api/public/leads/vendedor", {
+      const response = await fetch("/api/public/leads/cliente", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -359,20 +334,14 @@ export default function LeadRegistrationVendedor() {
           phone: fullPhone,
           desiredUnitType: data.desiredUnitTypes?.join(", ") || "",
           desiredNeighborhood: data.desiredNeighborhoods?.join(", ") || "",
-          // Budget range fields (numeric)
           budgetMin: data.budgetMin,
           budgetMax: data.budgetMax,
-          // Text fields for display
           bedroomsText: data.bedrooms,
-          // Numeric fields for filtering
           bedrooms: numericBedrooms,
-          // Full structured property interests
           propertyInterests: propertyInterestsPayload,
-          // Legacy fields for backward compatibility
           interestedCondominiumId: allCondominiumIds || "",
           interestedUnitId: allUnitIds || "",
-          sellerName: seller?.fullName || data.sellerName || "",
-          sellerId: data.sellerId,
+          source: "Registro Público",
         }),
       });
       if (!response.ok) {
@@ -400,7 +369,7 @@ export default function LeadRegistrationVendedor() {
   const handleNext = async () => {
     if (currentStep === 1) {
       // Validate step 1 fields
-      const fieldsToValidate: (keyof VendedorFormData)[] = ["firstName", "lastName", "phone", "countryCode"];
+      const fieldsToValidate: (keyof ClientFormData)[] = ["firstName", "lastName", "phone", "countryCode"];
       const isValid = await form.trigger(fieldsToValidate);
       
       const values = form.getValues();
@@ -421,7 +390,7 @@ export default function LeadRegistrationVendedor() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const onSubmit = (e: React.FormEvent, data: VendedorFormData) => {
+  const onSubmit = (e: React.FormEvent, data: ClientFormData) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -1010,36 +979,8 @@ export default function LeadRegistrationVendedor() {
                     )}
                   </div>
 
-                  {/* Seller Information */}
+                  {/* Additional Notes */}
                   <div className="space-y-4 pt-4 border-t">
-                    <FormLabel className="text-base">{t.sellerInfo}</FormLabel>
-                    <FormField
-                      control={form.control}
-                      name="sellerId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.sellerRegistering} {t.required}</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-seller">
-                                <SelectValue placeholder={t.selectSeller} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {sellers.map((seller) => (
-                                <SelectItem key={seller.id} value={seller.id}>
-                                  {seller.fullName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            {t.sellerDesc}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <FormField
                       control={form.control}
                       name="notes"

@@ -143,7 +143,7 @@ import PublicOwnerForm from "@/pages/PublicOwnerForm";
 import PublicLeadRegistration from "@/pages/PublicLeadRegistration";
 import PublicPropertySubmission from "@/pages/PublicPropertySubmission";
 import PropertySubmissionSuccess from "@/pages/PropertySubmissionSuccess";
-import LeadRegistrationVendedor from "@/pages/LeadRegistrationVendedor";
+import PublicClientRegistration from "@/pages/PublicClientRegistration";
 import LeadRegistrationBroker from "@/pages/LeadRegistrationBroker";
 import AdminOfferManagement from "@/pages/AdminOfferManagement";
 import AdminRentalFormManagement from "@/pages/AdminRentalFormManagement";
@@ -268,7 +268,7 @@ function AuthenticatedApp() {
         <Route path="/public-owner-form/:token" component={PublicOwnerForm} />
         <Route path="/:agencySlug/oferta/:unitSlug" component={PublicOfferBySlug} />
         <Route path="/:agencySlug/formato-renta/:unitSlug" component={PublicRentalFormBySlug} />
-        <Route path="/leads/vendedor" component={LeadRegistrationVendedor} />
+        <Route path="/registro-cliente" component={PublicClientRegistration} />
         <Route path="/leads/broker" component={LeadRegistrationBroker} />
         <Route path="/leads/:token" component={PublicLeadRegistration} />
         <Route path="/submit-property/:token" component={PublicPropertySubmission} />
@@ -395,7 +395,7 @@ function AuthenticatedApp() {
               <Route path="/public-rental-form/:token" component={PublicRentalForm} />
               <Route path="/submit-property/:token" component={PublicPropertySubmission} />
               <Route path="/property-submission-success" component={PropertySubmissionSuccess} />
-              <Route path="/leads/vendedor" component={LeadRegistrationVendedor} />
+              <Route path="/registro-cliente" component={PublicClientRegistration} />
               <Route path="/leads/broker" component={LeadRegistrationBroker} />
               
               <Route path="/" component={getHomeDashboard()} />

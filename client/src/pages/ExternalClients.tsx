@@ -1531,7 +1531,7 @@ export default function ExternalClients() {
           <CollapsibleContent>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
-                {/* Vendedor Link */}
+                {/* Client Registration Link */}
                 <Card className="border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
@@ -1539,26 +1539,26 @@ export default function ExternalClients() {
                         <Building2 className="h-5 w-5 text-primary" />
                       </div>
                       <CardTitle className="text-base">
-                        {language === "es" ? "Registro de Vendedor" : "Seller Registration"}
+                        {language === "es" ? "Registro Público de Cliente" : "Public Client Registration"}
                       </CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="p-3 bg-muted rounded-md font-mono text-xs break-all">
-                      {`${window.location.origin}/leads/vendedor`}
+                      {`${window.location.origin}/registro-cliente`}
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       className="w-full"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/leads/vendedor`);
+                        navigator.clipboard.writeText(`${window.location.origin}/registro-cliente`);
                         toast({
                           title: language === "es" ? "Link copiado" : "Link copied",
                           description: language === "es" ? "El link ha sido copiado al portapapeles" : "The link has been copied to clipboard",
                         });
                       }}
-                      data-testid="button-copy-vendedor-link"
+                      data-testid="button-copy-cliente-link"
                     >
                       <Copy className="h-4 w-4 mr-2" />
                       {language === "es" ? "Copiar Link" : "Copy Link"}

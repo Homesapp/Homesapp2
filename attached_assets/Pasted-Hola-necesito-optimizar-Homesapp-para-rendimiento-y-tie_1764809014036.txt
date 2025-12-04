@@ -1,0 +1,50 @@
+Hola, necesito optimizar Homesapp para rendimiento y tiempos de carga.
+En especial hay pantallas que se quedan cargando (por ejemplo “Mis ingresos” y las listas grandes de propiedades / oportunidades).
+
+Quiero que revises y mejores el rendimiento con estos puntos:
+
+Base de datos / Postgres
+
+Verifica y aplica todos los índices necesarios.
+
+Crea índices en las columnas que se usan para filtros, joins y ordenamientos (ej. ids de propiedad, condominio, zona, owner, fechas, status).
+
+Asegúrate de que las consultas grandes estén paginadas (LIMIT/OFFSET o cursor). Ningún endpoint debe devolver todos los registros de golpe.
+
+Consultas en el backend
+
+Revisa los endpoints de listas (ingresos, oportunidades, citas, referidos) para evitar el problema de N+1 queries.
+No quiero await dentro de bucles; usa una o pocas consultas con JOIN o IN (...).
+
+Para respuestas de listado, devuelve solo los campos necesarios para la vista (id, título, totales, estado). Los detalles completos solo cuando el usuario abre la ficha de detalle.
+
+Resumenes de ingresos
+
+Para la pantalla “Mis ingresos”, crea (o usa) una tabla de resúmenes por mes (owner, mes, total, etc.) o algún sistema similar.
+
+La vista principal debe consultar esos resúmenes rápidos, y solo ir a detalle cuando el usuario lo pida.
+La idea es que la pantalla cargue rápido aunque haya muchos registros históricos.
+
+Frontend / React
+
+Implementa paginación o infinite scroll en las listas grandes (ingresos, oportunidades, referidos, etc.).
+
+Usa skeletons o loaders en lugar de un spinner infinito, para que el usuario vea que la página está cargando por partes.
+
+Evita renderizar cientos de filas al mismo tiempo; limita el número de elementos visibles y carga el resto bajo demanda.
+
+Imágenes
+
+Revisa cómo se están sirviendo las imágenes (fotos de propiedades, etc.).
+
+Idealmente, usa un bucket/CDN externo (por ejemplo Cloudinary/S3) y carga versiones optimizadas (miniaturas en listas y tamaño grande solo en detalle).
+
+Evita que la app descargue imágenes muy pesadas en las vistas de lista.
+
+Por favor:
+
+Explícame brevemente qué cambios hiciste,
+
+Indícame qué endpoints y componentes tocaste,
+
+Y confirma que la pantalla “Mis ingresos” y las listas grandes ahora cargan mucho más rápido.

@@ -34157,6 +34157,86 @@ ${{precio}}/mes
     }
   });
 
+  // POST /api/public/leads/cliente - Public client registration (no seller required)
+  app.post("/api/public/leads/cliente", publicLeadRegistrationLimiter, async (req, res) => {
+    try {
+      const { 
+        firstName, 
+        lastName, 
+        email, 
+        phone,
+        contractDuration,
+        checkInDate,
+        hasPets,
+        budgetMin,
+        budgetMax,
+        bedrooms,
+        desiredUnitType,
+        desiredNeighborhood,
+        interestedCondominiumId,
+        interestedUnitId,
+        source, 
+        notes 
+      } = req.body;
+      
+      // Basic validation - email is optional
+      if (!firstName || !lastName || !phone) {
+        return res.status(400).json({ message: "Faltan campos requeridos (nombre, apellido, teléfono)" });
+      }
+      
+      // For now, we'll assign to first available external agency
+      const agencies = await storage.getExternalAgencies();
+      if (!agencies || agencies.length === 0) {
+        return res.status(500).json({ message: "No hay agencias disponibles" });
+      }
+      
+      const agencyId = agencies[0].id;
+      
+      // Check for duplicate lead with 3-month expiry using phoneLast4
+      const phoneLast4 = phone.slice(-4);
+      const duplicateCheck = await storage.checkExternalLeadDuplicateWithExpiry(
+        agencyId, firstName, lastName, phoneLast4
+      );
+      
+      if (duplicateCheck && !duplicateCheck.isExpired) {
+        // For public registrations, we still create but note the duplicate silently
+        // This allows customers to re-register if they want updated info sent
+        console.log(`Duplicate lead detected for ${firstName} ${lastName}, proceeding anyway for public form`);
+      }
+      
+      // Create lead without seller info - will be assigned later by admin
+      const lead = await storage.createExternalLead({
+        agencyId,
+        firstName,
+        lastName,
+        email: email || null,
+        phone,
+        phoneLast4: phone.slice(-4),
+        contractDuration: contractDuration || null,
+        checkInDate: checkInDate ? new Date(checkInDate) : null,
+        hasPets: hasPets || null,
+        budgetMin: budgetMin ? parseInt(budgetMin) : null,
+        budgetMax: budgetMax ? parseInt(budgetMax) : null,
+        bedrooms: bedrooms ? parseInt(bedrooms) : null,
+        desiredUnitType: desiredUnitType || null,
+        desiredNeighborhood: desiredNeighborhood || null,
+        interestedCondominiumId: interestedCondominiumId || null,
+        interestedUnitId: interestedUnitId || null,
+        sellerId: null,
+        sellerName: null,
+        registrationType: "public",
+        status: "nuevo_lead",
+        source: source || "Registro Público",
+        notes,
+      });
+      
+      res.status(201).json({ success: true, leadId: lead.id });
+    } catch (error) {
+      console.error("Error creating public client lead:", error);
+      handleGenericError(res, error);
+    }
+  });
+
   // GET /api/public/agency - Get public agency info (name, logo)
   app.get("/api/public/agency", async (req, res) => {
     try {
