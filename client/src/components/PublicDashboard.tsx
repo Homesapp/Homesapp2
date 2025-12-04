@@ -27,7 +27,7 @@ export default function PublicDashboard() {
   const { t } = useLanguage();
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowChat(true), 2000);
+    const timer = setTimeout(() => setShowChat(true), 800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -770,7 +770,11 @@ export default function PublicDashboard() {
       </footer>
 
       {showChat && (
-        <Suspense fallback={null}>
+        <Suspense fallback={
+          <div className="fixed bottom-4 right-4 z-50">
+            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-primary/80 animate-pulse" />
+          </div>
+        }>
           <FloatingChat />
         </Suspense>
       )}
