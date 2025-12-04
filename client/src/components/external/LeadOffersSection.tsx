@@ -25,8 +25,10 @@ import {
   Plus,
   Loader2,
   Home,
+  Share2,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
+import { ShareButton } from "@/components/ui/share-button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -239,15 +241,15 @@ export default function LeadOffersSection({ lead, dialogOpen, onDialogOpenChange
                       ? (language === "es" ? "Visto" : "Viewed")
                       : (language === "es" ? "Enviado" : "Sent")}
                   </Badge>
-                  {offer.publicUrl && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => copyToClipboard(offer.publicUrl)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <ShareButton
+                    url={offer.publicUrl}
+                    title={`${offer.propertyName} - ${offer.unitNumber}`}
+                    recipientPhone={lead.phone}
+                    recipientName={lead.firstName}
+                    variant="ghost"
+                    size="icon"
+                    showLabel={false}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -382,33 +384,29 @@ export default function LeadOffersSection({ lead, dialogOpen, onDialogOpenChange
                 <p className="font-medium text-green-700 dark:text-green-300">
                   {language === "es" ? "Oferta generada exitosamente" : "Offer generated successfully"}
                 </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {generatedOffer.unitNumber}
+                </p>
               </div>
 
-              <div className="flex gap-2">
-                <Button 
-                  className="flex-1"
-                  variant="outline"
-                  onClick={() => copyToClipboard(generatedOffer.offerUrl)}
-                >
-                  {copiedLink ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                  {language === "es" ? "Copiar Enlace" : "Copy Link"}
-                </Button>
-                <Button 
-                  className="flex-1"
-                  onClick={() => shareViaWhatsApp(generatedOffer.offerUrl, generatedOffer.unitNumber)}
-                >
-                  <SiWhatsapp className="h-4 w-4 mr-2" />
-                  WhatsApp
-                </Button>
-              </div>
+              <ShareButton
+                url={generatedOffer.offerUrl}
+                title={generatedOffer.unitNumber}
+                recipientPhone={lead.phone}
+                recipientName={lead.firstName}
+                prominent
+              />
 
               <DialogFooter>
-                <Button onClick={() => {
-                  setIsOfferDialogOpen(false);
-                  setGeneratedOffer(null);
-                  setSelectedCondominiumId("");
-                  setSelectedUnitId("");
-                }}>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setIsOfferDialogOpen(false);
+                    setGeneratedOffer(null);
+                    setSelectedCondominiumId("");
+                    setSelectedUnitId("");
+                  }}
+                >
                   {language === "es" ? "Cerrar" : "Close"}
                 </Button>
               </DialogFooter>
