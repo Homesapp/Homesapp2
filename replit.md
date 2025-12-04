@@ -43,6 +43,25 @@ A photo editing system for property images includes canvas-based adjustments (br
 
 Reusable searchable dropdown components (`SearchableSelect`, `SearchableMultiSelect`) are implemented for improved UX in forms, supporting bilingual placeholders and messages.
 
+## External Seller Mobile Experience (December 2024)
+The external seller role (`external_agency_seller`) has a simplified, mobile-first navigation experience:
+
+**Sidebar Navigation (4 items only):**
+1. Mis Oportunidades (/external/clients) - Lead/client management
+2. Mis Comisiones (/external/seller-commissions) - Commission tracking
+3. Mi Perfil (/perfil) - Profile settings
+4. Ayuda (/external/seller-help) - Help section
+
+**Mobile Bottom Navigation:**
+- `SellerBottomNav` component provides fixed bottom navigation bar on mobile (hidden on md+ breakpoints)
+- 4 icon buttons with labels matching sidebar items
+- Active state visual feedback with primary color
+- Safe area padding for iOS devices
+
+**Initial Route:**
+- External sellers land directly on `/external/clients` (Mis Oportunidades) when logging in
+- Role switching navigates to role-specific home page
+
 ## Performance Optimizations (December 2024)
 Frontend bundle optimization uses React.lazy() + Suspense for code splitting on 150+ internal pages, keeping only essential public pages (Login, Register, PublicDashboard, PropertySearch, InteractiveMap) as static imports. This significantly reduces initial bundle size for public homepage visitors.
 

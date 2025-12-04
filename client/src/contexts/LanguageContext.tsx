@@ -759,7 +759,7 @@ const translations: Record<Language, Record<string, string>> = {
     "goals.monthlyShowingsDesc": "Agenda y completa visitas a propiedades",
     
     "sidebar.sellerGoals": "Mis Metas",
-    "sidebar.sellerLeads": "Mis Leads",
+    "sidebar.sellerLeads": "Mis Oportunidades",
     "sidebar.sellerCalendar": "Mi Calendario",
     "sidebar.sellerCatalog": "Catálogo",
     "sidebar.sellerTemplates": "Plantillas",
@@ -2136,7 +2136,7 @@ const translations: Record<Language, Record<string, string>> = {
     "goals.monthlyShowingsDesc": "Schedule and complete property showings",
     
     "sidebar.sellerGoals": "My Goals",
-    "sidebar.sellerLeads": "My Leads",
+    "sidebar.sellerLeads": "My Opportunities",
     "sidebar.sellerCalendar": "My Calendar",
     "sidebar.sellerCatalog": "Catalog",
     "sidebar.sellerTemplates": "Templates",

@@ -9,6 +9,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AppSidebar } from "@/components/AppSidebar";
+import { SellerBottomNav } from "@/components/SellerBottomNav";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -344,8 +345,9 @@ function AuthenticatedApp() {
       case "external_agency_accounting":
       case "external_agency_maintenance":
       case "external_agency_staff":
-      case "external_agency_seller":
         return ExternalDashboard;
+      case "external_agency_seller":
+        return ExternalClients;
       case "management":
       case "concierge":
       case "provider":
@@ -381,7 +383,7 @@ function AuthenticatedApp() {
               ) : null}
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+          <main className={`flex-1 overflow-auto p-3 sm:p-4 md:p-6 ${userRole === "external_agency_seller" ? "pb-20 md:pb-6" : ""}`}>
             <Suspense fallback={<PageLoader />}>
               <Switch>
                 <Route path="/offer/:token" component={PublicOfferForm} />
@@ -586,6 +588,8 @@ function AuthenticatedApp() {
               </Switch>
             </Suspense>
           </main>
+          {/* Bottom navigation for external sellers on mobile */}
+          {userRole === "external_agency_seller" && <SellerBottomNav />}
         </div>
       </div>
       {currentUser && currentUser.role !== "admin" && currentUser.role !== "master" && (

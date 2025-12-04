@@ -300,14 +300,21 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.adminReferrals", url: "/admin/referidos", icon: Share2, roles: ["master", "admin", "admin_jr"] },
   ];
 
+  // Simplified menu items for external seller (only 4 essential options)
+  const externalSellerSimpleItems = [
+    { titleKey: "sidebar.sellerLeads", url: "/external/clients", icon: Users, roles: ["external_agency_seller"] },
+    { titleKey: "sidebar.sellerCommissions", url: "/external/seller-commissions", icon: DollarSign, roles: ["external_agency_seller"] },
+    { titleKey: "sidebar.profile", url: "/perfil", icon: User, roles: ["external_agency_seller"] },
+    { titleKey: "sidebar.sellerHelp", url: "/external/seller-help", icon: HelpCircle, roles: ["external_agency_seller"] },
+  ];
+
   const externalManagementGroup = [
-    { titleKey: "sidebar.externalDashboard", url: "/external/dashboard", icon: Home, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer", "external_agency_seller"] },
+    { titleKey: "sidebar.externalDashboard", url: "/external/dashboard", icon: Home, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalAccounts", url: "/external/accounts", icon: Users, roles: ["master", "admin", "external_agency_admin"] },
     { titleKey: "sidebar.externalSellersManagement", url: "/external/sellers-management", icon: UserCheck, roles: ["master", "admin", "external_agency_admin"] },
     { titleKey: "sidebar.externalAccesses", url: "/external/accesses", icon: Key, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance", "external_agency_staff"] },
     { titleKey: "sidebar.externalCondominiums", url: "/external/condominiums", icon: Building2, roles: ["master", "admin", "external_agency_admin", "external_agency_maintenance", "external_agency_staff"] },
     { titleKey: "sidebar.externalReferralNetwork", url: "/external/referral-network", icon: Share2, roles: ["master", "admin", "external_agency_admin"] },
-    { titleKey: "sidebar.externalRecruitment", url: "/external/recruitment", icon: Target, roles: ["external_agency_seller"] },
     { titleKey: "sidebar.externalContracts", url: "/external/contracts", icon: ScrollText, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalRentals", url: "/external/rentals", icon: FileText, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalAccounting", url: "/external/accounting", icon: DollarSign, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
@@ -316,15 +323,7 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
     { titleKey: "sidebar.externalAppointments", url: "/external-appointments", icon: CalendarCheck, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"] },
     { titleKey: "sidebar.externalOwners", url: "/external/owners/portfolio", icon: Users, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting"] },
     { titleKey: "sidebar.externalClients", url: "/external/clients", icon: UserCircle2, roles: ["master", "admin", "external_agency_admin", "external_agency_staff", "external_agency_concierge"] },
-    { titleKey: "sidebar.externalMessages", url: "/external/messages", icon: MessagesSquare, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer", "external_agency_seller"] },
-    { titleKey: "sidebar.sellerLeads", url: "/external/clients", icon: Users, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerCalendar", url: "/external/seller-calendar", icon: Calendar, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerCatalog", url: "/external/seller-catalog", icon: Home, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerTemplates", url: "/external/seller-templates", icon: MessageSquare, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerSocialMedia", url: "/external/seller-social-media", icon: Share2, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerReports", url: "/external/seller-reports", icon: BarChart3, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerCommissions", url: "/external/seller-commissions", icon: DollarSign, roles: ["external_agency_seller"] },
-    { titleKey: "sidebar.sellerGoals", url: "/external/seller-goals", icon: Target, roles: ["external_agency_seller"] },
+    { titleKey: "sidebar.externalMessages", url: "/external/messages", icon: MessagesSquare, roles: ["master", "admin", "external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer"] },
   ];
 
   const serviceItems = [
@@ -343,6 +342,9 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
   // Check if user is ONLY an external agency user (not admin/master)
   const isExternalAgencyUser = userRole && 
     ["external_agency_admin", "external_agency_accounting", "external_agency_maintenance", "external_agency_staff", "external_agency_concierge", "external_agency_lawyer", "external_agency_seller"].includes(userRole);
+  
+  // Check if user is external seller (gets simplified menu)
+  const isExternalSeller = userRole === "external_agency_seller";
 
   const filteredMain = userRole 
     ? (isExternalAgencyUser 
@@ -377,6 +379,11 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
 
   const filteredExternalManagement = userRole 
     ? externalManagementGroup.filter((item) => item.roles.includes(userRole) && isMenuItemVisible(item.titleKey))
+    : [];
+
+  // Simplified menu for external sellers (only 4 items)
+  const filteredExternalSellerSimple = userRole === "external_agency_seller"
+    ? externalSellerSimpleItems
     : [];
 
   const filteredService = userRole 
@@ -505,8 +512,28 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
           </SidebarGroup>
         )}
 
-        {/* External Agency Users - Flat structure with drag & drop */}
-        {isExternalAgencyUser && filteredExternalManagement.length > 0 && (
+        {/* External Seller - Ultra simplified menu (4 items only) */}
+        {isExternalSeller && filteredExternalSellerSimple.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredExternalSellerSimple.map((item) => (
+                  <SidebarMenuItem key={item.titleKey}>
+                    <SidebarMenuButton asChild isActive={location === item.url || location.startsWith(item.url + '/')}>
+                      <Link href={item.url} data-testid={`link-${item.titleKey.toLowerCase()}`}>
+                        <item.icon />
+                        <span>{t(item.titleKey)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* External Agency Users (non-sellers) - Flat structure with drag & drop */}
+        {isExternalAgencyUser && !isExternalSeller && filteredExternalManagement.length > 0 && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -821,30 +848,33 @@ export function AppSidebar({ userRole, userId }: AppSidebarProps) {
       <SidebarFooter>
         <div className={state === "collapsed" ? "flex flex-col items-center gap-1 p-2 border-t" : "p-2 border-t space-y-1"}>
           <RoleToggle />
-          {isExternalUser && userRole !== "external_agency_seller" ? (
-            <Link href="/external/configuration" data-testid="link-configuration">
-              <Button
-                variant={state === "collapsed" ? "ghost" : "outline"}
-                size={state === "expanded" ? "default" : "icon"}
-                className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
-                data-testid="button-configuration"
-              >
-                <Settings className="h-4 w-4" />
-                {state === "expanded" && <span>{t("sidebar.configuration")}</span>}
-              </Button>
-            </Link>
-          ) : (
-            <Link href={userRole === "external_agency_seller" ? "/external/seller-help" : "/ayuda"} data-testid="link-help">
-              <Button
-                variant={state === "collapsed" ? "ghost" : "outline"}
-                size={state === "expanded" ? "default" : "icon"}
-                className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
-                data-testid="button-help"
-              >
-                <HelpCircle className="h-4 w-4" />
-                {state === "expanded" && <span>{t("help.title")}</span>}
-              </Button>
-            </Link>
+          {/* External sellers don't need footer buttons - they have simplified menu */}
+          {!isExternalSeller && (
+            isExternalUser ? (
+              <Link href="/external/configuration" data-testid="link-configuration">
+                <Button
+                  variant={state === "collapsed" ? "ghost" : "outline"}
+                  size={state === "expanded" ? "default" : "icon"}
+                  className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
+                  data-testid="button-configuration"
+                >
+                  <Settings className="h-4 w-4" />
+                  {state === "expanded" && <span>{t("sidebar.configuration")}</span>}
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/ayuda" data-testid="link-help">
+                <Button
+                  variant={state === "collapsed" ? "ghost" : "outline"}
+                  size={state === "expanded" ? "default" : "icon"}
+                  className={state === "collapsed" ? "border-0" : "w-full justify-start gap-2"}
+                  data-testid="button-help"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  {state === "expanded" && <span>{t("help.title")}</span>}
+                </Button>
+              </Link>
+            )
           )}
         </div>
       </SidebarFooter>
