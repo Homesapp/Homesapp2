@@ -43,6 +43,19 @@ A photo editing system for property images includes canvas-based adjustments (br
 
 Reusable searchable dropdown components (`SearchableSelect`, `SearchableMultiSelect`) are implemented for improved UX in forms, supporting bilingual placeholders and messages.
 
+## Performance Optimizations (December 2024)
+Frontend bundle optimization uses React.lazy() + Suspense for code splitting on 150+ internal pages, keeping only essential public pages (Login, Register, PublicDashboard, PropertySearch, InteractiveMap) as static imports. This significantly reduces initial bundle size for public homepage visitors.
+
+PublicDashboard optimizations include:
+- FloatingChat lazy-loaded and deferred 800ms after initial render with animated placeholder
+- Property images use `loading="lazy"` for below-the-fold content
+- Colonies/condominiums queries defer until filters are shown (`enabled: showFilters`)
+
+Database performance optimizations include:
+- 17 indexes on leads (beneficiaryId, status, createdAt), offer_tokens (token, isUsed, expiresAt), and condominiums tables
+- SQL aggregation for income summary (`getIncomeSummaryOptimized`) eliminating N+1 queries
+- Existing trigram indexes for text search on external endpoints
+
 ## External Dependencies
 *   Google Calendar API
 *   Google OAuth 2.0
