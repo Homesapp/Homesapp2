@@ -191,12 +191,12 @@ function SellerDashboard() {
   ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" data-testid="text-page-title">
           {language === "es" ? "Mi Dashboard de Ventas" : "My Sales Dashboard"}
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
           {language === "es" 
             ? "Resumen de tus leads, visitas y actividades"
             : "Summary of your leads, showings and activities"}
@@ -204,23 +204,23 @@ function SellerDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <Card data-testid="card-total-leads">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Leads Asignados" : "Assigned Leads"}
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">
+              {language === "es" ? "Leads" : "Leads"}
             </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 pt-0">
             {isLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
             ) : (
-              <div className="text-2xl font-bold" data-testid="text-total-leads">
+              <div className="text-lg sm:text-2xl font-bold" data-testid="text-total-leads">
                 {stats.totalLeads}
               </div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
               {stats.thisMonthLeads > 0 && (
                 <span className="text-green-600">
                   +{stats.thisMonthLeads} {language === "es" ? "este mes" : "this month"}
@@ -231,22 +231,22 @@ function SellerDashboard() {
         </Card>
 
         <Card data-testid="card-conversion-rate">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Tasa de Conversión" : "Conversion Rate"}
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">
+              {language === "es" ? "Conversión" : "Conversion"}
             </CardTitle>
-            <Percent className="h-4 w-4 text-muted-foreground" />
+            <Percent className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 pt-0">
             {isLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
             ) : (
               <>
-                <div className="text-2xl font-bold" data-testid="text-conversion-rate">
+                <div className="text-lg sm:text-2xl font-bold" data-testid="text-conversion-rate">
                   {stats.conversionRate}%
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats.convertedLeads} {language === "es" ? "convertidos" : "converted"}
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+                  {stats.convertedLeads} {language === "es" ? "convert." : "converted"}
                 </p>
               </>
             )}
@@ -254,22 +254,22 @@ function SellerDashboard() {
         </Card>
 
         <Card data-testid="card-today-showings">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Visitas Hoy" : "Today's Showings"}
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">
+              {language === "es" ? "Visitas Hoy" : "Today"}
             </CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 pt-0">
             {isLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
             ) : (
               <>
-                <div className="text-2xl font-bold" data-testid="text-today-showings">
+                <div className="text-lg sm:text-2xl font-bold" data-testid="text-today-showings">
                   {stats.todayShowings}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {language === "es" ? "Programadas para hoy" : "Scheduled for today"}
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+                  {language === "es" ? "Programadas" : "Scheduled"}
                 </p>
               </>
             )}
@@ -277,21 +277,21 @@ function SellerDashboard() {
         </Card>
 
         <Card data-testid="card-properties-sent">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {language === "es" ? "Propiedades Enviadas" : "Properties Sent"}
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">
+              {language === "es" ? "Enviadas" : "Sent"}
             </CardTitle>
-            <Share2 className="h-4 w-4 text-muted-foreground" />
+            <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 pt-0">
             {isLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
             ) : (
               <>
-                <div className="text-2xl font-bold" data-testid="text-properties-sent">
+                <div className="text-lg sm:text-2xl font-bold" data-testid="text-properties-sent">
                   {sellerMetrics?.propertiesSent.total || 0}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
                   {sellerMetrics?.propertiesSent.thisMonth || 0} {language === "es" ? "este mes" : "this month"}
                 </p>
               </>
@@ -300,29 +300,29 @@ function SellerDashboard() {
         </Card>
 
         <Card data-testid="card-follow-ups">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">
               {language === "es" ? "Seguimientos" : "Follow-ups"}
             </CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
+            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 pt-0">
             {isLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
             ) : (
               <>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold" data-testid="text-follow-ups">
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                  <span className="text-lg sm:text-2xl font-bold" data-testid="text-follow-ups">
                     {followUps?.totalPending || 0}
                   </span>
                   {(followUps?.overdueCount || 0) > 0 && (
-                    <Badge variant="destructive" className="text-xs">
-                      {followUps?.overdueCount} {language === "es" ? "vencidos" : "overdue"}
+                    <Badge variant="destructive" className="text-[9px] sm:text-xs px-1.5">
+                      {followUps?.overdueCount}
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {language === "es" ? "Pendientes de contactar" : "Pending to contact"}
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+                  {language === "es" ? "Pendientes" : "Pending"}
                 </p>
               </>
             )}
@@ -378,22 +378,22 @@ function SellerDashboard() {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">{language === "es" ? "Acceso Rápido" : "Quick Access"}</h2>
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <h2 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">{language === "es" ? "Acceso Rápido" : "Quick Access"}</h2>
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 md:grid-cols-4">
           {quickActions.map((action, idx) => (
             <Link key={idx} href={action.href}>
               <Card className="hover-elevate cursor-pointer transition-all h-full" data-testid={`quick-action-${idx}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <action.icon className={`h-5 w-5 ${action.color}`} />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between mb-1 sm:mb-2">
+                    <action.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${action.color}`} />
                     {action.count !== undefined && action.count > 0 && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5">
                         {action.count}
                       </Badge>
                     )}
                   </div>
-                  <h3 className="font-semibold text-sm mb-1">{action.title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>
+                  <h3 className="font-semibold text-xs sm:text-sm mb-0.5 sm:mb-1 truncate">{action.title}</h3>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2">{action.description}</p>
                 </CardContent>
               </Card>
             </Link>
