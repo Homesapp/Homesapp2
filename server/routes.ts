@@ -45021,7 +45021,8 @@ const generateSlug = (str: string) => str.toLowerCase().normalize("NFD").replace
         if (fileIdMatch) {
           const fileId = fileIdMatch[1];
           // Use Google Drive thumbnail URL for direct embedding (max 1200px)
-          const driveThumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
+          // Use direct lh3.googleusercontent.com URL for better browser compatibility
+          const driveThumbUrl = `https://lh3.googleusercontent.com/d/${fileId}=w1200`;
           return res.redirect(302, driveThumbUrl);
         }
       }
