@@ -15334,19 +15334,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const forms = await query;
 
-      // Enrich with property info
-      const enrichedForms = await Promise.all(
-        forms.map(async (form) => {
-          const property = await storage.getProperty(form.propertyId);
-          const lead = form.leadId ? await storage.getLead(form.leadId) : null;
-          return {
-            ...form,
-            property,
-            lead,
-          };
-        })
-      );
+      // Optimized: Batch fetch properties and leads to avoid N+1 queries
+      const propertyIds = [...new Set(forms.map(f => f.propertyId).filter(Boolean))];
+      const leadIds = [...new Set(forms.map(f => f.leadId).filter(Boolean))] as string[];
 
+      const [propertiesData, leadsData] = await Promise.all([
+        propertyIds.length > 0 ? db.select().from(properties).where(inArray(properties.id, propertyIds)) : [],
+        leadIds.length > 0 ? db.select().from(leads).where(inArray(leads.id, leadIds)) : [],
+      ]);
+
+      const propertiesMap = new Map(propertiesData.map(p => [p.id, p]));
+      const leadsMap = new Map(leadsData.map(l => [l.id, l]));
+
+      const enrichedForms = forms.map(form => ({
+        ...form,
+        property: form.propertyId ? propertiesMap.get(form.propertyId) || null : null,
+        lead: form.leadId ? leadsMap.get(form.leadId) || null : null,
+      }));
       res.json(enrichedForms);
     } catch (error) {
       console.error("Error fetching rental forms:", error);
@@ -18701,7 +18705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {
         beneficiaryId: beneficiaryId as string,
         category: category as string,
-        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
+        excludeCategories: undefined,
         status: status as string,
         propertyId: propertyId as string,
         payoutBatchId: payoutBatchId as string,
@@ -18868,7 +18872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactions = await storage.getIncomeTransactions({
         beneficiaryId: userId,
         category: category as string,
-        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
+        excludeCategories: undefined,
         status: status as string,
         fromDate: fromDate ? new Date(fromDate as string) : undefined,
         toDate: toDate ? new Date(toDate as string) : undefined,
@@ -18889,34 +18893,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const transactions = await storage.getIncomeTransactions({
-        beneficiaryId: userId,
-      });
-
-      const totalEarnings = transactions.reduce((sum, t) => sum + t.amount, 0);
-      const paidAmount = transactions
-        .filter(t => t.status === "paid")
-        .reduce((sum, t) => sum + t.amount, 0);
-      const pendingAmount = transactions
-        .filter(t => t.status === "pending")
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const byCategory = transactions.reduce((acc, t) => {
-        if (!acc[t.category]) {
-          acc[t.category] = { count: 0, total: 0 };
-        }
-        acc[t.category].count++;
-        acc[t.category].total += t.amount;
-        return acc;
-      }, {} as Record<string, { count: number; total: number }>);
-
-      res.json({
-        totalEarnings,
-        paidAmount,
-        pendingAmount,
-        transactionCount: transactions.length,
-        byCategory,
-      });
+      // Use optimized SQL aggregation instead of loading all transactions
+      const summary = await storage.getIncomeSummaryOptimized(userId);
+      res.json(summary);
     } catch (error: any) {
       console.error("Error fetching user income summary:", error);
       res.status(500).json({ message: "Failed to fetch income summary" });
@@ -18932,7 +18911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         beneficiaryId: beneficiaryId as string,
         propertyId: propertyId as string,
         category: category as string,
-        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
+        excludeCategories: undefined,
         status: status as string,
         fromDate: fromDate ? new Date(fromDate as string) : undefined,
         toDate: toDate ? new Date(toDate as string) : undefined,
@@ -25265,7 +25244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: status as string,
         priority: priority as string,
         category: category as string,
-        excludeCategories: excludeCategories ? (excludeCategories as string).split(",") : undefined,
+        excludeCategories: undefined,
         condominiumId: condominiumId as string,
         dateFilter: dateFilter as string,
         sortField: sortField as string || 'createdAt',

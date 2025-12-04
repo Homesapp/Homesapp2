@@ -1030,6 +1030,13 @@ export interface IStorage {
     toDate?: Date;
   }): Promise<IncomeTransaction[]>;
   createIncomeTransaction(transaction: InsertIncomeTransaction): Promise<IncomeTransaction>;
+  getIncomeSummaryOptimized(beneficiaryId: string): Promise<{
+    totalEarnings: number;
+    paidAmount: number;
+    pendingAmount: number;
+    transactionCount: number;
+    byCategory: Record<string, { count: number; total: number }>;
+  }>;
   updateIncomeTransaction(id: string, updates: Partial<InsertIncomeTransaction>): Promise<IncomeTransaction>;
   updateIncomeTransactionStatus(id: string, status: string, updatedBy: string, notes?: string, rejectionReason?: string): Promise<IncomeTransaction>;
   getIncomeReports(filters?: {
@@ -6301,6 +6308,51 @@ export class DatabaseStorage implements IStorage {
     
     return await query.orderBy(desc(incomeTransactions.createdAt));
   }
+
+  // Optimized income summary using SQL aggregation (avoids loading all transactions into memory)
+  async getIncomeSummaryOptimized(beneficiaryId: string): Promise<{
+    totalEarnings: number;
+    paidAmount: number;
+    pendingAmount: number;
+    transactionCount: number;
+    byCategory: Record<string, { count: number; total: number }>;
+  }> {
+    // Get aggregate totals in a single query
+    const [totals] = await db
+      .select({
+        totalEarnings: sql<number>`COALESCE(SUM(${incomeTransactions.amount}), 0)::float`,
+        paidAmount: sql<number>`COALESCE(SUM(CASE WHEN ${incomeTransactions.status} = 'paid' THEN ${incomeTransactions.amount} ELSE 0 END), 0)::float`,
+        pendingAmount: sql<number>`COALESCE(SUM(CASE WHEN ${incomeTransactions.status} = 'pending' THEN ${incomeTransactions.amount} ELSE 0 END), 0)::float`,
+        transactionCount: sql<number>`COUNT(*)::int`,
+      })
+      .from(incomeTransactions)
+      .where(eq(incomeTransactions.beneficiaryId, beneficiaryId));
+
+    // Get breakdown by category in a separate query
+    const categoryBreakdown = await db
+      .select({
+        category: incomeTransactions.category,
+        count: sql<number>`COUNT(*)::int`,
+        total: sql<number>`COALESCE(SUM(${incomeTransactions.amount}), 0)::float`,
+      })
+      .from(incomeTransactions)
+      .where(eq(incomeTransactions.beneficiaryId, beneficiaryId))
+      .groupBy(incomeTransactions.category);
+
+    const byCategory: Record<string, { count: number; total: number }> = {};
+    for (const row of categoryBreakdown) {
+      byCategory[row.category] = { count: row.count, total: row.total };
+    }
+
+    return {
+      totalEarnings: Number(totals?.totalEarnings || 0),
+      paidAmount: Number(totals?.paidAmount || 0),
+      pendingAmount: Number(totals?.pendingAmount || 0),
+      transactionCount: Number(totals?.transactionCount || 0),
+      byCategory,
+    };
+  }
+
 
   async createIncomeTransaction(transactionData: InsertIncomeTransaction): Promise<IncomeTransaction> {
     const [transaction] = await db.insert(incomeTransactions).values(transactionData).returning();
