@@ -555,15 +555,28 @@ Any questions? I'm here to help.`;
                 </CardContent>
               </Card>
 
-              <Tabs defaultValue="link" className="w-full">
+              {/* Main WhatsApp Send Button */}
+              <Button 
+                onClick={openWhatsApp} 
+                className="w-full min-h-[48px] bg-green-600 hover:bg-green-700 text-white font-medium"
+                size="lg"
+                data-testid="button-send-whatsapp-main"
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                {language === "es" ? "Enviar por WhatsApp" : "Send via WhatsApp"}
+              </Button>
+
+              <Separator className="my-2" />
+
+              <Tabs defaultValue="whatsapp" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 h-auto p-1">
-                  <TabsTrigger value="link" className="min-h-[44px] gap-1.5" data-testid="tab-link">
-                    <LinkIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">Link</span>
-                  </TabsTrigger>
                   <TabsTrigger value="whatsapp" className="min-h-[44px] gap-1.5" data-testid="tab-whatsapp">
                     <MessageCircle className="h-4 w-4" />
                     <span className="hidden sm:inline">WhatsApp</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="link" className="min-h-[44px] gap-1.5" data-testid="tab-link">
+                    <LinkIcon className="h-4 w-4" />
+                    <span className="hidden sm:inline">Link</span>
                   </TabsTrigger>
                   <TabsTrigger value="email" className="min-h-[44px] gap-1.5" data-testid="tab-email">
                     <Mail className="h-4 w-4" />
